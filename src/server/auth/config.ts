@@ -1,6 +1,5 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
 
 import { db } from "@/server/db";
 import {
@@ -9,6 +8,12 @@ import {
   users,
   verificationTokens,
 } from "@/server/db/schema";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import GitHub from "next-auth/providers/github";
+import { env } from "@/env";
+import type { Provider } from "next-auth/providers";
+import { type TUserRole, USER_ROLE } from "@/constants";
+import type { Adapter } from "next-auth/adapters";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -20,16 +25,53 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
-      // ...other properties
-      // role: UserRole;
+      role: TUserRole;
+      name: string;
+      email: string;
+      image?: string;
     } & DefaultSession["user"];
   }
 
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
+  interface User {
+    role: TUserRole;
+  }
 }
+
+const providers: Provider[] = [
+  /* @see https://next-auth.js.org/providers/ */
+  MicrosoftEntraID({
+    clientId: env.AUTH_AZURE_CLIENT_ID,
+    clientSecret: env.AUTH_AZURE_CLIENT_SECRET,
+    issuer: `https://login.microsoftonline.com/${env.AUTH_AZURE_TENANT_ID}/v2.0`,
+    async profile(profile, tokens) {
+      // https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0&tabs=http#examples
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/photos/${this.profilePhotoSize}x${this.profilePhotoSize}/$value`,
+        { headers: { Authorization: `Bearer ${tokens.access_token}` } },
+      );
+
+      // Confirm that profile photo was returned
+      let image;
+      // TODO: Do this without Buffer
+      if (response.ok && typeof Buffer !== "undefined") {
+        try {
+          const pictureBuffer = await response.arrayBuffer();
+          const pictureBase64 = Buffer.from(pictureBuffer).toString("base64");
+          image = `data:image/jpeg;base64, ${pictureBase64}`;
+        } catch {}
+      }
+
+      const isAdminOrg = profile.email === env.ADMIN_ORG_EMAIL;
+      return {
+        id: profile.sub,
+        name: profile.name as string,
+        email: profile.email,
+        image: image ?? null,
+        role: isAdminOrg ? USER_ROLE.ADMIN_ORG : USER_ROLE.MEMBER,
+      };
+    },
+  }),
+];
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -37,31 +79,29 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authConfig = {
-  providers: [
-    DiscordProvider,
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
-  ],
+  providers,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
-  }),
+  }) as Adapter,
+  pages: { signIn: "/login" },
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    authorized: ({ auth }) => {
+      return !!auth?.user;
+    },
   },
 } satisfies NextAuthConfig;
+
+export const providerMap = authConfig.providers
+  .map((provider) => {
+    if (typeof provider === "function") {
+      const providerData = provider();
+      return { id: providerData.id, name: providerData.name };
+    } else {
+      return { id: provider.id, name: provider.name };
+    }
+  })
+  .filter((provider) => provider.id !== "credentials");
+

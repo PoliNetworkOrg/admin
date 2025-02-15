@@ -11,8 +11,12 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
-    AUTH_DISCORD_ID: z.string(),
-    AUTH_DISCORD_SECRET: z.string(),
+    AUTH_AZURE_CLIENT_ID: z.string(),
+    AUTH_AZURE_CLIENT_SECRET: z.string(),
+    AUTH_AZURE_TENANT_ID: z.string(),
+    ADMIN_ORG_EMAIL: z
+      .string()
+      .describe("Email address of admin Azure account."),
     DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -34,8 +38,10 @@ export const env = createEnv({
    */
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
-    AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID,
-    AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
+    AUTH_AZURE_CLIENT_ID: process.env.AUTH_AZURE_CLIENT_ID,
+    AUTH_AZURE_CLIENT_SECRET: process.env.AUTH_AZURE_CLIENT_SECRET,
+    AUTH_AZURE_TENANT_ID: process.env.AUTH_AZURE_TENANT_ID,
+    ADMIN_ORG_EMAIL: process.env.ADMIN_ORG_EMAIL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
@@ -50,3 +56,4 @@ export const env = createEnv({
    */
   emptyStringAsUndefined: true,
 });
+
