@@ -14,6 +14,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.54.2(react@18.3.1))
+      '@polinetwork/backend':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.3
         version: 1.1.6(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -735,6 +738,9 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
+
+  '@polinetwork/backend@0.2.1':
+    resolution: {integrity: sha512-9tgynd1YXKkeY4CTHqmrfwbv9GM4tszBXPPoiZ7V9B2X1pe4rngQCK1/uYiL6Oqmt9QKM3zbc1o44E/MVEG37Q==}
 
   '@radix-ui/number@1.1.0':
     resolution: {integrity: sha512-V3gRzhVNU1ldS5XhAPTom1fOIo4ccrjjJgmE+LI2h/WaFpHmx0MQApT+KZHnx8abG6Avtfcz4WoEciMnpFT3HQ==}
@@ -3446,6 +3452,8 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@polinetwork/backend@0.2.1': {}
 
   '@radix-ui/number@1.1.0': {}
 

@@ -22,6 +22,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
     "@hookform/resolvers": "^3.9.1",
+    "@polinetwork/backend": "^0.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.3",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.1",
