@@ -3,7 +3,7 @@ import { getServerSession } from "@/server/auth";
 import Link from "next/link";
 
 export default async function AdminHome() {
-  const session = await getServerSession()
+  const session = await getServerSession();
   return (
     session && (
       <main className="container mx-auto px-4 py-8">

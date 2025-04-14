@@ -23,11 +23,15 @@ export async function Header() {
             </h1>
           </div>
         </Link>
-        <nav className="flex grow items-center justify-end space-x-8">
-        </nav>
+        <nav className="flex grow items-center justify-end space-x-8"></nav>
         <nav className="flex items-center space-x-6">
           <ThemeButton />
-          <Button disabled className="hover:text-accent-foreground [&_svg]:size-6" variant="ghost" size="icon">
+          <Button
+            disabled
+            className="hover:text-accent-foreground [&_svg]:size-6"
+            variant="ghost"
+            size="icon"
+          >
             <GlobeIcon />
           </Button>
         </nav>

@@ -6,14 +6,14 @@ import { env } from "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
-	async rewrites() {
-		return [
-			{
-				source: '/api/:path*',
-				destination: `${env.BACKEND_URL}/api/:path*`,
-			},
-		]
-	},
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${env.BACKEND_URL}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default config;

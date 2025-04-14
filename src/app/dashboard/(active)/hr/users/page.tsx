@@ -18,7 +18,7 @@ export default async function HRUsers() {
   //   return 1;
   // });
   // TODO
-  const sortedUsers = users
+  const sortedUsers = users;
 
   return (
     <main className="container mx-auto px-4 py-8">

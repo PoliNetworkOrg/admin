@@ -9,7 +9,7 @@ export default async function AdminInactive() {
   const { data: session } = await getServerSession();
   // if (session?.user.role !== USER_ROLE.DISABLED) redirect("/dashboard");
   // TODO
-  if (!session) return redirect("/login")
+  if (!session) return redirect("/login");
 
   return (
     session && (
@@ -34,9 +34,7 @@ export default async function AdminInactive() {
           </p>
         </div>
 
-        <div
-          className="mb-4 flex flex-col items-center justify-between space-y-4 rounded-lg"
-        >
+        <div className="mb-4 flex flex-col items-center justify-between space-y-4 rounded-lg">
           <p>
             <span className="text-accent-foreground">{session.user.name}</span>
             {` <${session.user.email}>`}

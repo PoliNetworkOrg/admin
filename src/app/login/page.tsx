@@ -13,7 +13,7 @@ export default async function SignInPage({
   const h = await headers();
   const callbackURL = `${h.get("x-forwarded-proto")}://${h.get("host")}${callbackUrl ?? "/dashboard"}`;
 
-  const session = await getServerSession()
+  const session = await getServerSession();
   if (session.data?.user) redirect("/dashboard");
 
   return (
