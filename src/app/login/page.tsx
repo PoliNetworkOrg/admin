@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github } from "./github";
-import { headers } from "next/headers";
 import { getServerSession } from "@/server/auth";
+import { getBaseUrl } from "@/lib/utils";
 
 export default async function SignInPage({
   searchParams,
@@ -10,8 +10,7 @@ export default async function SignInPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const { callbackUrl } = await searchParams;
-  const h = await headers();
-  const callbackURL = `${h.get("x-forwarded-proto")}://${h.get("host")}${callbackUrl ?? "/dashboard"}`;
+  const callbackURL = `${getBaseUrl()}${callbackUrl ?? "/dashboard"}`;
 
   const session = await getServerSession();
   if (session.data?.user) redirect("/dashboard");
