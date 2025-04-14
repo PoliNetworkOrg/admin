@@ -12,7 +12,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import type { Session } from "next-auth";
+import type { Session } from "better-auth"
 
 const data = {
   navMain: [
@@ -80,7 +80,7 @@ const data = {
 export function AdminSidebar({
   user,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { user: Session["user"] }) {
+}: React.ComponentProps<typeof Sidebar> & { user: { email: string, name: string, role: string } }) {
   return (
     <Sidebar
       collapsible="icon"
@@ -96,8 +96,7 @@ export function AdminSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter>
-      <SidebarRail />
+      <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter> <SidebarRail />
     </Sidebar>
   );
 }

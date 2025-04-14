@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { getServerSession } from "@/server/auth";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
@@ -6,8 +6,9 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/dashboard");
+  const session = await getServerSession();
+  // console.log(session)
+  // if (!session.data) redirect("/login");
 
   return children;
 }

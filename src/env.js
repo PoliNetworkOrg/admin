@@ -7,17 +7,10 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    AUTH_SECRET:
-      process.env.NODE_ENV === "production"
-        ? z.string()
-        : z.string().optional(),
-    AUTH_AZURE_CLIENT_ID: z.string(),
-    AUTH_AZURE_CLIENT_SECRET: z.string(),
-    AUTH_AZURE_TENANT_ID: z.string(),
+    BACKEND_URL: z.string().default("http://localhost:3000"),
     ADMIN_ORG_EMAIL: z
       .string()
       .describe("Email address of admin Azure account."),
-    DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -37,12 +30,8 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    AUTH_SECRET: process.env.AUTH_SECRET,
-    AUTH_AZURE_CLIENT_ID: process.env.AUTH_AZURE_CLIENT_ID,
-    AUTH_AZURE_CLIENT_SECRET: process.env.AUTH_AZURE_CLIENT_SECRET,
-    AUTH_AZURE_TENANT_ID: process.env.AUTH_AZURE_TENANT_ID,
     ADMIN_ORG_EMAIL: process.env.ADMIN_ORG_EMAIL,
-    DATABASE_URL: process.env.DATABASE_URL,
+    BACKEND_URL: process.env.BACKEND_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

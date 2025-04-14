@@ -1,13 +1,10 @@
-import "@/styles/globals.css";
-
-import { TRPCReactProvider } from "@/trpc/react";
-
+import { GeistSans } from "geist/font/sans";
+import { type Metadata } from "next";
+import "@/index.css";
+import { TRPCReactProvider } from "@/lib/trpc";
 import { Header, HEADER_HEIGHT } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { GeistSans } from "geist/font/sans";
-import { type Metadata } from "next";
-import "@/styles/globals.css";
 
 const desc =
   "The online community of Politecnico di Milano brought to you by its students";

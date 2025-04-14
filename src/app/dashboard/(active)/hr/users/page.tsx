@@ -1,9 +1,9 @@
 import { DataTable } from "@/components/data-table";
 import { ArrowRight } from "lucide-react";
 import { columns } from "./columns";
-import { USER_ROLE } from "@/constants";
 import Link from "next/link";
 import { getUsers } from "@/server/actions/users";
+// import { USER_ROLE } from "@/constants";
 
 export default async function HRUsers() {
   const users = await getUsers({
@@ -12,11 +12,13 @@ export default async function HRUsers() {
     includeInactive: true,
   });
 
-  const sortedUsers = users.sort((a, b) => {
-    if (a.role === b.role) return 0;
-    if (a.role === USER_ROLE.ADMIN_ORG) return -1;
-    return 1;
-  });
+  // const sortedUsers = users.sort((a, b) => {
+  //   if (a.role === b.role) return 0;
+  //   if (a.role === USER_ROLE.ADMIN_ORG) return -1;
+  //   return 1;
+  // });
+  // TODO
+  const sortedUsers = users
 
   return (
     <main className="container mx-auto px-4 py-8">

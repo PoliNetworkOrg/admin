@@ -13,13 +13,13 @@ import { useEffect, useState, useTransition } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { CircleCheck, CircleX } from "lucide-react";
-import { TTGUser } from "@/server/db/schema";
 import { Code } from "./code";
 import { cn } from "@/lib/utils";
+import type { User } from "better-auth";
 
 type Props = {
   trigger?: React.ReactNode;
-  users: TTGUser[];
+  users: User[];
 };
 
 export function CreateTgUser({ trigger, users }: Props) {
@@ -51,7 +51,8 @@ export function CreateTgUser({ trigger, users }: Props) {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (username !== "") {
-        const existing = users.find(u => u.tgUsername.toLowerCase() === username.toLowerCase()) ? true : false;
+        // const existing = users.find(u => u.tgUsername.toLowerCase() === username.toLowerCase()) ? true : false;
+        const existing = true // TODO
         setValidUsername(existing);
       } 
     }, 600);

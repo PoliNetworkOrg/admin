@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { auth } from "@/server/auth";
+import { getServerSession } from "@/server/auth";
 import Link from "next/link";
 
 export default async function AdminHome() {
-  const session = await auth();
+  const session = await getServerSession()
   return (
     session && (
       <main className="container mx-auto px-4 py-8">

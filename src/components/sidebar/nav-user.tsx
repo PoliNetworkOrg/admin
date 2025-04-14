@@ -18,9 +18,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { getInitials } from "@/lib/utils";
+import { signOut } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export function NavUser({
   user,
@@ -91,7 +92,12 @@ export function NavUser({
               */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut()}>
+            <DropdownMenuItem
+              onClick={async () => {
+                await signOut();
+                redirect("/login")
+              }}
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>

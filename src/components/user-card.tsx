@@ -1,15 +1,15 @@
 "use client";
-import type { TUser } from "@/server/db/schema";
 import { type LucideIcon, XIcon } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { getInitials } from "@/lib/utils";
+import type { User } from "better-auth";
 
 type Props = {
-  user: TUser;
+  user: User;
   icon?: LucideIcon;
-  buttonAction?: (user: TUser) => Promise<void>;
+  buttonAction?: (user: User) => Promise<void>;
 };
 
 export function UserCard({ user, icon: Icon = XIcon, buttonAction }: Props) {
