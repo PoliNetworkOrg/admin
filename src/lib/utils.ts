@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 
 export function getBaseUrl() {
   if (typeof window !== "undefined") return window.location.origin;
-  if (process.env.PUBLIC_URL) return `https://${process.env.PUBLIC_URL}`;
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL;
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
