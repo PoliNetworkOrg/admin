@@ -7,8 +7,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession();
-  // console.log(session)
-  // if (!session.data) redirect("/login");
+  if (!session.data) redirect("/login");
 
   return children;
 }
