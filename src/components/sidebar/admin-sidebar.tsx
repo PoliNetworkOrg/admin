@@ -12,7 +12,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import type { Session } from "better-auth";
+import type { User } from "better-auth";
 
 const data = {
   navMain: [
@@ -80,7 +80,7 @@ export function AdminSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  user: { email: string; name: string; role: string };
+  user: User;
 }) {
   return (
     <Sidebar
