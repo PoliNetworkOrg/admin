@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/sidebar/admin-sidebar";
-import { USER_ROLE } from "@/constants";
+//import { USER_ROLE } from "@/constants";
 import { getServerSession } from "@/server/auth";
 
 export default async function AdminLayout({

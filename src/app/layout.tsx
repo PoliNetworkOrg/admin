@@ -1,7 +1,7 @@
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import "@/index.css";
-import { TRPCReactProvider } from "@/lib/trpc";
+import { TRPCReactProvider } from "@/lib/trpc/client";
 import { Header, HEADER_HEIGHT } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
