@@ -21,7 +21,6 @@ export default async function AdminLayout({
           user={{
             ...session.data.user,
             ...session.data.session,
-            role: USER_ROLE.MEMBER,
           }}
         />
         <SidebarInset>{children}</SidebarInset>
