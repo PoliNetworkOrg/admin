@@ -7,42 +7,15 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 const desc =
-  "The online community of Politecnico di Milano brought to you by its students";
+  "PoliNetwork Admin Dashboard";
 
 export const metadata: Metadata = {
   title: {
-    default: "PoliNetwork APS",
-    template: "%s | PoliNetwork APS",
+    default: "PoliNetwork Admin",
+    template: "%s | PoliNetwork Admin",
   },
   description: desc,
   icons: [{ rel: "icon", url: "/favicon.ico" }],
-  openGraph: {
-    title: "PoliNetwork APS - {{ page.title }}",
-    description: desc,
-    url: "https://polinetwork.org/",
-    siteName: "PoliNetwork",
-    images: [
-      {
-        url: "/polinetwork_meta.png",
-        width: 200,
-        height: 200,
-        alt: desc,
-      },
-    ],
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "PoliNetwork/polinetwork.org",
-    description: desc,
-    images: [
-      {
-        url: "/polinetwork_meta.png",
-        alt: desc,
-      },
-    ],
-    site: "@PoliNetworkAPS",
-  },
 };
 
 export default function RootLayout({

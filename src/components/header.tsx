@@ -19,7 +19,7 @@ export async function Header() {
               height={40}
             />
             <h1 className="hidden text-2xl font-bold text-accent-foreground md:block">
-              PoliNetwork
+              PoliNetwork Admin
             </h1>
           </div>
         </Link>
