@@ -18,18 +18,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { getInitials } from "@/lib/utils";
+import { signOut } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import type { User } from "better-auth";
 
 export function NavUser({
   user,
 }: {
-  user: {
-    name: string;
-    email: string;
-    image?: string;
-  };
+  user: User;
 }) {
   const { isMobile } = useSidebar();
 
@@ -43,7 +41,7 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.image} alt={user.name} />
+                <AvatarImage src={user.image ?? ""} alt={user.name} />
                 <AvatarFallback className="rounded-lg">
                   {getInitials(user.name)}
                 </AvatarFallback>
@@ -64,7 +62,7 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.image} alt={user.name} />
+                  <AvatarImage src={user.image ?? ""} alt={user.name} />
                   <AvatarFallback className="rounded-lg">
                     {getInitials(user.name)}
                   </AvatarFallback>
@@ -91,7 +89,12 @@ export function NavUser({
               */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut()}>
+            <DropdownMenuItem
+              onClick={async () => {
+                await signOut();
+                redirect("/login");
+              }}
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>

@@ -13,13 +13,13 @@ import { useEffect, useState, useTransition } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { CircleCheck, CircleX } from "lucide-react";
-import { TTGUser } from "@/server/db/schema";
 import { Code } from "./code";
 import { cn } from "@/lib/utils";
+import type { User } from "better-auth";
 
 type Props = {
   trigger?: React.ReactNode;
-  users: TTGUser[];
+  users: User[];
 };
 
 export function CreateTgUser({ trigger, users }: Props) {
@@ -51,9 +51,10 @@ export function CreateTgUser({ trigger, users }: Props) {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (username !== "") {
-        const existing = users.find(u => u.tgUsername.toLowerCase() === username.toLowerCase()) ? true : false;
+        // const existing = users.find(u => u.tgUsername.toLowerCase() === username.toLowerCase()) ? true : false;
+        const existing = true; // TODO
         setValidUsername(existing);
-      } 
+      }
     }, 600);
 
     // Cleanup function to clear the timeout if the component unmounts
@@ -100,11 +101,27 @@ export function CreateTgUser({ trigger, users }: Props) {
                 onChange={(e) => handleUsernameChange(e.target.value)}
               />
               {validUsername !== undefined &&
-                (validUsername ? <CircleCheck className="text-green-500" /> : <CircleX className="text-red-600"/>)}
+                (validUsername ? (
+                  <CircleCheck className="text-green-500" />
+                ) : (
+                  <CircleX className="text-red-600" />
+                ))}
             </div>
-            <p className="text-sm">You can insert the username (with or without @).</p>
+            <p className="text-sm">
+              You can insert the username (with or without @).
+            </p>
           </div>
-          <p className={cn("text-red-500", validUsername === false ? "opacity-100 pointer-events-auto select-auto" : "opacity-0 pointer-events-none select-none")}>An user with username <Code>@{username}</Code> has already been registered.</p>
+          <p
+            className={cn(
+              "text-red-500",
+              validUsername === false
+                ? "pointer-events-auto select-auto opacity-100"
+                : "pointer-events-none select-none opacity-0",
+            )}
+          >
+            An user with username <Code>@{username}</Code> has already been
+            registered.
+          </p>
         </div>
         <SheetFooter className="mt-4">
           <SheetClose asChild>
@@ -112,7 +129,10 @@ export function CreateTgUser({ trigger, users }: Props) {
               Cancel
             </Button>
           </SheetClose>
-          <Button onClick={handleConfirm} disabled={isPending || !validUsername}>
+          <Button
+            onClick={handleConfirm}
+            disabled={isPending || !validUsername}
+          >
             {isPending ? "Saving..." : "Confirm"}
           </Button>
         </SheetFooter>
