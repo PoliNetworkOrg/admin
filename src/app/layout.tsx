@@ -5,9 +5,9 @@ import { TRPCReactProvider } from "@/lib/trpc/client";
 import { Header, HEADER_HEIGHT } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
-const desc =
-  "PoliNetwork Admin Dashboard";
+const desc = "PoliNetwork Admin Dashboard";
 
 export const metadata: Metadata = {
   title: {
@@ -49,6 +49,7 @@ export default function RootLayout({
               <SidebarProvider>{children}</SidebarProvider>
             </div>
           </TRPCReactProvider>
+          <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>
