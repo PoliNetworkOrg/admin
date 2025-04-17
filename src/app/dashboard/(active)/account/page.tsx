@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 import { getServerSession } from "@/server/auth";
-import { Telegram } from "./link-telegram";
+import { Telegram } from "./telegram";
 
 export default async function Account() {
   const { data: session } = await getServerSession();

@@ -17,18 +17,39 @@ import { InputWithPrefix } from "@/components/input-prefix";
 import { Code } from "@/components/code";
 import { toast } from "sonner";
 import { ClockAlertIcon } from "lucide-react";
-
-const RESET_TIMER_EVENT = "polinetwork:reset_telegram_link_timer"
+import { useTRPC } from "@/lib/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function Telegram() {
   const { data: session, isPending } = useSession();
   if (isPending) return <></>;
   const { user } = session!;
 
-  return user.telegramUsername ? (
-    <span>@{user.telegramUsername}</span>
+  return user.telegramUsername && user.telegramId ? (
+    <ShowTelegram username={user.telegramUsername} userId={user.telegramId} />
   ) : (
     <LinkTelegram />
+  );
+}
+
+function ShowTelegram({
+  username,
+  userId,
+}: {
+  username: string;
+  userId: number;
+}) {
+  const trpc = useTRPC();
+  const { data, isLoading } = useQuery(
+    trpc.tg.permissions.getRole.queryOptions({ userId }),
+  );
+  return (
+    <>
+      <span>@{username}</span>
+      {!isLoading && data && data.role !== "user" && (
+        <span className="text-xs text-foreground/30">(role: {data.role})</span>
+      )}
+    </>
   );
 }
 
@@ -117,11 +138,11 @@ function Form({ onComplete }: { onComplete: () => void }) {
   }
 
   function reset() {
-    setTTL(null)
-    setCode(null)
-    setExpired(false)
-    setUsername("")
-    localStorage.removeItem("linktg")
+    setTTL(null);
+    setCode(null);
+    setExpired(false);
+    setUsername("");
+    localStorage.removeItem("linktg");
   }
 
   useEffect(() => {
@@ -164,7 +185,7 @@ function Form({ onComplete }: { onComplete: () => void }) {
     );
 
   return code && ttl ? (
-    <div className="flex flex-col items-center gap-4 pt-8 pb-4">
+    <div className="flex flex-col items-center gap-4 pb-4 pt-8">
       <p className="flex items-center justify-between gap-4 text-4xl">
         {code.split("").map((c, i) => (
           <span key={i}>{c}</span>
@@ -189,7 +210,7 @@ function Form({ onComplete }: { onComplete: () => void }) {
         <Code copyOnClick>/link</Code>
       </div>
 
-      <p className="text-xs text-foreground/30 pt-2">
+      <p className="pt-2 text-xs text-foreground/30">
         Having troubles with this code?{" "}
         <button className="underline" onClick={reset}>
           Click to reset
@@ -227,8 +248,6 @@ function Timer({
 }) {
   const ttlMs = ttl * 1000;
   const [timeLeft, setTimeLeft] = useState<number>(pTimeLeft * 1000);
-
-  window.addEventListener(RESET_TIMER_EVENT, () => {})
 
   const percentage = (timeLeft / ttlMs) * 100;
   useEffect(() => {
