@@ -1,8 +1,7 @@
 "use client";
 
-import type { QueryClient } from "@tanstack/react-query";
 //import superjson from "superjson"
-import { QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
@@ -13,7 +12,7 @@ export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
 let browserQueryClient: QueryClient;
 function getQueryClient() {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     // Server: always make a new query client
     return makeQueryClient();
   }
@@ -26,6 +25,7 @@ function getQueryClient() {
 }
 
 const url = getBaseUrl() + TRPC_PATH;
+
 export function TRPCReactProvider(
   props: Readonly<{
     children: React.ReactNode;
@@ -42,6 +42,12 @@ export function TRPCReactProvider(
         httpBatchLink({
           //transformer: superjson,
           url,
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+          },
         }),
       ],
     }),

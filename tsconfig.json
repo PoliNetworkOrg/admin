@@ -6,8 +6,9 @@
     "target": "es2022",
     "allowJs": true,
     "resolveJsonModule": true,
-    "moduleDetection": "force",
+    //"moduleDetection": "force",
     "isolatedModules": true,
+    "verbatimModuleSyntax": false, // do not change this
 
     /* Strictness */
     "strict": true,
@@ -19,7 +20,7 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "plugins": [{ "name": "next" }],
     "incremental": true,
 
@@ -31,12 +32,10 @@
   },
   "include": [
     ".eslintrc.cjs",
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }
