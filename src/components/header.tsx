@@ -8,7 +8,7 @@ export const HEADER_HEIGHT = "4.5rem";
 
 export async function Header() {
   return (
-    <header className="sticky top-0 isolate z-20 flex h-[--header-height] w-full shrink-0 items-center justify-center border-b bg-card">
+    <header className="sticky top-0 isolate z-20 flex h-(--header-height) w-full shrink-0 items-center justify-center border-b bg-card">
       <div className="container mx-auto flex items-center justify-center space-x-6 px-4">
         <Link href="/">
           <div className="flex items-center space-x-4">

@@ -86,7 +86,7 @@ export function AdminSidebar({
     <Sidebar
       collapsible="icon"
       variant="inset"
-      className="top-[--header-height] pb-[--header-height]"
+      className="top-(--header-height) pb-(--header-height)"
       {...props}
     >
       <SidebarHeader>

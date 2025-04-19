@@ -28,7 +28,7 @@ export function Github({ callbackURL }: { callbackURL: string }) {
         "w-full min-w-52 py-6",
         isLoading
           ? "flex cursor-not-allowed items-center justify-center bg-white/20 text-white hover:bg-white/20"
-          : "grid grid-cols-[auto_1fr] grid-rows-1 bg-white hover:bg-white/80",
+          : "grid grid-cols-[auto_1fr] grid-rows-1 cursor-pointer bg-white hover:bg-white/80",
       )}
     >
       {isLoading ? (
