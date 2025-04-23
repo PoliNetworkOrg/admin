@@ -22,11 +22,11 @@ import { useState } from "react";
 
 type MenuItem = {
   title: string;
-  url: string;
+  url?: string;
   icon?: LucideIcon;
   items?: {
     title: string;
-    url: string;
+    url?: string;
   }[];
 };
 
@@ -35,7 +35,7 @@ export function NavMain({ items }: { items: MenuItem[] }) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>Pages</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) =>
           item.items ? (
@@ -48,22 +48,34 @@ export function NavMain({ items }: { items: MenuItem[] }) {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <Link href={item.url} key={item.title}>
-                    <SidebarMenuButton tooltip={item.title}>
+                  {item.url ? (
+                    <Link href={item.url} key={item.title}>
+                      <SidebarMenuButton tooltip={item.title}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </Link>
+                  ) : (
+                    <SidebarMenuButton tooltip={item.title} disabled>
                       {item.icon && <item.icon />}
                       <span>{item.title}</span>
                       <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
-                  </Link>
+                  )}
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
-                          <Link href={subItem.url}>
+                          {subItem.url ? (
+                            <Link href={subItem.url}>
+                              <span>{subItem.title}</span>
+                            </Link>
+                          ) : (
                             <span>{subItem.title}</span>
-                          </Link>
+                          )}
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
@@ -71,7 +83,7 @@ export function NavMain({ items }: { items: MenuItem[] }) {
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
-          ) : (
+          ) : item.url ? (
             <Link
               href={item.url}
               key={item.title}
@@ -82,6 +94,11 @@ export function NavMain({ items }: { items: MenuItem[] }) {
                 <span>{item.title}</span>
               </SidebarMenuButton>
             </Link>
+          ) : (
+            <SidebarMenuButton tooltip={item.title} disabled>
+              {item.icon && <item.icon />}
+              <span>{item.title}</span>
+            </SidebarMenuButton>
           ),
         )}
       </SidebarMenu>

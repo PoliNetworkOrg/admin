@@ -9,7 +9,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { User } from "better-auth";
@@ -23,53 +22,52 @@ const data = {
     },
     {
       title: "HR",
-      url: "/dashboard/hr",
+      //url: "/dashboard/hr",
       icon: Users,
-      isActive: true,
       items: [
         {
           title: "Users",
-          url: "/dashboard/hr/users",
+          //url: "/dashboard/hr/users",
         },
         {
           title: "Admins",
-          url: "/dashboard/hr/dashboards",
+          //url: "/dashboard/hr/dashboards",
         },
       ],
     },
     {
       title: "Management",
-      url: "/dashboard/management",
+      //url: "/dashboard/management",
       icon: Wrench,
       items: [],
     },
     {
       title: "Website Data",
-      url: "/dashboard/website",
+      //url: "/dashboard/website",
       icon: Compass,
       items: [
         {
           title: "TG Users",
-          url: "/dashboard/website/tg-users",
+          //url: "/dashboard/website/tg-users",
         },
         {
           title: "Groups",
-          url: "/dashboard/website/groups",
+          //url: "/dashboard/website/groups",
         },
         {
           title: "Info",
-          url: "/dashboard/website/info",
+          //url: "/dashboard/website/info",
         },
       ],
     },
     {
       title: "Settings",
-      url: "/dashboard/settings",
+      //url: "/dashboard/settings",
       icon: Settings2,
       items: [
         {
           title: "General",
-          url: "/dashboard/settings/general",
+          //url: "/dashboard/settings/general",
         },
       ],
     },
