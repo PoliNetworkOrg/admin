@@ -91,14 +91,13 @@ export function AdminSidebar({
     >
       <SidebarHeader>
         <div className="flex items-center justify-start gap-2">
-          <SidebarTrigger className="h-8 w-8" />
+          <SidebarTrigger />
         </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter>{" "}
-      <SidebarRail />
     </Sidebar>
   );
 }

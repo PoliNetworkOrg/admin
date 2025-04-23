@@ -1,16 +1,18 @@
 "use client";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
+import { Button } from "./ui/button";
 
 export function ThemeButton() {
   const { resolvedTheme, setTheme } = useTheme();
   return (
-    <button
+    <Button
+      size="icon"
+      variant="ghost"
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="text-foreground hover:text-accent-foreground"
     >
-      <SunIcon className="block h-6 w-6 dark:hidden" />
-      <MoonIcon className="hidden h-6 w-6 dark:block" />
-    </button>
+      <SunIcon className="block dark:hidden" size={20} />
+      <MoonIcon className="hidden dark:block" size={20} />
+    </Button>
   );
 }

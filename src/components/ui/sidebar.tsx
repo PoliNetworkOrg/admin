@@ -279,14 +279,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={className}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      <PanelLeft />
+      <PanelLeft size={20} />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
@@ -332,7 +332,7 @@ const SidebarInset = React.forwardRef<
       className={cn(
         "relative flex flex-1 flex-col bg-background md-2 overflow-y-auto",
         "scrollbar scrollbar-w-2 scrollbar-track-card scrollbar-thumb-white/20",
-        "md:peer-data-[variant=inset]:mt-2 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-tl-xl md:peer-data-[variant=inset]:shadow-sm",
+        "md:peer-data-[variant=inset]:rounded-tl-xl md:peer-data-[variant=inset]:shadow-sm",
         className,
       )}
       {...props}

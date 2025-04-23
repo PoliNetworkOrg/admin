@@ -1,38 +1,39 @@
-import Image from "next/image";
 import { GlobeIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import logo from "@/assets/svg/logo.svg";
 import { ThemeButton } from "@/components/theme-button";
 import { Button } from "./ui/button";
 
-export const HEADER_HEIGHT = "4.5rem";
+export const HEADER_HEIGHT = "3.3rem";
 
 export async function Header() {
   return (
-    <header className="sticky top-0 isolate z-20 flex h-(--header-height) w-full shrink-0 items-center justify-center border-b bg-card">
+    <header className="bg-card sticky top-0 isolate z-20 flex h-(--header-height) w-full shrink-0 items-center justify-center">
       <div className="container mx-auto flex items-center justify-center space-x-6 px-4">
-        <Link href="/">
+        <Link href="/dashboard">
           <div className="flex items-center space-x-4">
             <Image
-              src="https://raw.githubusercontent.com/PoliNetworkOrg/Logo/refs/heads/master/Logo.svg"
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              src={logo}
               alt="PoliNetwork Logo"
-              width={40}
-              height={40}
+              height={32}
+              width={32}
             />
-            <h1 className="hidden text-2xl font-bold text-accent-foreground md:block">
+            <h1 className="text-accent-foreground hidden text-lg font-bold md:block">
               PoliNetwork Admin
             </h1>
           </div>
         </Link>
         <nav className="flex grow items-center justify-end space-x-8"></nav>
-        <nav className="flex items-center space-x-6">
+        <nav className="flex items-center space-x-3">
           <ThemeButton />
           <Button
             disabled
-            className="hover:text-accent-foreground [&_svg]:size-6"
             variant="ghost"
             size="icon"
           >
-            <GlobeIcon />
+            <GlobeIcon size={20} />
           </Button>
         </nav>
       </div>
