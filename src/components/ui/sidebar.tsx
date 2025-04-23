@@ -330,7 +330,7 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex flex-1 flex-col bg-background md-2 overflow-y-auto",
+        "relative flex flex-1 flex-col bg-background border md-2 overflow-y-auto",
         "scrollbar scrollbar-w-2 scrollbar-track-card scrollbar-thumb-white/20",
         "md:peer-data-[variant=inset]:rounded-tl-xl md:peer-data-[variant=inset]:shadow-sm",
         className,
