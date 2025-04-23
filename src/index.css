@@ -1,6 +1,10 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @plugin 'tailwindcss-animate';
+@plugin 'tailwind-scrollbar' {
+  preferredstrategy: "pseudoelements";
+  nocompatible: true;
+}
 
 @custom-variant dark (&:is(.dark *));
 

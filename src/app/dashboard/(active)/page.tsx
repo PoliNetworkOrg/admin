@@ -6,7 +6,7 @@ export default async function AdminHome() {
   const session = await getServerSession();
   return (
     session && (
-      <main className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         <h2 className="mb-4 text-3xl font-bold text-accent-foreground">Home</h2>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -41,7 +41,113 @@ export default async function AdminHome() {
             </Card>
           </Link>
         </div>
-      </main>
+
+
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-colors hover:bg-accent">
+              <CardHeader>
+                <CardTitle>Website Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Manage content of our website pages.</p>
+              </CardContent>
+            </Card>
+      </div>
     )
   );
 }

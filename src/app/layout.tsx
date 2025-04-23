@@ -28,7 +28,6 @@ export default function RootLayout({
       className={`${GeistSans.variable}`}
     >
       <body
-        className="overflow-y-scroll"
         style={
           {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -44,7 +43,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TRPCReactProvider>
-            <div className="flex min-h-screen w-full flex-col items-center justify-start">
+            <div className="flex h-screen overflow-y-hidden w-full flex-col items-center justify-start">
               <Header />
               <SidebarProvider>{children}</SidebarProvider>
             </div>

@@ -149,7 +149,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex w-full flex-1",
+              "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex w-full flex-1 overflow-y-hidden",
               className,
             )}
             ref={ref}
@@ -330,8 +330,9 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm",
+        "relative flex flex-1 flex-col bg-background md-2 overflow-y-auto",
+        "scrollbar scrollbar-w-2 scrollbar-track-card scrollbar-thumb-white/20",
+        "md:peer-data-[variant=inset]:mt-2 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-tl-xl md:peer-data-[variant=inset]:shadow-sm",
         className,
       )}
       {...props}
