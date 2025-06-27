@@ -9,8 +9,8 @@ import Image from "next/image";
 export function CanIAccess() {
   return (
     <div className="text-foreground w-full">
-      <div className="flex items-center space-x-2 py-2">
-        <Lock size={28} className="mb-0" />
+      <div className="flex items-center space-x-2 py-2 text-primary dark:text-white">
+        <Lock size={28} className="" />
         <h3 className="text-xl font-bold">How can I access?</h3>
       </div>
       <p>
@@ -39,7 +39,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary-foreground text-xl font-bold">
+              <p className="text-primary dark:text-white text-xl font-bold">
                 1. Login with GitHub
               </p>
               <p className="text-muted-foreground text-xs">
@@ -58,7 +58,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary-foreground text-lg font-bold">
+              <p className="text-primary dark:text-white text-lg font-bold">
                 2. Link your Telegram account
               </p>
               <p className="text-muted-foreground text-sm">
@@ -77,7 +77,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary-foreground text-xl font-bold">
+              <p className="text-primary dark:text-white text-xl font-bold">
                 3. Use the dashboard
               </p>
               <p className="text-muted-foreground text-sm">

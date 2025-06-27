@@ -16,8 +16,8 @@ import {
 export function WhatIs() {
   return (
     <div className="text-foreground w-full">
-      <div className="flex items-center space-x-2 py-2">
-        <HelpCircle size={28} className="mb-0" />
+      <div className="flex items-center space-x-2 py-2 text-primary dark:text-white">
+        <HelpCircle size={28} className="" />
         <h3 className="text-xl font-bold">What is this?</h3>
       </div>
       <p>
