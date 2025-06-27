@@ -24,8 +24,7 @@ type Props = {
 
 export function CreateTgUser({ trigger, users }: Props) {
   const [open, setOpen] = useState<boolean>(false);
-  const [isPending, start] = useTransition();
-
+  const [isPending, ] = useTransition();
   const [name, setName] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [validUsername, setValidUsername] = useState<boolean | undefined>();

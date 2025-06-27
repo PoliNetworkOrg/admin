@@ -1,51 +1,35 @@
 "use client";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { signIn } from "@/lib/auth";
-import { useTransition } from "react";
-import { cn } from "@/lib/utils";
-import { Spinner } from "@/components/spinner";
+import { Card, CardContent } from "@/components/ui/card";
+import { LogInIcon } from "lucide-react";
 
 export function Github({ callbackURL }: { callbackURL: string }) {
-  const [isLoading, start] = useTransition();
   return (
-    <Button
-      type="submit"
-      variant="secondary"
+    <button
+      className="h-20 w-full"
       onClick={async () => {
-        start(
-          () =>
-            new Promise((res) => {
-              setTimeout(res, 1000);
-            }),
-        );
-        await signIn.social({
-          provider: "github",
-          callbackURL,
-        });
+          await signIn.social({
+            provider: "github",
+            callbackURL,
+          });
       }}
-      className={cn(
-        "w-full min-w-52 py-6",
-        isLoading
-          ? "flex cursor-not-allowed items-center justify-center bg-white/20 text-white hover:bg-white/20"
-          : "grid grid-cols-[auto_1fr] grid-rows-1 cursor-pointer bg-white hover:bg-white/80",
-      )}
     >
-      {isLoading ? (
-        <Spinner className="h-5 w-5 dark:fill-white dark:text-gray-400" />
-      ) : (
-        <>
+      <Card className="border-primary from-primary to-primary/20 group relative h-full w-full cursor-pointer overflow-hidden bg-linear-to-r to-70%">
+        <div className="bg-primary absolute inset-0 opacity-0 transition duration-250 group-hover:opacity-100"></div>
+        <CardContent className="text-primary-foreground absolute inset-0 flex items-center space-x-6 py-4">
+          <LogInIcon />
+          <p className="flex-1 text-start text-xl">Enter your reserved area</p>
           <Image
-            className="justify-self-end"
+            className="justify-self-end invert-100"
             src={`https://authjs.dev/img/providers/github.svg`}
             unoptimized
             alt={`logo of github`}
-            width={24}
-            height={24}
+            width={28}
+            height={28}
           />
-          <span className="justify-center text-black">Sign in with GitHub</span>
-        </>
-      )}
-    </Button>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
