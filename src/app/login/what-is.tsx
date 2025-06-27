@@ -34,7 +34,7 @@ export function WhatIs() {
         <FeatureBox icon={PencilLine} feature="Update homepage" />
         <FeatureBox icon={Gavel} feature="Ban user everywhere" />
         <FeatureBox icon={ClipboardList} feature="Global audit log" />
-        <FeatureBox icon={Bot} feature="Manage telegram bot" />
+        <FeatureBox icon={Bot} feature="Manage Telegram bot" />
         <FeatureBox icon={ShieldCheck} feature="Spam bypass message " />
         <FeatureBox icon={LayoutTemplate} feature="Internal assoc tools" />
         <FeatureBox icon={CircleEllipsis} feature="Many others" />
