@@ -42,9 +42,7 @@ export default function RootLayout({
           storageKey="polinetwork_darkmode"
           disableTransitionOnChange
         >
-          <TRPCReactProvider>
-            {children}
-          </TRPCReactProvider>
+          <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>

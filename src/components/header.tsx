@@ -28,11 +28,7 @@ export async function Header() {
         <nav className="flex grow items-center justify-end space-x-8"></nav>
         <nav className="flex items-center space-x-3">
           <ThemeButton />
-          <Button
-            disabled
-            variant="ghost"
-            size="icon"
-          >
+          <Button disabled variant="ghost" size="icon">
             <GlobeIcon size={20} />
           </Button>
         </nav>

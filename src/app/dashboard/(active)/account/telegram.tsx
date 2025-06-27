@@ -47,7 +47,7 @@ function ShowTelegram({
     <>
       <span>@{username}</span>
       {!isLoading && data && data.role !== "user" && (
-        <span className="text-xs text-foreground/30">(role: {data.role})</span>
+        <span className="text-foreground/30 text-xs">(role: {data.role})</span>
       )}
     </>
   );
@@ -185,7 +185,7 @@ function Form({ onComplete }: { onComplete: () => void }) {
     );
 
   return code && ttl ? (
-    <div className="flex flex-col items-center gap-4 pb-4 pt-8">
+    <div className="flex flex-col items-center gap-4 pt-8 pb-4">
       <p className="flex items-center justify-between gap-4 text-4xl">
         {code.split("").map((c, i) => (
           <span key={i}>{c}</span>
@@ -210,7 +210,7 @@ function Form({ onComplete }: { onComplete: () => void }) {
         <Code copyOnClick>/link</Code>
       </div>
 
-      <p className="pt-2 text-xs text-foreground/30">
+      <p className="text-foreground/30 pt-2 text-xs">
         Having troubles with this code?{" "}
         <button className="underline" onClick={reset}>
           Click to reset
@@ -275,7 +275,7 @@ function Timer({
           timeLeft < 31_000 ? "bg-red-600 dark:bg-red-400" : "bg-primary"
         }
       />
-      <span className="text-sm text-foreground/70">
+      <span className="text-foreground/70 text-sm">
         Time left:
         <span className="inline-block w-10 text-end">
           {Math.floor(timeLeft / 1000)}s

@@ -9,14 +9,14 @@ import Image from "next/image";
 export function CanIAccess() {
   return (
     <div className="text-foreground w-full">
-      <div className="flex items-center space-x-2 py-2 text-primary dark:text-white">
+      <div className="text-primary flex items-center space-x-2 py-2 dark:text-white">
         <Lock size={28} className="" />
         <h3 className="text-xl font-bold">How can I access?</h3>
       </div>
       <p>
         You can access this dashboard if you have at least one of this role:
       </p>
-      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:flex flex-wrap gap-4 py-2">
+      <div className="xs:grid-cols-2 grid grid-cols-1 flex-wrap gap-4 py-2 md:grid-cols-3 lg:flex">
         <FeatureBox icon={Star} feature="President or Vice President" />
         <FeatureBox icon={Award} feature="Board member" />
         <FeatureBox icon={Building} feature="Department member" />
@@ -28,7 +28,7 @@ export function CanIAccess() {
         When you have checked that you are eligible, these are the steps to
         access:
       </p>
-      <div className="lg:flex lg:space-x-4 py-2 grid grid-rows-3 max-lg:space-y-4">
+      <div className="grid grid-rows-3 py-2 max-lg:space-y-4 lg:flex lg:space-x-4">
         <Card className="flex-1 p-4">
           <div className="grid h-full w-full grid-cols-1 grid-rows-[2fr_1fr] gap-y-4">
             <Image
@@ -39,7 +39,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary dark:text-white text-xl font-bold">
+              <p className="text-primary text-xl font-bold dark:text-white">
                 1. Login with GitHub
               </p>
               <p className="text-muted-foreground text-xs">
@@ -58,7 +58,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary dark:text-white text-lg font-bold">
+              <p className="text-primary text-lg font-bold dark:text-white">
                 2. Link your Telegram account
               </p>
               <p className="text-muted-foreground text-sm">
@@ -77,11 +77,12 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary dark:text-white text-xl font-bold">
+              <p className="text-primary text-xl font-bold dark:text-white">
                 3. Use the dashboard
               </p>
               <p className="text-muted-foreground text-sm">
-                If your role is not recognized, <br/> be patient until IT team fix it!
+                If your role is not recognized, <br /> be patient until IT team
+                fix it!
               </p>
             </div>
           </div>

@@ -13,10 +13,15 @@ const InputWithPrefix = React.forwardRef<
 >(({ className, type, prefix, ...props }, ref) => {
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 pr-2 text-accent-foreground/70 bg-accent/30 border-r">
+      <div className="text-accent-foreground/70 bg-accent/30 pointer-events-none absolute inset-y-0 left-0 flex items-center border-r pr-2 pl-3">
         {prefix}
       </div>
-      <Input type={type} className={cn("pl-11", className)} ref={ref} {...props} />
+      <Input
+        type={type}
+        className={cn("pl-11", className)}
+        ref={ref}
+        {...props}
+      />
     </div>
   );
 });

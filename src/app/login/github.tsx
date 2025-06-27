@@ -7,12 +7,12 @@ import { LogInIcon } from "lucide-react";
 export function Github({ callbackURL }: { callbackURL: string }) {
   return (
     <button
-      className="min-h-20 h-20 w-full"
+      className="h-20 min-h-20 w-full"
       onClick={async () => {
-          await signIn.social({
-            provider: "github",
-            callbackURL,
-          });
+        await signIn.social({
+          provider: "github",
+          callbackURL,
+        });
       }}
     >
       <Card className="border-primary from-primary to-primary/20 group relative h-full w-full cursor-pointer overflow-hidden bg-linear-to-r to-60%">
