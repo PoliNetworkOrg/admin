@@ -43,10 +43,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TRPCReactProvider>
-            <div className="flex h-screen overflow-y-hidden w-full flex-col items-center justify-start">
-              <Header />
-              <SidebarProvider>{children}</SidebarProvider>
-            </div>
+            {children}
           </TRPCReactProvider>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>
