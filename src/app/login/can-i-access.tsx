@@ -81,8 +81,8 @@ export function CanIAccess() {
                 3. Use the dashboard
               </p>
               <p className="text-muted-foreground text-sm">
-                If your role is not recognized, <br /> be patient until IT team
-                fix it!
+                If your role is not recognized, <br /> be patient until the IT team
+                fixes it!
               </p>
             </div>
           </div>
