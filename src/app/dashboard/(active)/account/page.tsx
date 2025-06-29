@@ -11,7 +11,7 @@ export default async function Account() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h2 className="mb-4 text-3xl font-bold text-accent-foreground">
+      <h2 className="text-accent-foreground mb-4 text-3xl font-bold">
         Account
       </h2>
 
@@ -28,7 +28,7 @@ export default async function Account() {
         <div>
           <p>{user.name}</p>
           <p>{user.email}</p>
-          <div className="flex items-center mt-2 gap-2">
+          <div className="mt-2 flex items-center gap-2">
             <p className="text-accent-foreground/70">Telegram: </p>
             <Telegram />
           </div>

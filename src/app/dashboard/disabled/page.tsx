@@ -21,7 +21,7 @@ export default async function AdminInactive() {
             className="h-auto w-96"
             alt="illustration of disabled account"
           />
-          <h3 className="text-3xl text-accent-foreground">
+          <h3 className="text-accent-foreground text-3xl">
             Il tuo account è stato disabilitato
             <br />
           </h3>

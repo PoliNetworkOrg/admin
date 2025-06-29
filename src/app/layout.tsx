@@ -42,12 +42,7 @@ export default function RootLayout({
           storageKey="polinetwork_darkmode"
           disableTransitionOnChange
         >
-          <TRPCReactProvider>
-            <div className="flex h-screen overflow-y-hidden w-full flex-col items-center justify-start">
-              <Header />
-              <SidebarProvider>{children}</SidebarProvider>
-            </div>
-          </TRPCReactProvider>
+          <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>

@@ -24,8 +24,7 @@ type Props = {
 
 export function CreateTgUser({ trigger, users }: Props) {
   const [open, setOpen] = useState<boolean>(false);
-  const [isPending, start] = useTransition();
-
+  const [isPending] = useTransition();
   const [name, setName] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [validUsername, setValidUsername] = useState<boolean | undefined>();
@@ -115,8 +114,8 @@ export function CreateTgUser({ trigger, users }: Props) {
             className={cn(
               "text-red-500",
               validUsername === false
-                ? "pointer-events-auto select-auto opacity-100"
-                : "pointer-events-none select-none opacity-0",
+                ? "pointer-events-auto opacity-100 select-auto"
+                : "pointer-events-none opacity-0 select-none",
             )}
           >
             An user with username <Code>@{username}</Code> has already been

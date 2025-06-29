@@ -21,7 +21,7 @@ export default async function AdminInactive() {
             className="h-auto w-96"
             alt="illustration of account management"
           />
-          <h3 className="text-3xl text-accent-foreground">
+          <h3 className="text-accent-foreground text-3xl">
             Il tuo account deve <br />
             essere abilitato da un dashboard IT
           </h3>
