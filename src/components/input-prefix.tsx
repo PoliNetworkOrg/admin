@@ -12,8 +12,8 @@ const InputWithPrefix = React.forwardRef<
   InputWithPrefixProps
 >(({ className, type, prefix, ...props }, ref) => {
   return (
-    <div className="relative">
-      <div className="text-accent-foreground/70 bg-accent/30 pointer-events-none absolute inset-y-0 left-0 flex items-center border-r pr-2 pl-3">
+    <div className="relative rounded-md overflow-hidden">
+      <div className="text-accent-foreground/70 bg-accent/30 pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-input pr-2 pl-3">
         {prefix}
       </div>
       <Input
