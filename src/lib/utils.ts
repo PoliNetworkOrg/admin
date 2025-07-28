@@ -20,3 +20,7 @@ export function getInitials(name: string): string {
 
   return name.slice(0, 2); // fallback
 }
+
+export async function wait(ms: number): Promise<void> {
+  return new Promise(res => setTimeout(res, ms)) 
+}
