@@ -6,12 +6,13 @@ import { makeQueryClient } from "./query-client";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { TRPC_PATH, type AppRouter } from "@polinetwork/backend";
 import { getBaseUrl } from "../utils";
+import SuperJSON from "superjson";
 
 const url = getBaseUrl() + TRPC_PATH;
 export const getQueryClient = cache(makeQueryClient);
 export const trpc = createTRPCOptionsProxy<AppRouter>({
   client: createTRPCClient({
-    links: [httpLink({ url })],
+    links: [httpLink({ url, transformer: SuperJSON })],
   }),
   queryClient: getQueryClient,
 });

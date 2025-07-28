@@ -12,8 +12,8 @@ importers:
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.55.0(react@18.3.1))
       '@polinetwork/backend':
-        specifier: ^0.5.3
-        version: 0.5.3
+        specifier: ^0.9.1
+        version: 0.9.1
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.3
         version: 1.1.6(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -449,8 +449,8 @@ packages:
   '@peculiar/asn1-x509@2.3.15':
     resolution: {integrity: sha512-0dK5xqTqSLaxv1FHXIcd4Q/BZNuopg+u1l23hT9rOmQ1g4dNtw0g/RnEi+TboB0gOwGtrWn269v27cMgchFIIg==}
 
-  '@polinetwork/backend@0.5.3':
-    resolution: {integrity: sha512-59l16+bzAPGAgqWRy2Bsrlbm6kNVpmNn3sTvIY0Ig976yO4dqr4pCk0lwy6BgK8BtFWIdVeKZ6slELm0BX8VeA==}
+  '@polinetwork/backend@0.9.1':
+    resolution: {integrity: sha512-4kOE6WepZ6gLPqo/rXlfCiiGsTxOmvBy80idH98E0iFAseJqYX5PWLevinl3klsavo4et6G7HyYogw1ZRUGpTQ==}
     engines: {node: '>=22.14.0', npm: '>=10.9.2'}
 
   '@radix-ui/number@1.1.0':
@@ -2947,7 +2947,7 @@ snapshots:
       pvtsutils: 1.3.6
       tslib: 2.8.1
 
-  '@polinetwork/backend@0.5.3': {}
+  '@polinetwork/backend@0.9.1': {}
 
   '@radix-ui/number@1.1.0': {}
 
