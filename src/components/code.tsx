@@ -27,18 +27,18 @@ export function Code({ block = false, copyOnClick = false, children, className, 
 
   const InteractiveWrapper = copyOnClick
     ? ({ children: content }: { children: ReactNode }) => (
-      <button
-        type="button"
-        onClick={copy}
-        className={cn(
-          "appearance-none border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-          block ? "block w-full" : "inline"
-        )}
-        aria-label={block ? "Copy code block" : "Copy code"}
-      >
-        {content}
-      </button>
-    )
+        <button
+          type="button"
+          onClick={copy}
+          className={cn(
+            "appearance-none border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            block ? "block w-full" : "inline"
+          )}
+          aria-label={block ? "Copy code block" : "Copy code"}
+        >
+          {content}
+        </button>
+      )
     : ({ children: content }: { children: ReactNode }) => <>{content}</>
 
   if (block) {
