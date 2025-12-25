@@ -184,7 +184,7 @@ function Timer({ ttl, timeLeft: pTimeLeft, onEnd }: { ttl: number; timeLeft: num
           onEnd()
           return 0
         }
-        return timeLeft - 100
+        return prevTime - 100
       })
     }, 100)
 
