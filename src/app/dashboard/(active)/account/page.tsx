@@ -1,28 +1,22 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
-import { getServerSession } from "@/server/auth";
-import { Telegram } from "./telegram";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getInitials } from "@/lib/utils"
+import { getServerSession } from "@/server/auth"
+import { Telegram } from "./telegram"
 
 export default async function Account() {
-  const { data: session } = await getServerSession();
-  if (!session) return;
+  const { data: session } = await getServerSession()
+  if (!session) return
 
-  const { user } = session;
+  const { user } = session
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h2 className="text-accent-foreground mb-4 text-3xl font-bold">
-        Account
-      </h2>
+      <h2 className="text-accent-foreground mb-4 text-3xl font-bold">Account</h2>
 
       <div className="flex gap-4">
         <Avatar className="h-32 w-32 rounded-lg">
-          {user.image && (
-            <AvatarImage src={user.image} alt={`propic of ${user.name}`} />
-          )}
-          <AvatarFallback className="rounded-lg">
-            {getInitials(user.name)}
-          </AvatarFallback>
+          {user.image && <AvatarImage src={user.image} alt={`propic of ${user.name}`} />}
+          <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
         </Avatar>
 
         <div>
@@ -35,5 +29,5 @@ export default async function Account() {
         </div>
       </div>
     </main>
-  );
+  )
 }

@@ -1,19 +1,19 @@
-import { createAuthClient } from "better-auth/react";
-import { AUTH_PATH, type TelegramPlugin } from "@polinetwork/backend";
-import { getBaseUrl } from "./utils";
-import type { BetterAuthClientPlugin } from "better-auth";
+import { AUTH_PATH, type TelegramPlugin } from "@polinetwork/backend"
+import type { BetterAuthClientPlugin } from "better-auth"
+import { createAuthClient } from "better-auth/react"
+import { getBaseUrl } from "./utils"
 
 const telegramPlugin = () => {
   return {
     id: "telegram",
     $InferServerPlugin: {} as ReturnType<TelegramPlugin>,
-  } satisfies BetterAuthClientPlugin;
-};
+  } satisfies BetterAuthClientPlugin
+}
 
 export const auth = createAuthClient({
   baseURL: getBaseUrl(),
   basePath: AUTH_PATH,
   plugins: [telegramPlugin()],
-});
+})
 
-export const { signIn, signOut, getSession, useSession } = auth;
+export const { signIn, signOut, getSession, useSession } = auth
