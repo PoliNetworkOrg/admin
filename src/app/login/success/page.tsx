@@ -12,8 +12,8 @@ export default async function LoginSuccess() {
   // if (session?.user.role === USER_ROLE.DISABLED) redirect("/dashboard/disabled");
 
   const qc = getQueryClient()
-  const { role } = await qc.fetchQuery(trpc.tg.permissions.getRole.queryOptions({ userId: tgId }))
-  if (role === "user") redirect("/onboarding/no-role")
-  if (role === "creator") redirect("/onboarding/unauthorized")
+  const { roles } = await qc.fetchQuery(trpc.tg.permissions.getRoles.queryOptions({ userId: tgId }))
+  if (!roles || roles.length === 0) redirect("/onboarding/no-role")
+  if (roles.includes("creator")) redirect("/onboarding/unauthorized")
   return redirect("/dashboard")
 }

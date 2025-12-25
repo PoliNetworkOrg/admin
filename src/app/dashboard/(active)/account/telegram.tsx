@@ -15,12 +15,12 @@ export function Telegram() {
 
 function ShowTelegram({ username, userId }: { username: string; userId: number }) {
   const trpc = useTRPC()
-  const { data, isLoading } = useQuery(trpc.tg.permissions.getRole.queryOptions({ userId }))
+  const { data, isLoading } = useQuery(trpc.tg.permissions.getRoles.queryOptions({ userId }))
   return (
     <>
       <span>@{username}</span>
-      {!isLoading && data && data.role !== "user" && (
-        <span className="text-foreground/30 text-xs">(role: {data.role})</span>
+      {!isLoading && data?.roles?.length && (
+        <span className="text-foreground/30 text-xs">(roles: {data.roles.join(" ")})</span>
       )}
     </>
   )

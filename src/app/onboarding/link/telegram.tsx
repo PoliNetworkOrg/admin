@@ -52,6 +52,7 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
 
     if (res.error) return console.error("custom error", res.error)
     if (res.data instanceof APIError) return console.error("better-auth APIError", res.data)
+    if (!("code" in res.data) || !("ttl" in res.data)) return console.error("unexpected response", res.data)
     setExpired(false)
     update({
       code: res.data.code,
@@ -77,14 +78,17 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
 
       if (res.error) return console.error("custom error", res.error)
       if (res.data instanceof APIError) return console.error("better-auth APIError", res.data)
+      if (!("verified" in res.data)) return console.error("unexpected response", res.data)
 
-      if (res.data.verified) {
+      const data = res.data as { verified: boolean; expired?: boolean }
+
+      if (data.verified) {
         clearInterval(interval)
         handleComplete()
         return
       }
 
-      if (res.data.expired) {
+      if (data.expired) {
         setExpired(true)
         remove()
         clearInterval(interval)
