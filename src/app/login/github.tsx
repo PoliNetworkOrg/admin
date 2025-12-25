@@ -1,18 +1,19 @@
-"use client";
-import Image from "next/image";
-import { signIn } from "@/lib/auth";
-import { Card, CardContent } from "@/components/ui/card";
-import { LogInIcon } from "lucide-react";
+"use client"
+import { LogInIcon } from "lucide-react"
+import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
+import { signIn } from "@/lib/auth"
 
 export function Github({ callbackURL }: { callbackURL: string }) {
   return (
     <button
+      type="button"
       className="h-20 min-h-20 w-full"
       onClick={async () => {
         await signIn.social({
           provider: "github",
           callbackURL,
-        });
+        })
       }}
     >
       <Card className="border-primary from-primary to-primary/20 group relative h-full w-full cursor-pointer overflow-hidden bg-linear-to-r to-60%">
@@ -31,5 +32,5 @@ export function Github({ callbackURL }: { callbackURL: string }) {
         </CardContent>
       </Card>
     </button>
-  );
+  )
 }

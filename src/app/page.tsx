@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation"
 
 export default async function IndexPage() {
-  return redirect("/login");
+  return redirect("/login")
 }

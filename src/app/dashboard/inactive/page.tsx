@@ -1,13 +1,13 @@
-import { getServerSession } from "@/server/auth";
-import Image from "next/image";
-import accountSvg from "@/assets/svg/account_inactive.svg";
-import { LogoutButton } from "@/components/logout-button";
-import { redirect } from "next/navigation";
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import accountSvg from "@/assets/svg/account_inactive.svg"
+import { LogoutButton } from "@/components/logout-button"
+import { getServerSession } from "@/server/auth"
 // import { USER_ROLE } from "@/constants";
 
 export default async function AdminInactive() {
-  const { data: session } = await getServerSession();
-  if (!session) return redirect("/login");
+  const { data: session } = await getServerSession()
+  if (!session) return redirect("/login")
   // if (session?.user.role !== USER_ROLE.INACTIVE) redirect("/dashboard");
   // TODO
 
@@ -26,20 +26,17 @@ export default async function AdminInactive() {
             essere abilitato da un dashboard IT
           </h3>
           <p className="max-w-[30rem]">
-            Per accedere con GitHub, è necessario che l&apos;account venga
-            abilitato da un dashboard IT, in quanto si tratta di una dashboard
-            interna di PoliNetwork.
+            Per accedere con GitHub, è necessario che l&apos;account venga abilitato da un dashboard IT, in quanto si
+            tratta di una dashboard interna di PoliNetwork.
           </p>
           <p className="max-w-[30rem]">
-            Se sei già un socio di PoliNetwork, puoi accedere direttamente con
-            il tuo indirizzo nome.cognome@polinetwork.org tramite
-            &quot;Microsoft Entra ID&quot; e il tuo account sarà automaticamente
+            Se sei già un socio di PoliNetwork, puoi accedere direttamente con il tuo indirizzo
+            nome.cognome@polinetwork.org tramite &quot;Microsoft Entra ID&quot; e il tuo account sarà automaticamente
             verificato.
           </p>
           <p className="max-w-[30rem]">
-            Se sei entrato con il tuo indirizzo nome.cognome@polinetwork.org e
-            il tuo account risulta inattivo, potrebbe essere stato disabilitato.
-            Contatta un dashboard IT per ottenere più informazioni.
+            Se sei entrato con il tuo indirizzo nome.cognome@polinetwork.org e il tuo account risulta inattivo, potrebbe
+            essere stato disabilitato. Contatta un dashboard IT per ottenere più informazioni.
           </p>
         </div>
 
@@ -52,5 +49,5 @@ export default async function AdminInactive() {
         </div>
       </main>
     )
-  );
+  )
 }

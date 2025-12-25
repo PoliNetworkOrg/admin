@@ -1,13 +1,13 @@
-import { GeistSans } from "geist/font/sans";
-import { type Metadata } from "next";
-import "@/index.css";
-import { TRPCReactProvider } from "@/lib/trpc/client";
-import { HEADER_HEIGHT } from "@/components/header";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { GeistSans } from "geist/font/sans"
+import type { Metadata } from "next"
+import "@/index.css"
+import { HEADER_HEIGHT } from "@/components/header"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { TRPCReactProvider } from "@/lib/trpc/client"
 
-const desc = "PoliNetwork Admin Dashboard";
+const desc = "PoliNetwork Admin Dashboard"
 
 export const metadata: Metadata = {
   title: {
@@ -16,17 +16,11 @@ export const metadata: Metadata = {
   },
   description: desc,
   icons: [{ rel: "icon", url: "/favicon.ico" }],
-};
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${GeistSans.variable}`}
-    >
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable}`}>
       <body
         style={
           {
@@ -49,5 +43,5 @@ export default function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

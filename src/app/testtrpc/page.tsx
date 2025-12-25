@@ -1,11 +1,9 @@
-import { getQueryClient, trpc } from "@/lib/trpc/server";
-export const dynamic = "force-dynamic";
+import { getQueryClient, trpc } from "@/lib/trpc/server"
+export const dynamic = "force-dynamic"
 
 export default async function TestTRPCPage() {
-  const queryClient = getQueryClient();
-  const rows = await queryClient.fetchQuery(
-    trpc.test.dbQuery.queryOptions({ dbName: "tg" }),
-  );
+  const queryClient = getQueryClient()
+  const rows = await queryClient.fetchQuery(trpc.test.dbQuery.queryOptions({ dbName: "tg" }))
 
   return (
     <div className="flex w-full flex-col gap-4 p-4">
@@ -18,5 +16,5 @@ export default async function TestTRPCPage() {
         ))}
       </ol>
     </div>
-  );
+  )
 }

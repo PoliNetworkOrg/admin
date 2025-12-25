@@ -1,11 +1,11 @@
-import { GlobeIcon } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import logo from "@/assets/svg/logo.svg";
-import { ThemeButton } from "@/components/theme-button";
-import { Button } from "./ui/button";
+import { GlobeIcon } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import logo from "@/assets/svg/logo.svg"
+import { ThemeButton } from "@/components/theme-button"
+import { Button } from "./ui/button"
 
-export const HEADER_HEIGHT = "3.3rem";
+export const HEADER_HEIGHT = "3.3rem"
 
 export async function Header() {
   return (
@@ -20,9 +20,7 @@ export async function Header() {
               height={32}
               width={32}
             />
-            <h1 className="text-accent-foreground hidden text-lg font-bold md:block">
-              PoliNetwork Admin
-            </h1>
+            <h1 className="text-accent-foreground hidden text-lg font-bold md:block">PoliNetwork Admin</h1>
           </div>
         </Link>
         <nav className="flex grow items-center justify-end space-x-8"></nav>
@@ -34,5 +32,5 @@ export async function Header() {
         </nav>
       </div>
     </header>
-  );
+  )
 }
