@@ -5,12 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "check": "next lint && tsc --noEmit",
     "dev": "PORT=3001 next dev --turbo",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "check": "biome check",
+    "check:fix": "biome check --fix --unsafe",
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit"
@@ -59,19 +56,13 @@
     "zod": "^3.23.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.10",
     "@tailwindcss/postcss": "^4.1.4",
     "@trpc/server": "11.1.1",
-    "@types/eslint": "^8.56.10",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.1.0",
-    "@typescript-eslint/parser": "^8.1.0",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^15.3.4",
     "postcss": "^8.4.39",
-    "prettier": "^3.3.2",
-    "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.5.3"
   },
