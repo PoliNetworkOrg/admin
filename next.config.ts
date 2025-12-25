@@ -5,7 +5,6 @@ import type { NextConfig } from "next"
  */
 import "./src/env.ts"
 
-/** @type {import("next").NextConfig} */
 const config: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
