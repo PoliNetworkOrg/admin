@@ -2,6 +2,8 @@ import { createAuthClient } from "better-auth/react";
 import { AUTH_PATH, type TelegramPlugin } from "@polinetwork/backend";
 import { getBaseUrl } from "./utils";
 import type { BetterAuthClientPlugin } from "better-auth";
+import { emailOTPClient } from "better-auth/client/plugins";
+import { nextCookies } from "better-auth/next-js";
 
 const telegramPlugin = () => {
   return {
@@ -13,7 +15,7 @@ const telegramPlugin = () => {
 export const auth = createAuthClient({
   baseURL: getBaseUrl(),
   basePath: AUTH_PATH,
-  plugins: [telegramPlugin()],
+  plugins: [telegramPlugin(), emailOTPClient(), nextCookies()],
 });
 
 export const { signIn, signOut, getSession, useSession } = auth;

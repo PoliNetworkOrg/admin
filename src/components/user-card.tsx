@@ -1,5 +1,5 @@
 "use client";
-import { type LucideIcon, XIcon } from "lucide-react";
+import { type LucideIcon, XIcon, UserIcon } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -22,7 +22,7 @@ export function UserCard({ user, icon: Icon = XIcon, buttonAction }: Props) {
           <AvatarImage src={user.image} alt={`propic of ${user.name}`} />
         )}
         <AvatarFallback className="rounded-lg">
-          {getInitials(user.name)}
+          {user.name ? getInitials(user.name) : <UserIcon />}
         </AvatarFallback>
       </Avatar>
       <p className="grow">{user.name}</p>

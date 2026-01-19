@@ -9,6 +9,7 @@ import { useState } from "react";
 import { makeQueryClient } from "./query-client";
 import { TRPC_PATH, type AppRouter } from "@polinetwork/backend";
 import { getBaseUrl } from "../utils";
+import SuperJSON from "superjson";
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
 let browserQueryClient: QueryClient;
@@ -40,8 +41,8 @@ export function TRPCReactProvider(
     createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
-          //transformer: superjson,
           url,
+          transformer: SuperJSON
         }),
       ],
     }),

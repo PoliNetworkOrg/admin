@@ -44,11 +44,11 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
 
   const handleComplete = useCallback(() => {
     setSuccess(true);
-    refetch();
+    void refetch();
     remove();
 
     setTimeout(() => {
-      router.push("/login/success");
+      router.push("/dashboard");
     }, 5000);
   }, [router, refetch, remove]);
 
@@ -65,8 +65,7 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
     });
 
     if (res.error) return console.error("custom error", res.error);
-    if (res.data instanceof APIError)
-      return console.error("better-auth APIError", res.data);
+
     setExpired(false);
     update({
       code: res.data.code,

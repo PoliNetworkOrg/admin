@@ -22,5 +22,5 @@ export function getInitials(name: string): string {
 }
 
 export async function wait(ms: number): Promise<void> {
-  return new Promise(res => setTimeout(res, ms)) 
+  return new Promise((res) => setTimeout(res, ms));
 }

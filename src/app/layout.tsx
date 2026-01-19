@@ -2,7 +2,7 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import "@/index.css";
 import { TRPCReactProvider } from "@/lib/trpc/client";
-import { HEADER_HEIGHT } from "@/components/header";
+import { Header, HEADER_HEIGHT } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,8 +43,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <TRPCReactProvider>{children}</TRPCReactProvider>
-            <Toaster richColors position="bottom-right" />
+            <TRPCReactProvider>
+              <div className="flex h-screen w-full flex-col items-center justify-start">
+                <Header />
+                {children}
+              </div>
+            </TRPCReactProvider>
+            <Toaster richColors position="bottom-center" />
           </TooltipProvider>
         </ThemeProvider>
       </body>

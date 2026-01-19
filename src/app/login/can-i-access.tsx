@@ -40,10 +40,10 @@ export function CanIAccess() {
             />
             <div className="text-center">
               <p className="text-primary text-xl font-bold dark:text-white">
-                1. Login with GitHub
+                1. Login with email
               </p>
-              <p className="text-muted-foreground text-xs">
-                (provider might change)
+              <p className="text-muted-foreground text-sm">
+                We send an OTP to your email
               </p>
             </div>
           </div>
@@ -58,7 +58,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary text-lg font-bold dark:text-white">
+              <p className="text-primary text-xl font-bold dark:text-white">
                 2. Link your Telegram account
               </p>
               <p className="text-muted-foreground text-sm">
@@ -81,8 +81,8 @@ export function CanIAccess() {
                 3. Use the dashboard
               </p>
               <p className="text-muted-foreground text-sm">
-                If your role is not recognized, <br /> be patient until the IT team
-                fixes it!
+                If your role is not recognized, <br /> be patient until the IT
+                team fixes it!
               </p>
             </div>
           </div>
