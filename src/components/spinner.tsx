@@ -1,14 +1,12 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
 export function Spinner({ className }: React.HtmlHTMLAttributes<SVGElement>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: incorrect change suggestion
     <div role="status">
       <svg
         aria-hidden="true"
-        className={cn(
-          "fill-secondary h-8 w-8 animate-spin text-gray-200 dark:text-gray-600",
-          className,
-        )}
+        className={cn("fill-secondary h-8 w-8 animate-spin text-gray-200 dark:text-gray-600", className)}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -24,5 +22,5 @@ export function Spinner({ className }: React.HtmlHTMLAttributes<SVGElement>) {
       </svg>
       <span className="sr-only">Loading...</span>
     </div>
-  );
+  )
 }

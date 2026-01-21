@@ -1,17 +1,10 @@
-"use client";
+"use client"
 
-import { Compass, Home, Settings2, Users, Wrench } from "lucide-react";
-
-import { NavMain } from "./nav-main";
-import { NavUser } from "./nav-user";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import type { User } from "better-auth";
+import type { User } from "better-auth"
+import { Compass, Home, Settings2, Users, Wrench } from "lucide-react"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar"
+import { NavMain } from "./nav-main"
+import { NavUser } from "./nav-user"
 
 const data = {
   navMain: [
@@ -72,21 +65,16 @@ const data = {
       ],
     },
   ],
-};
+}
 
 export function AdminSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  user: User;
+  user: User
 }) {
   return (
-    <Sidebar
-      collapsible="icon"
-      variant="inset"
-      className="top-(--header-height) pb-(--header-height)"
-      {...props}
-    >
+    <Sidebar collapsible="icon" variant="inset" className="top-(--header-height) pb-(--header-height)" {...props}>
       <SidebarHeader>
         <div className="flex items-center justify-start gap-2">
           <SidebarTrigger />
@@ -97,5 +85,5 @@ export function AdminSidebar({
       </SidebarContent>
       <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter>{" "}
     </Sidebar>
-  );
+  )
 }

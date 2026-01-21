@@ -1,13 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-"use server";
+"use server"
 
-import { revalidatePath } from "next/cache";
-import { USER_ROLE, type TUserRole } from "@/constants";
+import { revalidatePath } from "next/cache"
+import type { TUserRole } from "@/constants"
 
-export async function changeUserRole(values: {
-  id: string;
-  newRole: TUserRole;
-}) {
+export async function changeUserRole(_values: { id: string; newRole: TUserRole }) {
   // await db
   //   .update(users)
   //   .set({
@@ -15,31 +12,34 @@ export async function changeUserRole(values: {
   //   })
   //   .where(eq(users.id, values.id));
   //
-  revalidatePath("/admin/hr/users");
+  revalidatePath("/admin/hr/users")
 }
 
 export type UserWithAccountProviders = {
-  id: string;
-  name: string;
-  email: string;
-  role: TUserRole;
-  image: string | null;
-  accounts: { provider: string }[];
-};
+  id: string
+  name: string
+  email: string
+  role: TUserRole
+  image: string | null
+  accounts: { provider: string }[]
+}
 
-export async function getUsers({
-  excludedIds,
-  includeInactive,
-  includeDisabled,
-  includeAdminOrg,
-  doNotParseProviders,
-}: {
-  excludedIds?: string[];
-  includeInactive?: boolean;
-  includeDisabled?: boolean;
-  includeAdminOrg?: boolean;
-  doNotParseProviders?: boolean;
-} = {}) {
+export async function getUsers(
+  // {
+  // excludedIds,
+  // includeInactive,
+  // includeDisabled,
+  // includeAdminOrg,
+  // doNotParseProviders,
+  // }:
+  _props: {
+    excludedIds?: string[]
+    includeInactive?: boolean
+    includeDisabled?: boolean
+    includeAdminOrg?: boolean
+    doNotParseProviders?: boolean
+  } = {}
+) {
   // const users = await db.query.users.findMany({
   //   where: (t, { ne, notInArray, and }) =>
   //     and(
@@ -64,5 +64,5 @@ export async function getUsers({
   //   );
   //
   // return users;
-  return [];
+  return []
 }

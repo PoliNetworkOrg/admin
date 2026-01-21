@@ -1,6 +1,4 @@
-import { Card } from "@/components/ui/card";
 import {
-  type LucideIcon,
   BookOpen,
   Bot,
   CircleEllipsis,
@@ -8,10 +6,12 @@ import {
   Gavel,
   HelpCircle,
   LayoutTemplate,
+  type LucideIcon,
   PencilLine,
   ShieldCheck,
   Users,
-} from "lucide-react";
+} from "lucide-react"
+import { Card } from "@/components/ui/card"
 
 export function WhatIs() {
   return (
@@ -21,13 +21,10 @@ export function WhatIs() {
         <h3 className="text-xl font-bold">What is this?</h3>
       </div>
       <p>
-        This is a PoliNetwork&apos;s internal tool that allows admins and
-        department staff to perform multiple actions via an easy web interface.
+        This is a PoliNetwork&apos;s internal tool that allows admins and department staff to perform multiple actions
+        via an easy web interface.
       </p>
-      <p>
-        What actions you can perform depends on your role, but some remarkable
-        ones are:
-      </p>
+      <p>What actions you can perform depends on your role, but some remarkable ones are:</p>
       <div className="xs:grid-cols-2 grid grid-cols-1 flex-wrap gap-4 py-2 md:grid-cols-3 lg:flex">
         <FeatureBox icon={BookOpen} feature="Group list" />
         <FeatureBox icon={Users} feature="User list" />
@@ -40,28 +37,19 @@ export function WhatIs() {
         <FeatureBox icon={CircleEllipsis} feature="Many others" />
       </div>
       <p className="text-muted-foreground text-xs italic">
-        It&apos;s clear that you&apos;ll have access to different features
-        depending on your role(s).
+        It&apos;s clear that you&apos;ll have access to different features depending on your role(s).
       </p>
     </div>
-  );
+  )
 }
 
-export function FeatureBox({
-  icon: Icon,
-  feature,
-}: {
-  icon: LucideIcon;
-  feature: string;
-}) {
+export function FeatureBox({ icon: Icon, feature }: { icon: LucideIcon; feature: string }) {
   return (
     <Card className="h-36 w-full md:h-28 lg:w-36">
       <div className="grid h-full grid-cols-1 grid-rows-[1fr_1fr] gap-y-2">
         <Icon size={28} className="place-self-end justify-self-center" />
-        <p className="mx-auto max-w-26 text-center text-base md:text-sm">
-          {feature}
-        </p>
+        <p className="mx-auto max-w-26 text-center text-base md:text-sm">{feature}</p>
       </div>
     </Card>
-  );
+  )
 }

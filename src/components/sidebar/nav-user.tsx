@@ -1,25 +1,21 @@
-"use client";
+"use client"
 
-import { ChevronsUpDown, LogOut, Settings, UserIcon } from "lucide-react";
+import { ChevronsUpDown, LogOut, Settings, UserIcon } from "lucide-react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import Link from "next/link";
-import { getInitials } from "@/lib/utils";
-import { signOut } from "@/lib/auth";
-import { useRouter } from "next/navigation";
-import type { User } from "better-auth";
+} from "@/components/ui/dropdown-menu"
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
+import Link from "next/link"
+import { getInitials } from "@/lib/utils"
+import { signOut } from "@/lib/auth"
+import { useRouter } from "next/navigation"
+import type { User } from "better-auth"
 
 export function NavUser({ user }: { user: User }) {
   const router = useRouter()
@@ -61,8 +57,8 @@ export function NavUser({ user }: { user: User }) {
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={async () => {
-                  await signOut();
-                  router.replace("/login");
+                  await signOut()
+                  router.replace("/login")
                 }}
               >
                 <LogOut />
@@ -73,5 +69,5 @@ export function NavUser({ user }: { user: User }) {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  );
+  )
 }

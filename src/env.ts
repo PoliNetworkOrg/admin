@@ -1,5 +1,5 @@
-import { createEnv } from "@t3-oss/env-nextjs";
-import { z } from "zod";
+import { createEnv } from "@t3-oss/env-nextjs"
+import { z } from "zod"
 
 export const env = createEnv({
   /**
@@ -8,12 +8,8 @@ export const env = createEnv({
    */
   server: {
     BACKEND_URL: z.string().default("http://localhost:3000"),
-    ADMIN_ORG_EMAIL: z
-      .string()
-      .describe("Email address of admin Azure account."),
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
+    ADMIN_ORG_EMAIL: z.string().describe("Email address of admin Azure account."),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   },
 
   /**
@@ -44,4 +40,4 @@ export const env = createEnv({
    * `SOME_VAR=''` will throw an error.
    */
   emptyStringAsUndefined: true,
-});
+})

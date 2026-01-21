@@ -1,12 +1,9 @@
-"use client";
+"use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react";
-
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { ChevronRight, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+import { useState } from "react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -16,22 +13,20 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@/components/ui/sidebar";
-import Link from "next/link";
-import { useState } from "react";
+} from "@/components/ui/sidebar"
 
 type MenuItem = {
-  title: string;
-  url?: string;
-  icon?: LucideIcon;
+  title: string
+  url?: string
+  icon?: LucideIcon
   items?: {
-    title: string;
-    url?: string;
-  }[];
-};
+    title: string
+    url?: string
+  }[]
+}
 
 export function NavMain({ items }: { items: MenuItem[] }) {
-  const [activeMenu, setActiveMenu] = useState<string>("");
+  const [activeMenu, setActiveMenu] = useState<string>("")
 
   return (
     <SidebarGroup>
@@ -84,11 +79,7 @@ export function NavMain({ items }: { items: MenuItem[] }) {
               </SidebarMenuItem>
             </Collapsible>
           ) : item.url ? (
-            <Link
-              href={item.url}
-              key={item.title}
-              onClick={() => setActiveMenu("")}
-            >
+            <Link href={item.url} key={item.title} onClick={() => setActiveMenu("")}>
               <SidebarMenuButton tooltip={item.title}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
@@ -99,9 +90,9 @@ export function NavMain({ items }: { items: MenuItem[] }) {
               {item.icon && <item.icon />}
               <span>{item.title}</span>
             </SidebarMenuButton>
-          ),
+          )
         )}
       </SidebarMenu>
     </SidebarGroup>
-  );
+  )
 }

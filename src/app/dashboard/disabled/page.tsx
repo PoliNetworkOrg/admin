@@ -1,15 +1,15 @@
-import { getServerSession } from "@/server/auth";
-import Image from "next/image";
-import accountSvg from "@/assets/svg/account_disabled.svg";
-import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/logout-button";
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import accountSvg from "@/assets/svg/account_disabled.svg"
+import { LogoutButton } from "@/components/logout-button"
+import { getServerSession } from "@/server/auth"
 // import { USER_ROLE } from "@/constants";
 
 export default async function AdminInactive() {
-  const { data: session } = await getServerSession();
+  const { data: session } = await getServerSession()
   // if (session?.user.role !== USER_ROLE.DISABLED) redirect("/dashboard");
   // TODO
-  if (!session) return redirect("/login");
+  if (!session) return redirect("/login")
 
   return (
     session && (
@@ -26,12 +26,9 @@ export default async function AdminInactive() {
             <br />
           </h3>
           <p className="max-w-[30rem]">
-            Il tuo account è stato disabilitato in quanto non sei un membro
-            riconosciuto di PoliNetwork.
+            Il tuo account è stato disabilitato in quanto non sei un membro riconosciuto di PoliNetwork.
           </p>
-          <p className="max-w-[30rem]">
-            Se credi che sia un errore, manda una richiesta di rivalutazione.
-          </p>
+          <p className="max-w-[30rem]">Se credi che sia un errore, manda una richiesta di rivalutazione.</p>
         </div>
 
         <div className="mb-4 flex flex-col items-center justify-between space-y-4 rounded-lg">
@@ -43,5 +40,5 @@ export default async function AdminInactive() {
         </div>
       </main>
     )
-  );
+  )
 }

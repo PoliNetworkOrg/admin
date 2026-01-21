@@ -1,18 +1,17 @@
-import Image from "next/image";
-import { TelegramLink } from "./telegram";
-import loginSvg2 from "@/assets/svg/login-2.svg";
-import { Card } from "@/components/ui/card";
-import { getServerSession } from "@/server/auth";
-import { redirect } from "next/navigation";
-import { env } from "@/env";
-import { Logout } from "./logout";
+import Image from "next/image"
+import { TelegramLink } from "./telegram"
+import loginSvg2 from "@/assets/svg/login-2.svg"
+import { Card } from "@/components/ui/card"
+import { getServerSession } from "@/server/auth"
+import { redirect } from "next/navigation"
+import { env } from "@/env"
+import { Logout } from "./logout"
 
-const BOT_USERNAME =
-  env.NODE_ENV === "production" ? "pn_ts_dev_bot" : "pn_ts_devlocal_bot";
+const BOT_USERNAME = env.NODE_ENV === "production" ? "pn_ts_dev_bot" : "pn_ts_devlocal_bot"
 
 export default async function OnboardingLink() {
-  const { data: session } = await getServerSession();
-  if (!session || session.user.telegramId) redirect("/dashboard");
+  const { data: session } = await getServerSession()
+  if (!session || session.user.telegramId) redirect("/dashboard")
 
   return (
     <main className="grid grow place-content-center">
@@ -25,12 +24,8 @@ export default async function OnboardingLink() {
             alt="insert credentials"
           />
           <div className="text-center">
-            <p className="text-primary text-lg font-bold dark:text-white">
-              Link your Telegram account
-            </p>
-            <p className="text-muted-foreground text-sm">
-              This allows to verify your role
-            </p>
+            <p className="text-primary text-lg font-bold dark:text-white">Link your Telegram account</p>
+            <p className="text-muted-foreground text-sm">This allows to verify your role</p>
           </div>
         </div>
         <hr />
@@ -39,5 +34,5 @@ export default async function OnboardingLink() {
         <Logout email={session.user.email} />
       </Card>
     </main>
-  );
+  )
 }

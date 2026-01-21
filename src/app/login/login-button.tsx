@@ -1,7 +1,7 @@
-"use client";
-import { Card, CardContent } from "@/components/ui/card";
-import { LogInIcon } from "lucide-react";
-import Link from "next/link";
+"use client"
+import { Card, CardContent } from "@/components/ui/card"
+import { LogInIcon } from "lucide-react"
+import Link from "next/link"
 
 export function LoginButton() {
   return (
@@ -14,5 +14,5 @@ export function LoginButton() {
         </CardContent>
       </Card>
     </Link>
-  );
+  )
 }
