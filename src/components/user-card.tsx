@@ -1,10 +1,10 @@
 "use client"
-import { type LucideIcon, XIcon, UserIcon } from "lucide-react"
-import { useTransition } from "react"
-import { Button } from "./ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
-import { getInitials } from "@/lib/utils"
 import type { User } from "better-auth"
+import { type LucideIcon, UserIcon, XIcon } from "lucide-react"
+import { useTransition } from "react"
+import { getInitials } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
+import { Button } from "./ui/button"
 
 type Props = {
   user: User

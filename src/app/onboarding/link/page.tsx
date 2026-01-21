@@ -1,11 +1,11 @@
 import Image from "next/image"
-import { TelegramLink } from "./telegram"
+import { redirect } from "next/navigation"
 import loginSvg2 from "@/assets/svg/login-2.svg"
 import { Card } from "@/components/ui/card"
-import { getServerSession } from "@/server/auth"
-import { redirect } from "next/navigation"
 import { env } from "@/env"
+import { getServerSession } from "@/server/auth"
 import { Logout } from "./logout"
+import { TelegramLink } from "./telegram"
 
 const BOT_USERNAME = env.NODE_ENV === "production" ? "pn_ts_dev_bot" : "pn_ts_devlocal_bot"
 

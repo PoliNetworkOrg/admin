@@ -1,9 +1,9 @@
-import { createAuthClient } from "better-auth/react"
 import { AUTH_PATH, type TelegramPlugin } from "@polinetwork/backend"
-import { getBaseUrl } from "./utils"
 import type { BetterAuthClientPlugin } from "better-auth"
 import { emailOTPClient } from "better-auth/client/plugins"
 import { nextCookies } from "better-auth/next-js"
+import { createAuthClient } from "better-auth/react"
+import { getBaseUrl } from "./utils"
 
 const telegramPlugin = () => {
   return {

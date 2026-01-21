@@ -1,7 +1,7 @@
 "use client"
-import { Card, CardContent } from "@/components/ui/card"
 import { LogInIcon } from "lucide-react"
 import Link from "next/link"
+import { Card, CardContent } from "@/components/ui/card"
 
 export function LoginButton() {
   return (

@@ -1,7 +1,9 @@
 "use client"
 
+import type { User } from "better-auth"
 import { ChevronsUpDown, LogOut, Settings, UserIcon } from "lucide-react"
-
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -11,11 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-import Link from "next/link"
-import { getInitials } from "@/lib/utils"
 import { signOut } from "@/lib/auth"
-import { useRouter } from "next/navigation"
-import type { User } from "better-auth"
+import { getInitials } from "@/lib/utils"
 
 export function NavUser({ user }: { user: User }) {
   const router = useRouter()

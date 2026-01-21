@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation"
-import { LoginButton } from "./login/login-button"
 import { getServerSession } from "@/server/auth"
-import { WhatIs } from "./login/what-is"
 import { CanIAccess } from "./login/can-i-access"
+import { LoginButton } from "./login/login-button"
+import { WhatIs } from "./login/what-is"
 
 export default async function IndexPage() {
   const session = await getServerSession()

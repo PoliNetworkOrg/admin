@@ -1,11 +1,11 @@
 import { GeistSans } from "geist/font/sans"
-import { type Metadata } from "next"
+import type { Metadata } from "next"
 import "@/index.css"
-import { TRPCReactProvider } from "@/lib/trpc/client"
-import { Header, HEADER_HEIGHT } from "@/components/header"
+import { HEADER_HEIGHT, Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { TRPCReactProvider } from "@/lib/trpc/client"
 
 const desc = "PoliNetwork Admin Dashboard"
 

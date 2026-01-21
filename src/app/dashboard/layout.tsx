@@ -1,7 +1,7 @@
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { getServerSession } from "@/server/auth"
 import { redirect } from "next/navigation"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { getQueryClient, trpc } from "@/lib/trpc/server"
+import { getServerSession } from "@/server/auth"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession()

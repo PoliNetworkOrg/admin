@@ -1,14 +1,14 @@
-import Image from "next/image";
-import loginSvg2 from "@/assets/svg/login-2.svg";
-import { Card } from "@/components/ui/card";
-import { getServerSession } from "@/server/auth";
-import { redirect } from "next/navigation";
-import { Logout } from "../link/logout";
-import { getQueryClient, trpc } from "@/lib/trpc/server";
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import loginSvg2 from "@/assets/svg/login-2.svg"
+import { Card } from "@/components/ui/card"
+import { getQueryClient, trpc } from "@/lib/trpc/server"
+import { getServerSession } from "@/server/auth"
+import { Logout } from "../link/logout"
 
 export default async function OnboardingNoRole() {
-  const { data: session } = await getServerSession();
-  if (!session) redirect("/login");
+  const { data: session } = await getServerSession()
+  if (!session) redirect("/login")
   if (!session.user.telegramId) redirect("/onboarding/link")
 
   const qc = getQueryClient()
@@ -27,17 +27,13 @@ export default async function OnboardingNoRole() {
             alt="insert credentials"
           />
           <div className="text-center">
-            <p className="text-primary text-lg font-bold dark:text-white">
-              Your account is not enabled
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Please contact an IT member
-            </p>
+            <p className="text-primary text-lg font-bold dark:text-white">Your account is not enabled</p>
+            <p className="text-muted-foreground text-sm">Please contact an IT member</p>
           </div>
         </div>
 
         <Logout email={session.user.email} />
       </Card>
     </main>
-  );
+  )
 }

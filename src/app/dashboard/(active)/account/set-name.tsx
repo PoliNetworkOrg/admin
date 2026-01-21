@@ -1,6 +1,6 @@
 "use client"
 
-import { auth } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 import { type FormEvent, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
+import { auth } from "@/lib/auth"
 
 export function SetName({ initialName }: { initialName?: string }) {
   const router = useRouter()
@@ -29,33 +29,38 @@ export function SetName({ initialName }: { initialName?: string }) {
     router.refresh()
   }
 
-  return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild>
-      <Button variant="outline">Set name</Button>
-    </DialogTrigger>
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>Set your name</DialogTitle>
-        <DialogDescription>
-          Make changes to your profile here. Click save when you&apos;re
-          done.
-        </DialogDescription>
-      </DialogHeader>
-      <form onSubmit={handleUpdate}>
-        <div className="grid gap-4">
-          <div className="grid gap-3">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" type="text" autoComplete="name" value={name} onChange={e => setName(e.target.value)} />
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Set name</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Set your name</DialogTitle>
+          <DialogDescription>Make changes to your profile here. Click save when you&apos;re done.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleUpdate}>
+          <div className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button type="submit">Save changes</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit">Save changes</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
-
