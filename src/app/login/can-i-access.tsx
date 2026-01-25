@@ -34,8 +34,8 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary text-xl font-bold dark:text-white">1. Login with GitHub</p>
-              <p className="text-muted-foreground text-xs">(provider might change)</p>
+              <p className="text-primary text-xl font-bold dark:text-white">1. Login with email</p>
+              <p className="text-muted-foreground text-sm">We send an OTP to your email</p>
             </div>
           </div>
         </Card>
@@ -49,7 +49,7 @@ export function CanIAccess() {
               className="place-self-center justify-self-center"
             />
             <div className="text-center">
-              <p className="text-primary text-lg font-bold dark:text-white">2. Link your Telegram account</p>
+              <p className="text-primary text-xl font-bold dark:text-white">2. Link your Telegram account</p>
               <p className="text-muted-foreground text-sm">This allows to verify your role</p>
             </div>
           </div>

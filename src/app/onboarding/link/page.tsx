@@ -4,13 +4,14 @@ import loginSvg2 from "@/assets/svg/login-2.svg"
 import { Card } from "@/components/ui/card"
 import { env } from "@/env"
 import { getServerSession } from "@/server/auth"
+import { Logout } from "./logout"
 import { TelegramLink } from "./telegram"
 
 const BOT_USERNAME = env.NODE_ENV === "production" ? "pn_ts_dev_bot" : "pn_ts_devlocal_bot"
 
 export default async function OnboardingLink() {
-  const { data } = await getServerSession()
-  if (data?.user.telegramId) redirect("/login/success")
+  const { data: session } = await getServerSession()
+  if (!session || session.user.telegramId) redirect("/dashboard")
 
   return (
     <main className="grid grow place-content-center">
@@ -29,6 +30,8 @@ export default async function OnboardingLink() {
         </div>
         <hr />
         <TelegramLink botUsername={BOT_USERNAME} />
+        <hr />
+        <Logout email={session.user.email} />
       </Card>
     </main>
   )

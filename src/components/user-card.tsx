@@ -1,6 +1,6 @@
 "use client"
 import type { User } from "better-auth"
-import { type LucideIcon, XIcon } from "lucide-react"
+import { type LucideIcon, UserIcon, XIcon } from "lucide-react"
 import { useTransition } from "react"
 import { getInitials } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -19,7 +19,7 @@ export function UserCard({ user, icon: Icon = XIcon, buttonAction }: Props) {
     <div className="flex w-full items-center gap-2">
       <Avatar className="h-8 w-8 rounded-lg">
         {user.image && <AvatarImage src={user.image} alt={`propic of ${user.name}`} />}
-        <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+        <AvatarFallback className="rounded-lg">{user.name ? getInitials(user.name) : <UserIcon />}</AvatarFallback>
       </Avatar>
       <p className="grow">{user.name}</p>
       <p className="truncate">{user.email}</p>
