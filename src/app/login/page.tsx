@@ -7,7 +7,9 @@ export default async function Page() {
   if (session) return redirect("/dashboard")
 
   return (
-    <main className="flex flex-1 items-center justify-center">
+    <main className="w-full flex flex-col flex-1 items-start justify-start max-w-4xl pt-12">
+      <h1 className="text-4xl font-black mb-2">Login</h1>
+      <p className="text-lg md:text-sm mb-4">Enter your email below to recieve an OTP to login or use a registered passkey.</p>
       <LoginForm />
     </main>
   )

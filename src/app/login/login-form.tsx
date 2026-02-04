@@ -1,11 +1,10 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
+import { ArrowRight, KeyRound, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
@@ -14,16 +13,36 @@ import { auth } from "@/lib/auth"
 export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
+  const router = useRouter()
+
+  // useEffect(() => {
+  //   if (!PublicKeyCredential.isConditionalMediationAvailable ||
+  //     !PublicKeyCredential.isConditionalMediationAvailable()) {
+  //     return;
+  //   }
+  //
+  //   void auth.signIn.passkey({ autoFill: true }).then(({ data, error }) => {
+  //     if (error) {
+  //       if ("code" in error && error.code === "AUTH_CANCELLED") return
+  //       console.error("ERROR PASSKEY LOGIN", error)
+  //       toast.error("Error passkey")
+  //       return
+  //     }
+  //
+  //     console.log({ data })
+  //     toast.success("Logged in with passkey!")
+  //     router.refresh()
+  //   })
+  // }, [])
 
   return (
-    <div className="grid gap-2">
-      {!sent ? (
-        <EmailCard email={email} onChange={(v) => setEmail(v)} onSend={() => setSent(true)} />
-      ) : (
-        <OTPCard email={email} />
-      )}
+    <div className="flex flex-col gap-6 py-2">
+      <EmailCard email={email} onChange={(v) => setEmail(v)} onSend={() => setSent(true)} />
+      {sent && <OTPCard email={email} />}
     </div>
   )
+  // <FieldSeparator>Or continue with</FieldSeparator>
+  // <Button onClick={loginWithPasskey} className="w-full"><KeyRound size={16} /> Login with Passkey</Button>
 }
 
 function EmailCard({
@@ -36,8 +55,19 @@ function EmailCard({
   onSend: () => void
 }) {
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   async function sendOtp() {
+    const { data: passkeyData, error: passkeyError } = await auth.signIn.passkey({
+      autoFill: true,
+    })
+
+    if (passkeyData && !passkeyError) {
+      toast.success("Logged in with passkey!")
+      router.push("/dashboard")
+      return
+    }
+
     const { data, error } = await auth.emailOtp.sendVerificationOtp({
       type: "sign-in",
       email,
@@ -57,45 +87,48 @@ function EmailCard({
       return
     }
 
+    if (error?.code === "INVALID_EMAIL") {
+      toast.error("Invalid email")
+      return
+    }
+
     toast.error("There was an unexpected error")
     console.error({ error })
   }
 
   return (
-    <Card className="max-w-md">
-      <CardHeader>
-        <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
-        <CardDescription className="text-xs md:text-sm">
-          Enter your email below to login to your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          className="grid gap-4"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            await sendOtp()
-          }}
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+    <div className="w-full flex flex-col gap-8">
+      <form
+        className="grid gap-8"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          setLoading(true)
+          await sendOtp()
+          setLoading(false)
+        }}
+      >
+        <div className="grid gap-3">
+          <Label htmlFor="email">Email</Label>
+          <div className="flex gap-3 justify-start items-center min-w-90">
             <Input
               id="email"
               type="email"
               placeholder="mario.rossi@example.org"
+              className="bg-card w-auto"
               required
               onChange={(e) => {
                 onChange(e.target.value)
               }}
               value={email}
+              autoComplete="email webauthn"
             />
+            <Button type="submit" disabled={loading} className="basis-9" size={"icon"}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+            </Button>
           </div>
-          <Button disabled={loading} className="gap-2" onClick={sendOtp}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Sign-in with OTP"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -130,47 +163,39 @@ function OTPCard({ email }: { email: string }) {
     }
   }
   return (
-    <Card className="max-w-sm">
-      <CardHeader className="items-center text-center">
-        <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
-        <CardDescription className="text-xs md:text-sm">Enter the OTP we sent to your email</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          className="grid gap-4 items-center"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            await verifyOtp()
-          }}
+    <form
+      className="grid gap-4 items-center"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        await verifyOtp()
+      }}
+    >
+      <div className="grid gap-2">
+        <Label htmlFor="email">OTP</Label>
+        <InputOTP
+          pushPasswordManagerStrategy="none"
+          maxLength={6}
+          value={otp}
+          onChange={(v) => setOtp(v)}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-protonpass-ignore="true"
+          type="text"
         >
-          <div className="grid gap-2">
-            <Label htmlFor="email">OTP</Label>
-            <InputOTP
-              pushPasswordManagerStrategy="none"
-              maxLength={6}
-              value={otp}
-              onChange={(v) => setOtp(v)}
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              data-protonpass-ignore="true"
-              type="text"
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-          <Button disabled={loading} className="self-stretch gap-2" onClick={verifyOtp}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Verify"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          <InputOTPGroup>
+            <InputOTPSlot className="bg-card" index={0} />
+            <InputOTPSlot className="bg-card" index={1} />
+            <InputOTPSlot className="bg-card" index={2} />
+            <InputOTPSlot className="bg-card" index={3} />
+            <InputOTPSlot className="bg-card" index={4} />
+            <InputOTPSlot className="bg-card" index={5} />
+          </InputOTPGroup>
+        </InputOTP>
+      </div>
+      <Button disabled={loading} className="self-stretch gap-2" onClick={verifyOtp}>
+        {loading ? <Loader2 size={16} className="animate-spin" /> : "Verify"}
+      </Button>
+    </form>
   )
 }

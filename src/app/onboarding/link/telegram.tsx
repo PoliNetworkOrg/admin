@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { auth, useSession } from "@/lib/auth"
+import { toast } from "sonner"
 
 type SavedLink = {
   username: string
@@ -120,11 +121,25 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
 
   return savedLink && timeLeft ? (
     <div className="flex flex-col items-center gap-4">
-      <p className="flex items-center justify-between gap-4 text-4xl">
-        {savedLink.code.split("").map((c, i) => (
-          <span key={i}>{c}</span>
-        ))}
-      </p>
+      <button
+        type="button"
+        className="cursor-pointer"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(savedLink.code)
+            toast.success("Code copied to clipboard!")
+          } catch (err) {
+            toast.error("Cannot copy code to clipboard")
+            console.error(err)
+          }
+        }}
+      >
+        <p className="flex items-center justify-between gap-4 text-4xl">
+          {savedLink.code.split("").map((c, i) => (
+            <span key={i}>{c}</span>
+          ))}
+        </p>
+      </button>
       <Timer ttl={savedLink.ttl} timeLeft={timeLeft} onEnd={() => setExpired(true)} />
 
       <div className="flex items-center gap-2">

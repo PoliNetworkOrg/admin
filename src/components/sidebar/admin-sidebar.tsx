@@ -29,6 +29,12 @@ const data = {
       ],
     },
     {
+      title: "Assoc",
+      url: "/dashboard/assoc",
+      icon: Users,
+      // items: [],
+    },
+    {
       title: "Management",
       //url: "/dashboard/management",
       icon: Wrench,
