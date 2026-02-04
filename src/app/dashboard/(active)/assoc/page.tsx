@@ -15,7 +15,7 @@ export default async function AssocIndex() {
         .sort((a, b) => parseInt(a.employeeId!, 10) - parseInt(b.employeeId!, 10))
         // .sort((a, b) => a.displayName!.localeCompare(b.displayName!))
         .map((m) => (
-          <div className="grid gap-2 grid-cols-3 items-center" key={m.id}>
+          <div className="grid gap-2 grid-cols-4 items-center" key={m.id}>
             <span>{m.displayName}</span>
             <span>{m.employeeId ?? "N/A"}</span>
             <span>{m.mail}</span>
