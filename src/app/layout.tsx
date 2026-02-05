@@ -1,11 +1,12 @@
-import { Poppins } from "next/font/google"
 import type { Metadata } from "next"
+import { Poppins } from "next/font/google"
 import "@/index.css"
 import { HEADER_HEIGHT, Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { TRPCReactProvider } from "@/lib/trpc/client"
+import { HydrateClient } from "@/lib/trpc/server"
 
 const desc = "PoliNetwork Admin Dashboard"
 
@@ -42,10 +43,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           <TooltipProvider>
             <TRPCReactProvider>
-              <div className="flex h-screen w-full flex-col items-center justify-start px-4 sm:px-8">
-                <Header />
-                {children}
-              </div>
+              <HydrateClient>
+                <div className="flex h-screen w-full flex-col items-center justify-start px-4 sm:px-8">
+                  <Header />
+                  {children}
+                </div>
+              </HydrateClient>
             </TRPCReactProvider>
             <Toaster richColors position="bottom-center" />
           </TooltipProvider>

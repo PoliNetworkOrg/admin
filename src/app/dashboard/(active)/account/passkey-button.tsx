@@ -1,10 +1,10 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
 
 export function NewPasskeyButton() {
   const router = useRouter()

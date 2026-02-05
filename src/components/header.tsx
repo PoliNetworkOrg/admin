@@ -1,9 +1,9 @@
 import { GlobeIcon } from "lucide-react"
 import Link from "next/link"
 import { ThemeButton } from "@/components/theme-button"
-import { Button } from "./ui/button"
-import { Logo } from "./logo"
 import { HeaderLoginButton } from "./header-login-button"
+import { Logo } from "./logo"
+import { Button } from "./ui/button"
 
 export const HEADER_HEIGHT = "3.3rem"
 

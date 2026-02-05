@@ -3,6 +3,7 @@ import { APIError } from "better-auth/api"
 import { CircleCheckBig, ClockAlertIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Code } from "@/components/code"
 import { InputWithPrefix } from "@/components/input-prefix"
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,6 @@ import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { auth, useSession } from "@/lib/auth"
-import { toast } from "sonner"
 
 type SavedLink = {
   username: string

@@ -1,8 +1,8 @@
 "use client"
 
-import { ArrowRight, KeyRound, Loader2 } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { auth } from "@/lib/auth"
 export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
-  const router = useRouter()
+  const _router = useRouter()
 
   // useEffect(() => {
   //   if (!PublicKeyCredential.isConditionalMediationAvailable ||

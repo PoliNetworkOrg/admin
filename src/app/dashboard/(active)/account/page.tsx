@@ -1,13 +1,13 @@
 import { Calendar, CircleAlert, KeyIcon, UserIcon } from "lucide-react"
+import { headers } from "next/headers"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { auth } from "@/lib/auth"
 import { getInitials } from "@/lib/utils"
 import { getServerSession } from "@/server/auth"
+import { NewPasskeyButton } from "./passkey-button"
 import { SetName } from "./set-name"
 import { Telegram } from "./telegram"
-import { NewPasskeyButton } from "./passkey-button"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { Button } from "@/components/ui/button"
 
 export default async function Account() {
   const { data: session } = await getServerSession()

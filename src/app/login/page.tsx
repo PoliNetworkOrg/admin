@@ -9,7 +9,9 @@ export default async function Page() {
   return (
     <main className="w-full flex flex-col flex-1 items-start justify-start max-w-4xl pt-12">
       <h1 className="text-4xl font-black mb-2">Login</h1>
-      <p className="text-lg md:text-sm mb-4">Enter your email below to recieve an OTP to login or use a registered passkey.</p>
+      <p className="text-lg md:text-sm mb-4">
+        Enter your email below to recieve an OTP to login or use a registered passkey.
+      </p>
       <LoginForm />
     </main>
   )

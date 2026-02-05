@@ -2,10 +2,10 @@
 import { LogIn, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { auth, useSession } from "@/lib/auth"
 import { Button } from "./ui/button"
 import { Skeleton } from "./ui/skeleton"
-import { useIsMobile } from "@/hooks/use-mobile"
 
 export function HeaderLoginButton() {
   const { data, isPending } = useSession()
