@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -16,12 +15,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTRPC } from "@/lib/trpc/client"
+import { wait } from "@/lib/utils"
 
 export function SetAssocNumberDialog({ userId, children }: { userId: string; children?: React.ReactNode }) {
   const [value, setValue] = useState<string>("")
   const [open, setOpen] = useState<boolean>(false)
   const trpc = useTRPC()
-  const _router = useRouter()
 
   const qc = useQueryClient()
   const { mutateAsync, isPending } = useMutation(trpc.azure.members.setAssocNumber.mutationOptions())
@@ -36,6 +35,7 @@ export function SetAssocNumberDialog({ userId, children }: { userId: string; chi
     e.preventDefault()
     if (isPending || !value || Number.isNaN(parseInt(value, 10))) return
 
+    const loading = toast.loading(`Updating...`)
     const res = await mutateAsync({ userId, assocNumber: parseInt(value, 10) })
     handleOpenChange(false)
     if (res.error !== null) {
@@ -44,9 +44,10 @@ export function SetAssocNumberDialog({ userId, children }: { userId: string; chi
       return
     }
 
+    await wait(2000)
+    await qc.refetchQueries({ queryKey: trpc.azure.members.getAll.queryKey() })
+    toast.success(`Updated successfully!`, { id: loading })
     console.log("Updated user assocNumber", userId, value)
-    await qc.invalidateQueries({ queryKey: trpc.azure.members.getAll.queryKey() })
-    toast.success(`Updated successfully!`)
   }
 
   return (
