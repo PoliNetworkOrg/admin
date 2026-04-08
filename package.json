@@ -15,7 +15,7 @@
   "dependencies": {
     "@better-auth/passkey": "^1.5.5",
     "@hookform/resolvers": "^3.9.1",
-    "@polinetwork/backend": "^0.15.5",
+    "@polinetwork/backend": "file:../backend/package/dist",
     "@radix-ui/react-alert-dialog": "^1.1.3",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.1",

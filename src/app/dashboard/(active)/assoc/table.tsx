@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
 import { columns } from "./columns"
+import { useState } from "react"
 
 type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]
 function sortByAssocNumber(users: ParsedUser[]) {
@@ -31,14 +32,16 @@ function sortByAssocNumber(users: ParsedUser[]) {
 
 export function AssocTable() {
   const trpc = useTRPC()
-  const { data: users } = useSuspenseQuery(trpc.azure.members.getAll.queryOptions())
+  const { data } = useSuspenseQuery(trpc.azure.members.getAll.queryOptions())
+  const [sociFilter, setSociFilter] = useState(false)
+  const users = sociFilter ? data.filter((v) => v.isMember) : data
 
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center">
         <p>Utenti MS @polinetwork.org</p>
-        <Badge>{users.length} Soci</Badge>
-        <Badge variant="secondary">{users.length} fuori</Badge>
+        <Badge onClick={() => setSociFilter((v) => !v)}>{data.filter((d) => d.isMember).length} Soci</Badge>
+        <Badge variant="secondary">{data.filter((d) => !d.isMember).length} fuori</Badge>
         <Badge>{users.filter((u) => u.assignedLicensesIds.includes("OFFICE_365")).length} licenze Office</Badge>
         <div className="grow" />
         <CreateAssocUser />
