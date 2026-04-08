@@ -1,10 +1,10 @@
 import { Calendar, CircleAlert, KeyIcon, UserIcon } from "lucide-react"
 import { headers } from "next/headers"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
 import { getInitials } from "@/lib/utils"
 import { getServerSession } from "@/server/auth"
+import { DeletePasskey } from "./delete-passkey"
 import { NewPasskeyButton } from "./passkey-button"
 import { SetName } from "./set-name"
 import { Telegram } from "./telegram"
@@ -65,7 +65,7 @@ export default async function Account() {
                 Created on {p.createdAt.toLocaleDateString()}
               </p>
             </div>
-            <Button variant="destructive">Delete</Button>
+            <DeletePasskey id={p.id} />
           </div>
         ))}
         <NewPasskeyButton />
