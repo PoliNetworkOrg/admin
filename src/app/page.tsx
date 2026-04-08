@@ -1,16 +1,20 @@
 import { redirect } from "next/navigation"
 import { getServerSession } from "@/server/auth"
-import { CanIAccess } from "./login/can-i-access"
-import { WhatIs } from "./login/what-is"
+import { CanIAccess } from "./(auth)/login/can-i-access"
+import { WhatIs } from "./(auth)/login/what-is"
+import { Header } from "@/components/header"
 
 export default async function IndexPage() {
   const session = await getServerSession()
   if (session.data?.user) redirect("/dashboard")
 
   return (
-    <main className="text-accent container mx-auto flex grow flex-col items-center justify-start space-y-6 px-4 pb-8 pt-12">
-      <WhatIs />
-      <CanIAccess />
-    </main>
+    <>
+      <Header />
+      <main className="text-accent container mx-auto flex grow flex-col items-center justify-start space-y-6 px-4 pb-8 pt-12">
+        <WhatIs />
+        <CanIAccess />
+      </main>
+    </>
   )
 }

@@ -44,10 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <TooltipProvider>
             <TRPCReactProvider>
               <HydrateClient>
-                <div className="flex h-screen w-full flex-col items-center justify-start px-4 sm:px-8">
-                  <Header />
-                  {children}
-                </div>
+                <div className="flex h-screen w-full flex-col items-center justify-start px-4 sm:px-8">{children}</div>
               </HydrateClient>
             </TRPCReactProvider>
             <Toaster richColors position="bottom-center" />

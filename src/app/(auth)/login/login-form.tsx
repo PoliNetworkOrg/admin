@@ -1,7 +1,7 @@
 "use client"
 
-import { ArrowRight, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { ArrowRight, Key, Loader2, Mail } from "lucide-react"
+import { redirect, useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { auth } from "@/lib/auth"
+import { checkEmail } from "@/server/actions/auth"
+import { Separator } from "@/components/ui/separator"
+import Link from "next/link"
+import { FieldSeparator } from "@/components/ui/field"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
@@ -36,9 +40,15 @@ export default function LoginForm() {
   // }, [])
 
   return (
-    <div className="flex flex-col gap-6 py-2">
+    <div className="flex flex-col gap-6 py-2 px-2">
       <EmailCard email={email} onChange={(v) => setEmail(v)} onSend={() => setSent(true)} />
       {sent && <OTPCard email={email} />}
+      <p className="text-muted-foreground text-center text-sm">
+        Don&apos;t have an account?
+        <Link className="underline ml-1" href="/auth/signup">
+          Sign up
+        </Link>
+      </p>
     </div>
   )
   // <FieldSeparator>Or continue with</FieldSeparator>
@@ -55,27 +65,55 @@ function EmailCard({
   onSend: () => void
 }) {
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function sendOtp() {
-    const { data: passkeyData, error: passkeyError } = await auth.signIn.passkey({
-      autoFill: true,
-    })
+    console.log("Called sendOtp")
+    const checkEmailRes = await checkEmail(email)
 
-    if (passkeyData && !passkeyError) {
-      toast.success("Logged in with passkey!")
-      router.push("/dashboard")
+    if (checkEmailRes.error) {
+      toast.error(checkEmailRes.error)
       return
     }
 
+    if (!checkEmailRes.exists) {
+      toast.warning("No user with this email found, redirecting to signup.")
+      // redirect("/signup")
+      return
+    }
+
+    // const { data: passkeyData, error: passkeyError } = await auth.signIn.passkey({
+    //   autoFill: true,
+    //   fetchOptions: {
+    //     onRequest: () => {
+    //       setLoading(true)
+    //       console.log("call to signIn.passkey REQUEST")
+    //     },
+    //     onResponse: () => {
+    //       console.log("call to signIn.passkey RESPONSE")
+    //       setLoading(false)
+    //     },
+    //   },
+    // })
+    //
+    // console.log("signIn.passkey RESULT", { passkeyData, passkeyError })
+    //
+    // if (passkeyData && !passkeyError) {
+    //   toast.success("Logged in with passkey!")
+    //   router.push("/dashboard")
+    //   return
+    // }
+
+    console.log("Call to emailOtp.sendVerificationOtp")
     const { data, error } = await auth.emailOtp.sendVerificationOtp({
       type: "sign-in",
       email,
       fetchOptions: {
         onRequest: () => {
           setLoading(true)
+          console.log("call to emailTop.sendVerificationOtp REQUEST")
         },
         onResponse: () => {
+          console.log("call to emailTop.sendVerificationOtp RESPONSE")
           setLoading(false)
         },
       },
@@ -83,9 +121,12 @@ function EmailCard({
 
     if (data?.success) {
       onSend()
+      console.log("call to emailTop.sendVerificationOtp SUCCESS", { data, error })
       toast.success("OTP sent via email!")
       return
     }
+
+    console.log("call to emailTop.sendVerificationOtp ERROR", { data, error })
 
     if (error?.code === "INVALID_EMAIL") {
       toast.error("Invalid email")
@@ -99,7 +140,7 @@ function EmailCard({
   return (
     <div className="w-full flex flex-col gap-8">
       <form
-        className="grid gap-8"
+        className="grid gap-4"
         onSubmit={async (e) => {
           e.preventDefault()
           setLoading(true)
@@ -107,27 +148,42 @@ function EmailCard({
           setLoading(false)
         }}
       >
-        <div className="grid gap-3">
+        <div className="flex gap-2 flex-col items-start justify-start">
           <Label htmlFor="email">Email</Label>
-          <div className="flex gap-3 justify-start items-center min-w-90">
-            <Input
-              id="email"
-              type="email"
-              placeholder="mario.rossi@example.org"
-              className="bg-card w-auto"
-              required
-              onChange={(e) => {
-                onChange(e.target.value)
-              }}
-              value={email}
-              autoComplete="email webauthn"
-            />
-            <Button type="submit" disabled={loading} className="basis-9" size={"icon"}>
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-            </Button>
-          </div>
+          <Input
+            id="email"
+            type="email"
+            placeholder="mario.rossi@example.org"
+            className="bg-card w-auto"
+            required
+            onChange={(e) => {
+              onChange(e.target.value)
+            }}
+            value={email}
+            autoComplete="email webauthn"
+          />
         </div>
+        <Button type="submit" disabled={loading} className="basis-9 group">
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <>
+              <Mail size={16} />
+              Login with OTP
+            </>
+          )}
+        </Button>
       </form>
+      <FieldSeparator>Or continue with</FieldSeparator>
+      <Button type="submit" disabled={loading} className="basis-9 group" variant="secondary">
+        {loading ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <>
+            <Key size={16} /> Login with Passkey
+          </>
+        )}
+      </Button>
     </div>
   )
 }
