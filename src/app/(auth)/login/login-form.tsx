@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { FieldSeparator } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { auth } from "@/lib/auth"
-import { FieldSeparator } from "@/components/ui/field"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")

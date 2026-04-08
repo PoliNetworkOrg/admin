@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
+import { Card } from "@/components/ui/card"
 import { getServerSession } from "@/server/auth"
 import LoginForm from "./login-form"
-import { Card } from "@/components/ui/card"
 
 export default async function Page() {
   const { data: session } = await getServerSession()

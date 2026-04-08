@@ -1,6 +1,8 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Trash2Icon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,10 +15,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
-import { toast } from "sonner"
-import { Trash2Icon } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 export function DeletePasskey({ id }: { id: string }) {
   const router = useRouter()

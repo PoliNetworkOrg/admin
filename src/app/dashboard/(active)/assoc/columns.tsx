@@ -55,6 +55,6 @@ export const columns = [
   }),
 ]
 
-function RowActions({ row }: { row: Row<ParsedUser> }) {
+function RowActions({ row: _ }: { row: Row<ParsedUser> }) {
   return <div className="flex gap-2 justify-start items-center"></div>
 }

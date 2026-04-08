@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation"
+import { Header } from "@/components/header"
 import { getServerSession } from "@/server/auth"
 import { CanIAccess } from "./(auth)/login/can-i-access"
 import { WhatIs } from "./(auth)/login/what-is"
-import { Header } from "@/components/header"
 
 export default async function IndexPage() {
   const session = await getServerSession()

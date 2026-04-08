@@ -1,13 +1,13 @@
 "use client"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
+import { useState } from "react"
 import { CreateAssocUser } from "@/components/create-assoc-member"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
 import { columns } from "./columns"
-import { useState } from "react"
 
 type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]
 function sortByAssocNumber(users: ParsedUser[]) {
