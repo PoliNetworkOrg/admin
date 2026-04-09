@@ -30,9 +30,7 @@ export function DeletePasskey({ id }: { id: string }) {
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger>
-        <Button variant="destructive">Delete</Button>
-      </AlertDialogTrigger>
+      <AlertDialogTrigger render={<Button variant="destructive">Delete</Button>}></AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">

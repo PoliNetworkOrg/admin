@@ -31,9 +31,7 @@ export function SetName({ initialName }: { initialName?: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button variant="outline">Set name</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button variant="outline">Set name</Button>} />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Set your name</DialogTitle>
