@@ -16,7 +16,7 @@ export default function LoginForm() {
   const [sent, setSent] = useState(false)
 
   return (
-    <div className="flex flex-col gap-6 py-2 px-2">
+    <div className="flex flex-col gap-6">
       {!sent ? (
         <EmailCard email={email} onChange={(v) => setEmail(v)} onSend={() => setSent(true)} />
       ) : (
