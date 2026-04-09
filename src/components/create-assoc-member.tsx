@@ -1,5 +1,6 @@
 "use client"
 import { useMutation } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import {
@@ -15,7 +16,6 @@ import { useTRPC } from "@/lib/trpc/client"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
-import { useRouter } from "next/navigation"
 
 type Props = {
   trigger?: React.ReactNode
