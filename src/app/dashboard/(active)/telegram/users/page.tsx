@@ -1,6 +1,6 @@
 "use client"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, ExternalLinkIcon, Search, X } from "lucide-react"
+import { ArrowLeft, ExternalLinkIcon, Search, Star, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useSession } from "@/lib/auth"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
-import { stripChatId } from "@/lib/utils/telegram"
+import { fmtUser, stripChatId } from "@/lib/utils/telegram"
 import { AddRole } from "./add-role"
 import { DeleteGroupAdmin } from "./delete-group-admin"
 import { NewGroupAdmin } from "./new-group-admin"
@@ -29,6 +30,7 @@ export default function TgUsers() {
   const searchQuery = trpc.tg.users.getByUsername.queryOptions({ username: query })
   const { data: userData } = useQuery(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
   const { data: messages } = useQuery(trpc.tg.messages.getLastByUser.queryOptions({ userId: user?.id ?? 0 }))
+  const { data: auditLog } = useQuery(trpc.tg.auditLog.getById.queryOptions({ targetId: user?.id ?? 0 }))
 
   async function search(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -97,6 +99,12 @@ export default function TgUsers() {
               .map((m) => (
                 <GroupAdminCard groupAdminInfo={m} user={user} key={m.group.id} />
               ))}
+
+            {userData?.groupAdmin.length === 0 && (
+              <p className="bg-card rounded-lg p-3 italic text-muted-foreground text-sm">
+                This user is not group admin in any group.
+              </p>
+            )}
           </div>
 
           <p className="pt-6">Last messages:</p>
@@ -104,6 +112,24 @@ export default function TgUsers() {
             {messages?.messages?.map((m) => (
               <MessageCard message={m} key={`${m.chatId}-${m.messageId}`} />
             ))}
+
+            {messages?.messages?.length === 0 && (
+              <p className="bg-card rounded-lg p-3 italic text-muted-foreground text-sm">
+                No recent messages sent by this user
+              </p>
+            )}
+          </div>
+
+          <p className="pt-6">Audit log:</p>
+          <div className="grid grid-cols-3 py-2 gap-4">
+            {auditLog?.map((m) => (
+              <AuditLogCard log={m} key={`${m.id}-${m.type}`} />
+            ))}
+            {auditLog?.length === 0 && (
+              <p className="bg-card rounded-lg p-3 italic text-muted-foreground text-sm">
+                No audit log found for this user
+              </p>
+            )}
           </div>
         </>
       )}
@@ -113,15 +139,26 @@ export default function TgUsers() {
 
 type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
 function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRoles }) {
+  const sesh = useSession()
+  const seshUserId = sesh.data?.user.telegramId
+  const isSelf = seshUserId && seshUserId === user.id
+
   return (
     <Card className="w-fit min-w-120">
       <CardHeader>
-        <CardTitle>User ID: {user.id}</CardTitle>
+        <CardTitle>
+          User ID: {user.id}{" "}
+          {isSelf && (
+            <Badge>
+              <Star /> You
+            </Badge>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <p>
           <span className="text-muted-foreground">Name: </span>
-          {user.firstName} {user.lastName}
+          {user.firstName} {user.lastName ?? ""}
         </p>
         <p>
           <span className="text-muted-foreground">Username: </span>
@@ -143,8 +180,8 @@ function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRol
 type GroupAdminSingle = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["groupAdmin"][number]>
 function GroupAdminCard({ user, groupAdminInfo: m }: { user: NonNullable<User>; groupAdminInfo: GroupAdminSingle }) {
   return (
-    <Card key={m.group.id}>
-      <CardContent>
+    <Card>
+      <CardContent className="space-y-2">
         <p>
           {" "}
           <span className="text-muted-foreground">Chat: </span>
@@ -165,20 +202,17 @@ function GroupAdminCard({ user, groupAdminInfo: m }: { user: NonNullable<User>; 
 type Message = NonNullable<ApiOutput["tg"]["messages"]["getLastByUser"]["messages"]>[number]
 function MessageCard({ message: m }: { message: Message }) {
   return (
-    <Card key={`${m.messageId}-${m.chatId}`}>
-      <CardContent>
+    <Card>
+      <CardContent className="space-y-1">
         <p>
-          {" "}
           <span className="text-muted-foreground">Chat: </span>
           {m.group && <span>{m.group.title}</span>} [{m.chatId}]
         </p>
         <p>
-          {" "}
           <span className="text-muted-foreground">Message ID: </span>
           {m.messageId}
         </p>
         <p>
-          {" "}
           <span className="text-muted-foreground">Timestamp: </span>
           {m.timestamp.toLocaleString()}
         </p>
@@ -204,6 +238,49 @@ function MessageCard({ message: m }: { message: Message }) {
           </Button>
         </a>
       </CardFooter>
+    </Card>
+  )
+}
+
+type Log = NonNullable<ApiOutput["tg"]["auditLog"]["getById"]>[number]
+function AuditLogCard({ log: m }: { log: Log }) {
+  const trpc = useTRPC()
+
+  const { data: admin } = useQuery(trpc.tg.users.get.queryOptions({ userId: m.adminId }))
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{m.type}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Chat: </span>
+          {m.groupTitle && <span>{m.groupTitle}</span>} [{m.groupId}]
+        </p>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Admin ID: </span>
+          {admin && admin.user && fmtUser(admin.user)}
+        </p>
+        {m.createdAt && (
+          <p>
+            <span className="text-muted-foreground">Created: </span>
+            {m.createdAt.toLocaleString()}
+          </p>
+        )}
+        {m.until && (
+          <p>
+            <span className="text-muted-foreground">Until: </span>
+            {m.until.toLocaleString()}
+          </p>
+        )}
+        <p>
+          <span className="text-muted-foreground">Reason:</span>
+          {m.reason}
+        </p>
+      </CardContent>
     </Card>
   )
 }
