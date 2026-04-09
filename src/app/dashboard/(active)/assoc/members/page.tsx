@@ -1,10 +1,10 @@
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 import { Spinner } from "@/components/spinner"
 import { getQueryClient, trpc } from "@/lib/trpc/server"
 import { AssocTable } from "./table"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 
 export default async function AssocMembers() {
   const qc = getQueryClient()
