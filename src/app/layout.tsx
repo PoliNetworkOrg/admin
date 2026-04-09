@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Poppins, Geist } from "next/font/google"
+import { Geist, Poppins } from "next/font/google"
 import "@/index.css"
 import { HEADER_HEIGHT } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
