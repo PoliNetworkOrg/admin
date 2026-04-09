@@ -1,4 +1,4 @@
-import { Group, UsersRound } from "lucide-react"
+import { Group, Shield, UsersRound } from "lucide-react"
 import Link from "next/link"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -27,6 +27,18 @@ export default function TelegramIndex() {
                 Groups
               </CardTitle>
               <CardDescription>Search groups and get links</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/telegram/users">
+          <Card className="w-90 hover:bg-accent transition-colors">
+            <CardHeader>
+              <CardTitle className="flex gap-2 items-center">
+                <Shield size={20} />
+                Users
+              </CardTitle>
+              <CardDescription>Manage users roles and group admins</CardDescription>
             </CardHeader>
           </Card>
         </Link>
