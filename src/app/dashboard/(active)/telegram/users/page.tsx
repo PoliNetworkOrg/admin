@@ -15,6 +15,7 @@ import { stripChatId } from "@/lib/utils/telegram"
 import { AddRole } from "./add-role"
 import { DeleteGroupAdmin } from "./delete-group-admin"
 import { NewGroupAdmin } from "./new-group-admin"
+import { RemoveRole } from "./remove-role"
 
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 
@@ -85,7 +86,7 @@ export default function TgUsers() {
 
       {user && (
         <>
-          <UserInfoCard user={user} roles={userData?.roles} />
+          <UserInfoCard user={user} roles={userData?.roles ?? []} />
           <div className="pt-6 flex gap-4 items-center">
             <p>Admin in groups:</p>
             <NewGroupAdmin user={user} alreadyIn={userData?.groupAdmin.map((g) => g?.group.id ?? 0) ?? []} />
@@ -113,8 +114,7 @@ export default function TgUsers() {
 type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
 function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRoles }) {
   return (
-    <Card>
-      {" "}
+    <Card className="w-fit min-w-120">
       <CardHeader>
         <CardTitle>User ID: {user.id}</CardTitle>
       </CardHeader>
@@ -132,8 +132,9 @@ function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRol
           {roles ? roles.map((r) => <Badge key={r}>{r}</Badge>) : "N/A"}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="gap-2">
         <AddRole alreadyRoles={roles ?? []} user={user} />
+        <RemoveRole alreadyRoles={roles ?? []} user={user} />
       </CardFooter>
     </Card>
   )
