@@ -16,11 +16,11 @@ export default async function OnboardingLink() {
   return (
     <main className="grid grow place-content-center">
       <Card className="relative grid h-140 min-w-120 grow grid-rows-[5fr_auto_4fr] items-center">
-        <div className="flex flex-col gap-y-4 place-self-center justify-self-center">
+        <div className="flex flex-col gap-y-4 place-self-center justify-self-center items-center">
           <Image
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             src={loginSvg2}
-            width={200}
+            width={180}
             alt="insert credentials"
           />
           <div className="text-center">

@@ -211,9 +211,9 @@ function Timer({ ttl, timeLeft: pTimeLeft, onEnd }: { ttl: number; timeLeft: num
 
   return (
     <>
-      <Progress value={percentage} className="h-2 w-64">
-        <ProgressTrack>
-          <ProgressIndicator className={timeLeft < 31_000 ? "bg-red-600 dark:bg-red-400" : "bg-primary"} />
+      <Progress value={percentage} className="w-64">
+        <ProgressTrack className="h-2 bg-accent">
+          <ProgressIndicator className={timeLeft < 61_000 ? "bg-red-600 dark:bg-red-400" : "bg-primary"} />
         </ProgressTrack>
       </Progress>
       <span className="text-foreground/70 text-sm">
