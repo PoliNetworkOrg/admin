@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/shadcn"
 import { Input } from "./ui/input"
 
 export interface InputWithPrefixProps extends React.InputHTMLAttributes<HTMLInputElement> {

@@ -58,7 +58,7 @@ export function CreateAssocUser({ trigger }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetTrigger asChild>{trigger ?? <Button variant="outline">New Member</Button>}</SheetTrigger>
+      <SheetTrigger>{trigger ?? <Button variant="outline">New Member</Button>}</SheetTrigger>
       <SheetContent className="sm:max-w-[40rem]">
         <SheetHeader>
           <SheetTitle>New Assoc Member</SheetTitle>
@@ -124,7 +124,7 @@ export function CreateAssocUser({ trigger }: Props) {
             </div>
           </div>
           <SheetFooter className="mt-4">
-            <SheetClose asChild>
+            <SheetClose>
               <Button variant="secondary" disabled={isPending}>
                 Cancel
               </Button>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Poppins } from "next/font/google"
+import { Poppins, Geist } from "next/font/google"
 import "@/index.css"
 import { HEADER_HEIGHT } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -7,6 +7,9 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { TRPCReactProvider } from "@/lib/trpc/client"
 import { HydrateClient } from "@/lib/trpc/server"
+import { cn } from "@/lib/utils/shadcn"
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
 const desc = "PoliNetwork Admin Dashboard"
 
@@ -23,7 +26,7 @@ const poppins = Poppins({ weight: ["100", "200", "300", "400", "500", "600", "70
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={poppins.className}>
+    <html lang="en" suppressHydrationWarning className={cn(poppins.className, "font-sans", geist.variable)}>
       <body
         style={
           {

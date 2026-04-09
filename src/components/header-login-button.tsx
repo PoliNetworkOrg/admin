@@ -17,7 +17,7 @@ export function HeaderLoginButton() {
   if (data)
     return (
       <Button
-        variant="primary"
+        variant="default"
         className="rounded-lg basis-24"
         onClick={async () => {
           await auth.signOut()
@@ -32,7 +32,7 @@ export function HeaderLoginButton() {
     <Link href={"/login"} className="cursor-default">
       <Button
         disabled={pathname.startsWith("/login")}
-        variant="primary"
+        variant="default"
         className="rounded-lg"
         size={isMobile ? "icon" : "default"}
       >

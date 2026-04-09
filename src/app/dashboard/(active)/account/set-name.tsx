@@ -31,7 +31,7 @@ export function SetName({ initialName }: { initialName?: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button variant="outline">Set name</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -54,7 +54,7 @@ export function SetName({ initialName }: { initialName?: string }) {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
+            <DialogClose>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
             <Button type="submit">Save changes</Button>

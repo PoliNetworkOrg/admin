@@ -8,7 +8,7 @@ import { Code } from "@/components/code"
 import { InputWithPrefix } from "@/components/input-prefix"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
+import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { auth, useSession } from "@/lib/auth"
@@ -143,8 +143,8 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
       <Timer ttl={savedLink.ttl} timeLeft={timeLeft} onEnd={() => setExpired(true)} />
 
       <div className="flex items-center gap-2">
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
+        <Tooltip>
+          <TooltipTrigger delay={0}>
             <Button variant="outline">
               <a aria-label="open telegram bot" href={`tg://resolve?domain=${botUsername}`}>
                 Start the bot
@@ -211,11 +211,11 @@ function Timer({ ttl, timeLeft: pTimeLeft, onEnd }: { ttl: number; timeLeft: num
 
   return (
     <>
-      <Progress
-        value={percentage}
-        className="h-2 w-64"
-        indicatorClassname={timeLeft < 31_000 ? "bg-red-600 dark:bg-red-400" : "bg-primary"}
-      />
+      <Progress value={percentage} className="h-2 w-64">
+        <ProgressTrack>
+          <ProgressIndicator className={timeLeft < 31_000 ? "bg-red-600 dark:bg-red-400" : "bg-primary"} />
+        </ProgressTrack>
+      </Progress>
       <span className="text-foreground/70 text-sm">
         Time left:
         <span className="inline-block w-10 text-end">{Math.floor(timeLeft / 1000)}s</span>

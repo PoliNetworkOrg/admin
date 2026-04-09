@@ -3,7 +3,7 @@ import bigBlueSvg from "@/assets/svg/shapes/big-blue.svg"
 import bigTealSvg from "@/assets/svg/shapes/big-teal.svg"
 import looperSvg from "@/assets/svg/shapes/looper.svg"
 import smallBlueSvg from "@/assets/svg/shapes/small-blue.svg"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/shadcn"
 
 export type ShapeVariant = "big-blue" | "big-teal" | "small-blue" | "looper"
 

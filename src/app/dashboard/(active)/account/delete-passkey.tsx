@@ -30,7 +30,7 @@ export function DeletePasskey({ id }: { id: string }) {
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
+      <AlertDialogTrigger>
         <Button variant="destructive">Delete</Button>
       </AlertDialogTrigger>
       <AlertDialogContent size="sm">

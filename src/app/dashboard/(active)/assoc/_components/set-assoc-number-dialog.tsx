@@ -52,7 +52,7 @@ export function SetAssocNumberDialog({ userId, children }: { userId: string; chi
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogTrigger asChild>{children ?? <Button variant="outline">Set</Button>}</DialogTrigger>
+      <DialogTrigger>{children ?? <Button variant="outline">Set</Button>}</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Set Assoc Number</DialogTitle>
@@ -75,7 +75,7 @@ export function SetAssocNumberDialog({ userId, children }: { userId: string; chi
             />
           </div>
           <DialogFooter>
-            <DialogClose asChild>
+            <DialogClose>
               <Button disabled={isPending} variant="outline">
                 Cancel
               </Button>
