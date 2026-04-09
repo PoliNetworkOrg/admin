@@ -11,7 +11,7 @@ export default async function AssocMembers() {
   void qc.prefetchQuery(trpc.azure.members.getAll.queryOptions())
   return (
     <div className="container p-8">
-      <Link href="/dashboard/assoc" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
+      <Link href="/dashboard/azure" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
         <ArrowLeft size={16} /> Back
       </Link>
       <ErrorBoundary fallback={<div>Something went wrong</div>}>

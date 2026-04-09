@@ -12,7 +12,7 @@ export function AdminHeader() {
         <Link href="/dashboard" className="hover:underline">
           Home
         </Link>
-        <Link href="/dashboard/assoc" className="hover:underline">
+        <Link href="/dashboard/azure" className="hover:underline">
           Azure
         </Link>
       </nav>
