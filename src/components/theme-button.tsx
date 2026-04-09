@@ -5,8 +5,10 @@ import { Button } from "./ui/button"
 
 export function ThemeButton() {
   const { resolvedTheme, setTheme } = useTheme()
+
+  // TODO: remove disabled when light theme is ready
   return (
-    <Button size="icon" variant="ghost" onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}>
+    <Button disabled size="icon" variant="ghost" onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}>
       <SunIcon className="block dark:hidden" size={20} />
       <MoonIcon className="hidden dark:block" size={20} />
     </Button>

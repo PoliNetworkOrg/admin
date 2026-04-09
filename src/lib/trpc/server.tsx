@@ -1,8 +1,9 @@
 import "server-only" // <-- ensure this file cannot be imported from the client
 
 import { type AppRouter, TRPC_PATH } from "@polinetwork/backend"
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { createTRPCClient, httpLink } from "@trpc/client"
-import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query"
+import { createTRPCOptionsProxy, type TRPCQueryOptions } from "@trpc/tanstack-react-query"
 import { cache } from "react"
 import SuperJSON from "superjson"
 import { getBaseUrl } from "../utils"
@@ -16,3 +17,17 @@ export const trpc = createTRPCOptionsProxy<AppRouter>({
   }),
   queryClient: getQueryClient,
 })
+export function HydrateClient(props: { children: React.ReactNode }) {
+  const queryClient = getQueryClient()
+  return <HydrationBoundary state={dehydrate(queryClient)}>{props.children}</HydrationBoundary>
+}
+// biome-ignore lint/suspicious/noExplicitAny: tRPC docs
+export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
+  const queryClient = getQueryClient()
+  if (queryOptions.queryKey[1]?.type === "infinite") {
+    // biome-ignore lint/suspicious/noExplicitAny: tRPC docs
+    void queryClient.prefetchInfiniteQuery(queryOptions as any)
+  } else {
+    void queryClient.prefetchQuery(queryOptions)
+  }
+}

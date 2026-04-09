@@ -1,11 +1,12 @@
-import { GeistSans } from "geist/font/sans"
 import type { Metadata } from "next"
+import { Poppins } from "next/font/google"
 import "@/index.css"
-import { HEADER_HEIGHT, Header } from "@/components/header"
+import { HEADER_HEIGHT } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { TRPCReactProvider } from "@/lib/trpc/client"
+import { HydrateClient } from "@/lib/trpc/server"
 
 const desc = "PoliNetwork Admin Dashboard"
 
@@ -18,9 +19,11 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 }
 
+const poppins = Poppins({ weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"], subsets: ["latin"] })
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable}`}>
+    <html lang="en" suppressHydrationWarning className={poppins.className}>
       <body
         style={
           {
@@ -31,17 +34,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
-          storageKey="polinetwork_darkmode"
+          defaultTheme="dark"
+          // TODO: revert to the following when light theme is ready
+          // defaultTheme="system"
+          // enableSystem
+          // storageKey="polinetwork_darkmode"
           disableTransitionOnChange
         >
           <TooltipProvider>
             <TRPCReactProvider>
-              <div className="flex h-screen w-full flex-col items-center justify-start">
-                <Header />
-                {children}
-              </div>
+              <HydrateClient>
+                <div className="flex h-screen w-full flex-col items-center justify-start px-4 sm:px-8">{children}</div>
+              </HydrateClient>
             </TRPCReactProvider>
             <Toaster richColors position="bottom-center" />
           </TooltipProvider>
