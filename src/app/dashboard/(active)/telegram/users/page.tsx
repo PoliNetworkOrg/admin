@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLinkIcon, Search, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
 import { stripChatId } from "@/lib/utils/telegram"
+import { AddRole } from "./add-role"
 import { DeleteGroupAdmin } from "./delete-group-admin"
 import { NewGroupAdmin } from "./new-group-admin"
 
@@ -48,6 +50,7 @@ export default function TgUsers() {
       <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
         <ArrowLeft size={16} /> Back
       </Link>
+
       <form onSubmit={search} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
         <div className="flex gap-2 flex-col items-start justify-start">
           <Label htmlFor="email" className="text-base">
@@ -75,7 +78,6 @@ export default function TgUsers() {
               </Button>
             )}
           </div>
-          <span className="text-muted-foreground text-xs">Max results: 20</span>
         </div>
       </form>
 
@@ -83,101 +85,124 @@ export default function TgUsers() {
 
       {user && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle>User ID: {user.id}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>
-                <span className="text-muted-foreground">Name: </span>
-                {user.firstName} {user.lastName}
-              </p>
-              <p>
-                <span className="text-muted-foreground">Username: </span>
-                {user.username}
-              </p>
-              <p>
-                <span className="text-muted-foreground">Roles: </span>
-                {userData?.roles ? userData.roles.join(", ") : 0}
-              </p>
-            </CardContent>
-          </Card>
-
+          <UserInfoCard user={user} roles={userData?.roles} />
           <div className="pt-6 flex gap-4 items-center">
             <p>Admin in groups:</p>
             <NewGroupAdmin user={user} alreadyIn={userData?.groupAdmin.map((g) => g?.group.id ?? 0) ?? []} />
           </div>
           <div className="grid grid-cols-3 py-2 gap-4">
-            {userData?.groupAdmin.map(
-              (m, idx) =>
-                m && (
-                  <Card key={m.group.id ?? `ga-${idx}`}>
-                    <CardContent>
-                      <p>
-                        {" "}
-                        <span className="text-muted-foreground">Chat: </span>
-                        {m.group && <span>{m.group.title}</span>} [{m.group.id}]
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Added By: </span>
-                        {m.addedBy.firstName} {m.addedBy.username ? `@${m.addedBy.username}` : ""}
-                      </p>
-                    </CardContent>
-                    <CardFooter className="justify-end gap-2">
-                      <DeleteGroupAdmin userId={user.id} chatId={m.group.id} />
-                    </CardFooter>
-                  </Card>
-                )
-            )}
+            {userData?.groupAdmin
+              .filter((m) => m !== null && m !== undefined)
+              .map((m) => (
+                <GroupAdminCard groupAdminInfo={m} user={user} key={m.group.id} />
+              ))}
           </div>
 
           <p className="pt-6">Last messages:</p>
           <div className="grid grid-cols-3 py-2 gap-4">
             {messages?.messages?.map((m) => (
-              <Card key={`${m.messageId}-${m.chatId}`}>
-                <CardContent>
-                  <p>
-                    {" "}
-                    <span className="text-muted-foreground">Chat: </span>
-                    {m.group && <span>{m.group.title}</span>} [{m.chatId}]
-                  </p>
-                  <p>
-                    {" "}
-                    <span className="text-muted-foreground">Message ID: </span>
-                    {m.messageId}
-                  </p>
-                  <p>
-                    {" "}
-                    <span className="text-muted-foreground">Timestamp: </span>
-                    {m.timestamp.toLocaleString()}
-                  </p>
-                  <span className="text-muted-foreground">Content:</span>
-                  <p className="pl-3">{m.message}</p>
-                </CardContent>
-                <CardFooter className="justify-end gap-2">
-                  {m.group?.inviteLink && (
-                    <a href={m.group.inviteLink} rel="noopener noreferral" target="_blank" aria-label="Join group">
-                      <Button variant="outline">
-                        <ExternalLinkIcon size={20} /> Join Chat
-                      </Button>
-                    </a>
-                  )}
-                  <a
-                    href={`https://t.me/c/${stripChatId(m.chatId)}/${m.messageId}`}
-                    rel="noopener noreferral"
-                    target="_blank"
-                    aria-label="Open message in chat"
-                  >
-                    <Button variant="outline">
-                      <ExternalLinkIcon size={20} /> Open
-                    </Button>
-                  </a>
-                </CardFooter>
-              </Card>
+              <MessageCard message={m} key={`${m.chatId}-${m.messageId}`} />
             ))}
           </div>
         </>
       )}
     </div>
+  )
+}
+
+type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
+function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRoles }) {
+  return (
+    <Card>
+      {" "}
+      <CardHeader>
+        <CardTitle>User ID: {user.id}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p>
+          <span className="text-muted-foreground">Name: </span>
+          {user.firstName} {user.lastName}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Username: </span>
+          {user.username}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Roles: </span>
+          {roles ? roles.map((r) => <Badge key={r}>{r}</Badge>) : "N/A"}
+        </div>
+      </CardContent>
+      <CardFooter>
+        <AddRole alreadyRoles={roles ?? []} user={user} />
+      </CardFooter>
+    </Card>
+  )
+}
+
+type GroupAdminSingle = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["groupAdmin"][number]>
+function GroupAdminCard({ user, groupAdminInfo: m }: { user: NonNullable<User>; groupAdminInfo: GroupAdminSingle }) {
+  return (
+    <Card key={m.group.id}>
+      <CardContent>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Chat: </span>
+          {m.group && <span>{m.group.title}</span>} [{m.group.id}]
+        </p>
+        <p>
+          <span className="text-muted-foreground">Added By: </span>
+          {m.addedBy.firstName} {m.addedBy.username ? `@${m.addedBy.username}` : ""}
+        </p>
+      </CardContent>
+      <CardFooter className="justify-end gap-2">
+        <DeleteGroupAdmin userId={user.id} chatId={m.group.id} />
+      </CardFooter>
+    </Card>
+  )
+}
+
+type Message = NonNullable<ApiOutput["tg"]["messages"]["getLastByUser"]["messages"]>[number]
+function MessageCard({ message: m }: { message: Message }) {
+  return (
+    <Card key={`${m.messageId}-${m.chatId}`}>
+      <CardContent>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Chat: </span>
+          {m.group && <span>{m.group.title}</span>} [{m.chatId}]
+        </p>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Message ID: </span>
+          {m.messageId}
+        </p>
+        <p>
+          {" "}
+          <span className="text-muted-foreground">Timestamp: </span>
+          {m.timestamp.toLocaleString()}
+        </p>
+        <span className="text-muted-foreground">Content:</span>
+        <p className="pl-3">{m.message}</p>
+      </CardContent>
+      <CardFooter className="justify-end gap-2">
+        {m.group?.inviteLink && (
+          <a href={m.group.inviteLink} rel="noopener noreferral" target="_blank" aria-label="Join group">
+            <Button variant="outline">
+              <ExternalLinkIcon size={20} /> Join Chat
+            </Button>
+          </a>
+        )}
+        <a
+          href={`https://t.me/c/${stripChatId(m.chatId)}/${m.messageId}`}
+          rel="noopener noreferral"
+          target="_blank"
+          aria-label="Open message in chat"
+        >
+          <Button variant="outline">
+            <ExternalLinkIcon size={20} /> Open
+          </Button>
+        </a>
+      </CardFooter>
+    </Card>
   )
 }
