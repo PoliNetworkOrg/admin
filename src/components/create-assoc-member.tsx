@@ -15,6 +15,7 @@ import { useTRPC } from "@/lib/trpc/client"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
+import { useRouter } from "next/navigation"
 
 type Props = {
   trigger?: React.ReactNode
@@ -27,6 +28,7 @@ export function CreateAssocUser({ trigger }: Props) {
   const [assocNumber, setAssocNumber] = useState<string>("")
   const [sendTo, setSendTo] = useState<string>("")
   const trpc = useTRPC()
+  const router = useRouter()
 
   const { mutateAsync, isPending } = useMutation(trpc.azure.members.create.mutationOptions())
 
@@ -50,6 +52,8 @@ export function CreateAssocUser({ trigger }: Props) {
 
     console.log("Created user", res)
     toast.success(`User created, email: ${res.email}`, { duration: 10_000 })
+    router.refresh()
+    handleOpenChange(false)
   }
 
   return (
@@ -71,6 +75,7 @@ export function CreateAssocUser({ trigger }: Props) {
                 id="first-name"
                 placeholder="Mario"
                 value={firstName}
+                required
                 onChange={(e) => setFirstName(e.target.value)}
               />
             </div>
@@ -83,6 +88,7 @@ export function CreateAssocUser({ trigger }: Props) {
                 id="last-name"
                 placeholder="Rossi"
                 value={lastName}
+                required
                 onChange={(e) => setLastName(e.target.value)}
               />
             </div>
@@ -98,6 +104,7 @@ export function CreateAssocUser({ trigger }: Props) {
                 id="assoc-num"
                 placeholder="0"
                 value={assocNumber}
+                required
                 onChange={(e) => setAssocNumber(e.target.value)}
               />
             </div>
@@ -111,6 +118,7 @@ export function CreateAssocUser({ trigger }: Props) {
                 id="send-to"
                 placeholder="mario.rossi@mail.polimi.it"
                 value={sendTo}
+                required
                 onChange={(e) => setSendTo(e.target.value)}
               />
             </div>
