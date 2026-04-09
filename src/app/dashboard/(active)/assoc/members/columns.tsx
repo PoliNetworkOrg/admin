@@ -1,7 +1,6 @@
 "use client"
 import { createColumnHelper, type Row } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import type { ApiOutput } from "@/lib/trpc/types"
 import { SetAssocNumberDialog } from "./_components/set-assoc-number-dialog"
 
@@ -15,15 +14,7 @@ export const columns = [
     footer: (props) => props.column.id,
     cell: ({ getValue, row }) => {
       const value = getValue()
-      return value ? (
-        <span>{value}</span>
-      ) : (
-        <SetAssocNumberDialog userId={row.original.id}>
-          <Button size="sm" variant="outline">
-            Set
-          </Button>
-        </SetAssocNumberDialog>
-      )
+      return value ? <span>{value}</span> : <SetAssocNumberDialog userId={row.original.id} />
     },
   }),
   ch.accessor("displayName", {

@@ -17,11 +17,7 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 
-type Props = {
-  trigger?: React.ReactNode
-}
-
-export function CreateAssocUser({ trigger }: Props) {
+export function CreateAssocUser() {
   const [open, setOpen] = useState<boolean>(false)
   const [firstName, setFirstName] = useState<string>("")
   const [lastName, setLastName] = useState<string>("")
@@ -58,17 +54,16 @@ export function CreateAssocUser({ trigger }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetTrigger>{trigger ?? <Button variant="outline">New Member</Button>}</SheetTrigger>
-      <SheetContent className="sm:max-w-[40rem]">
-        <SheetHeader>
-          <SheetTitle>New Assoc Member</SheetTitle>
+      <SheetTrigger render={<Button variant="outline">New Member</Button>}></SheetTrigger>
+      <SheetContent className="px-6 max-w-120">
+        <SheetHeader className="px-0">
+          <SheetTitle>Create new member account</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="first-name">First Name</Label>
               <Input
-                className="max-w-sm"
                 type="text"
                 autoFocus
                 autoComplete="off"
@@ -82,7 +77,6 @@ export function CreateAssocUser({ trigger }: Props) {
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="last-name">Last Name</Label>
               <Input
-                className="max-w-sm"
                 type="text"
                 autoComplete="off"
                 id="last-name"
@@ -96,7 +90,6 @@ export function CreateAssocUser({ trigger }: Props) {
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="assoc-num">Member Number</Label>
               <Input
-                className="max-w-sm"
                 type="text"
                 autoComplete="off"
                 pattern="\d*"
@@ -112,7 +105,6 @@ export function CreateAssocUser({ trigger }: Props) {
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="send-to">Send Welcome Email to</Label>
               <Input
-                className="max-w-sm"
                 type="email"
                 autoComplete="off"
                 id="send-to"
@@ -123,9 +115,9 @@ export function CreateAssocUser({ trigger }: Props) {
               />
             </div>
           </div>
-          <SheetFooter className="mt-4">
+          <SheetFooter className="mt-4 flex flex-row justify-end items-center">
             <SheetClose>
-              <Button variant="secondary" disabled={isPending}>
+              <Button variant="ghost" disabled={isPending}>
                 Cancel
               </Button>
             </SheetClose>

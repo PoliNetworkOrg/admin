@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { useTRPC } from "@/lib/trpc/client"
 import { wait } from "@/lib/utils"
 
-export function SetAssocNumberDialog({ userId, children }: { userId: string; children?: React.ReactNode }) {
+export function SetAssocNumberDialog({ userId }: { userId: string }) {
   const [value, setValue] = useState<string>("")
   const [open, setOpen] = useState<boolean>(false)
   const trpc = useTRPC()
@@ -52,7 +52,13 @@ export function SetAssocNumberDialog({ userId, children }: { userId: string; chi
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogTrigger>{children ?? <Button variant="outline">Set</Button>}</DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button size="sm" variant="outline">
+            Set
+          </Button>
+        }
+      />
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Set Assoc Number</DialogTitle>

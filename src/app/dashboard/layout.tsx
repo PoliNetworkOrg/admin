@@ -1,6 +1,5 @@
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { AdminHeader } from "@/components/admin-header"
 import { getQueryClient, trpc } from "@/lib/trpc/server"
 import { getServerSession } from "@/server/auth"
 
@@ -19,8 +18,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!roles || roles.length === 0) redirect("/onboarding/no-role")
   if (roles.includes("creator")) redirect("/onboarding/unauthorized")
 
-  const cookieStore = await cookies()
-  const defaultOpen = cookieStore.get("sidebar:state")?.value === "true"
-
-  return <SidebarProvider defaultOpen={defaultOpen}>{children}</SidebarProvider>
+  return (
+    <>
+      <AdminHeader />
+      {children}
+    </>
+  )
 }
