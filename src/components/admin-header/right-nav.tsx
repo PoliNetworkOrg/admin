@@ -25,7 +25,7 @@ export function RightNav() {
           <Button variant="ghost" size="icon" className="rounded-full">
             <Avatar size="lg">
               <AvatarFallback className="text-foreground text-base">
-                {data.user.name ? getInitials(data.user.name) : data.user.email.slice(2)}
+                {data.user.name ? getInitials(data.user.name) : data.user.email.slice(0, 2)}
               </AvatarFallback>
             </Avatar>
           </Button>

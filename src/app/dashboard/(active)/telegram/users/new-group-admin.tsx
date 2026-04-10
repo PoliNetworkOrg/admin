@@ -104,14 +104,15 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
         )}
 
         <form onSubmit={searchGroup} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
-          <div className="flex gap-2 flex-col items-start justify-start">
-            <Label htmlFor="email" className="text-base">
+          <div className="flex gap-2 flex-col items-start justify-start w-full">
+            <Label htmlFor="group-query" className="text-base">
               Search Group
             </Label>
-            <div className="flex gap-2 items-center justify-start">
+            <div className="flex gap-2 items-center justify-start w-full">
               <Input
                 id="group-query"
                 type="text"
+                name="group-query"
                 placeholder="Group name"
                 className="bg-card w-auto"
                 disabled={groups.length > 0}
@@ -124,8 +125,9 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
               <Button type="submit" size="icon">
                 <Search />
               </Button>
+              <div className="grow" />
               {groups.length > 0 && (
-                <Button variant="outline" onClick={reset}>
+                <Button variant="outline" onClick={reset} className="justify-self-end">
                   <X />
                   Reset
                 </Button>
@@ -141,7 +143,7 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
             onValueChange={(v) => setSelectedGroup(v)}
             disabled={groups.length === 0}
           >
-            <SelectTrigger className="w-full max-w-48">{selectedGroup?.title ?? "Select a group"}</SelectTrigger>
+            <SelectTrigger className="w-full">{selectedGroup?.title ?? "Select a group"}</SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {groups.map((item) => (

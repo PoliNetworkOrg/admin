@@ -1,7 +1,7 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Trash2Icon } from "lucide-react"
+import { Trash2, Trash2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -55,7 +55,14 @@ export function DeleteGroupAdmin({ userId, chatId }: { userId: number; chatId: n
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogTrigger render={<Button variant="destructive">Delete</Button>}></AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={
+          <Button variant="destructive">
+            <Trash2 />
+            Delete
+          </Button>
+        }
+      ></AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">

@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLinkIcon, Search, Star, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Code } from "@/components/code"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -93,7 +94,7 @@ export default function TgUsers() {
             <p>Admin in groups:</p>
             <NewGroupAdmin user={user} alreadyIn={userData?.groupAdmin.map((g) => g?.group.id ?? 0) ?? []} />
           </div>
-          <div className="grid grid-cols-3 py-2 gap-4">
+          <div className="grid grid-cols-4 py-2 gap-4">
             {userData?.groupAdmin
               .filter((m) => m !== null && m !== undefined)
               .map((m) => (
@@ -181,11 +182,13 @@ type GroupAdminSingle = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["
 function GroupAdminCard({ user, groupAdminInfo: m }: { user: NonNullable<User>; groupAdminInfo: GroupAdminSingle }) {
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>{m.group.title}</CardTitle>
+      </CardHeader>
       <CardContent className="space-y-2">
         <p>
-          {" "}
-          <span className="text-muted-foreground">Chat: </span>
-          {m.group && <span>{m.group.title}</span>} [{m.group.id}]
+          <span className="text-muted-foreground">Chat ID: </span>
+          <Code copyOnClick>{m.group.id}</Code> / <Code copyOnClick>{stripChatId(m.group.id)}</Code>
         </p>
         <p>
           <span className="text-muted-foreground">Added By: </span>
@@ -253,33 +256,29 @@ function AuditLogCard({ log: m }: { log: Log }) {
       <CardHeader>
         <CardTitle>{m.type}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid grid-cols-[auto_1fr] gap-x-2">
+        <span className="text-muted-foreground">Chat: </span>
         <p>
-          {" "}
-          <span className="text-muted-foreground">Chat: </span>
           {m.groupTitle && <span>{m.groupTitle}</span>} [{m.groupId}]
         </p>
-        <p>
-          {" "}
-          <span className="text-muted-foreground">Admin ID: </span>
-          {admin && admin.user && fmtUser(admin.user)}
-        </p>
+        <span className="text-muted-foreground">Admin ID: </span>
+        <p>{admin?.user && fmtUser(admin.user)}</p>
+
         {m.createdAt && (
-          <p>
+          <>
             <span className="text-muted-foreground">Created: </span>
-            {m.createdAt.toLocaleString()}
-          </p>
+            <p>{m.createdAt.toLocaleString()}</p>
+          </>
         )}
+
         {m.until && (
-          <p>
+          <>
             <span className="text-muted-foreground">Until: </span>
-            {m.until.toLocaleString()}
-          </p>
+            <p>{m.until.toLocaleString()}</p>
+          </>
         )}
-        <p>
-          <span className="text-muted-foreground">Reason:</span>
-          {m.reason}
-        </p>
+        <span className="text-muted-foreground">Reason:</span>
+        {m.reason ? <p>{m.reason}</p> : <p className="text-muted-foreground">N/A</p>}
       </CardContent>
     </Card>
   )
