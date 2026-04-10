@@ -1,6 +1,6 @@
 "use client"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Search, X } from "lucide-react"
+import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -25,9 +25,20 @@ export default function TgUsers() {
 
   const qc = useQueryClient()
   const searchQuery = trpc.tg.users.getByUsername.queryOptions({ username: query })
-  const { data: userData } = useQuery(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
-  const { data: messages } = useQuery(trpc.tg.messages.getLastByUser.queryOptions({ userId: user?.id ?? 0 }))
-  const { data: auditLog } = useQuery(trpc.tg.auditLog.getById.queryOptions({ targetId: user?.id ?? 0 }))
+  const { data: userData, refetch: refetch1 } = useQuery(
+    trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 })
+  )
+  const { data: messages, refetch: refetch2 } = useQuery(
+    trpc.tg.messages.getLastByUser.queryOptions({ userId: user?.id ?? 0 })
+  )
+  const { data: auditLog, refetch: refetch3 } = useQuery(
+    trpc.tg.auditLog.getById.queryOptions({ targetId: user?.id ?? 0 })
+  )
+
+  async function refetch() {
+    await Promise.all([refetch1(), refetch2(), refetch3])
+    toast.success("Reloaded correctly")
+  }
 
   async function search(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -77,6 +88,12 @@ export default function TgUsers() {
                 Reset
               </Button>
             )}
+            {user && (
+              <Button variant="secondary" onClick={refetch}>
+                <RefreshCcw />
+                Refresh
+              </Button>
+            )}
           </div>
         </div>
       </form>
@@ -104,7 +121,7 @@ export default function TgUsers() {
             )}
           </div>
 
-          <p className="pt-6">Last messages:</p>
+          <p className="pt-6">Last messages (max 12):</p>
           <div className="grid grid-cols-3 py-2 gap-4">
             {messages?.messages?.map((m) => (
               <MessageCard message={m} key={`${m.chatId}-${m.messageId}`} />
