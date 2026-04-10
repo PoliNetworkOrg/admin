@@ -1,23 +1,19 @@
 "use client"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, ExternalLinkIcon, Search, Star, X } from "lucide-react"
+import { ArrowLeft, Search, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Code } from "@/components/code"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useSession } from "@/lib/auth"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
-import { fmtUser, stripChatId } from "@/lib/utils/telegram"
-import { AddRole } from "./add-role"
-import { DeleteGroupAdmin } from "./delete-group-admin"
+import { AuditLogCard } from "./card-audit-log"
+import { GroupAdminCard } from "./card-group-admin"
+import { MessageCard } from "./card-message"
+import { UserInfoCard } from "./card-user-info"
 import { NewGroupAdmin } from "./new-group-admin"
-import { RemoveRole } from "./remove-role"
 
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 
@@ -135,151 +131,5 @@ export default function TgUsers() {
         </>
       )}
     </div>
-  )
-}
-
-type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
-function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRoles }) {
-  const sesh = useSession()
-  const seshUserId = sesh.data?.user.telegramId
-  const isSelf = seshUserId && seshUserId === user.id
-
-  return (
-    <Card className="w-fit min-w-120">
-      <CardHeader>
-        <CardTitle>
-          User ID: {user.id}{" "}
-          {isSelf && (
-            <Badge>
-              <Star /> You
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p>
-          <span className="text-muted-foreground">Name: </span>
-          {user.firstName} {user.lastName ?? ""}
-        </p>
-        <p>
-          <span className="text-muted-foreground">Username: </span>
-          {user.username}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Roles: </span>
-          {roles ? roles.map((r) => <Badge key={r}>{r}</Badge>) : "N/A"}
-        </div>
-      </CardContent>
-      <CardFooter className="gap-2">
-        <AddRole alreadyRoles={roles ?? []} user={user} />
-        <RemoveRole alreadyRoles={roles ?? []} user={user} />
-      </CardFooter>
-    </Card>
-  )
-}
-
-type GroupAdminSingle = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["groupAdmin"][number]>
-function GroupAdminCard({ user, groupAdminInfo: m }: { user: NonNullable<User>; groupAdminInfo: GroupAdminSingle }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{m.group.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p>
-          <span className="text-muted-foreground">Chat ID: </span>
-          <Code copyOnClick>{m.group.id}</Code> / <Code copyOnClick>{stripChatId(m.group.id)}</Code>
-        </p>
-        <p>
-          <span className="text-muted-foreground">Added By: </span>
-          {m.addedBy.firstName} {m.addedBy.username ? `@${m.addedBy.username}` : ""}
-        </p>
-      </CardContent>
-      <CardFooter className="justify-end gap-2">
-        <DeleteGroupAdmin userId={user.id} chatId={m.group.id} />
-      </CardFooter>
-    </Card>
-  )
-}
-
-type Message = NonNullable<ApiOutput["tg"]["messages"]["getLastByUser"]["messages"]>[number]
-function MessageCard({ message: m }: { message: Message }) {
-  return (
-    <Card>
-      <CardContent className="space-y-1">
-        <p>
-          <span className="text-muted-foreground">Chat: </span>
-          {m.group && <span>{m.group.title}</span>} [{m.chatId}]
-        </p>
-        <p>
-          <span className="text-muted-foreground">Message ID: </span>
-          {m.messageId}
-        </p>
-        <p>
-          <span className="text-muted-foreground">Timestamp: </span>
-          {m.timestamp.toLocaleString()}
-        </p>
-        <span className="text-muted-foreground">Content:</span>
-        <p className="pl-3">{m.message}</p>
-      </CardContent>
-      <CardFooter className="justify-end gap-2">
-        {m.group?.inviteLink && (
-          <a href={m.group.inviteLink} rel="noopener noreferral" target="_blank" aria-label="Join group">
-            <Button variant="outline">
-              <ExternalLinkIcon size={20} /> Join Chat
-            </Button>
-          </a>
-        )}
-        <a
-          href={`https://t.me/c/${stripChatId(m.chatId)}/${m.messageId}`}
-          rel="noopener noreferral"
-          target="_blank"
-          aria-label="Open message in chat"
-        >
-          <Button variant="outline">
-            <ExternalLinkIcon size={20} /> Open
-          </Button>
-        </a>
-      </CardFooter>
-    </Card>
-  )
-}
-
-type Log = NonNullable<ApiOutput["tg"]["auditLog"]["getById"]>[number]
-function AuditLogCard({ log: m }: { log: Log }) {
-  const trpc = useTRPC()
-
-  const { data: admin } = useQuery(trpc.tg.users.get.queryOptions({ userId: m.adminId }))
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{m.type}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-[auto_1fr] gap-x-2">
-        <span className="text-muted-foreground">Chat: </span>
-        <p>
-          {m.groupTitle && <span>{m.groupTitle}</span>} [{m.groupId}]
-        </p>
-        <span className="text-muted-foreground">Admin ID: </span>
-        <p>{admin?.user && fmtUser(admin.user)}</p>
-
-        {m.createdAt && (
-          <>
-            <span className="text-muted-foreground">Created: </span>
-            <p>{m.createdAt.toLocaleString()}</p>
-          </>
-        )}
-
-        {m.until && (
-          <>
-            <span className="text-muted-foreground">Until: </span>
-            <p>{m.until.toLocaleString()}</p>
-          </>
-        )}
-        <span className="text-muted-foreground">Reason:</span>
-        {m.reason ? <p>{m.reason}</p> : <p className="text-muted-foreground">N/A</p>}
-      </CardContent>
-    </Card>
   )
 }
