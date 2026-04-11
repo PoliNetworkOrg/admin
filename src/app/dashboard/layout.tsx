@@ -18,6 +18,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!roles || roles.length === 0) redirect("/onboarding/no-role")
   if (roles.includes("creator")) redirect("/onboarding/unauthorized")
 
+  // temp until we have route-based permissions check
+  if (roles.includes("owner") || roles.includes("direttivo") || roles.includes("president"))
+    redirect("/onboarding/unauthorized")
+
   return (
     <>
       <AdminHeader />
