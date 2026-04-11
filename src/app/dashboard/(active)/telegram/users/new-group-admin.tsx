@@ -38,7 +38,7 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
   const [groups, setGroups] = useState<Groups>([])
   const [selectedGroup, setSelectedGroup] = useState<Groups[number] | null>(null)
 
-  const queryOpts = trpc.tg.groups.search.queryOptions({ query: groupQuery, limit: 20 })
+  const queryOpts = trpc.tg.groups.search.queryOptions({ query: groupQuery, limit: 20, showHidden: true })
 
   async function searchGroup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
