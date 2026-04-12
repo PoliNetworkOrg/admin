@@ -1,6 +1,6 @@
 "use client"
 
-import { RefreshCcw, Search, X } from "lucide-react"
+import { RefreshCcw, Search } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 export function SearchInput() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const search = searchParams.get("q")
+  const _search = searchParams.get("q")
   const [value, setValue] = useState(searchParams.get("q") ?? "")
 
   const handleSearch = () => {

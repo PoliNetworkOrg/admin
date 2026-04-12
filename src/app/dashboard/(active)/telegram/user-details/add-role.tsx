@@ -1,8 +1,6 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Search, X } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Plus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +18,7 @@ import {
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
 import { addUserRole } from "@/server/actions/users"
-import type { ApiOutput, TgUser, TgUserRole } from "@/server/trpc/types"
+import type { TgUser, TgUserRole } from "@/server/trpc/types"
 
 const ARRAY_USER_ROLES = [
   USER_ROLE.ADMIN,
