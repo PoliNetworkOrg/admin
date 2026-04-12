@@ -32,7 +32,7 @@ export function DeleteGrant({ userId }: { userId: number }) {
 
   async function interrupt() {
     if (!removerId) return toast.error("Invalid session, try to reload the page")
-    const { error } = await mutateAsync({ userId, interruptedById: removerId })
+    const { error } = await mutateAsync({ userId, interruptedById: removerId, sendTgLog: true })
 
     if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
     else if (error === "UNAUTHORIZED") toast.error("You don't have enought permission")

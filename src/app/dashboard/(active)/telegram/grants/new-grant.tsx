@@ -60,6 +60,7 @@ export function NewGrant() {
       setUser(null)
       setStartDate(undefined)
       setEndDate(undefined)
+      setReason("")
       qc.invalidateQueries(trpc.tg.grants.getOngoing.queryOptions())
       if (user) qc.invalidateQueries(trpc.tg.grants.checkUser.queryOptions({ userId: user.id }))
     }
@@ -88,6 +89,7 @@ export function NewGrant() {
       since: startDate,
       until: endDate,
       reason: reason || undefined,
+      sendTgLog: true,
     })
 
     if (res.error === "UNAUTHORIZED") toast.error("You don't have permission to create grants.")
