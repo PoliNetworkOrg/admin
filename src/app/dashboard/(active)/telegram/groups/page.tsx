@@ -1,5 +1,5 @@
 "use client"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Copy, Pen, Search, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -19,8 +19,9 @@ export default function TgGroups() {
   const trpc = useTRPC()
   const qc = useQueryClient()
   const queryOpts = trpc.tg.groups.search.queryOptions({ query, limit: 20, showHidden: true })
+  const { data: allGroups, isLoading } = useQuery(trpc.tg.groups.getAll.queryOptions())
 
-  const [rows, setRows] = useState<Groups>([])
+  const [rows, setRows] = useState<Groups>(!isLoading ? (allGroups ?? []) : [])
 
   async function search() {
     const res = await qc.fetchQuery(queryOpts)
@@ -42,7 +43,7 @@ export default function TgGroups() {
   }
 
   function reset() {
-    setRows([])
+    setRows(allGroups ?? [])
     setQuery("")
   }
 
