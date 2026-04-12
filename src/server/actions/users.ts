@@ -6,6 +6,10 @@ export async function getUserInfo(userId: number) {
   return (await trpc.tg.users.get.query({ userId })).user ?? null
 }
 
+export async function getUserRoles(userId: number) {
+  return (await trpc.tg.permissions.getRoles.query({ userId })) ?? null
+}
+
 export async function searchUserInfo(username: string) {
   return (await trpc.tg.users.getByUsername.query({ username })).user ?? null
 }
