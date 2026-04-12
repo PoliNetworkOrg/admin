@@ -1,12 +1,12 @@
 "use client"
 import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
-import { startTransition, useActionState, useState } from "react"
+import { Suspense, startTransition, useActionState, useState } from "react"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getUser } from "@/server/actions/get-user"
+import { searchUser } from "@/server/actions/get-user"
 import { AuditLogCard } from "./card-audit-log"
 import { GroupAdminCard } from "./card-group-admin"
 import { MessageCard } from "./card-message"
@@ -14,11 +14,11 @@ import { UserGrantCard } from "./card-user-grant"
 import { UserInfoCard } from "./card-user-info"
 import { NewGroupAdmin } from "./new-group-admin"
 
-type Data = Awaited<ReturnType<typeof getUser>>
+type Data = Awaited<ReturnType<typeof searchUser>>
 
 export default function TgUsers() {
   const [username, setUsername] = useState("")
-  const [data, action, pending] = useActionState<Data | null>(() => (username ? getUser(username) : null), null)
+  const [data, action, pending] = useActionState<Data | null>(() => (username ? searchUser(username) : null), null)
 
   function reset() {
     setUsername("")
@@ -113,7 +113,9 @@ export default function TgUsers() {
           <p className="pt-6">Audit log:</p>
           <div className="grid grid-cols-3 py-2 gap-4">
             {data.audits.map((m) => (
-              <AuditLogCard log={m} key={`${m.id}-${m.type}`} />
+              <Suspense fallback={null} key={`${m.id}-${m.type}`}>
+                <AuditLogCard log={m} />
+              </Suspense>
             ))}
             {data.audits.length === 0 && (
               <p className="bg-card rounded-lg p-3 italic text-muted-foreground text-sm">
