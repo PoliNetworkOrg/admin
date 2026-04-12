@@ -3,6 +3,10 @@
 import { trpc } from "../trpc"
 import type { ApiInput } from "../trpc/types"
 
+export async function getUserGrant(userId: number) {
+  return await trpc.tg.grants.checkUser.query({ userId })
+}
+
 export async function createGrant(input: ApiInput["tg"]["grants"]["create"]) {
   return await trpc.tg.grants.create.mutate(input)
 }

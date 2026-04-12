@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { useSession } from "@/lib/auth"
 import { interruptGrant } from "@/server/actions/grants"
 
-export function DeleteGrant({ userId }: { userId: number }) {
+export function DeleteGrant({ userId, onDelete }: { userId: number; onDelete(): void }) {
   const sesh = useSession()
   const removerId = sesh.data?.user.telegramId
 
@@ -37,6 +37,7 @@ export function DeleteGrant({ userId }: { userId: number }) {
     else {
       toast.success("Grant interrupted successfully")
       router.refresh()
+      onDelete()
     }
 
     handleOpenChange(false)
@@ -44,10 +45,6 @@ export function DeleteGrant({ userId }: { userId: number }) {
 
   function handleOpenChange(v: boolean) {
     setOpen(v)
-    if (v === false) {
-      // qc.invalidateQueries(trpc.tg.grants.getOngoing.queryOptions())
-      // qc.invalidateQueries(trpc.tg.grants.checkUser.queryOptions({ userId }))
-    }
   }
 
   return (

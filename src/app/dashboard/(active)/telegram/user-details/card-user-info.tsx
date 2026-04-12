@@ -23,7 +23,7 @@ export function UserInfoCard({
   const isSelf = seshUserId && seshUserId === user.id
 
   return (
-    <Card className="w-fit min-w-120">
+    <Card className="">
       <CardHeader>
         <CardTitle>
           # User ID: {user.id}{" "}

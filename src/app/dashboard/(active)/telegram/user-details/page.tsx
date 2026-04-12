@@ -2,7 +2,6 @@
 import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
 import { Suspense, startTransition, useActionState, useState } from "react"
-import { start } from "repl"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,9 +74,11 @@ export default function TgUsers() {
 
       {data && (
         <>
-          <div className="grid grid-cols-3 items-start">
+          <div className="grid grid-cols-3 items-start gap-4">
             <UserInfoCard user={data.user} roles={data.roles ?? []} onUpdate={() => startTransition(action)} />
-            <UserGrantCard user={data.user} />
+            {data.grant && (
+              <UserGrantCard user={data.user} grant={data.grant} onDelete={() => startTransition(action)} />
+            )}
           </div>
 
           <div className="pt-6 flex gap-4 items-center">

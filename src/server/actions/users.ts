@@ -1,6 +1,7 @@
 "use server"
 import { trpc } from "../trpc"
 import type { TgUserRole } from "../trpc/types"
+import { getUserGrant } from "./grants"
 
 export async function getUserInfo(userId: number) {
   return (await trpc.tg.users.get.query({ userId })).user ?? null
@@ -29,7 +30,8 @@ export async function searchUser(username: string) {
     }))
   )
 
-  return { roles, groupAdmin, user, messages, audits }
+  const { grant } = await getUserGrant(user.id)
+  return { roles, groupAdmin, user, messages, audits, grant }
 }
 
 export async function addGroupAdmin(userId: number, groupId: number, adderId: number) {
