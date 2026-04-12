@@ -1,16 +1,11 @@
 "use client"
-import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
-import { useTRPC } from "@/server/trpc"
 import type { ApiOutput } from "@/server/trpc/types"
 import { DeleteGrant } from "./delete-grant"
 
 type Grants = NonNullable<ApiOutput["tg"]["grants"]["getOngoing"]["grants"]>
 
-export function GrantList() {
-  const trpc = useTRPC()
-  const { data } = useQuery(trpc.tg.grants.getOngoing.queryOptions())
-
+export function GrantList({ grants }: { grants: Grants }) {
   return (
     <div className="flex flex-col w-full items-start justify-start py-4">
       <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-bold">
@@ -20,10 +15,10 @@ export function GrantList() {
         <p>End Date</p>
         <p>Interrupt</p>
       </div>
-      {data?.grants?.map((r) => (
+      {grants.map((r) => (
         <GrantRow row={r} key={r.grant.id} />
       ))}
-      {data?.grants.length === 0 && <div className="w-full text-center py-2 italic">There are no ongoing grants</div>}
+      {grants.length === 0 && <div className="w-full text-center py-2 italic">There are no ongoing grants</div>}
     </div>
   )
 }

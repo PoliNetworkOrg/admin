@@ -1,7 +1,7 @@
 "use client"
 
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { OctagonX, Square, Trash2, Trash2Icon } from "lucide-react"
+import { OctagonX } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import {
@@ -18,26 +18,26 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useSession } from "@/lib/auth"
-// import { useTRPC } from "@/server/trpc"
+import { interruptGrant } from "@/server/actions/grants"
 
 export function DeleteGrant({ userId }: { userId: number }) {
   const sesh = useSession()
-
-  // const qc = useQueryClient()
-  // const trpc = useTRPC()
   const removerId = sesh.data?.user.telegramId
-  // const { mutateAsync } = useMutation(trpc.tg.grants.interrupt.mutationOptions())
 
+  const router = useRouter()
   const [open, setOpen] = useState(false)
 
   async function interrupt() {
     if (!removerId) return toast.error("Invalid session, try to reload the page")
-    // const { error } = await mutateAsync({ userId, interruptedById: removerId, sendTgLog: true })
+    const { error } = await interruptGrant({ userId, interruptedById: removerId, sendTgLog: true })
 
-    // if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
-    // else if (error === "UNAUTHORIZED") toast.error("You don't have enought permission")
-    // else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
-    // else toast.success("Grant interrupted successfully")
+    if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
+    else if (error === "UNAUTHORIZED") toast.error("You don't have enought permission")
+    else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+    else {
+      toast.success("Grant interrupted successfully")
+      router.refresh()
+    }
 
     handleOpenChange(false)
   }

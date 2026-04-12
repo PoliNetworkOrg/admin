@@ -2,11 +2,17 @@
 import { trpc } from "../trpc"
 import type { TgUserRole } from "../trpc/types"
 
+export async function getUserInfo(userId: number) {
+  return (await trpc.tg.users.get.query({ userId })).user ?? null
+}
+
+export async function searchUserInfo(username: string) {
+  return (await trpc.tg.users.getByUsername.query({ username })).user ?? null
+}
+
 export async function searchUser(username: string) {
-  const { user } = await trpc.tg.users.getByUsername.query({ username })
-  if (!user) {
-    return null
-  }
+  const user = await searchUserInfo(username)
+  if (!user) return null
 
   const { roles, groupAdmin } = await trpc.tg.permissions.getRoles.query({ userId: user.id })
   const { messages } = await trpc.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 })
