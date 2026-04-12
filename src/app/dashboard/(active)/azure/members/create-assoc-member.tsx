@@ -1,8 +1,11 @@
 "use client"
 import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Sheet,
   SheetClose,
@@ -12,10 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { useTRPC } from "@/server/trpc"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
+import { createAzureMember } from "@/server/actions/azure"
 
 export function CreateAssocUser() {
   const [open, setOpen] = useState<boolean>(false)
@@ -23,10 +23,7 @@ export function CreateAssocUser() {
   const [lastName, setLastName] = useState<string>("")
   const [assocNumber, setAssocNumber] = useState<string>("")
   const [sendTo, setSendTo] = useState<string>("")
-  const trpc = useTRPC()
   const router = useRouter()
-
-  const { mutateAsync, isPending } = useMutation(trpc.azure.members.create.mutationOptions())
 
   function handleOpenChange(v: boolean): void {
     setOpen(v)
@@ -36,11 +33,18 @@ export function CreateAssocUser() {
     setSendTo("")
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  const [pending, startTransition] = useTransition()
+
+  async function handleSubmit() {
     if (!assocNumber || Number.isNaN(parseInt(assocNumber, 10))) return
 
-    const res = await mutateAsync({ assocNumber: parseInt(assocNumber, 10), firstName, lastName, sendEmailTo: sendTo })
+    const res = await createAzureMember({
+      assocNumber: parseInt(assocNumber, 10),
+      firstName,
+      lastName,
+      sendEmailTo: sendTo,
+    })
+
     if (res.error !== null) {
       toast.error(res.error)
       return
@@ -59,7 +63,7 @@ export function CreateAssocUser() {
         <SheetHeader className="px-0">
           <SheetTitle>Create new member account</SheetTitle>
         </SheetHeader>
-        <form onSubmit={handleSubmit}>
+        <form action={() => startTransition(handleSubmit)}>
           <div className="grid gap-4 py-4">
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="first-name">First Name</Label>
@@ -117,11 +121,11 @@ export function CreateAssocUser() {
           </div>
           <SheetFooter className="mt-4 flex flex-row justify-end items-center">
             <SheetClose>
-              <Button variant="ghost" disabled={isPending}>
+              <Button variant="ghost" disabled={pending}>
                 Cancel
               </Button>
             </SheetClose>
-            <Button disabled={isPending}>{isPending ? "Saving..." : "Create"}</Button>
+            <Button disabled={pending}>{pending ? "Saving..." : "Create"}</Button>
           </SheetFooter>
         </form>
       </SheetContent>

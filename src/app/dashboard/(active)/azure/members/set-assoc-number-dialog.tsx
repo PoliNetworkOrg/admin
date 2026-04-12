@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,28 +15,25 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { wait } from "@/lib/utils"
-import { useTRPC } from "@/server/trpc"
+import { setAzureMemberNumber } from "@/server/actions/azure"
 
 export function SetAssocNumberDialog({ userId }: { userId: string }) {
+  const router = useRouter()
   const [value, setValue] = useState<string>("")
   const [open, setOpen] = useState<boolean>(false)
-  const trpc = useTRPC()
-
-  const qc = useQueryClient()
-  const { mutateAsync, isPending } = useMutation(trpc.azure.members.setAssocNumber.mutationOptions())
 
   function handleOpenChange(v: boolean): void {
     setOpen(v)
     setValue("")
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    console.log("submit")
-    e.preventDefault()
-    if (isPending || !value || Number.isNaN(parseInt(value, 10))) return
+  const [pending, startTransition] = useTransition()
+
+  async function handleSubmit() {
+    if (pending || !value || Number.isNaN(parseInt(value, 10))) return
 
     const loading = toast.loading(`Updating...`)
-    const res = await mutateAsync({ userId, assocNumber: parseInt(value, 10) })
+    const res = await setAzureMemberNumber({ userId, assocNumber: parseInt(value, 10) })
     handleOpenChange(false)
     if (res.error !== null) {
       toast.error("There was an error")
@@ -45,8 +42,8 @@ export function SetAssocNumberDialog({ userId }: { userId: string }) {
     }
 
     await wait(2000)
-    await qc.refetchQueries({ queryKey: trpc.azure.members.getAll.queryKey() })
     toast.success(`Updated successfully!`, { id: loading })
+    router.refresh()
     console.log("Updated user assocNumber", userId, value)
   }
 
@@ -64,7 +61,7 @@ export function SetAssocNumberDialog({ userId }: { userId: string }) {
           <DialogTitle>Set Assoc Number</DialogTitle>
           <DialogDescription>This changes the `employeeId` field in the Azure User properties.</DialogDescription>
         </DialogHeader>
-        <form className="grid gap-y-4" onSubmit={handleSubmit}>
+        <form className="grid gap-y-4" action={() => startTransition(handleSubmit)}>
           <div>
             <Label htmlFor="assoc-num">Member Number</Label>
             <Input
@@ -82,11 +79,11 @@ export function SetAssocNumberDialog({ userId }: { userId: string }) {
           </div>
           <DialogFooter>
             <DialogClose>
-              <Button disabled={isPending} variant="outline">
+              <Button disabled={pending} variant="outline">
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={pending}>
               Save
             </Button>
           </DialogFooter>

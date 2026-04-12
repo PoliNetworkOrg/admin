@@ -1,11 +1,10 @@
 "use client"
 import { createColumnHelper, type Row } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import type { ApiOutput } from "@/server/trpc/types"
-import { SetAssocNumberDialog } from "./_components/set-assoc-number-dialog"
+import type { AzureMember } from "@/server/trpc/types"
+import { SetAssocNumberDialog } from "./set-assoc-number-dialog"
 
-type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]
-const ch = createColumnHelper<ParsedUser>()
+const ch = createColumnHelper<AzureMember>()
 
 export const columns = [
   ch.accessor("employeeId", {
@@ -46,6 +45,6 @@ export const columns = [
   }),
 ]
 
-function RowActions({ row: _ }: { row: Row<ParsedUser> }) {
+function RowActions({ row: _ }: { row: Row<AzureMember> }) {
   return <div className="flex gap-2 justify-start items-center"></div>
 }
