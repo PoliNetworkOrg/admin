@@ -1,21 +1,22 @@
 "use client"
 import { Copy, Pen } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { setGroupHide } from "@/server/actions/groups"
 import type { TgGroup } from "@/server/trpc/types"
 
 export function GroupRow({ row: r }: { row: TgGroup }) {
-  // const trpc = useTRPC()
-  // const { mutateAsync: hideMutate } = useMutation(trpc.tg.groups.setHide.mutationOptions())
-  //
-  // async function toggleHide() {
-  //   const ok = await hideMutate({ telegramId: r.telegramId, hide: !r.hide }).catch(() => false)
-  //   if (!ok) toast.error("The field cannot be modified")
-  //
-  //   toast.success("Hide option toggled!")
-  //   invalidate()
-  // }
+  const router = useRouter()
+
+  async function toggleHide() {
+    const ok = await setGroupHide(r.telegramId, !r.hide).catch(() => false)
+    if (!ok) toast.error("The field cannot be modified")
+
+    toast.success("Hide option toggled!")
+    router.refresh()
+  }
 
   return (
     <div className="grid gap-4 items-center grid-cols-5 border-b py-2 w-full">
@@ -55,13 +56,7 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
       </div>
       <div className="flex items-center justify-start gap-2">
         <p>{r.hide ? <Badge className="bg-yellow-800">HIDDEN</Badge> : <Badge variant="secondary">Visibile</Badge>}</p>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className={!r.link ? "hidden" : ""}
-          onClick={() => null /*toggleHide*/}
-        >
+        <Button type="button" variant="outline" size="icon-sm" className={!r.link ? "hidden" : ""} onClick={toggleHide}>
           <Pen />
         </Button>
       </div>
