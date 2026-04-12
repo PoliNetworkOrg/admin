@@ -12,6 +12,7 @@ import type { ApiOutput } from "@/lib/trpc/types"
 import { AuditLogCard } from "./card-audit-log"
 import { GroupAdminCard } from "./card-group-admin"
 import { MessageCard } from "./card-message"
+import { UserGrantCard } from "./card-user-grant"
 import { UserInfoCard } from "./card-user-info"
 import { NewGroupAdmin } from "./new-group-admin"
 
@@ -102,7 +103,11 @@ export default function TgUsers() {
 
       {user && (
         <>
-          <UserInfoCard user={user} roles={userData?.roles ?? []} />
+          <div className="grid grid-cols-3 items-start">
+            <UserInfoCard user={user} roles={userData?.roles ?? []} />
+            <UserGrantCard user={user} />
+          </div>
+
           <div className="pt-6 flex gap-4 items-center">
             <p>Admin in groups:</p>
             <NewGroupAdmin user={user} alreadyIn={userData?.groupAdmin.map((g) => g?.group.id ?? 0) ?? []} />

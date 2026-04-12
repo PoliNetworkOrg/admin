@@ -18,7 +18,7 @@ export function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: 
     <Card className="w-fit min-w-120">
       <CardHeader>
         <CardTitle>
-          User ID: {user.id}{" "}
+          # User ID: {user.id}{" "}
           {isSelf && (
             <Badge>
               <Star /> You
