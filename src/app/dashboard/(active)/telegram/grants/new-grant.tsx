@@ -109,7 +109,7 @@ export function NewGrant() {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>New Grant</DialogTitle>
-          <DialogDescription>Make the user admin in a group.</DialogDescription>
+          <DialogDescription>Create a grant to allow user to skip the auto moderation stack.</DialogDescription>
         </DialogHeader>
 
         <UserSelect onUser={(user) => setUser(user)} onReset={() => setUser(null)} />

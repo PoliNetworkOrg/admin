@@ -23,6 +23,7 @@ export function GrantList() {
       {data?.grants?.map((r) => (
         <GrantRow row={r} key={r.grant.id} />
       ))}
+      {data?.grants.length === 0 && <div className="w-full text-center py-2 italic">There are no ongoing grants</div>}
     </div>
   )
 }

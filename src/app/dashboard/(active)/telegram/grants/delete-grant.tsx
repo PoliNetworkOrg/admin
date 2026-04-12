@@ -1,7 +1,7 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Trash2, Trash2Icon } from "lucide-react"
+import { OctagonX, Square, Trash2, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import {
@@ -55,15 +55,15 @@ export function DeleteGrant({ userId }: { userId: number }) {
       <AlertDialogTrigger
         render={
           <Button variant="destructive">
-            <Trash2 />
-            Delete
+            <OctagonX />
+            Interrupt
           </Button>
         }
       ></AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <Trash2Icon />
+            <OctagonX />
           </AlertDialogMedia>
           <AlertDialogTitle>Interrupt Grant</AlertDialogTitle>
           <AlertDialogDescription>Are you sure you want to interrupt the grant?</AlertDialogDescription>
