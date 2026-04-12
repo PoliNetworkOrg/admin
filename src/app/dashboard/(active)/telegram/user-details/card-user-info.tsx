@@ -9,7 +9,15 @@ import { RemoveRole } from "./remove-role"
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
 
-export function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: UserRoles }) {
+export function UserInfoCard({
+  user,
+  roles,
+  onUpdate,
+}: {
+  user: NonNullable<User>
+  roles: UserRoles
+  onUpdate(): void
+}) {
   const sesh = useSession()
   const seshUserId = sesh.data?.user.telegramId
   const isSelf = seshUserId && seshUserId === user.id
@@ -41,8 +49,8 @@ export function UserInfoCard({ user, roles }: { user: NonNullable<User>; roles: 
         </div>
       </CardContent>
       <CardFooter className="gap-2">
-        <AddRole alreadyRoles={roles ?? []} user={user} />
-        <RemoveRole alreadyRoles={roles ?? []} user={user} />
+        <AddRole alreadyRoles={roles ?? []} user={user} onAdd={onUpdate} />
+        <RemoveRole alreadyRoles={roles ?? []} user={user} onDelete={onUpdate} />
       </CardFooter>
     </Card>
   )

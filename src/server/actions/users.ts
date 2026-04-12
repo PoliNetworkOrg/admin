@@ -1,5 +1,6 @@
 "use server"
 import { trpc } from "../trpc"
+import type { TgUserRole } from "../trpc/types"
 
 export async function searchUser(username: string) {
   const { user } = await trpc.tg.users.getByUsername.query({ username })
@@ -23,4 +24,16 @@ export async function searchUser(username: string) {
 
 export async function addGroupAdmin(userId: number, groupId: number, adderId: number) {
   await trpc.tg.permissions.addGroup.mutate({ userId, adderId, groupId })
+}
+
+export async function delGroupAdmin(userId: number, groupId: number, removerId: number) {
+  await trpc.tg.permissions.removeGroup.mutate({ userId, removerId, groupId })
+}
+
+export async function addUserRole(userId: number, role: TgUserRole, adderId: number) {
+  await trpc.tg.permissions.addRole.mutate({ userId, role, adderId })
+}
+
+export async function delUserRole(userId: number, role: TgUserRole, removerId: number) {
+  await trpc.tg.permissions.removeRole.mutate({ userId, role, removerId })
 }

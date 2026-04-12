@@ -1,8 +1,6 @@
 "use client"
 
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2, Trash2Icon } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import {
@@ -19,42 +17,32 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useSession } from "@/lib/auth"
-// import { useTRPC } from "@/server/trpc"
+import { delGroupAdmin } from "@/server/actions/users"
 
-export function DeleteGroupAdmin({ userId, chatId }: { userId: number; chatId: number }) {
-  const router = useRouter()
+export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number; chatId: number; onDelete(): void }) {
   const sesh = useSession()
 
-  // const qc = useQueryClient()
-  // const trpc = useTRPC()
   const removerId = sesh.data?.user.telegramId
-  // const { mutateAsync } = useMutation(trpc.tg.permissions.removeGroup.mutationOptions())
 
   const [open, setOpen] = useState(false)
 
   async function deleteGroupAdmin() {
     if (!removerId) return toast.error("Invalid session, try to reload the page")
-    // const { error } = await mutateAsync({ removerId, userId, groupId: chatId })
-    // if (error) {
-    //   toast.error("There was an error")
-    //   console.error(error)
-    // } else {
-    //   toast.success("Group Admin deleted!")
-    // }
 
-    handleOpenChange(false)
-  }
-
-  function handleOpenChange(v: boolean) {
-    setOpen(v)
-    if (v === false) {
-      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId }))
-      router.refresh()
+    try {
+      await delGroupAdmin(userId, chatId, removerId)
+      toast.success("Group Admin deleted!")
+      onDelete()
+    } catch (err) {
+      toast.error("There was an error")
+      console.error(err)
     }
+
+    setOpen(false)
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={
           <Button variant="destructive">

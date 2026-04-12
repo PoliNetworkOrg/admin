@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
+import { delUserRole } from "@/server/actions/users"
 // import { useTRPC } from "@/server/trpc"
 import type { ApiOutput } from "@/server/trpc/types"
 
@@ -34,7 +35,7 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: Roles }) {
+export function RemoveRole({ user, alreadyRoles, onDelete }: { user: User; alreadyRoles: Roles; onDelete(): void }) {
   const sesh = useSession()
   const removerId = sesh.data?.user.telegramId
 
@@ -43,14 +44,8 @@ export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: R
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
-  // const trpc = useTRPC()
-  // const qc = useQueryClient()
-  const router = useRouter()
-
   const [open, setOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
-
-  // const submitMutation = useMutation(trpc.tg.permissions.removeRole.mutationOptions())
 
   async function submit() {
     if (!removerId) return toast.warning("Invalid session, try reloading the page")
@@ -58,10 +53,10 @@ export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: R
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      // await submitMutation.mutateAsync({ removerId, userId: user.id, role: selectedRole })
+      await delUserRole(user.id, selectedRole, removerId)
       toast.info(`Role removed`)
       handleOpenChange(false)
-      router.refresh()
+      onDelete()
     } catch (err) {
       console.error(err)
       handleOpenChange(false)
@@ -72,8 +67,6 @@ export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: R
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      // closing
-      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       setSelectedRole(null)
     }
   }

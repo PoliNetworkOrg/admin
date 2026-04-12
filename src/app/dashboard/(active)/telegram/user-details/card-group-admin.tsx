@@ -10,9 +10,11 @@ type GroupAdminSingle = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["
 export function GroupAdminCard({
   user,
   groupAdminInfo: m,
+  onDelete,
 }: {
   user: NonNullable<User>
   groupAdminInfo: GroupAdminSingle
+  onDelete(): void
 }) {
   return (
     <Card>
@@ -30,7 +32,7 @@ export function GroupAdminCard({
         </p>
       </CardContent>
       <CardFooter className="justify-end gap-2">
-        <DeleteGroupAdmin userId={user.id} chatId={m.group.id} />
+        <DeleteGroupAdmin userId={user.id} chatId={m.group.id} onDelete={onDelete} />
       </CardFooter>
     </Card>
   )

@@ -7,3 +7,4 @@ export type ApiError = inferRouterError<AppRouter>
 
 export type TgUser = NonNullable<ApiOutput["tg"]["users"]["get"]["user"]>
 export type TgGroup = NonNullable<ApiOutput["tg"]["groups"]["search"]["groups"][number]>
+export type TgUserRole = NonNullable<ApiInput["tg"]["permissions"]["addRole"]["role"]>

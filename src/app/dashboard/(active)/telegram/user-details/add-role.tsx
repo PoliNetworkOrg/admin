@@ -19,11 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
-// import { useTRPC } from "@/server/trpc"
-import type { ApiInput, ApiOutput } from "@/server/trpc/types"
-
-type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
-type Roles = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
+import { addUserRole } from "@/server/actions/users"
+import type { ApiOutput, TgUser, TgUserRole } from "@/server/trpc/types"
 
 const ARRAY_USER_ROLES = [
   USER_ROLE.ADMIN,
@@ -34,7 +31,7 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Roles }) {
+export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRoles: TgUserRole[]; onAdd(): void }) {
   const sesh = useSession()
   const adderId = sesh.data?.user.telegramId
 
@@ -43,14 +40,8 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
-  // const trpc = useTRPC()
-  // const qc = useQueryClient()
-  const router = useRouter()
-
   const [open, setOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
-
-  // const submitMutation = useMutation(trpc.tg.permissions.addRole.mutationOptions())
+  const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
     if (!adderId) return toast.warning("Invalid session, try reloading the page")
@@ -58,10 +49,10 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      // await submitMutation.mutateAsync({ adderId, userId: user.id, role: selectedRole })
+      await addUserRole(user.id, selectedRole, adderId)
       toast.info(`Role added`)
       handleOpenChange(false)
-      router.refresh()
+      onAdd()
     } catch (err) {
       console.error(err)
       handleOpenChange(false)
@@ -72,8 +63,6 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      // closing
-      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       setSelectedRole(null)
     }
   }
