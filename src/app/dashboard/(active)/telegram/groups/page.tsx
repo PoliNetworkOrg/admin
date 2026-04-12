@@ -1,6 +1,6 @@
 "use client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Copy, Pen, Search, X } from "lucide-react"
+import { ArrowLeft, Copy, Pen, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -19,7 +19,7 @@ export default function TgGroups() {
   const trpc = useTRPC()
   const qc = useQueryClient()
   const queryOpts = trpc.tg.groups.search.queryOptions({ query, limit: 20, showHidden: true })
-  const { data: allGroups, isLoading } = useQuery(trpc.tg.groups.getAll.queryOptions())
+  const { data: allGroups, isLoading, refetch } = useQuery(trpc.tg.groups.getAll.queryOptions())
 
   const [rows, setRows] = useState<Groups>(!isLoading ? (allGroups ?? []) : [])
 
@@ -31,6 +31,7 @@ export default function TgGroups() {
 
   async function invalidate() {
     await qc.invalidateQueries(queryOpts)
+    refetch()
     await search()
   }
 
@@ -78,6 +79,10 @@ export default function TgGroups() {
                 Reset
               </Button>
             )}
+            <Button variant="outline" onClick={invalidate}>
+              <RefreshCcw />
+              Refresh
+            </Button>
           </div>
           <span className="text-muted-foreground text-xs">Max results: 20</span>
         </div>
