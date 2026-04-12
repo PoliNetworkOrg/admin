@@ -78,11 +78,13 @@ export function SetAssocNumberDialog({ userId }: { userId: string }) {
             />
           </div>
           <DialogFooter>
-            <DialogClose>
-              <Button disabled={pending} variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
+            <DialogClose
+              render={
+                <Button disabled={pending} variant="outline">
+                  Cancel
+                </Button>
+              }
+            ></DialogClose>
             <Button type="submit" disabled={pending}>
               Save
             </Button>
