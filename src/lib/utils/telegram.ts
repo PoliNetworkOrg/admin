@@ -1,4 +1,4 @@
-import type { ApiOutput } from "../trpc/types"
+import type { TgUser } from "../trpc/types"
 
 export function stripChatId(chatId: number): number {
   if (chatId > 0) return chatId
@@ -9,7 +9,6 @@ export function stripChatId(chatId: number): number {
   return parseInt(str.slice(1), 10)
 }
 
-type TgUser = NonNullable<ApiOutput["tg"]["users"]["get"]["user"]>
 export function fmtUser(user: TgUser, printId: boolean = true) {
   let string = user.firstName
   if (user.lastName) string += ` ${user.lastName}`

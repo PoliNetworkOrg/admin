@@ -4,6 +4,16 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "@/lib/utils/shadcn"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+const ignoreManagerAttrs =
+  props.autoComplete === "off"
+    ? {
+        "data-1p-ignore": true,      // 1Password
+        "data-lpignore": true,        // LastPass
+        "data-bwignore": true,        // Bitwarden
+        "data-form-type": "other",    // Dashlane
+      }
+    : {};
+
   return (
     <InputPrimitive
       type={type}
@@ -13,6 +23,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className
       )}
       {...props}
+      {...ignoreManagerAttrs}
     />
   )
 }

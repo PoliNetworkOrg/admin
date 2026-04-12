@@ -1,24 +1,14 @@
 "use client"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Copy, Pen, Search, X } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
-import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useTRPC } from "@/lib/trpc/client"
 import type { ApiOutput } from "@/lib/trpc/types"
 
 type Users = NonNullable<ApiOutput["tg"]["users"]["getAll"]["users"]>
 
-export default function TgGroups() {
-  const [query, setQuery] = useState("")
-
+export default function TgUsers() {
   const trpc = useTRPC()
-  const qc = useQueryClient()
-
   const { data } = useQuery(trpc.tg.users.getAll.queryOptions())
 
   return (

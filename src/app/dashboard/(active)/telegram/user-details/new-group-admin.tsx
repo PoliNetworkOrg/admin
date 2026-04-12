@@ -45,8 +45,6 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
 
     const res = await qc.fetchQuery(queryOpts)
     setGroups(res.groups.filter((g) => !alreadyIn.includes(g.telegramId)))
-    if (res.count === 0) toast.warning("No groups found with this query")
-    else toast.info(`Found ${res.count} groups`)
   }
 
   const submitMutation = useMutation(trpc.tg.permissions.addGroup.mutationOptions())

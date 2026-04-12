@@ -4,3 +4,6 @@ import type { inferRouterError, inferRouterInputs, inferRouterOutputs } from "@t
 export type ApiOutput = inferRouterOutputs<AppRouter>
 export type ApiInput = inferRouterInputs<AppRouter>
 export type ApiError = inferRouterError<AppRouter>
+
+export type TgUser = NonNullable<ApiOutput["tg"]["users"]["get"]["user"]>
+export type TgGroup = NonNullable<ApiOutput["tg"]["groups"]["search"]["groups"][number]>
