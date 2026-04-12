@@ -32,7 +32,7 @@ function GrantRow({ row: r }: { row: Grants[number] }) {
       </p>
       <p>{format(r.grant.validSince, "yyyy/MM/dd HH:mm")}</p>
       <p>{format(r.grant.validUntil, "yyyy/MM/dd HH:mm")}</p>
-      <DeleteGrant userId={r.grant.userId} />
+      <DeleteGrant userId={r.grant.userId} onDelete={() => null} />
     </div>
   )
 }
