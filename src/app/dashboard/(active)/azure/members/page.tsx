@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 import { Spinner } from "@/components/spinner"
-import { getQueryClient, trpc } from "@/lib/trpc/server"
+import { getQueryClient, trpc } from "@/server/trpc/server"
 import { AssocTable } from "./table"
 
 export default async function AssocMembers() {

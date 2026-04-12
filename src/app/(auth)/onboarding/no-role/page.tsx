@@ -2,8 +2,8 @@ import Image from "next/image"
 import { redirect } from "next/navigation"
 import loginSvg2 from "@/assets/svg/login-2.svg"
 import { Card } from "@/components/ui/card"
-import { getQueryClient, trpc } from "@/lib/trpc/server"
 import { getServerSession } from "@/server/auth"
+import { getQueryClient, trpc } from "@/server/trpc/server"
 import { Logout } from "../link/logout"
 
 export default async function OnboardingNoRole() {

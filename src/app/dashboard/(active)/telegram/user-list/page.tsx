@@ -1,16 +1,12 @@
-"use client"
-import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+import { trpc } from "@/server/trpc"
+import type { ApiOutput } from "@/server/trpc/types"
 
 type Users = NonNullable<ApiOutput["tg"]["users"]["getAll"]["users"]>
 
-export default function TgUsers() {
-  const trpc = useTRPC()
-  const { data } = useQuery(trpc.tg.users.getAll.queryOptions())
-
+export default async function TgUsers() {
+  const data = await trpc.tg.users.getAll.query()
   return (
     <div className="container p-8">
       <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">

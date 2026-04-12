@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiInput, ApiOutput } from "@/lib/trpc/types"
+// import { useTRPC } from "@/server/trpc"
+import type { ApiInput, ApiOutput } from "@/server/trpc/types"
 
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 type Roles = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
@@ -43,14 +43,14 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
+  // const trpc = useTRPC()
+  // const qc = useQueryClient()
   const router = useRouter()
 
   const [open, setOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
 
-  const submitMutation = useMutation(trpc.tg.permissions.addRole.mutationOptions())
+  // const submitMutation = useMutation(trpc.tg.permissions.addRole.mutationOptions())
 
   async function submit() {
     if (!adderId) return toast.warning("Invalid session, try reloading the page")
@@ -58,7 +58,7 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await submitMutation.mutateAsync({ adderId, userId: user.id, role: selectedRole })
+      // await submitMutation.mutateAsync({ adderId, userId: user.id, role: selectedRole })
       toast.info(`Role added`)
       handleOpenChange(false)
       router.refresh()
@@ -73,7 +73,7 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
     setOpen(v)
     if (v === false) {
       // closing
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
+      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       setSelectedRole(null)
     }
   }

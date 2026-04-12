@@ -1,7 +1,7 @@
 "use client"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
+import { useTRPC } from "@/server/trpc"
 
 export function Telegram() {
   const { data: session, isPending } = useSession()

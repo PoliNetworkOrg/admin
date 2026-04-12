@@ -1,7 +1,7 @@
 "use client"
 import { createColumnHelper, type Row } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import type { ApiOutput } from "@/lib/trpc/types"
+import type { ApiOutput } from "@/server/trpc/types"
 import { SetAssocNumberDialog } from "./_components/set-assoc-number-dialog"
 
 type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]

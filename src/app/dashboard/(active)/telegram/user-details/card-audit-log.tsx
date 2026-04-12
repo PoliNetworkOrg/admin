@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
 import { fmtUser } from "@/lib/utils/telegram"
+// import { useTRPC } from "@/server/trpc"
+import type { ApiOutput } from "@/server/trpc/types"
 
 type Log = NonNullable<ApiOutput["tg"]["auditLog"]["getById"]>[number]
 export function AuditLogCard({ log: m }: { log: Log }) {
-  const trpc = useTRPC()
+  // const trpc = useTRPC()
 
-  const { data: admin } = useQuery(trpc.tg.users.get.queryOptions({ userId: m.adminId }))
+  // const { data: admin } = useQuery(trpc.tg.users.get.queryOptions({ userId: m.adminId }))
 
   return (
     <Card>
@@ -21,7 +21,7 @@ export function AuditLogCard({ log: m }: { log: Log }) {
           {m.groupTitle && <span>{m.groupTitle}</span>} [{m.groupId}]
         </p>
         <span className="text-muted-foreground">Admin ID: </span>
-        <p>{admin?.user && fmtUser(admin.user)}</p>
+        {/*<p>{admin?.user && fmtUser(admin.user)}</p>*/}
 
         {m.createdAt && (
           <>

@@ -6,7 +6,7 @@ import { createTRPCClient, httpLink } from "@trpc/client"
 import { createTRPCOptionsProxy, type TRPCQueryOptions } from "@trpc/tanstack-react-query"
 import { cache } from "react"
 import SuperJSON from "superjson"
-import { getBaseUrl } from "../utils"
+import { getBaseUrl } from "../../lib/utils"
 import { makeQueryClient } from "./query-client"
 
 const url = getBaseUrl() + TRPC_PATH

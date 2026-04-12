@@ -1,7 +1,7 @@
 import { Code } from "@/components/code"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ApiOutput } from "@/lib/trpc/types"
 import { stripChatId } from "@/lib/utils/telegram"
+import type { ApiOutput } from "@/server/trpc/types"
 import { DeleteGroupAdmin } from "./delete-group-admin"
 
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]

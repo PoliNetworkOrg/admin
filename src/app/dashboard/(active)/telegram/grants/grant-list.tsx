@@ -1,8 +1,8 @@
 "use client"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+import { useTRPC } from "@/server/trpc"
+import type { ApiOutput } from "@/server/trpc/types"
 import { DeleteGrant } from "./delete-grant"
 
 type Grants = NonNullable<ApiOutput["tg"]["grants"]["getOngoing"]["grants"]>

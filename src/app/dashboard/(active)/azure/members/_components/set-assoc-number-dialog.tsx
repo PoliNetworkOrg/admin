@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useTRPC } from "@/lib/trpc/client"
 import { wait } from "@/lib/utils"
+import { useTRPC } from "@/server/trpc"
 
 export function SetAssocNumberDialog({ userId }: { userId: string }) {
   const [value, setValue] = useState<string>("")

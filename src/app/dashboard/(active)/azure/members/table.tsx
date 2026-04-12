@@ -5,8 +5,8 @@ import { useState } from "react"
 import { CreateAssocUser } from "@/components/create-assoc-member"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+import { useTRPC } from "@/server/trpc"
+import type { ApiOutput } from "@/server/trpc/types"
 import { columns } from "./columns"
 
 type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]

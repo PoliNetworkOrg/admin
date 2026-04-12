@@ -2,7 +2,7 @@ import { Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSession } from "@/lib/auth"
-import type { ApiOutput } from "@/lib/trpc/types"
+import type { ApiOutput } from "@/server/trpc/types"
 import { AddRole } from "./add-role"
 import { RemoveRole } from "./remove-role"
 

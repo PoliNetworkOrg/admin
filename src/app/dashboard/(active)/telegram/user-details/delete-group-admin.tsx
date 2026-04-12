@@ -19,28 +19,28 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
+// import { useTRPC } from "@/server/trpc"
 
 export function DeleteGroupAdmin({ userId, chatId }: { userId: number; chatId: number }) {
   const router = useRouter()
   const sesh = useSession()
 
-  const qc = useQueryClient()
-  const trpc = useTRPC()
+  // const qc = useQueryClient()
+  // const trpc = useTRPC()
   const removerId = sesh.data?.user.telegramId
-  const { mutateAsync } = useMutation(trpc.tg.permissions.removeGroup.mutationOptions())
+  // const { mutateAsync } = useMutation(trpc.tg.permissions.removeGroup.mutationOptions())
 
   const [open, setOpen] = useState(false)
 
   async function deleteGroupAdmin() {
     if (!removerId) return toast.error("Invalid session, try to reload the page")
-    const { error } = await mutateAsync({ removerId, userId, groupId: chatId })
-    if (error) {
-      toast.error("There was an error")
-      console.error(error)
-    } else {
-      toast.success("Group Admin deleted!")
-    }
+    // const { error } = await mutateAsync({ removerId, userId, groupId: chatId })
+    // if (error) {
+    //   toast.error("There was an error")
+    //   console.error(error)
+    // } else {
+    //   toast.success("Group Admin deleted!")
+    // }
 
     handleOpenChange(false)
   }
@@ -48,7 +48,7 @@ export function DeleteGroupAdmin({ userId, chatId }: { userId: number; chatId: n
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId }))
+      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId }))
       router.refresh()
     }
   }

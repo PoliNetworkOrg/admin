@@ -19,8 +19,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+// import { useTRPC } from "@/server/trpc"
+import type { ApiOutput } from "@/server/trpc/types"
 
 type Groups = ApiOutput["tg"]["groups"]["search"]["groups"]
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
@@ -29,8 +29,8 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
   const sesh = useSession()
   const adderId = sesh.data?.user.telegramId
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
+  // const trpc = useTRPC()
+  // const qc = useQueryClient()
   const router = useRouter()
 
   const [open, setOpen] = useState(false)
@@ -38,16 +38,16 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
   const [groups, setGroups] = useState<Groups>([])
   const [selectedGroup, setSelectedGroup] = useState<Groups[number] | null>(null)
 
-  const queryOpts = trpc.tg.groups.search.queryOptions({ query: groupQuery, limit: 20, showHidden: true })
+  // const queryOpts = trpc.tg.groups.search.queryOptions({ query: groupQuery, limit: 20, showHidden: true })
 
   async function searchGroup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    const res = await qc.fetchQuery(queryOpts)
-    setGroups(res.groups.filter((g) => !alreadyIn.includes(g.telegramId)))
+    // const res = await qc.fetchQuery(queryOpts)
+    // setGroups(res.groups.filter((g) => !alreadyIn.includes(g.telegramId)))
   }
 
-  const submitMutation = useMutation(trpc.tg.permissions.addGroup.mutationOptions())
+  // const submitMutation = useMutation(trpc.tg.permissions.addGroup.mutationOptions())
 
   async function submit() {
     if (!adderId) return toast.warning("Invalid session, try reloading the page")
@@ -55,7 +55,7 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await submitMutation.mutateAsync({ adderId, groupId: selectedGroup?.telegramId, userId: user.id })
+      // await submitMutation.mutateAsync({ adderId, groupId: selectedGroup?.telegramId, userId: user.id })
       toast.info(`Group admin added`)
       handleOpenChange(false)
       router.refresh()
@@ -76,7 +76,7 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
     setOpen(v)
     if (v === false) {
       // closing
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
+      // qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       reset()
     }
   }

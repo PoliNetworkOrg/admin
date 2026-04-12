@@ -3,15 +3,16 @@ import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { Sparkle, Star } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useTRPC } from "@/lib/trpc/client"
-import type { TgUser } from "@/lib/trpc/types"
+// import { useTRPC } from "@/server/trpc"
+import type { TgUser } from "@/server/trpc/types"
 import { DeleteGrant } from "../grants/delete-grant"
 
 export function UserGrantCard({ user }: { user: TgUser }) {
-  const trpc = useTRPC()
-  const { data } = useQuery(trpc.tg.grants.checkUser.queryOptions({ userId: user.id }))
+  // const trpc = useTRPC()
+  // const { data } = useQuery(trpc.tg.grants.checkUser.queryOptions({ userId: user.id }))
 
-  if (!data) return null
+  // if (!data) return null
+  return null
   return (
     data.grant && (
       <Card className="w-fit min-w-120">

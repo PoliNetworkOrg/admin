@@ -33,16 +33,16 @@ import {
 } from "@/components/ui/select"
 import { UserSelect } from "@/components/user-select"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { TgUser } from "@/lib/trpc/types"
+// import { useTRPC } from "@/server/trpc"
+import type { TgUser } from "@/server/trpc/types"
 
 export function NewGrant() {
   const sesh = useSession()
   const adderId = sesh.data?.user.telegramId
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
-  const mutation = useMutation(trpc.tg.grants.create.mutationOptions())
+  // const trpc = useTRPC()
+  // const qc = useQueryClient()
+  // const mutation = useMutation(trpc.tg.grants.create.mutationOptions())
 
   const [open, setOpen] = useState(false)
   const [user, setUser] = useState<TgUser | null>(null)
@@ -59,8 +59,8 @@ export function NewGrant() {
       setStartDate(undefined)
       setEndDate(undefined)
       setReason("")
-      qc.invalidateQueries(trpc.tg.grants.getOngoing.queryOptions())
-      if (user) qc.invalidateQueries(trpc.tg.grants.checkUser.queryOptions({ userId: user.id }))
+      // qc.invalidateQueries(trpc.tg.grants.getOngoing.queryOptions())
+      // if (user) qc.invalidateQueries(trpc.tg.grants.checkUser.queryOptions({ userId: user.id }))
     }
   }
 
@@ -81,19 +81,19 @@ export function NewGrant() {
 
   async function create() {
     if (!user || !startDate || !endDate || !adderId) return
-    const res = await mutation.mutateAsync({
-      userId: user.id,
-      adderId,
-      since: startDate,
-      until: endDate,
-      reason: reason || undefined,
-      sendTgLog: true,
-    })
+    // const res = await mutation.mutateAsync({
+    //   userId: user.id,
+    //   adderId,
+    //   since: startDate,
+    //   until: endDate,
+    //   reason: reason || undefined,
+    //   sendTgLog: true,
+    // })
 
-    if (res.error === "UNAUTHORIZED") toast.error("You don't have permission to create grants.")
-    else if (res.error === "ALREADY_EXISTING") toast.error("This user already has an ongoing grant.")
-    else if (res.error === "INTERNAL_SERVER_ERROR") toast.error("There was a server error.")
-    else toast.success("Grant created successfully!")
+    // if (res.error === "UNAUTHORIZED") toast.error("You don't have permission to create grants.")
+    // else if (res.error === "ALREADY_EXISTING") toast.error("This user already has an ongoing grant.")
+    // else if (res.error === "INTERNAL_SERVER_ERROR") toast.error("There was a server error.")
+    // else toast.success("Grant created successfully!")
     handleOpenChange(false)
   }
 

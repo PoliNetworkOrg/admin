@@ -1,4 +1,4 @@
-import { getQueryClient, trpc } from "@/lib/trpc/server"
+import { getQueryClient, trpc } from "@/server/trpc/server"
 export const dynamic = "force-dynamic"
 
 export default async function TestTRPCPage() {
