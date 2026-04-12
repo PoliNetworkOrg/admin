@@ -1,4 +1,4 @@
-import { Group, Shield, Sparkle, Users } from "lucide-react"
+import { MessageCircleMore, Sparkle, UserCog, Users } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import telegramSvg from "@/assets/svg/telegram.svg"
@@ -16,7 +16,7 @@ export default function TelegramIndex() {
           <Card className="w-90 hover:bg-accent transition-colors">
             <CardHeader>
               <CardTitle className="flex gap-2 items-center">
-                <Group size={20} />
+                <MessageCircleMore size={20} />
                 Groups
               </CardTitle>
               <CardDescription>Search groups and get links</CardDescription>
@@ -28,7 +28,7 @@ export default function TelegramIndex() {
           <Card className="w-90 hover:bg-accent transition-colors">
             <CardHeader>
               <CardTitle className="flex gap-2 items-center">
-                <Shield size={20} />
+                <UserCog size={20} />
                 User Details
               </CardTitle>
               <CardDescription>Manage user roles and group admins</CardDescription>
