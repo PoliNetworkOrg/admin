@@ -6,7 +6,7 @@ import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { searchUser } from "@/server/actions/get-user"
+import { searchUser } from "@/server/actions/users"
 import { AuditLogCard } from "./card-audit-log"
 import { GroupAdminCard } from "./card-group-admin"
 import { MessageCard } from "./card-message"
@@ -81,7 +81,11 @@ export default function TgUsers() {
 
           <div className="pt-6 flex gap-4 items-center">
             <p>Admin in groups:</p>
-            <NewGroupAdmin user={data.user} alreadyIn={data.groupAdmin.map((g) => g?.group.id ?? 0) ?? []} />
+            <NewGroupAdmin
+              user={data.user}
+              alreadyIn={data.groupAdmin.map((g) => g?.group.id ?? 0) ?? []}
+              onConfirm={() => startTransition(action)}
+            />
           </div>
           <div className="grid grid-cols-4 py-2 gap-4">
             {data.groupAdmin

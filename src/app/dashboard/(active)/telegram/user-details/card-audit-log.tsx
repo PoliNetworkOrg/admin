@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fmtUser } from "@/lib/utils/telegram"
-import type { searchUser } from "@/server/actions/get-user"
+import type { searchUser } from "@/server/actions/users"
 
 type Data = Awaited<ReturnType<typeof searchUser>>
 type Log = NonNullable<Data>["audits"][number]

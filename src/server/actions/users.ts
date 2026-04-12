@@ -20,3 +20,7 @@ export async function searchUser(username: string) {
 
   return { roles, groupAdmin, user, messages, audits }
 }
+
+export async function addGroupAdmin(userId: number, groupId: number, adderId: number) {
+  await trpc.tg.permissions.addGroup.mutate({ userId, adderId, groupId })
+}
