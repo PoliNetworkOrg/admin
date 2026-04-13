@@ -1,12 +1,11 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query"
 import { Search, X } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { useTRPC } from "@/lib/trpc/client"
-import type { TgUser } from "@/lib/trpc/types"
 import { fmtUser } from "@/lib/utils/telegram"
+import { getUserInfo, searchUserInfo } from "@/server/actions/users"
+import type { TgUser } from "@/server/trpc/types"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
@@ -23,14 +22,8 @@ export function UserSelect({ onUser, onReset }: Props) {
   const [username, setUsername] = useState("")
   const [id, setId] = useState("")
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
-
-  const usernameSearch = trpc.tg.users.getByUsername.queryOptions({ username })
-  const idSearch = trpc.tg.users.get.queryOptions({ userId: id ? parseInt(id, 10) : 0 })
-
   async function search() {
-    const { user } = await qc.fetchQuery(searchType === "id" ? idSearch : usernameSearch)
+    const user = searchType === "username" ? await searchUserInfo(username) : await getUserInfo(parseInt(id, 10))
     if (!user) return toast.error(`User with this ${searchType === "id" ? "ID" : "username"} not found`)
     setUser(user)
     onUser(user)

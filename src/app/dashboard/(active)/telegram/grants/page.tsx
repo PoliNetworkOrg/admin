@@ -1,9 +1,12 @@
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { trpc } from "@/server/trpc"
 import { GrantList } from "./grant-list"
 import { NewGrant } from "./new-grant"
 
-export default function GrantsPage() {
+export default async function GrantsPage() {
+  const { grants } = await trpc.tg.grants.getOngoing.query()
+
   return (
     <div className="container p-8">
       <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
@@ -13,7 +16,7 @@ export default function GrantsPage() {
         <p>Telegram Grants</p>
         <NewGrant />
       </div>
-      <GrantList />
+      <GrantList grants={grants} />
     </div>
   )
 }

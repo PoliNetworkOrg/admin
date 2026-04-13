@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { AdminHeader } from "@/components/admin-header"
-import { getQueryClient, trpc } from "@/lib/trpc/server"
 import { getServerSession } from "@/server/auth"
+import { trpc } from "@/server/trpc"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession()
@@ -13,8 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // if (session?.user.role === USER_ROLE.INACTIVE) ;
   // if (session?.user.role === USER_ROLE.DISABLED) redirect("/dashboard/disabled");
 
-  const qc = getQueryClient()
-  const { roles } = await qc.fetchQuery(trpc.tg.permissions.getRoles.queryOptions({ userId: tgId }))
+  const { roles } = await trpc.tg.permissions.getRoles.query({ userId: tgId })
   if (!roles || roles.length === 0) redirect("/onboarding/no-role")
   if (roles.includes("creator")) redirect("/onboarding/unauthorized")
 

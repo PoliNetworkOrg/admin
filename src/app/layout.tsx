@@ -5,8 +5,6 @@ import { HEADER_HEIGHT } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { TRPCReactProvider } from "@/lib/trpc/client"
-import { HydrateClient } from "@/lib/trpc/server"
 import { cn } from "@/lib/utils/shadcn"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
@@ -45,13 +43,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <TRPCReactProvider>
-              <HydrateClient>
-                <div className="flex h-screen overflow-y-auto w-full flex-col items-center justify-start px-4 sm:px-8">
-                  {children}
-                </div>
-              </HydrateClient>
-            </TRPCReactProvider>
+            <div className="flex h-screen overflow-y-auto w-full flex-col items-center justify-start px-4 sm:px-8">
+              {children}
+            </div>
             <Toaster richColors position="bottom-center" />
           </TooltipProvider>
         </ThemeProvider>

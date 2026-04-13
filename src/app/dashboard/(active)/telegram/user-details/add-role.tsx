@@ -1,10 +1,9 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Search, X } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Plus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,12 +17,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiInput, ApiOutput } from "@/lib/trpc/types"
-
-type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
-type Roles = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
+import { addUserRole } from "@/server/actions/users"
+import type { TgUser, TgUserRole } from "@/server/trpc/types"
 
 const ARRAY_USER_ROLES = [
   USER_ROLE.ADMIN,
@@ -34,46 +29,45 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Roles }) {
-  const sesh = useSession()
-  const adderId = sesh.data?.user.telegramId
-
+export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRoles: TgUserRole[]; onAdd(): void }) {
   const availableRoles = ARRAY_USER_ROLES.filter((r) => !alreadyRoles.includes(r)).map((g) => ({
     value: g,
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
-  const router = useRouter()
-
   const [open, setOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
-
-  const submitMutation = useMutation(trpc.tg.permissions.addRole.mutationOptions())
+  const [pending, setPending] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
-    if (!adderId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedRole) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
+    setPending(true)
+
     try {
-      await submitMutation.mutateAsync({ adderId, userId: user.id, role: selectedRole })
-      toast.info(`Role added`)
+      const { error } = await addUserRole(user.id, selectedRole)
+
+      if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot add roles to yourself")
+      else {
+        toast.success(`Role added!`)
+        onAdd()
+      }
       handleOpenChange(false)
-      router.refresh()
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      setPending(false)
+      handleOpenChange(false)
     }
   }
 
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      // closing
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       setSelectedRole(null)
     }
   }
@@ -125,9 +119,15 @@ export function AddRole({ user, alreadyRoles }: { user: User; alreadyRoles: Role
         </Select>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline">Cancel</Button>} />
-          <Button onClick={submit} disabled={!selectedRole}>
-            Confirm
+          <DialogClose
+            render={
+              <Button disabled={pending} variant="outline">
+                Cancel
+              </Button>
+            }
+          />
+          <Button onClick={submit} disabled={!selectedRole || pending}>
+            {pending ? <Spinner /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>

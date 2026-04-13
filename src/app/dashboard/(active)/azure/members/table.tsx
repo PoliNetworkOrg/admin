@@ -1,16 +1,13 @@
 "use client"
 
-import { useSuspenseQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import { CreateAssocUser } from "@/components/create-assoc-member"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+import type { AzureMember } from "@/server/trpc/types"
 import { columns } from "./columns"
+import { CreateAssocUser } from "./create-assoc-member"
 
-type ParsedUser = ApiOutput["azure"]["members"]["getAll"][0]
-function sortByAssocNumber(users: ParsedUser[]) {
+function sortByAssocNumber(users: AzureMember[]) {
   if (!users || users.length === 0) return users
   if (users.every((u) => !u.employeeId))
     return users.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? ""))
@@ -30,18 +27,16 @@ function sortByAssocNumber(users: ParsedUser[]) {
   })
 }
 
-export function AssocTable() {
-  const trpc = useTRPC()
-  const { data } = useSuspenseQuery(trpc.azure.members.getAll.queryOptions())
+export function AssocTable({ members }: { members: AzureMember[] }) {
   const [sociFilter, setSociFilter] = useState(false)
-  const users = sociFilter ? data.filter((v) => v.isMember) : data
+  const users = sociFilter ? members.filter((v) => v.isMember) : members
 
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center">
         <p>Utenti MS @polinetwork.org</p>
-        <Badge onClick={() => setSociFilter((v) => !v)}>{data.filter((d) => d.isMember).length} Soci</Badge>
-        <Badge variant="secondary">{data.filter((d) => !d.isMember).length} fuori</Badge>
+        <Badge onClick={() => setSociFilter((v) => !v)}>{members.filter((d) => d.isMember).length} Soci</Badge>
+        <Badge variant="secondary">{members.filter((d) => !d.isMember).length} fuori</Badge>
         <Badge>{users.filter((u) => u.assignedLicensesIds.includes("OFFICE_365")).length} licenze Office</Badge>
         <div className="grow" />
         <CreateAssocUser />

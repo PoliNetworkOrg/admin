@@ -1,4 +1,4 @@
-import type { TgUser } from "../trpc/types"
+import type { TgUser } from "../../server/trpc/types"
 
 export function stripChatId(chatId: number): number {
   if (chatId > 0) return chatId

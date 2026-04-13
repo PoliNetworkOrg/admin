@@ -1,7 +1,5 @@
 "use client"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Search, X } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -18,51 +16,41 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
+import { searchGroup } from "@/server/actions/groups"
+import { addGroupAdmin } from "@/server/actions/users"
+import type { ApiOutput } from "@/server/trpc/types"
 
 type Groups = ApiOutput["tg"]["groups"]["search"]["groups"]
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 
-export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: number[] }) {
-  const sesh = useSession()
-  const adderId = sesh.data?.user.telegramId
-
-  const trpc = useTRPC()
-  const qc = useQueryClient()
-  const router = useRouter()
-
+export function NewGroupAdmin({ user, alreadyIn, onConfirm }: { user: User; alreadyIn: number[]; onConfirm(): void }) {
   const [open, setOpen] = useState(false)
   const [groupQuery, setGroupQuery] = useState("")
   const [groups, setGroups] = useState<Groups>([])
   const [selectedGroup, setSelectedGroup] = useState<Groups[number] | null>(null)
 
-  const queryOpts = trpc.tg.groups.search.queryOptions({ query: groupQuery, limit: 20, showHidden: true })
-
-  async function searchGroup(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-
-    const res = await qc.fetchQuery(queryOpts)
-    setGroups(res.groups.filter((g) => !alreadyIn.includes(g.telegramId)))
+  async function search() {
+    const { groups } = await searchGroup(groupQuery)
+    setGroups(groups.filter((g) => !alreadyIn.includes(g.telegramId)))
   }
 
-  const submitMutation = useMutation(trpc.tg.permissions.addGroup.mutationOptions())
-
   async function submit() {
-    if (!adderId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedGroup) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await submitMutation.mutateAsync({ adderId, groupId: selectedGroup?.telegramId, userId: user.id })
-      toast.info(`Group admin added`)
-      handleOpenChange(false)
-      router.refresh()
+      const { error } = await addGroupAdmin(user.id, selectedGroup.telegramId)
+      if (error) {
+        toast.error("You don't have enough permissions")
+      } else {
+        toast.info(`Group admin added`)
+        onConfirm()
+      }
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      handleOpenChange(false)
     }
   }
 
@@ -75,8 +63,6 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      // closing
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       reset()
     }
   }
@@ -101,7 +87,7 @@ export function NewGroupAdmin({ user, alreadyIn }: { user: User; alreadyIn: numb
           </p>
         )}
 
-        <form onSubmit={searchGroup} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
+        <form action={search} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
           <div className="flex gap-2 flex-col items-start justify-start w-full">
             <Label htmlFor="group-query" className="text-base">
               Search Group

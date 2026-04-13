@@ -1,8 +1,8 @@
 import { ExternalLinkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import type { ApiOutput } from "@/lib/trpc/types"
 import { stripChatId } from "@/lib/utils/telegram"
+import type { ApiOutput } from "@/server/trpc/types"
 
 type Message = NonNullable<ApiOutput["tg"]["messages"]["getLastByUser"]["messages"]>[number]
 export function MessageCard({ message: m }: { message: Message }) {

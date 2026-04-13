@@ -2,7 +2,7 @@ import Image from "next/image"
 import { redirect } from "next/navigation"
 import loginSvg2 from "@/assets/svg/login-2.svg"
 import { Card } from "@/components/ui/card"
-import { getQueryClient, trpc } from "@/lib/trpc/server"
+import { getUserRoles } from "@/server/actions/users"
 import { getServerSession } from "@/server/auth"
 import { Logout } from "../link/logout"
 
@@ -11,8 +11,7 @@ export default async function OnboardingNoRole() {
   if (!session) redirect("/login")
   if (!session.user.telegramId) redirect("/onboarding/link")
 
-  const qc = getQueryClient()
-  const { roles } = await qc.fetchQuery(trpc.tg.permissions.getRoles.queryOptions({ userId: session.user.telegramId }))
+  const { roles } = await getUserRoles(session.user.telegramId)
   if (roles?.includes("creator")) redirect("/onboarding/unauthorized")
   if (roles && roles.length > 0) redirect("/dashboard")
 

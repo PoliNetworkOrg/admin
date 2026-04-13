@@ -1,27 +1,17 @@
-"use client"
-import { useQuery } from "@tanstack/react-query"
-import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
+import { getUserRoles } from "@/server/actions/users"
+import { getServerSession } from "@/server/auth"
 
-export function Telegram() {
-  const { data: session, isPending } = useSession()
-  if (isPending || !session) return null
+export async function Telegram() {
+  const { data } = await getServerSession()
+  if (!data || !data.user.telegramId) return null
 
-  const { user } = session
-  if (!user.telegramUsername || !user.telegramId) return null
+  const { roles } = await getUserRoles(data.user.telegramId)
+  const length = roles?.length ?? 0
 
-  return <ShowTelegram username={user.telegramUsername} userId={user.telegramId} />
-}
-
-function ShowTelegram({ username, userId }: { username: string; userId: number }) {
-  const trpc = useTRPC()
-  const { data, isLoading } = useQuery(trpc.tg.permissions.getRoles.queryOptions({ userId }))
   return (
     <>
-      <span>@{username}</span>
-      {!isLoading && data?.roles?.length && (
-        <span className="text-foreground/30 text-xs">(roles: {data.roles.join(", ")})</span>
-      )}
+      <span>{data.user.telegramUsername ? `@${data.user.telegramUsername}` : data.user.id}</span>
+      {roles && length > 0 && <span className="text-foreground/30 text-xs">(roles: {roles.join(", ")})</span>}
     </>
   )
 }

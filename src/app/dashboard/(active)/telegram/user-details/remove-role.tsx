@@ -1,10 +1,9 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Minus, Plus } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Minus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,11 +18,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
-import { useTRPC } from "@/lib/trpc/client"
-import type { ApiOutput } from "@/lib/trpc/types"
-
-type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
-type Roles = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
+import { delUserRole } from "@/server/actions/users"
+import type { ApiOutput, TgUser, TgUserRole } from "@/server/trpc/types"
 
 const ARRAY_USER_ROLES = [
   USER_ROLE.ADMIN,
@@ -34,7 +30,15 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: Roles }) {
+export function RemoveRole({
+  user,
+  alreadyRoles,
+  onDelete,
+}: {
+  user: TgUser
+  alreadyRoles: TgUserRole[]
+  onDelete(): void
+}) {
   const sesh = useSession()
   const removerId = sesh.data?.user.telegramId
 
@@ -43,37 +47,39 @@ export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: R
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
-  const trpc = useTRPC()
-  const qc = useQueryClient()
-  const router = useRouter()
-
   const [open, setOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
-
-  const submitMutation = useMutation(trpc.tg.permissions.removeRole.mutationOptions())
+  const [pending, setPending] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
     if (!removerId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedRole) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
+    setPending(true)
 
     try {
-      await submitMutation.mutateAsync({ removerId, userId: user.id, role: selectedRole })
-      toast.info(`Role removed`)
-      handleOpenChange(false)
-      router.refresh()
+      const { error } = await delUserRole(user.id, selectedRole)
+
+      if (error === "NOT_FOUND") toast.info("User or role not found")
+      else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot delete on yourself")
+      else {
+        toast.success("Role removed!")
+        onDelete()
+      }
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      setPending(false)
+      handleOpenChange(false)
     }
   }
 
   function handleOpenChange(v: boolean) {
     setOpen(v)
     if (v === false) {
-      // closing
-      qc.invalidateQueries(trpc.tg.permissions.getRoles.queryOptions({ userId: user?.id ?? 0 }))
       setSelectedRole(null)
     }
   }
@@ -125,9 +131,15 @@ export function RemoveRole({ user, alreadyRoles }: { user: User; alreadyRoles: R
         </Select>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline">Cancel</Button>} />
-          <Button onClick={submit} disabled={!selectedRole} variant="destructive">
-            Confirm
+          <DialogClose
+            render={
+              <Button disabled={pending} variant="outline">
+                Cancel
+              </Button>
+            }
+          />
+          <Button onClick={submit} disabled={!selectedRole || pending} variant="destructive">
+            {pending ? <Spinner /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>
