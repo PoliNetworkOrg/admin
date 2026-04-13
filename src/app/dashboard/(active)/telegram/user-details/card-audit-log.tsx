@@ -17,7 +17,7 @@ export function AuditLogCard({ log: m }: { log: Log }) {
           {m.groupTitle && <span>{m.groupTitle}</span>} [{m.groupId}]
         </p>
         <span className="text-muted-foreground">Admin ID: </span>
-        <p>{m.admin?.user && fmtUser(m.admin.user)}</p>
+        <p>{m.admin && fmtUser(m.admin)}</p>
 
         {m.createdAt && (
           <>

@@ -22,14 +22,7 @@ export async function searchUser(username: string) {
 
   const { roles, groupAdmin } = await trpc.tg.permissions.getRoles.query({ userId: user.id })
   const { messages } = await trpc.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 })
-  const audit = await trpc.tg.auditLog.getById.query({ targetId: user.id })
-
-  const audits = await Promise.all(
-    audit.map(async (audit) => ({
-      ...audit,
-      admin: await trpc.tg.users.get.query({ userId: audit.adminId }).catch(() => null),
-    }))
-  )
+  const audits = await trpc.tg.auditLog.getById.query({ targetId: user.id })
 
   const { grant } = await getUserGrant(user.id)
   return { roles, groupAdmin, user, messages, audits, grant }
