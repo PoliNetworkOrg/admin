@@ -7,8 +7,9 @@ import { SearchInput } from "./search-input"
 export default async function TgGroups({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
 
-  const all = await trpc.tg.groups.getAll.query()
-  const rows = q ? (await trpc.tg.groups.search.query({ limit: 20, query: q, showHidden: true })).groups : all
+  const rows = q
+    ? (await trpc.tg.groups.search.query({ limit: 20, query: q, showHidden: true })).groups
+    : await trpc.tg.groups.getAll.query()
 
   const sorted = rows.sort((a, b) => a.title.localeCompare(b.title))
 
