@@ -1,7 +1,7 @@
 "use client"
 import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
-import { Suspense, startTransition, useActionState, useState } from "react"
+import { Suspense, startTransition, useActionState, useState, useTransition } from "react"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,11 +18,19 @@ type Data = Awaited<ReturnType<typeof searchUser>>
 
 export default function TgUsers() {
   const [username, setUsername] = useState("")
-  const [data, action, pending] = useActionState<Data | null>(() => (username ? searchUser(username) : null), null)
+  const [data, setData] = useState<Data | null>(null)
+  const [pending, startTransition] = useTransition()
 
-  function reset() {
+  async function submit() {
+    startTransition(async () => {
+      const user = await searchUser(username)
+      setData(user)
+    })
+  }
+
+  async function reset() {
     setUsername("")
-    action()
+    setData(null)
   }
 
   return (
@@ -31,7 +39,7 @@ export default function TgUsers() {
         <ArrowLeft size={16} /> Back
       </Link>
 
-      <form action={action} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
+      <form action={submit} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
         <div className="flex gap-2 flex-col items-start justify-start">
           <Label htmlFor="email" className="text-base">
             Search by username
@@ -51,7 +59,7 @@ export default function TgUsers() {
             />
 
             {data ? (
-              <Button variant="outline" onClick={() => startTransition(reset)}>
+              <Button variant="outline" disabled={pending} onClick={() => startTransition(reset)}>
                 <X />
                 Reset
               </Button>
