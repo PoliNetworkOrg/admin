@@ -12,6 +12,9 @@ export default async function TgUsers() {
       <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
         <ArrowLeft size={16} /> Back
       </Link>
+      <p className="pt-4 text-sm text-muted-foreground">
+        Count: <span className="text-foreground">{data.users?.length}</span>
+      </p>
       <div className="flex flex-col w-full items-start justify-start py-4">
         <div className="grid gap-4 items-center grid-cols-3 w-full border-b py-2 font-bold">
           <p>Telegram ID</p>

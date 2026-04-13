@@ -17,6 +17,9 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
         <ArrowLeft size={16} /> Back
       </Link>
       <SearchInput />
+      <p className="pt-4 text-sm text-muted-foreground">
+        Count: <span className="text-foreground">{rows.length}</span>
+      </p>
       <div className="flex flex-col w-full items-start justify-start py-4">
         <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2">
           <p>telegram ID</p>
