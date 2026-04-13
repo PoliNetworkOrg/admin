@@ -1,7 +1,7 @@
 "use client"
 import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
 import Link from "next/link"
-import { Suspense, startTransition, useActionState, useState, useTransition } from "react"
+import { Suspense, useState, useTransition } from "react"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -83,10 +83,8 @@ export default function TgUsers() {
       {data && (
         <>
           <div className="grid grid-cols-3 items-start gap-4">
-            <UserInfoCard user={data.user} roles={data.roles ?? []} onUpdate={() => startTransition(action)} />
-            {data.grant && (
-              <UserGrantCard user={data.user} grant={data.grant} onDelete={() => startTransition(action)} />
-            )}
+            <UserInfoCard user={data.user} roles={data.roles ?? []} onUpdate={submit} />
+            {data.grant && <UserGrantCard user={data.user} grant={data.grant} onDelete={submit} />}
           </div>
 
           <div className="pt-6 flex gap-4 items-center">
@@ -94,19 +92,14 @@ export default function TgUsers() {
             <NewGroupAdmin
               user={data.user}
               alreadyIn={data.groupAdmin.map((g) => g?.group.id ?? 0) ?? []}
-              onConfirm={() => startTransition(action)}
+              onConfirm={submit}
             />
           </div>
           <div className="grid grid-cols-4 py-2 gap-4">
             {data.groupAdmin
               .filter((m) => m !== null && m !== undefined)
               .map((m) => (
-                <GroupAdminCard
-                  groupAdminInfo={m}
-                  user={data.user}
-                  key={m.group.id}
-                  onDelete={() => startTransition(action)}
-                />
+                <GroupAdminCard groupAdminInfo={m} user={data.user} key={m.group.id} onDelete={submit} />
               ))}
 
             {data.groupAdmin.length === 0 && (
