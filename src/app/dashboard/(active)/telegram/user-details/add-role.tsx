@@ -3,6 +3,7 @@ import { USER_ROLE } from "@polinetwork/backend"
 import { Plus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,7 +17,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useSession } from "@/lib/auth"
 import { addUserRole } from "@/server/actions/users"
 import type { TgUser, TgUserRole } from "@/server/trpc/types"
 
@@ -30,21 +30,20 @@ const ARRAY_USER_ROLES = [
 ] as const
 
 export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRoles: TgUserRole[]; onAdd(): void }) {
-  const sesh = useSession()
-  const adderId = sesh.data?.user.telegramId
-
   const availableRoles = ARRAY_USER_ROLES.filter((r) => !alreadyRoles.includes(r)).map((g) => ({
     value: g,
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
   }))
 
   const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
   const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
-    if (!adderId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedRole) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
+
+    setPending(true)
 
     try {
       const { error } = await addUserRole(user.id, selectedRole)
@@ -61,6 +60,7 @@ export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRo
       console.error(err)
       toast.error("There was an error, check logs")
     } finally {
+      setPending(false)
       handleOpenChange(false)
     }
   }
@@ -119,9 +119,15 @@ export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRo
         </Select>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline">Cancel</Button>} />
-          <Button onClick={submit} disabled={!selectedRole}>
-            Confirm
+          <DialogClose
+            render={
+              <Button disabled={pending} variant="outline">
+                Cancel
+              </Button>
+            }
+          />
+          <Button onClick={submit} disabled={!selectedRole || pending}>
+            {pending ? <Spinner /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>

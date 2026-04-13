@@ -3,6 +3,7 @@ import { USER_ROLE } from "@polinetwork/backend"
 import { Minus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -47,12 +48,14 @@ export function RemoveRole({
   }))
 
   const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
   const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
     if (!removerId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedRole) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
+    setPending(true)
 
     try {
       const { error } = await delUserRole(user.id, selectedRole)
@@ -69,6 +72,7 @@ export function RemoveRole({
       console.error(err)
       toast.error("There was an error, check logs")
     } finally {
+      setPending(false)
       handleOpenChange(false)
     }
   }
@@ -127,9 +131,15 @@ export function RemoveRole({
         </Select>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline">Cancel</Button>} />
-          <Button onClick={submit} disabled={!selectedRole} variant="destructive">
-            Confirm
+          <DialogClose
+            render={
+              <Button disabled={pending} variant="outline">
+                Cancel
+              </Button>
+            }
+          />
+          <Button onClick={submit} disabled={!selectedRole || pending} variant="destructive">
+            {pending ? <Spinner /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>
