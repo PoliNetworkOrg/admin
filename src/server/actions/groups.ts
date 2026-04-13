@@ -13,3 +13,10 @@ export async function setGroupHide(groupId: number, hide: boolean) {
 
   return trpc.tg.groups.setHide.mutate({ telegramId: groupId, hide })
 }
+
+export async function leaveChat(chatId: number) {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { error: "UNAUTHORIZED" }
+
+  return trpc.tg.groups.leaveChat.mutate({ chatId, performerId: telegramId })
+}

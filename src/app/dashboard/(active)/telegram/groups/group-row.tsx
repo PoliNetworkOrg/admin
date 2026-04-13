@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { setGroupHide } from "@/server/actions/groups"
 import type { TgGroup } from "@/server/trpc/types"
+import { LeaveChat } from "./leave-chat"
 
 export function GroupRow({ row: r }: { row: TgGroup }) {
   const router = useRouter()
@@ -21,7 +22,7 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
   }
 
   return (
-    <div className="grid gap-4 items-center grid-cols-5 border-b py-2 w-full">
+    <div className="grid gap-4 items-center grid-cols-[1fr_2fr_1fr_3fr_1fr] border-b py-2 w-full">
       <p>{r.telegramId}</p>
       <p>{r.title}</p>
       <p className={r.tag ? "" : "text-muted-foreground italic"}>{r.tag ? `@${r.tag}` : `<unset>`}</p>
@@ -57,10 +58,18 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
         </Button>
       </div>
       <div className="flex items-center justify-start gap-2">
-        <p>{r.hide ? <Badge className="bg-yellow-800">HIDDEN</Badge> : <Badge variant="secondary">Visibile</Badge>}</p>
-        <Button type="button" variant="outline" size="icon-sm" onClick={toggleHide}>
-          <Pen />
-        </Button>
+        <p>
+          {r.hide ? (
+            <Badge onClick={toggleHide} className="bg-yellow-800 hover:bg-yellow-600 cursor-pointer">
+              HIDDEN
+            </Badge>
+          ) : (
+            <Badge onClick={toggleHide} variant="secondary" className="hover:bg-slate-600 cursor-pointer">
+              Visibile
+            </Badge>
+          )}
+        </p>
+        <LeaveChat chatId={r.telegramId} />
       </div>
     </div>
   )

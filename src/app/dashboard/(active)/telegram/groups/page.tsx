@@ -23,12 +23,12 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
         Count: <span className="text-foreground">{rows.length}</span>
       </p>
       <div className="flex flex-col w-full items-start justify-start py-4">
-        <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2">
+        <div className="grid gap-4 items-center grid-cols-[1fr_2fr_1fr_3fr_1fr] w-full border-b py-2">
           <p>telegram ID</p>
           <p>Title</p>
           <p>Tag</p>
           <p>Invite Link</p>
-          <p>Hide</p>
+          <p>Actions</p>
         </div>
         {sorted.map((r) => (
           <GroupRow row={r} key={r.telegramId} />
