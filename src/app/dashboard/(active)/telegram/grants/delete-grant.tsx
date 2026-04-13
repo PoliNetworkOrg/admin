@@ -32,7 +32,7 @@ export function DeleteGrant({ userId, onDelete }: { userId: number; onDelete(): 
     const { error } = await interruptGrant({ userId, interruptedById: removerId, sendTgLog: true })
 
     if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
-    else if (error === "UNAUTHORIZED") toast.error("You don't have enought permission")
+    else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
     else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
     else {
       toast.success("Grant interrupted successfully")

@@ -2,15 +2,15 @@
 
 import { RefreshCcw, Search } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export function SearchInput() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const _search = searchParams.get("q")
-  const [value, setValue] = useState(searchParams.get("q") ?? "")
+  const q = searchParams.get("q") ?? ""
+  const [value, setValue] = useState(q)
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams.toString())
@@ -21,6 +21,9 @@ export function SearchInput() {
     }
     router.replace(`?${params.toString()}`)
   }
+  useEffect(() => {
+    setValue(q)
+  }, [q])
 
   return (
     <div className="flex gap-2">

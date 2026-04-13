@@ -6,11 +6,12 @@ export async function Telegram() {
   if (!data || !data.user.telegramId) return null
 
   const { roles } = await getUserRoles(data.user.telegramId)
+  const length = roles?.length ?? 0
 
   return (
     <>
       <span>@{data.user.telegramUsername}</span>
-      {roles?.length && <span className="text-foreground/30 text-xs">(roles: {roles.join(", ")})</span>}
+      {roles && length > 0 && <span className="text-foreground/30 text-xs">(roles: {roles.join(", ")})</span>}
     </>
   )
 }

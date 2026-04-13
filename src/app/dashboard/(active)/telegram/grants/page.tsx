@@ -1,4 +1,3 @@
-"use server"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { trpc } from "@/server/trpc"

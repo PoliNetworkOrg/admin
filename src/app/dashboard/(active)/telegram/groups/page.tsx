@@ -1,4 +1,3 @@
-"use server"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { trpc } from "@/server/trpc"
@@ -10,6 +9,8 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
 
   const all = await trpc.tg.groups.getAll.query()
   const rows = q ? (await trpc.tg.groups.search.query({ limit: 20, query: q, showHidden: true })).groups : all
+
+  const sorted = rows.sort((a, b) => a.title.localeCompare(b.title))
 
   return (
     <div className="container p-8">
@@ -28,7 +29,7 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
           <p>Invite Link</p>
           <p>Hide</p>
         </div>
-        {rows.map((r) => (
+        {sorted.map((r) => (
           <GroupRow row={r} key={r.telegramId} />
         ))}
       </div>

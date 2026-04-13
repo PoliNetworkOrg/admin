@@ -12,10 +12,12 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
 
   async function toggleHide() {
     const ok = await setGroupHide(r.telegramId, !r.hide).catch(() => false)
-    if (!ok) toast.error("The field cannot be modified")
-
-    toast.success("Hide option toggled!")
-    router.refresh()
+    if (!ok) {
+      toast.error("The field cannot be modified")
+    } else {
+      toast.success("Hide option toggled!")
+      router.refresh()
+    }
   }
 
   return (
@@ -56,7 +58,7 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
       </div>
       <div className="flex items-center justify-start gap-2">
         <p>{r.hide ? <Badge className="bg-yellow-800">HIDDEN</Badge> : <Badge variant="secondary">Visibile</Badge>}</p>
-        <Button type="button" variant="outline" size="icon-sm" className={!r.link ? "hidden" : ""} onClick={toggleHide}>
+        <Button type="button" variant="outline" size="icon-sm" onClick={toggleHide}>
           <Pen />
         </Button>
       </div>

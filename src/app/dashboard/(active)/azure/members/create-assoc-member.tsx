@@ -42,7 +42,12 @@ export function CreateAssocUser() {
       firstName,
       lastName,
       sendEmailTo: sendTo,
-    })
+    }).catch(() => null)
+
+    if (!res) {
+      toast.error("There was an error")
+      return
+    }
 
     if (res.error !== null) {
       toast.error(res.error)

@@ -3,6 +3,7 @@
 import { Trash2, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { Spinner } from "@/components/spinner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,9 +26,11 @@ export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number;
   const removerId = sesh.data?.user.telegramId
 
   const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
 
   async function deleteGroupAdmin() {
     if (!removerId) return toast.error("Invalid session, try to reload the page")
+    setPending(true)
 
     try {
       await delGroupAdmin(userId, chatId, removerId)
@@ -36,9 +39,10 @@ export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number;
     } catch (err) {
       toast.error("There was an error")
       console.error(err)
+    } finally {
+      setOpen(false)
+      setPending(false)
     }
-
-    setOpen(false)
   }
 
   return (
@@ -61,8 +65,8 @@ export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number;
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={deleteGroupAdmin} variant="destructive">
-            Confirm
+          <AlertDialogAction disabled={pending} onClick={deleteGroupAdmin} variant="destructive">
+            {pending ? <Spinner /> : "Confirm"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

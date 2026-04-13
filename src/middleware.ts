@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import { env } from "./env"
 
 export const config = {
-  matcher: [`${AUTH_PATH}/:path*`],
+  matcher: [`/api/auth/:path*`],
 }
 
 export function middleware(request: NextRequest) {
