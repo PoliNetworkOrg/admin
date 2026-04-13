@@ -78,11 +78,9 @@ export function NewGrant() {
     if (!user || !startDate || !endDate || !adderId) return
     const res = await createGrant({
       userId: user.id,
-      adderId,
       since: startDate,
       until: endDate,
       reason: reason || undefined,
-      sendTgLog: true,
     })
 
     if (res.error === "UNAUTHORIZED") toast.error("You don't have permission to create grants.")

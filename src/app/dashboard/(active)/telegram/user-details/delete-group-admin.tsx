@@ -17,25 +17,26 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { useSession } from "@/lib/auth"
 import { delGroupAdmin } from "@/server/actions/users"
 
 export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number; chatId: number; onDelete(): void }) {
-  const sesh = useSession()
-
-  const removerId = sesh.data?.user.telegramId
-
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
 
   async function deleteGroupAdmin() {
-    if (!removerId) return toast.error("Invalid session, try to reload the page")
     setPending(true)
 
     try {
-      await delGroupAdmin(userId, chatId, removerId)
-      toast.success("Group Admin deleted!")
-      onDelete()
+      const { error } = await delGroupAdmin(userId, chatId)
+
+      if (error === "NOT_FOUND") toast.info("User or group admin not found")
+      else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot delete on yourself")
+      else {
+        toast.success("Group Admin deleted!")
+        onDelete()
+      }
     } catch (err) {
       toast.error("There was an error")
       console.error(err)

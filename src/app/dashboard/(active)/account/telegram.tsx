@@ -10,7 +10,7 @@ export async function Telegram() {
 
   return (
     <>
-      <span>@{data.user.telegramUsername}</span>
+      <span>{data.user.telegramUsername ? `@${data.user.telegramUsername}` : data.user.id}</span>
       {roles && length > 0 && <span className="text-foreground/30 text-xs">(roles: {roles.join(", ")})</span>}
     </>
   )

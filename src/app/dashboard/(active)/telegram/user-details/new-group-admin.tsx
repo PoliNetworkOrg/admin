@@ -16,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { useSession } from "@/lib/auth"
 import { searchGroup } from "@/server/actions/groups"
 import { addGroupAdmin } from "@/server/actions/users"
 import type { ApiOutput } from "@/server/trpc/types"
@@ -25,9 +24,6 @@ type Groups = ApiOutput["tg"]["groups"]["search"]["groups"]
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 
 export function NewGroupAdmin({ user, alreadyIn, onConfirm }: { user: User; alreadyIn: number[]; onConfirm(): void }) {
-  const sesh = useSession()
-  const adderId = sesh.data?.user.telegramId
-
   const [open, setOpen] = useState(false)
   const [groupQuery, setGroupQuery] = useState("")
   const [groups, setGroups] = useState<Groups>([])
@@ -38,22 +34,23 @@ export function NewGroupAdmin({ user, alreadyIn, onConfirm }: { user: User; alre
     setGroups(groups.filter((g) => !alreadyIn.includes(g.telegramId)))
   }
 
-  // const submitMutation = useMutation(trpc.tg.permissions.addGroup.mutationOptions())
-
   async function submit() {
-    if (!adderId) return toast.warning("Invalid session, try reloading the page")
     if (!selectedGroup) return toast.warning("No group selected, cannot proceed")
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await addGroupAdmin(user.id, selectedGroup.telegramId, adderId)
-      toast.info(`Group admin added`)
-      handleOpenChange(false)
-      onConfirm()
+      const { error } = await addGroupAdmin(user.id, selectedGroup.telegramId)
+      if (error) {
+        toast.error("You don't have enough permissions")
+      } else {
+        toast.info(`Group admin added`)
+        onConfirm()
+      }
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      handleOpenChange(false)
     }
   }
 

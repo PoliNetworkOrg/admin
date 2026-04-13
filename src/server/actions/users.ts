@@ -1,6 +1,7 @@
 "use server"
+import { requireRole } from "../auth"
 import { trpc } from "../trpc"
-import type { TgUserRole } from "../trpc/types"
+import type { ApiOutput, TgUserRole } from "../trpc/types"
 import { getUserGrant } from "./grants"
 
 export async function getUserInfo(userId: number) {
@@ -34,18 +35,40 @@ export async function searchUser(username: string) {
   return { roles, groupAdmin, user, messages, audits, grant }
 }
 
-export async function addGroupAdmin(userId: number, groupId: number, adderId: number) {
-  await trpc.tg.permissions.addGroup.mutate({ userId, adderId, groupId })
+export async function addGroupAdmin(userId: number, groupId: number) {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { error: "UNAUTHORIZED" }
+
+  await trpc.tg.permissions.addGroup.mutate({ userId, adderId: telegramId, groupId })
+  return { error: null }
 }
 
-export async function delGroupAdmin(userId: number, groupId: number, removerId: number) {
-  await trpc.tg.permissions.removeGroup.mutate({ userId, removerId, groupId })
+export async function delGroupAdmin(
+  userId: number,
+  groupId: number
+): Promise<ApiOutput["tg"]["permissions"]["removeGroup"]> {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { error: "UNAUTHORIZED" }
+
+  return await trpc.tg.permissions.removeGroup.mutate({ userId, removerId: telegramId, groupId })
 }
 
-export async function addUserRole(userId: number, role: TgUserRole, adderId: number) {
-  await trpc.tg.permissions.addRole.mutate({ userId, role, adderId })
+export async function addUserRole(
+  userId: number,
+  role: TgUserRole
+): Promise<ApiOutput["tg"]["permissions"]["addRole"]> {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { roles: null, error: "UNAUTHORIZED" }
+
+  return await trpc.tg.permissions.addRole.mutate({ userId, role, adderId: telegramId })
 }
 
-export async function delUserRole(userId: number, role: TgUserRole, removerId: number) {
-  await trpc.tg.permissions.removeRole.mutate({ userId, role, removerId })
+export async function delUserRole(
+  userId: number,
+  role: TgUserRole
+): Promise<ApiOutput["tg"]["permissions"]["removeRole"]> {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { roles: null, error: "UNAUTHORIZED" }
+
+  return await trpc.tg.permissions.removeRole.mutate({ userId, role, removerId: telegramId })
 }

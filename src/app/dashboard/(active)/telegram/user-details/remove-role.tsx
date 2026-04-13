@@ -18,10 +18,7 @@ import {
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "@/lib/auth"
 import { delUserRole } from "@/server/actions/users"
-import type { ApiOutput } from "@/server/trpc/types"
-
-type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
-type Roles = NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
+import type { ApiOutput, TgUser, TgUserRole } from "@/server/trpc/types"
 
 const ARRAY_USER_ROLES = [
   USER_ROLE.ADMIN,
@@ -32,7 +29,15 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function RemoveRole({ user, alreadyRoles, onDelete }: { user: User; alreadyRoles: Roles; onDelete(): void }) {
+export function RemoveRole({
+  user,
+  alreadyRoles,
+  onDelete,
+}: {
+  user: TgUser
+  alreadyRoles: TgUserRole[]
+  onDelete(): void
+}) {
   const sesh = useSession()
   const removerId = sesh.data?.user.telegramId
 
@@ -42,7 +47,7 @@ export function RemoveRole({ user, alreadyRoles, onDelete }: { user: User; alrea
   }))
 
   const [open, setOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<Roles[number] | null>(null)
+  const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
 
   async function submit() {
     if (!removerId) return toast.warning("Invalid session, try reloading the page")
@@ -50,14 +55,21 @@ export function RemoveRole({ user, alreadyRoles, onDelete }: { user: User; alrea
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await delUserRole(user.id, selectedRole, removerId)
-      toast.info(`Role removed`)
-      handleOpenChange(false)
-      onDelete()
+      const { error } = await delUserRole(user.id, selectedRole)
+
+      if (error === "NOT_FOUND") toast.info("User or role not found")
+      else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot delete on yourself")
+      else {
+        toast.success("Role removed!")
+        onDelete()
+      }
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      handleOpenChange(false)
     }
   }
 

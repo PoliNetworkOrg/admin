@@ -47,14 +47,21 @@ export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRo
     if (!user) return toast.warning("Invalid user, try restarting the dialog")
 
     try {
-      await addUserRole(user.id, selectedRole, adderId)
-      toast.info(`Role added`)
+      const { error } = await addUserRole(user.id, selectedRole)
+
+      if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot add roles to yourself")
+      else {
+        toast.success(`Role added!`)
+        onAdd()
+      }
       handleOpenChange(false)
-      onAdd()
     } catch (err) {
       console.error(err)
-      handleOpenChange(false)
       toast.error("There was an error, check logs")
+    } finally {
+      handleOpenChange(false)
     }
   }
 

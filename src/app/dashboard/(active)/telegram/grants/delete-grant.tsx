@@ -17,30 +17,30 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { useSession } from "@/lib/auth"
 import { interruptGrant } from "@/server/actions/grants"
 
 export function DeleteGrant({ userId, onDelete }: { userId: number; onDelete(): void }) {
-  const sesh = useSession()
-  const removerId = sesh.data?.user.telegramId
-
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
   async function interrupt() {
-    if (!removerId) return toast.error("Invalid session, try to reload the page")
-    const { error } = await interruptGrant({ userId, interruptedById: removerId, sendTgLog: true })
+    try {
+      const { error } = await interruptGrant(userId)
 
-    if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
-    else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
-    else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
-    else {
-      toast.success("Grant interrupted successfully")
-      router.refresh()
-      onDelete()
+      if (error === "NOT_FOUND") toast.info("The grant was expired or already interrupted")
+      else if (error === "UNAUTHORIZED") toast.error("You don't have enough permission")
+      else if (error === "INTERNAL_SERVER_ERROR") toast.error("There was an internal server error")
+      else {
+        toast.success("Grant interrupted successfully")
+        router.refresh()
+        onDelete()
+      }
+    } catch (err) {
+      toast.error("There was an error")
+      console.error(err)
+    } finally {
+      handleOpenChange(false)
     }
-
-    handleOpenChange(false)
   }
 
   function handleOpenChange(v: boolean) {
