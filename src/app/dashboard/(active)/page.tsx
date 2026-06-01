@@ -1,3 +1,4 @@
+import { Globe } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import azureSvg from "@/assets/svg/azure.svg"
@@ -35,6 +36,18 @@ export default async function AdminHome() {
                   Telegram
                 </CardTitle>
                 <CardDescription>Manage Telegram related things</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/web">
+            <Card className="w-90 hover:bg-accent transition-colors">
+              <CardHeader>
+                <CardTitle className="flex gap-2">
+                  <Globe className="size-5" />
+                  Web
+                </CardTitle>
+                <CardDescription>Manage website related things</CardDescription>
               </CardHeader>
             </Card>
           </Link>
