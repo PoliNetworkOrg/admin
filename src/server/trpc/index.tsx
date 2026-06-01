@@ -1,6 +1,6 @@
 import "server-only"
 
-import { type AppRouter, TRPC_PATH } from "@polinetwork/backend"
+import { type AppRouter, TRPC_PATH } from "@polinetwork/backend-test"
 import { createTRPCClient, httpBatchLink } from "@trpc/client"
 import SuperJSON from "superjson"
 import { env } from "@/env"

@@ -4,6 +4,10 @@ import { trpc } from "../trpc"
 import type { ApiOutput, TgUserRole } from "../trpc/types"
 import { getUserGrant } from "./grants"
 
+export async function updateProfilePic(userId: string, file: File) {
+  return await trpc.auth.updateProfilePic.mutate({ userId, image: file })
+}
+
 export async function getUserInfo(userId: number) {
   return (await trpc.tg.users.get.query({ userId })).user ?? null
 }

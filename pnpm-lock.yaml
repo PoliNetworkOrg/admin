@@ -20,6 +20,9 @@ importers:
       '@polinetwork/backend':
         specifier: ^0.15.17
         version: 0.15.17
+      '@polinetwork/backend-test':
+        specifier: file:../backend/package/dist/
+        version: dist@file:../backend/package/dist
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2163,6 +2166,9 @@ packages:
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
+
+  dist@file:../backend/package/dist:
+    resolution: {directory: ../backend/package/dist, type: directory}
 
   dotenv@17.4.1:
     resolution: {integrity: sha512-k8DaKGP6r1G30Lx8V4+pCsLzKr8vLmV2paqEj1Y55GdAgJuIqpRp5FfajGF8KtwMxCz9qJc6wUIJnm053d/WCw==}
@@ -5410,6 +5416,8 @@ snapshots:
   detect-node-es@1.1.0: {}
 
   diff@8.0.4: {}
+
+  dist@file:../backend/package/dist: {}
 
   dotenv@17.4.1: {}
 
