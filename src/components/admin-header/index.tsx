@@ -18,6 +18,9 @@ export function AdminHeader() {
         <Link href="/dashboard/telegram" className="hover:underline">
           Telegram
         </Link>
+        <Link href="/dashboard/web" className="hover:underline">
+          Web
+        </Link>
       </nav>
       <nav className="flex justify-end items-center h-full">
         <RightNav />
