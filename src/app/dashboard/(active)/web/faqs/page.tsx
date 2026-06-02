@@ -50,7 +50,9 @@ export default function WebFaqsIndex() {
               <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/75 bg-clip-text text-transparent">
                 Frequently Asked Questions
               </h1>
-              <p className="text-muted-foreground mt-1.5 text-sm">Manage and view FAQs displayed on the web platform.</p>
+              <p className="text-muted-foreground mt-1.5 text-sm">
+                Manage and view FAQs displayed on the web platform.
+              </p>
             </div>
             <Button onClick={handleAdd}>
               <PlusIcon className="size-4" />
