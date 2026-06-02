@@ -5,7 +5,10 @@ import type { ApiOutput, TgUserRole } from "../trpc/types"
 import { getUserGrant } from "./grants"
 
 export async function updateProfilePic(userId: string, file: File) {
-  return await trpc.auth.updateProfilePic.mutate({ userId, image: file })
+  const fd = new FormData()
+  fd.set("userId", userId)
+  fd.set("image", file)
+  return await trpc.auth.updateProfilePic.mutate(fd)
 }
 
 export async function getUserInfo(userId: number) {
