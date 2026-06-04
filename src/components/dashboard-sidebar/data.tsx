@@ -1,3 +1,5 @@
+import Image from "next/image"
+import telegramSvg from "@/assets/svg/telegram.svg"
 export type NavItem = {
   title: string
   url: string
@@ -9,6 +11,7 @@ export const DSData = {
     {
       title: "Telegram",
       url: "/dashboard/telegram",
+      icon: <Image alt="telegram logo" src={telegramSvg} className="size-4" />,
       items: [
         { title: "Groups", url: "/dashboard/telegram/groups" },
         { title: "Users", url: "/dashboard/telegram/user-list" },

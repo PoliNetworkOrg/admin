@@ -1,5 +1,8 @@
 "use client"
+import { ChevronRight } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
 import {
   SidebarGroup,
   SidebarMenu,
@@ -16,21 +19,42 @@ export function DSMainNav() {
     <SidebarGroup>
       <SidebarMenu className="gap-2">
         {DSData.mainNav.map((category) => (
-          <SidebarMenuItem key={category.title}>
-            <SidebarMenuButton render={<a href={category.url} className="font-medium" />}>
-              {category.title}
-            </SidebarMenuButton>
-            {category.items?.length ? (
-              <SidebarMenuSub className="ml-0 border-l-0 px-1.5">
-                {category.items.map((item) => (
-                  <DSMenuItem key={item.url === "#" ? item.title : item.url} item={item} />
-                ))}
-              </SidebarMenuSub>
-            ) : null}
-          </SidebarMenuItem>
+          <DSMenuCategory category={category} key={category.title} />
         ))}
       </SidebarMenu>
     </SidebarGroup>
+  )
+}
+
+function DSMenuCategory({ category }: { category: (typeof DSData)["mainNav"][0] }) {
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    setOpen(pathname.startsWith(category.url))
+  }, [])
+
+  return (
+    <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={setOpen} className="group/collapsible">
+      <CollapsibleTrigger
+        render={
+          <SidebarMenuButton className="font-medium">
+            {category.icon}
+            {category.title}
+            <ChevronRight className="ml-auto transition-transform ease-linear rotate-0 group-data-open/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        }
+      />
+      <CollapsibleContent>
+        {category.items?.length ? (
+          <SidebarMenuSub className="px-1.5">
+            {category.items.map((item) => (
+              <DSMenuItem key={item.url === "#" ? item.title : item.url} item={item} />
+            ))}
+          </SidebarMenuSub>
+        ) : null}
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
