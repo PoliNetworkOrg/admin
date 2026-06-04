@@ -5,7 +5,7 @@ export type NavItem = {
 }
 
 export const DSData = {
-  navMain: [
+  mainNav: [
     {
       title: "Telegram",
       url: "/dashboard/telegram",
@@ -152,18 +152,16 @@ export const DSData = {
   ],
 }
 
-const flattenNavigation = (items: NavItem[]): Record<string, string> => {
-  const map: Record<string, string> = {}
+const flattenNavigation = (): Map<string, string> => {
+  const map = new Map<string, string>()
   const traverse = (list: NavItem[]) => {
     for (const item of list) {
-      map[item.url] = item.title
+      map.set(item.url, item.title)
       if (item.items) traverse(item.items)
     }
   }
-  traverse(items)
+  Object.entries(DSData).forEach(([_k, items]) => traverse(items))
   return map
 }
 
-console.time("navmap")
-export const navMap = flattenNavigation(DSData.navMain)
-console.timeEnd("navmap")
+export const NAV_MAP = flattenNavigation()
