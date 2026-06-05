@@ -6,7 +6,7 @@ export function useCookieStorage<T>(
   initialValue: T,
   options: CookieOptions = {}
 ): [T, Dispatch<SetStateAction<T>>] {
-  const envOptions = getDefaultCookieOptions()
+  const envOptions = useMemo(() => getDefaultCookieOptions(), [])
   const mergedOptions = useMemo(() => ({ ...envOptions, ...options }), [options, envOptions])
 
   const readValue = useCallback((): T => {
@@ -44,10 +44,6 @@ export function useCookieStorage<T>(
     },
     [key, storedValue, mergedOptions]
   )
-
-  useEffect(() => {
-    setStoredValue(readValue())
-  }, [readValue])
 
   return [storedValue, setValue]
 }

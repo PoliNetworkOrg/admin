@@ -2,7 +2,7 @@
 import { ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { COOKIES } from "@/constants"
 import { useCookieStorage } from "@/hooks/use-cookie-storage"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
@@ -32,23 +32,27 @@ export function DSMainNav({ categoryState }: { categoryState: Record<string, boo
 
 function DSMenuCategory({ category, initialOpen }: { category: (typeof DSData)["mainNav"][0]; initialOpen?: boolean }) {
   const pathname = usePathname()
-  const [open, setOpen] = useState<boolean>(initialOpen ?? pathname.startsWith(category.url))
+  const categoryUrl = category.items[0]?.url.split("/").slice(0, 3).join("/")
+  const [open, setOpen] = useState<boolean>(initialOpen ?? (categoryUrl ? pathname.startsWith(categoryUrl) : false))
   const [_, setState] = useCookieStorage<Record<string, boolean>>(
     COOKIES.SIDEBAR_CATEGORY_STATE,
     {},
     { expires: 60 * 60 * 24 * 7 }
   )
 
-  useEffect(() => {
-    if (open !== undefined)
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setOpen(open)
       setState((state) => {
         state[category.title] = open
         return state
       })
-  }, [open, setState, category.title])
+    },
+    [setState, category.title]
+  )
 
   return open !== undefined ? (
-    <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={setOpen} className="group/collapsible">
+    <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={handleOpenChange} className="group/collapsible">
       <CollapsibleTrigger
         render={
           <SidebarMenuButton className="font-medium">
