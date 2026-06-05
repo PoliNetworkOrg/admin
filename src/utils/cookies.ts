@@ -23,6 +23,7 @@ export function setCookie(name: string, value: string, options: CookieOptions = 
   if (secure) cookieString += "; secure"
   if (sameSite) cookieString += `; samesite=${sameSite}`
 
+  // biome-ignore lint/suspicious/noDocumentCookie: same as @/ui/sidebar strategy
   document.cookie = cookieString
 }
 
@@ -33,7 +34,7 @@ export function getCookie(name: string): string | null {
     new RegExp(`(?:^|; )${encodeURIComponent(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]*)`)
   )
 
-  return match && match[1] ? decodeURIComponent(match[1]) : null
+  return match?.[1] ? decodeURIComponent(match[1]) : null
 }
 
 export function deleteCookie(name: string, options: Pick<CookieOptions, "path" | "domain"> = {}): void {

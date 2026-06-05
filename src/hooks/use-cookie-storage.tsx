@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react"
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useState } from "react"
 import { type CookieOptions, deleteCookie, getCookie, getDefaultCookieOptions, setCookie } from "@/utils/cookies"
 
 export function useCookieStorage<T>(
@@ -7,7 +7,7 @@ export function useCookieStorage<T>(
   options: CookieOptions = {}
 ): [T, Dispatch<SetStateAction<T>>] {
   const envOptions = getDefaultCookieOptions()
-  const mergedOptions = { ...envOptions, ...options }
+  const mergedOptions = useMemo(() => ({ ...envOptions, ...options }), [options, envOptions])
 
   const readValue = useCallback((): T => {
     if (typeof document === "undefined") {
@@ -47,7 +47,7 @@ export function useCookieStorage<T>(
 
   useEffect(() => {
     setStoredValue(readValue())
-  }, [key, readValue])
+  }, [readValue])
 
   return [storedValue, setValue]
 }

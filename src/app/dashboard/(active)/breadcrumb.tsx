@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation"
 import { Fragment, useMemo } from "react"
 import { NAV_MAP } from "@/components/dashboard-sidebar/data"
 import {
-  BreadcrumbItem,
+  BreadcrumbItem as BreadcrumbItemComponent,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
@@ -25,7 +25,7 @@ export function Breadcrumb() {
       <BreadcrumbList>
         {items.map((item, i) => (
           <Fragment key={`breadcrumb-item-${i}`}>
-            <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbItemComponent className="hidden md:block">
               {i === items.length - 1 ? (
                 <BreadcrumbPage>{item.title}</BreadcrumbPage>
               ) : item.url ? (
@@ -33,7 +33,7 @@ export function Breadcrumb() {
               ) : (
                 item.title
               )}
-            </BreadcrumbItem>
+            </BreadcrumbItemComponent>
             {i < items.length - 1 && <BreadcrumbSeparator className="hidden md:block" />}
           </Fragment>
         ))}
@@ -66,5 +66,5 @@ function getBreadcrumbs(navMap: Map<string, string>, pathname: string): Breadcru
 }
 
 function isUUIDorId(segment: string) {
-  return !isNaN(Number(segment)) || segment.length > 20 // Regex custom a seconda dei tuoi ID
+  return !Number.isNaN(Number(segment)) || segment.length > 20 // Regex custom a seconda dei tuoi ID
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles, UserIcon } from "lucide-react"
+import { Bell, ChevronsUpDown, LogOut, UserIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"

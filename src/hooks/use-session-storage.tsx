@@ -38,7 +38,7 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, Dispatch
   // Keep state in sync if key changes
   useEffect(() => {
     setStoredValue(readValue())
-  }, [key, readValue])
+  }, [readValue])
 
   return [storedValue, setValue]
 }

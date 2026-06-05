@@ -37,7 +37,9 @@ const flattenNavigation = (): Map<string, string> => {
       if (item.items) traverse(item.items)
     }
   }
-  Object.entries(DSData).forEach(([_k, items]) => traverse(items))
+  Object.entries(DSData).forEach(([_k, items]) => {
+    traverse(items)
+  })
   return map
 }
 

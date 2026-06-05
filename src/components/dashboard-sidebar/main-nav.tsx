@@ -45,7 +45,7 @@ function DSMenuCategory({ category, initialOpen }: { category: (typeof DSData)["
         state[category.title] = open
         return state
       })
-  }, [open, setState])
+  }, [open, setState, category.title])
 
   return open !== undefined ? (
     <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={setOpen} className="group/collapsible">
