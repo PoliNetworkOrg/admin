@@ -80,6 +80,7 @@ function DSMenuItem({ item }: { item: (typeof DSData)["mainNav"][0]["items"][0] 
   return (
     <SidebarMenuSubItem key={item.title}>
       <SidebarMenuSubButton isActive={isActive} render={<Link href={item.url} />}>
+        {item.icon}
         {item.title}
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
