@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <DashboardSidebar categoryState={DSCategoryState} />
       <SidebarInset className="px-4">
         <header className="flex h-16 shrink-0 relative items-center justify-between gap-2 border-b mb-8">
-          <SidebarTrigger className="-ml-1" />
+          <SidebarTrigger className="-ml-1" size="icon" />
           <Breadcrumb className="absolute left-1/2 -translate-x-1/2" />
           <div></div>
         </header>
