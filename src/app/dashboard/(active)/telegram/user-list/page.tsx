@@ -1,5 +1,3 @@
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
 import { trpc } from "@/server/trpc"
 import type { ApiOutput } from "@/server/trpc/types"
 
@@ -8,11 +6,8 @@ type Users = NonNullable<ApiOutput["tg"]["users"]["getAll"]["users"]>
 export default async function TgUsers() {
   const data = await trpc.tg.users.getAll.query()
   return (
-    <div className="container p-8">
-      <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
-        <ArrowLeft size={16} /> Back
-      </Link>
-      <p className="pt-4 text-sm text-muted-foreground">
+    <div className="container">
+      <p className="text-sm text-muted-foreground">
         Count: <span className="text-foreground">{data.users?.length}</span>
       </p>
       <div className="flex flex-col w-full items-start justify-start py-4">

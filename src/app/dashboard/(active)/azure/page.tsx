@@ -6,7 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 
 export default function AssocIndex() {
   return (
-    <div className="container py-8 px-2 flex flex-col gap-4">
+    <div className="container flex flex-col gap-4">
       <h2 className="text-accent-foreground text-3xl font-bold flex gap-2 items-center">
         <Image alt="azure logo" src={azureSvg} className="size-7" />
         Azure

@@ -10,7 +10,7 @@ export default async function AdminHome() {
   const { data: session } = await getServerSession()
   return (
     session && (
-      <div className="container py-8 px-2">
+      <div className="container">
         <CompleteProfile user={session.user} />
         <h2 className="text-accent-foreground mb-4 text-3xl font-bold">Home</h2>
 

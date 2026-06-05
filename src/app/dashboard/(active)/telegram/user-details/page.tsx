@@ -34,11 +34,7 @@ export default function TgUsers() {
   }
 
   return (
-    <div className="container p-8">
-      <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
-        <ArrowLeft size={16} /> Back
-      </Link>
-
+    <div className="container">
       <form action={submit} className="pt-2 gap-y-4 flex flex-col justify-start items-start">
         <div className="flex gap-2 flex-col items-start justify-start">
           <Label htmlFor="email" className="text-base">
