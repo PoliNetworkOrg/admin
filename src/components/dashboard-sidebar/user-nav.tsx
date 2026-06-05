@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"
-import { auth, useSession } from "@/lib/auth"
+import { signOut, useSession } from "@/lib/auth"
 import { getInitials } from "@/lib/utils"
 import { Skeleton } from "../ui/skeleton"
 
@@ -87,8 +87,9 @@ export function DSUserNav() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              variant="destructive"
               onClick={() =>
-                auth.signOut({
+                signOut({
                   fetchOptions: {
                     onSuccess: () => {
                       toast.success("Logged out!")
