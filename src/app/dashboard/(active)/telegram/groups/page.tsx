@@ -1,5 +1,3 @@
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
 import { trpc } from "@/server/trpc"
 import { GroupRow } from "./group-row"
 import { SearchInput } from "./search-input"
@@ -15,9 +13,6 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
 
   return (
     <div className="container p-8">
-      <Link href="/dashboard/telegram" className="flex gap-1 items-center text-muted-foreground mb-2 hover:underline">
-        <ArrowLeft size={16} /> Back
-      </Link>
       <SearchInput />
       <p className="pt-4 text-sm text-muted-foreground">
         Count: <span className="text-foreground">{rows.length}</span>
