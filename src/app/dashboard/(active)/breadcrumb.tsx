@@ -47,6 +47,7 @@ function getBreadcrumbs(navMap: Map<string, string>, pathname: string): Breadcru
   const breadcrumbs: BreadcrumbItem[] = []
 
   let currentPath = ""
+  let i = 0
 
   for (const segment of segments) {
     currentPath += `/${segment}`
@@ -59,9 +60,13 @@ function getBreadcrumbs(navMap: Map<string, string>, pathname: string): Breadcru
       }
     }
 
-    breadcrumbs.push({ title, url: currentPath })
+    // note: at the moment we do not plan to make category pages.
+    // If such pages are made in the future, this logic can be removed
+    breadcrumbs.push({ title, url: i !== 1 ? currentPath : undefined })
+    i++
   }
 
+  console.log(breadcrumbs)
   return breadcrumbs
 }
 

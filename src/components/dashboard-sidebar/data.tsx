@@ -7,7 +7,6 @@ export const DSData = {
   mainNav: [
     {
       title: "Telegram",
-      url: "/dashboard/telegram",
       icon: <Image alt="telegram logo" src={telegramSvg} className="size-4" />,
       items: [
         { title: "Grants", url: "/dashboard/telegram/grants", icon: <Sparkle /> },
@@ -17,7 +16,6 @@ export const DSData = {
     },
     {
       title: "Azure",
-      url: "/dashboard/azure",
       icon: <Image alt="azure logo" src={azureSvg} className="size-4" />,
       items: [{ title: "Members", url: "/dashboard/azure/members", icon: <Users /> }],
     },
@@ -32,8 +30,10 @@ const flattenNavigation = (): Map<string, string> => {
       map.set(item.url, item.title)
     }
   }
-  Object.entries(DSData).forEach(([_k, items]) => {
-    traverse(items)
+  Object.entries(DSData).forEach(([_k, nav]) => {
+    nav.forEach((category) => {
+      traverse(category.items)
+    })
   })
   return map
 }
