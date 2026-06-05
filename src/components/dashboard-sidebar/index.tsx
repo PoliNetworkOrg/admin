@@ -1,38 +1,44 @@
 "use client"
 
-import { GalleryVerticalEndIcon } from "lucide-react"
 import type * as React from "react"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { Logo } from "../logo"
 import { DSMainNav } from "./main-nav"
+import { DSUserNav } from "./user-nav"
 
-export function DashboardSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function DashboardSidebar({
+  categoryState,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { categoryState: Record<string, boolean> }) {
   return (
     <Sidebar variant="floating" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<a href="#" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <GalleryVerticalEndIcon className="size-4" />
-              </div>
-              <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-medium">Documentation</span>
-                <span className="">v1.0.0</span>
+              <Logo />
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">PoliNetwork APS</span>
+                <span className="truncate text-xs">Admin Dashboard</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <DSMainNav />
+        <DSMainNav categoryState={categoryState} />
       </SidebarContent>
+      <SidebarFooter>
+        <DSUserNav />
+      </SidebarFooter>
     </Sidebar>
   )
 }

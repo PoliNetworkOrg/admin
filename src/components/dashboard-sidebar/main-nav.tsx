@@ -2,6 +2,8 @@
 import { ChevronRight } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
+import { COOKIES } from "@/constants"
+import { useCookieStorage } from "@/hooks/use-cookie-storage"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
 import {
   SidebarGroup,
@@ -12,29 +14,35 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "../ui/sidebar"
+import { Skeleton } from "../ui/skeleton"
 import { DSData } from "./data"
 
-export function DSMainNav() {
+export function DSMainNav({ categoryState }: { categoryState: Record<string, boolean> }) {
   return (
     <SidebarGroup>
       <SidebarMenu className="gap-2">
         {DSData.mainNav.map((category) => (
-          <DSMenuCategory category={category} key={category.title} />
+          <DSMenuCategory category={category} key={category.title} initialOpen={categoryState[category.title]} />
         ))}
       </SidebarMenu>
     </SidebarGroup>
   )
 }
 
-function DSMenuCategory({ category }: { category: (typeof DSData)["mainNav"][0] }) {
+function DSMenuCategory({ category, initialOpen }: { category: (typeof DSData)["mainNav"][0]; initialOpen?: boolean }) {
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<boolean>(initialOpen ?? pathname.startsWith(category.url))
+  const [_, setState] = useCookieStorage<Record<string, boolean>>(COOKIES.SIDEBAR_CATEGORY_STATE, {})
 
   useEffect(() => {
-    setOpen(pathname.startsWith(category.url))
-  }, [])
+    if (open !== undefined)
+      setState((state) => {
+        state[category.title] = open
+        return state
+      })
+  }, [open, setState])
 
-  return (
+  return open !== undefined ? (
     <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={setOpen} className="group/collapsible">
       <CollapsibleTrigger
         render={
@@ -55,6 +63,8 @@ function DSMenuCategory({ category }: { category: (typeof DSData)["mainNav"][0] 
         ) : null}
       </CollapsibleContent>
     </Collapsible>
+  ) : (
+    <Skeleton />
   )
 }
 

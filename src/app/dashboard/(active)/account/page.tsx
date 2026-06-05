@@ -25,9 +25,9 @@ export default async function Account() {
     <main className="container mx-auto px-4 py-8">
       <h2 className="text-accent-foreground mb-4 text-3xl font-bold">Account</h2>
       <div className="flex gap-4 mb-12">
-        <Avatar className="h-32 w-32 rounded-lg after:rounded-lg">
+        <Avatar className="h-32 w-32">
           {user.image && <AvatarImage src={user.image} alt={`propic of ${user.name}`} />}
-          <AvatarFallback className="rounded-lg text-3xl">
+          <AvatarFallback className="text-3xl">
             {user.name ? getInitials(user.name) : <UserIcon size={48} />}
           </AvatarFallback>
         </Avatar>
