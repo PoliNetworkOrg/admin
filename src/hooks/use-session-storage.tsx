@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react"
+import { type Dispatch, type SetStateAction, useCallback, useState } from "react"
 
 export function useSessionStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   // Read from sessionStorage on initialization
@@ -34,11 +34,6 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, Dispatch
     },
     [key, storedValue]
   )
-
-  // Keep state in sync if key changes
-  useEffect(() => {
-    setStoredValue(readValue())
-  }, [readValue])
 
   return [storedValue, setValue]
 }
