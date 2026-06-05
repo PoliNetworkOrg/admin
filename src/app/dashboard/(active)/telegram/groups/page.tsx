@@ -23,7 +23,7 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
           <p>Title</p>
           <p>Tag</p>
           <p>Invite Link</p>
-          <p>Hide</p>
+          <p>Actions</p>
         </div>
         {sorted.map((r) => (
           <GroupRow row={r} key={r.telegramId} />
