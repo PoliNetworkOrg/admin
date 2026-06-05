@@ -66,7 +66,6 @@ function getBreadcrumbs(navMap: Map<string, string>, pathname: string): Breadcru
     i++
   }
 
-  console.log(breadcrumbs)
   return breadcrumbs
 }
 

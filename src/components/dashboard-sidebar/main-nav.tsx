@@ -89,7 +89,11 @@ function DSMenuCategory({
 
 function DSMenuItem({ item }: { item: (typeof DSData)["mainNav"][0]["items"][0] }) {
   const path = usePathname()
-  const isActive = path === item.url
+
+  // NOTE: as of now, we have only 1 level depth of submenu, so using startsWith to
+  // match also subroutes is ok.
+  // If we go with multiple levels of depth it should be changed accordingly.
+  const isActive = path.startsWith(item.url)
 
   return (
     <SidebarMenuSubItem key={item.title}>
