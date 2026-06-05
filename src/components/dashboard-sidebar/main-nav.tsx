@@ -19,37 +19,47 @@ import { Skeleton } from "../ui/skeleton"
 import { DSData } from "./data"
 
 export function DSMainNav({ categoryState }: { categoryState: Record<string, boolean> }) {
+  const [_, setCategoryState] = useCookieStorage<Record<string, boolean>>(
+    COOKIES.SIDEBAR_CATEGORY_STATE,
+    {},
+    { expires: 60 * 60 * 24 * 7 }
+  )
+
   return (
     <SidebarGroup>
       <SidebarMenu className="gap-2">
         {DSData.mainNav.map((category) => (
-          <DSMenuCategory category={category} key={category.title} initialOpen={categoryState[category.title]} />
+          <DSMenuCategory
+            category={category}
+            key={category.title}
+            initialOpen={categoryState[category.title]}
+            onPersistOpen={(open) => {
+              setCategoryState((state) => ({ ...state, [category.title]: open }))
+            }}
+          />
         ))}
       </SidebarMenu>
     </SidebarGroup>
   )
 }
 
-function DSMenuCategory({ category, initialOpen }: { category: (typeof DSData)["mainNav"][0]; initialOpen?: boolean }) {
+function DSMenuCategory({
+  category,
+  initialOpen,
+  onPersistOpen,
+}: {
+  category: (typeof DSData)["mainNav"][0]
+  initialOpen?: boolean
+  onPersistOpen: (open: boolean) => void
+}) {
   const pathname = usePathname()
   const categoryUrl = category.items[0]?.url.split("/").slice(0, 3).join("/")
   const [open, setOpen] = useState<boolean>(initialOpen ?? (categoryUrl ? pathname.startsWith(categoryUrl) : false))
-  const [_, setState] = useCookieStorage<Record<string, boolean>>(
-    COOKIES.SIDEBAR_CATEGORY_STATE,
-    {},
-    { expires: 60 * 60 * 24 * 7 }
-  )
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      setOpen(open)
-      setState((state) => {
-        state[category.title] = open
-        return state
-      })
-    },
-    [setState, category.title]
-  )
+  function handleOpenChange(open: boolean) {
+    setOpen(open)
+    onPersistOpen(open)
+  }
 
   return open !== undefined ? (
     <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={handleOpenChange} className="group/collapsible">
