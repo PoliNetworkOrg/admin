@@ -16,12 +16,12 @@ export type BreadcrumbItem = {
   url?: string
 }
 
-export function Breadcrumb() {
+export function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   const pathname = usePathname()
   const items = useMemo(() => getBreadcrumbs(NAV_MAP, pathname), [pathname])
 
   return (
-    <BreadcrumbRoot>
+    <BreadcrumbRoot className={className} {...props}>
       <BreadcrumbList>
         {items.map((item, i) => (
           <Fragment key={`breadcrumb-item-${i}`}>
