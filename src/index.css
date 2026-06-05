@@ -174,3 +174,7 @@
 @theme {
   --breakpoint-xs: 30rem;
 }
+
+@utility container {
+  margin-inline: auto;
+}
