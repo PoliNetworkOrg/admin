@@ -1,6 +1,5 @@
 "use client"
-import { ArrowLeft, RefreshCcw, Search, X } from "lucide-react"
-import Link from "next/link"
+import { RefreshCcw, Search, X } from "lucide-react"
 import { Suspense, useState, useTransition } from "react"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
