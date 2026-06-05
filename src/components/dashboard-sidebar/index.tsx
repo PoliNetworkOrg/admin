@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import type * as React from "react"
 import {
   Sidebar,
@@ -23,7 +24,7 @@ export function DashboardSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<a href="#" />}>
+            <SidebarMenuButton size="lg" render={<Link href="/dashboard" />}>
               <Logo />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">PoliNetwork APS</span>

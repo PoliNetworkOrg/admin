@@ -1,5 +1,5 @@
 export type CookieOptions = {
-  expires?: Date | number // Date or days from now
+  expires?: Date | number // Date or seconds from now
   path?: string
   domain?: string
   secure?: boolean
@@ -14,7 +14,7 @@ export function setCookie(name: string, value: string, options: CookieOptions = 
   let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`
 
   if (expires !== undefined) {
-    const date = expires instanceof Date ? expires : new Date(Date.now() + expires * 864e5)
+    const date = expires instanceof Date ? expires : new Date(Date.now() + expires * 1000)
     cookieString += `; expires=${date.toUTCString()}`
   }
 

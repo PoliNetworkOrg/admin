@@ -1,5 +1,6 @@
 "use client"
 import { ChevronRight } from "lucide-react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { COOKIES } from "@/constants"
@@ -32,7 +33,11 @@ export function DSMainNav({ categoryState }: { categoryState: Record<string, boo
 function DSMenuCategory({ category, initialOpen }: { category: (typeof DSData)["mainNav"][0]; initialOpen?: boolean }) {
   const pathname = usePathname()
   const [open, setOpen] = useState<boolean>(initialOpen ?? pathname.startsWith(category.url))
-  const [_, setState] = useCookieStorage<Record<string, boolean>>(COOKIES.SIDEBAR_CATEGORY_STATE, {})
+  const [_, setState] = useCookieStorage<Record<string, boolean>>(
+    COOKIES.SIDEBAR_CATEGORY_STATE,
+    {},
+    { expires: 60 * 60 * 24 * 7 }
+  )
 
   useEffect(() => {
     if (open !== undefined)
@@ -74,7 +79,7 @@ function DSMenuItem({ item }: { item: (typeof DSData)["mainNav"][0]["items"][0] 
 
   return (
     <SidebarMenuSubItem key={item.title}>
-      <SidebarMenuSubButton isActive={isActive} render={<a href={item.url} />}>
+      <SidebarMenuSubButton isActive={isActive} render={<Link href={item.url} />}>
         {item.title}
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
