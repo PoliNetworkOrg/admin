@@ -5,10 +5,19 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { COOKIES } from "@/constants"
 import { Breadcrumb } from "./breadcrumb"
 
+function parseCookie(cookie: string) {
+  try {
+    const parsed = JSON.parse(cookie)
+    return parsed
+  } catch (_e) {
+    return {}
+  }
+}
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const cookie = cookieStore.get(COOKIES.SIDEBAR_CATEGORY_STATE)?.value
-  const DSCategoryState = cookie ? JSON.parse(cookie) : {}
+  const DSCategoryState = cookie ? parseCookie(cookie) : {}
 
   return (
     <SidebarProvider
