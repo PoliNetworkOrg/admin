@@ -2,7 +2,7 @@
 import { ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import { COOKIES } from "@/constants"
 import { useCookieStorage } from "@/hooks/use-cookie-storage"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"

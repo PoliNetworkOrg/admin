@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useState } from "react"
+import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } from "react"
 import { type CookieOptions, deleteCookie, getCookie, getDefaultCookieOptions, setCookie } from "@/utils/cookies"
 
 export function useCookieStorage<T>(
