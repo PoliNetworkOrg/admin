@@ -2,8 +2,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default async function Loading() {
   return (
-    <div className="container p-8">
-      <div className="flex items-center pt-4 gap-1">
+    <div className="container">
+      <div className="flex items-center gap-1">
         <p className="text-sm text-muted-foreground">Count: </p>
         <Skeleton className="w-10 h-5" />
       </div>

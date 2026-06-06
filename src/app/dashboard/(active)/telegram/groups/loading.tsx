@@ -3,7 +3,7 @@ import { SearchInput } from "./search-input"
 
 export default async function Loading() {
   return (
-    <div className="container p-8">
+    <div className="container">
       <SearchInput disabled />
       <div className="flex items-center pt-4 gap-1">
         <p className="text-sm text-muted-foreground">Count: </p>

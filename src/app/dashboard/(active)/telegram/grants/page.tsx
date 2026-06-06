@@ -9,7 +9,7 @@ export default async function GrantsPage() {
 
   return (
     <div className="container">
-      <div className="flex gap-4 justify-start items-center">
+      <div className="pb-4 flex gap-4 justify-start items-center">
         <p>Telegram Grants</p>
         <NewGrant />
       </div>

@@ -12,7 +12,7 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
   const sorted = rows.sort((a, b) => a.title.localeCompare(b.title))
 
   return (
-    <div className="container ">
+    <div className="container">
       <SearchInput />
       <p className="pt-4 text-sm text-muted-foreground">
         Count: <span className="text-foreground">{rows.length}</span>

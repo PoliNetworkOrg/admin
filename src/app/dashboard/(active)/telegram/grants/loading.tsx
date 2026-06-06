@@ -4,8 +4,8 @@ import { NewGrant } from "./new-grant"
 
 export default async function Loading() {
   return (
-    <div className="container p-8 h-full">
-      <div className="py-4 flex  gap-4 justify-start items-center">
+    <div className="container h-full">
+      <div className="pb-4 flex gap-4 justify-start items-center">
         <p>Telegram Grants</p>
         <NewGrant />
       </div>
