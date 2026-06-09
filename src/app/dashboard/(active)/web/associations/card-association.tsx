@@ -23,7 +23,7 @@ export default function CardAssociation(
   const iconInputId = useId()
   const [editActive, setEditActive] = useState(item.initialEditActive ?? false)
   const [name, setName] = useState(item.name)
-  const [icon, setIcon] = useState(item.icon)
+  const [logoSvg, setLogoSvg] = useState(item.logoSvg)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
 
@@ -32,7 +32,7 @@ export default function CardAssociation(
 
     if (!file) return
 
-    setIcon(await file.text())
+    setLogoSvg(await file.text())
   }
 
   function handleCancelEdit() {
@@ -42,7 +42,7 @@ export default function CardAssociation(
     }
 
     setName(item.name)
-    setIcon(item.icon)
+    setLogoSvg(item.logoSvg)
     setDescriptionIt(item.descriptionIt)
     setDescriptionEn(item.descriptionEn)
     setEditActive(false)
@@ -50,7 +50,7 @@ export default function CardAssociation(
 
   // TODO: implement save logic
   function saveChanges() {
-    item.onSave({ id: item.id, name, icon, descriptionIt, descriptionEn })
+    item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
     setEditActive(false)
   }
 
@@ -67,7 +67,7 @@ export default function CardAssociation(
                 <span
                   className="flex size-11 items-center justify-center [&_svg]:size-full"
                   aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: icon }}
+                  dangerouslySetInnerHTML={{ __html: logoSvg ?? "" }}
                 />
                 <span className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                   <Upload className="size-5" />
@@ -90,7 +90,7 @@ export default function CardAssociation(
               <span
                 className="flex size-11 items-center justify-center text-foreground [&_svg]:size-full"
                 aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: icon }}
+                dangerouslySetInnerHTML={{ __html: logoSvg ?? "" }}
               />
               {name}
             </>
