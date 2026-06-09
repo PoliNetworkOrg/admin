@@ -27,6 +27,7 @@ export default function CardAssociation(
   const [logoSvg, setLogoSvg] = useState(item.logoSvg)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
+  const [pending, setPending] = useState(false)
   const initials = getInitials(name)
 
   async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -50,8 +51,15 @@ export default function CardAssociation(
   }
 
   async function saveChanges() {
-    const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
-    if (saved) setEditActive(false)
+    if (pending) return
+
+    setPending(true)
+    try {
+      const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
+      if (saved) setEditActive(false)
+    } finally {
+      setPending(false)
+    }
   }
 
   function renderIcon() {
@@ -116,6 +124,7 @@ export default function CardAssociation(
                 type="button"
                 variant="outline"
                 size="icon"
+                disabled={pending}
                 onClick={() => saveChanges()}
                 aria-label={`Save ${name}`}
               >
@@ -125,6 +134,7 @@ export default function CardAssociation(
                 type="button"
                 variant="destructive"
                 size="icon"
+                disabled={pending}
                 onClick={handleCancelEdit}
                 aria-label={`Close ${name}`}
               >
