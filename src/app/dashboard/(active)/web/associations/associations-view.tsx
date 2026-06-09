@@ -3,7 +3,7 @@
 import { PlusIcon } from "lucide-react"
 import { useState } from "react"
 import WebHeader from "@/components/web-header"
-import { AssociationsList } from "./associations-list"
+import CardAssociation from "./card-association"
 import type { Association } from "./types"
 
 export function AssociationsView({ initialAssociations }: { initialAssociations: Association[] }) {
@@ -57,14 +57,30 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
         }}
       />
 
-      <AssociationsList
-        associations={associations}
-        editingAssociationId={editingAssociationId}
-        draftAssociationIds={draftAssociationIds}
-        onCancelCreate={removeAssociation}
-        onDelete={removeAssociation}
-        onSave={handleSave}
-      />
+      <div className="grid gap-4">
+        {associations.length === 0 && (
+          <div className="grid min-h-64 place-items-center">
+            <p className="text-center text-lg text-muted-foreground">
+              No associations found. Click "Add Association" to create one.
+            </p>
+          </div>
+        )}
+        {associations.map((item) => (
+          <CardAssociation
+            key={item.id}
+            id={item.id}
+            name={item.name}
+            logoSvg={item.logoSvg}
+            descriptionIt={item.descriptionIt}
+            descriptionEn={item.descriptionEn}
+            initialEditActive={editingAssociationId === item.id}
+            isDraft={draftAssociationIds.has(item.id)}
+            onCancelCreate={() => removeAssociation(item.id)}
+            onDelete={() => removeAssociation(item.id)}
+            onSave={(values) => handleSave(item.id, values)}
+          />
+        ))}
+      </div>
     </>
   )
 }
