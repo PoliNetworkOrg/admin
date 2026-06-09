@@ -5,11 +5,11 @@ export function getBaseUrl() {
 }
 
 export function getInitials(name: string): string {
-  const [first, second] = name.split(" ")
+  const [first, second] = name.replaceAll("-", " ").split(" ").filter(Boolean)
   if (first?.[0] && second?.[0]) return first[0].toUpperCase() + second[0].toUpperCase()
   if (first?.[0] && !second?.[0] && first?.[1]) return first[0].toUpperCase() + first[1].toLowerCase()
 
-  return name.slice(0, 2) // fallback
+  return name.replaceAll("-", "").slice(0, 2) // fallback
 }
 
 export async function wait(ms: number): Promise<void> {
