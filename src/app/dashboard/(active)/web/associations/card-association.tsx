@@ -11,6 +11,18 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { Association } from "./types"
 
+function getInitials(name: string) {
+  const initials = name
+    .trim()
+    .split(/[\s-]+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+
+  return initials || "NA"
+}
+
 export default function CardAssociation(
   item: Association & {
     initialEditActive?: boolean
@@ -26,6 +38,7 @@ export default function CardAssociation(
   const [logoSvg, setLogoSvg] = useState(item.logoSvg)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
+  const initials = getInitials(name)
 
   async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -54,6 +67,27 @@ export default function CardAssociation(
     setEditActive(false)
   }
 
+  function renderIcon() {
+    if (logoSvg) {
+      return (
+        <span
+          className="flex size-11 items-center justify-center text-foreground [&_svg]:size-full"
+          aria-hidden="true"
+          dangerouslySetInnerHTML={{ __html: logoSvg }}
+        />
+      )
+    }
+
+    return (
+      <span
+        className="flex size-11 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground"
+        aria-hidden="true"
+      >
+        {initials}
+      </span>
+    )
+  }
+
   return (
     <Card key={item.id} className="border border-border bg-card">
       <CardHeader className="grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1">
@@ -64,11 +98,7 @@ export default function CardAssociation(
                 htmlFor={iconInputId}
                 className="group relative flex size-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-input bg-background text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
-                <span
-                  className="flex size-11 items-center justify-center [&_svg]:size-full"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: logoSvg ?? "" }}
-                />
+                {renderIcon()}
                 <span className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                   <Upload className="size-5" />
                 </span>
@@ -87,11 +117,7 @@ export default function CardAssociation(
             </>
           ) : (
             <>
-              <span
-                className="flex size-11 items-center justify-center text-foreground [&_svg]:size-full"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: logoSvg ?? "" }}
-              />
+              {renderIcon()}
               {name}
             </>
           )}
