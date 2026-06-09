@@ -10,6 +10,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getInitials } from "@/lib/utils"
+import { cn } from "@/lib/utils/shadcn"
 import type { Association } from "./types"
 
 export default function CardAssociation(
@@ -122,7 +123,7 @@ export default function CardAssociation(
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="success"
                 size="icon"
                 disabled={pending}
                 onClick={() => saveChanges()}
@@ -132,7 +133,7 @@ export default function CardAssociation(
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant="error"
                 size="icon"
                 disabled={pending}
                 onClick={handleCancelEdit}
@@ -145,7 +146,7 @@ export default function CardAssociation(
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="icon"
                 onClick={() => setEditActive(true)}
                 aria-label={`Edit ${name}`}
@@ -159,35 +160,39 @@ export default function CardAssociation(
       </CardHeader>
 
       <CardContent className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-background p-3">
-          <Badge variant="outline" className="mb-2">
+        <div className="flex flex-col gap-2">
+          <Badge variant="default">
             <Languages className="size-3" />
             IT
           </Badge>
-          {editActive ? (
-            <Textarea
-              aria-label={`${name} Italian description`}
-              value={descriptionIt}
-              onChange={(event) => setDescriptionIt(event.target.value)}
-            />
-          ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">{descriptionIt}</p>
-          )}
+          <Textarea
+            aria-label={`${name} Italian description`}
+            value={descriptionIt}
+            readOnly={!editActive}
+            onChange={(event) => setDescriptionIt(event.target.value)}
+            className={cn(
+              "min-h-32 border-0 bg-transparent p-3 shadow-none",
+              !editActive &&
+                "cursor-default resize-none focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-transparent"
+            )}
+          />
         </div>
-        <div className="rounded-lg border border-border bg-background p-3">
-          <Badge variant="outline" className="mb-2">
+        <div className="flex flex-col gap-2">
+          <Badge variant="default">
             <Languages className="size-3" />
             EN
           </Badge>
-          {editActive ? (
-            <Textarea
-              aria-label={`${name} English description`}
-              value={descriptionEn}
-              onChange={(event) => setDescriptionEn(event.target.value)}
-            />
-          ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">{descriptionEn}</p>
-          )}
+          <Textarea
+            aria-label={`${name} English description`}
+            value={descriptionEn}
+            readOnly={!editActive}
+            onChange={(event) => setDescriptionEn(event.target.value)}
+            className={cn(
+              "min-h-32 border-0 bg-transparent p-3 shadow-none",
+              !editActive &&
+                "cursor-default resize-none focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-transparent"
+            )}
+          />
         </div>
       </CardContent>
     </Card>
