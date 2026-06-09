@@ -8,32 +8,7 @@ import type { Association } from "./types"
 
 const DEFAULT_ICON = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="currentColor" opacity=".12"/><path d="M14 31V17h8.2c3.7 0 6.3 2.4 6.3 5.8 0 3.5-2.6 5.8-6.3 5.8h-3.4V31H14Zm4.8-6.5h2.8c1.4 0 2.2-.7 2.2-1.8 0-1.1-.8-1.8-2.2-1.8h-2.8v3.6ZM30.2 31V17H35v10h6v4H30.2Z" fill="currentColor"/></svg>`
 
-const INITIAL_DATA: Association[] = [
-  {
-    id: 1,
-    name: "PoliNetwork",
-    icon: DEFAULT_ICON,
-    descriptionIt:
-      "Community studentesca del Politecnico, nata per raccogliere progetti e iniziative utili agli studenti.",
-    descriptionEn: "A student community at Politecnico, built around projects and initiatives useful to students.",
-  },
-  {
-    id: 2,
-    name: "PoliNetwork 2",
-    icon: DEFAULT_ICON,
-    descriptionIt:
-      "Community studentesca del Politecnico, nata per raccogliere progetti e iniziative utili agli studenti.",
-    descriptionEn: "A student community at Politecnico, built around projects and initiatives useful to students.",
-  },
-  {
-    id: 3,
-    name: "PoliNetwork 3",
-    icon: DEFAULT_ICON,
-    descriptionIt:
-      "Community studentesca del Politecnico, nata per raccogliere progetti e iniziative utili agli studenti.",
-    descriptionEn: "A student community at Politecnico, built around projects and initiatives useful to students.",
-  },
-]
+const INITIAL_DATA: Association[] = []
 
 export default function WebAssociationsIndex() {
   const [associations, setAssociations] = useState(INITIAL_DATA)
@@ -102,6 +77,11 @@ export default function WebAssociationsIndex() {
       </div>
 
       <div className="grid gap-4">
+        {associations.length === 0 && (
+          <p className="text-center text-lg text-muted-foreground py-50">
+            No associations found. Click "Add Association" to create one.
+          </p>
+        )}
         {associations.map((item) => (
           <CardAssociation
             key={item.id}
