@@ -1,16 +1,21 @@
 "use client"
 
 import { PlusIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "sonner"
 import WebHeader from "@/components/web-header"
+import { createAssociation, deleteAssociation, editAssociation } from "@/server/actions/web"
 import CardAssociation from "./card-association"
 import type { Association } from "./types"
 
 export function AssociationsView({ initialAssociations }: { initialAssociations: Association[] }) {
+  const router = useRouter()
   const [associations, setAssociations] = useState(initialAssociations)
   const [editingAssociationId, setEditingAssociationId] = useState<number | null>(null)
   const [draftAssociationIds, setDraftAssociationIds] = useState<Set<number>>(new Set())
 
+  // Creates a new temporary association, id will not be saved and will be replaced
   function handleAdd() {
     const association: Association = {
       id: Date.now(),
@@ -25,7 +30,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
     setDraftAssociationIds((ids) => new Set(ids).add(association.id))
   }
 
-  function removeAssociation(id: number) {
+  function removeAssociationLocally(id: number) {
     setAssociations((items) => items.filter((item) => item.id !== id))
     setDraftAssociationIds((ids) => {
       const nextIds = new Set(ids)
@@ -35,14 +40,78 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
     setEditingAssociationId((editingId) => (editingId === id ? null : editingId))
   }
 
-  function handleSave(id: number, values: Association) {
-    setAssociations((items) => items.map((item) => (item.id === id ? { ...item, ...values } : item)))
+  async function handleDelete(id: number) {
+    if (draftAssociationIds.has(id)) {
+      removeAssociationLocally(id)
+      return
+    }
+
+    const result = await deleteAssociation(id)
+
+    if (result.error === "UNAUTHORIZED") {
+      toast.error("You don't have permission to delete associations.")
+      return
+    } else if (result.error === "NOT_FOUND") {
+      toast.info("This association was already deleted.")
+    } else {
+      toast.success("Association deleted successfully.")
+    }
+
+    // se refrashassi tutta la pagina poi non potrei avere gli edit di piu cose insieme, tipo che una é in edit e nel mentre una la cancello
+    removeAssociationLocally(id)
+    router.refresh()
+  }
+
+  // Draft ne crea una nuova, altrimenti modifica quella esistente
+  async function handleSave(id: number, values: Association) {
+    const isDraft = draftAssociationIds.has(id)
+    const result = isDraft
+      ? await createAssociation({
+          name: values.name,
+          descriptionIt: values.descriptionIt,
+          descriptionEn: values.descriptionEn,
+          logoSvg: values.logoSvg,
+        })
+      : await editAssociation({
+          id,
+          name: values.name,
+          descriptionIt: values.descriptionIt,
+          descriptionEn: values.descriptionEn,
+          logoSvg: values.logoSvg,
+        })
+
+    if (result.error === "UNAUTHORIZED") {
+      toast.error("You don't have permission to save associations.")
+      return false
+    } else if (result.error === "NOT_FOUND") {
+      toast.error("This association does not exist anymore.")
+      return false
+    } else if (!result.association) {
+      toast.error("There was an error saving the association.")
+      return false
+    }
+
+    const savedAssociation: Association = {
+      id: result.association.id,
+      name: result.association.name,
+      descriptionIt: result.association.descriptionIt,
+      descriptionEn: result.association.descriptionEn,
+      logoSvg: result.association.logoSvg,
+    }
+
+    // anche qui, se facessi il refresh perderei gli altri edit locali
+    setAssociations((items) => items.map((item) => (item.id === id ? savedAssociation : item)))
     setDraftAssociationIds((ids) => {
       const nextIds = new Set(ids)
       nextIds.delete(id)
       return nextIds
     })
     setEditingAssociationId((editingId) => (editingId === id ? null : editingId))
+    toast.success(`Association ${isDraft ? "created" : "updated"} successfully.`)
+    router.refresh()
+
+    // Mi ritorna true cosi poi chiudo l'edit della card
+    return true
   }
 
   return (
@@ -75,8 +144,8 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
             descriptionEn={item.descriptionEn}
             initialEditActive={editingAssociationId === item.id}
             isDraft={draftAssociationIds.has(item.id)}
-            onCancelCreate={() => removeAssociation(item.id)}
-            onDelete={() => removeAssociation(item.id)}
+            onCancelCreate={() => removeAssociationLocally(item.id)}
+            onDelete={() => handleDelete(item.id)}
             onSave={(values) => handleSave(item.id, values)}
           />
         ))}

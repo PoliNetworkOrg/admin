@@ -2,26 +2,15 @@
 
 import { Languages, LucidePencil, Save, Upload, X } from "lucide-react"
 import type { ChangeEvent } from "react"
-import { useId, useState } from "react"
+import { useState } from "react"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { getInitials } from "@/lib/utils"
 import type { Association } from "./types"
-
-function getInitials(name: string) {
-  const initials = name
-    .trim()
-    .split(/[\s-]+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
-
-  return initials || "NA"
-}
 
 export default function CardAssociation(
   item: Association & {
@@ -29,10 +18,10 @@ export default function CardAssociation(
     isDraft?: boolean
     onCancelCreate?: () => void
     onDelete: () => void
-    onSave: (values: Association) => void
+    onSave: (values: Association) => boolean | Promise<boolean>
   }
 ) {
-  const iconInputId = useId()
+  const iconInputId = `association-icon-${item.id}`
   const [editActive, setEditActive] = useState(item.initialEditActive ?? false)
   const [name, setName] = useState(item.name)
   const [logoSvg, setLogoSvg] = useState(item.logoSvg)
@@ -42,12 +31,11 @@ export default function CardAssociation(
 
   async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-
     if (!file) return
-
     setLogoSvg(await file.text())
   }
 
+  // If it's draft, remove the card, otherwise reset the values to the original ones
   function handleCancelEdit() {
     if (item.isDraft) {
       item.onCancelCreate?.()
@@ -61,10 +49,9 @@ export default function CardAssociation(
     setEditActive(false)
   }
 
-  // TODO: implement save logic
-  function saveChanges() {
-    item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
-    setEditActive(false)
+  async function saveChanges() {
+    const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
+    if (saved) setEditActive(false)
   }
 
   function renderIcon() {
