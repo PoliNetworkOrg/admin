@@ -15,7 +15,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "../ui/sidebar"
-import { Skeleton } from "../ui/skeleton"
 import { DSData } from "./data"
 
 export function DSMainNav({ categoryState }: { categoryState: Record<string, boolean> }) {
@@ -61,7 +60,7 @@ function DSMenuCategory({
     onPersistOpen(open)
   }
 
-  return open !== undefined ? (
+  return (
     <Collapsible render={<SidebarMenuItem />} open={open} onOpenChange={handleOpenChange} className="group/collapsible">
       <CollapsibleTrigger
         render={
@@ -82,8 +81,6 @@ function DSMenuCategory({
         ) : null}
       </CollapsibleContent>
     </Collapsible>
-  ) : (
-    <Skeleton />
   )
 }
 
