@@ -1,12 +1,8 @@
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { trpc } from "@/server/trpc"
-import { GrantList } from "./grant-list"
 import { NewGrant } from "./new-grant"
 
-export default async function GrantsPage() {
-  const { grants: ongoing } = await trpc.tg.grants.getOngoing.query()
-  const { grants: scheduled } = await trpc.tg.grants.getScheduled.query()
-
+export default async function Loading() {
   return (
     <div className="container p-8 h-full">
       <div className="py-4 flex  gap-4 justify-start items-center">
@@ -22,16 +18,34 @@ export default async function GrantsPage() {
           <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
           <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
         </TabsList>
+
         <TabsContent value="all">
-          <GrantList grants={[...ongoing, ...scheduled]} />
+          <Content />
         </TabsContent>
         <TabsContent value="ongoing">
-          <GrantList grants={ongoing} />
+          <Content />
         </TabsContent>
         <TabsContent value="scheduled">
-          <GrantList grants={scheduled} />
+          <Content />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+function Content() {
+  return (
+    <div className="flex flex-col w-full items-start justify-start py-4">
+      <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-semibold">
+        <p>Telegram ID</p>
+        <p>Username</p>
+        <p>Start Date</p>
+        <p>End Date</p>
+        <p>Interrupt</p>
+      </div>
+      {new Array(6).fill(0).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full my-2" />
+      ))}
     </div>
   )
 }
