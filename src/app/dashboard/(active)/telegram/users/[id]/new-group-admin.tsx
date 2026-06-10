@@ -1,5 +1,6 @@
 "use client"
 import { Plus, Search, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -23,11 +24,21 @@ import type { ApiOutput } from "@/server/trpc/types"
 type Groups = ApiOutput["tg"]["groups"]["search"]["groups"]
 type User = ApiOutput["tg"]["users"]["getByUsername"]["user"]
 
-export function NewGroupAdmin({ user, alreadyIn, onConfirm }: { user: User; alreadyIn: number[]; onConfirm(): void }) {
+export function NewGroupAdmin({
+  user,
+  alreadyIn,
+  // onConfirm
+}: {
+  user: User
+  alreadyIn: number[]
+  // onConfirm(): void
+}) {
   const [open, setOpen] = useState(false)
   const [groupQuery, setGroupQuery] = useState("")
   const [groups, setGroups] = useState<Groups>([])
   const [selectedGroup, setSelectedGroup] = useState<Groups[number] | null>(null)
+
+  const router = useRouter()
 
   async function search() {
     const { groups } = await searchGroup(groupQuery)
@@ -44,7 +55,8 @@ export function NewGroupAdmin({ user, alreadyIn, onConfirm }: { user: User; alre
         toast.error("You don't have enough permissions")
       } else {
         toast.info(`Group admin added`)
-        onConfirm()
+        router.refresh()
+        // onConfirm()
       }
     } catch (err) {
       console.error(err)

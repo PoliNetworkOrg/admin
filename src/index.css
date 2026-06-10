@@ -177,4 +177,5 @@
 
 @utility container {
   margin-inline: auto;
+  @apply pb-8;
 }
