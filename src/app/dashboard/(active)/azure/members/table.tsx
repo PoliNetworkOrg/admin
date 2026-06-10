@@ -33,7 +33,7 @@ export function AssocTable({ members }: { members: AzureMember[] }) {
   const users = sociFilter ? members.filter((v) => v.isMember) : members
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full">
       <div className="flex gap-2 items-center">
         <p>Utenti MS @polinetwork.org</p>
         <Badge
@@ -60,7 +60,7 @@ export function AssocTable({ members }: { members: AzureMember[] }) {
 
 export function SkeletonAssocTable() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full">
       <div className="flex gap-2 items-center">
         <p>Utenti MS @polinetwork.org</p>
         <Badge className="animate-pulse w-15" />

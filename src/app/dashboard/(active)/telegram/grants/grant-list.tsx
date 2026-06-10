@@ -19,7 +19,7 @@ export function GrantList({ grants, isScheduled }: { grants: Grants; isScheduled
         <GrantRow row={r} key={r.grant.id} />
       ))}
       {grants.length === 0 && (
-        <div className="w-full text-center py-2 italic">
+        <div className="w-full text-center py-4 italic">
           There are no {isScheduled ? "scheduled" : "ongoing"} grants
         </div>
       )}
@@ -36,7 +36,7 @@ function GrantRow({ row: r }: { row: Grants[number] }) {
       </p>
       <p>{format(r.grant.validSince, "yyyy/MM/dd HH:mm")}</p>
       <p>{format(r.grant.validUntil, "yyyy/MM/dd HH:mm")}</p>
-      <DeleteGrant userId={r.grant.userId} onDelete={() => null} />
+      <DeleteGrant userId={r.grant.userId} />
     </div>
   )
 }

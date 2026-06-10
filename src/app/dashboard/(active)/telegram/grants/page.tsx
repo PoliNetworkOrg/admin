@@ -9,12 +9,12 @@ export default async function GrantsPage() {
 
   return (
     <div className="container">
-      <div className="pb-4 flex gap-4 justify-start items-center">
+      <div className="flex gap-4 justify-start items-center">
         <p>Telegram Grants</p>
         <NewGrant />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="w-full">
         <TabsList>
           <TabsTrigger className="w-30" value="all">
             All
