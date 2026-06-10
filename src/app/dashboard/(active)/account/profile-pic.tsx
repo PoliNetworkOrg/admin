@@ -55,7 +55,7 @@ export function ProfilePic({ user }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <UploadProfilePicture ref={uploadRef} userId={user.id} />
+        <UploadProfilePicture ref={uploadRef} />
 
         <AvatarImage src={user.image || undefined} alt={`propic of ${user.name}`} />
         <AvatarFallback className="rounded-full text-3xl text-foreground">
@@ -67,7 +67,7 @@ export function ProfilePic({ user }: Props) {
   )
 }
 
-const UploadProfilePicture = forwardRef<HTMLInputElement, { userId: string }>(({ userId }, ref) => {
+const UploadProfilePicture = forwardRef<HTMLInputElement>((_, ref) => {
   const router = useRouter()
   const { refetch } = useSession()
 
@@ -87,7 +87,7 @@ const UploadProfilePicture = forwardRef<HTMLInputElement, { userId: string }>(({
         return
       }
 
-      const { success } = await updateProfilePic(userId, selectedFile)
+      const { success } = await updateProfilePic(selectedFile)
       if (success) toast.success("Image changed successfully!")
       else toast.error("There was an error, try again")
       await refetch()
