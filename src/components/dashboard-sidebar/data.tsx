@@ -12,6 +12,7 @@ export const DSData = {
         { title: "Grants", url: "/dashboard/telegram/grants", icon: <Sparkle /> },
         { title: "Groups", url: "/dashboard/telegram/groups", icon: <MessageCircleMoreIcon /> },
         { title: "Users", url: "/dashboard/telegram/user-list", icon: <Users /> },
+        { title: "User Details", url: "/dashboard/telegram/user-details", icon: <Users /> },
       ],
     },
     {

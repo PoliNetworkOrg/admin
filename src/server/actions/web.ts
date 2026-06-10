@@ -24,6 +24,19 @@ export async function editAssociation(input: Omit<ApiInput["web"]["associations"
   return { association: result, error: null }
 }
 
+export async function editAssociationLinks({
+  id,
+  links,
+}: Pick<ApiInput["web"]["associations"]["editAssociationLinks"], "id" | "links">) {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { association: null, error: "UNAUTHORIZED" }
+
+  const result = await trpc.web.associations.editAssociationLinks.mutate({ id, links, modifiedBy: telegramId })
+  if ("error" in result) return { association: null, error: result.error }
+
+  return { association: result, error: null }
+}
+
 export async function deleteAssociation(id: number) {
   const { allowed } = await requireRole(["owner", "direttivo", "president"])
   if (!allowed) return { error: "UNAUTHORIZED" }

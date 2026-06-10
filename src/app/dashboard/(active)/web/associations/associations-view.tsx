@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import WebHeader from "@/components/web-header"
-import { createAssociation, deleteAssociation, editAssociation } from "@/server/actions/web"
+import { createAssociation, deleteAssociation, editAssociation, editAssociationLinks } from "@/server/actions/web"
 import CardAssociation from "./card-association"
-import type { Association } from "./types"
+import { EMPTY_ASSOCIATION_LINKS } from "./constants"
+import type { Association, AssociationLinks } from "./types"
 
 export function AssociationsView({ initialAssociations }: { initialAssociations: Association[] }) {
   const router = useRouter()
@@ -23,6 +24,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
       logoSvg: null,
       descriptionIt: "Description in Italian",
       descriptionEn: "Description in English",
+      links: EMPTY_ASSOCIATION_LINKS,
     }
 
     setAssociations((items) => [association, ...items])
@@ -95,16 +97,8 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
         return false
       }
 
-      const savedAssociation: Association = {
-        id: result.association.id,
-        name: result.association.name,
-        descriptionIt: result.association.descriptionIt,
-        descriptionEn: result.association.descriptionEn,
-        logoSvg: result.association.logoSvg,
-      }
-
       // anche qui, se facessi il refresh perderei gli altri edit locali
-      setAssociations((items) => items.map((item) => (item.id === id ? savedAssociation : item)))
+      setAssociations((items) => items.map((item) => (item.id === id ? result.association : item)))
       setDraftAssociationIds((ids) => {
         const nextIds = new Set(ids)
         nextIds.delete(id)
@@ -113,11 +107,37 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
       setEditingAssociationId((editingId) => (editingId === id ? null : editingId))
       toast.success(`Association ${isDraft ? "created" : "updated"} successfully.`)
       router.refresh()
-
       // Mi ritorna true cosi poi chiudo l'edit della card
       return true
     } catch (_e) {
       toast.error("There was an error saving the association.")
+      return false
+    }
+  }
+
+  async function handleSaveLinks(id: number, links: AssociationLinks) {
+    try {
+      const result = await editAssociationLinks({ id, links })
+
+      if (result.error === "UNAUTHORIZED") {
+        toast.error("You don't have permission to save association links.")
+        return false
+      } else if (result.error === "NOT_FOUND") {
+        toast.error("This association does not exist anymore.")
+        return false
+      } else if (!result.association) {
+        toast.error("There was an error saving the association links.")
+        return false
+      }
+
+      setAssociations((items) =>
+        items.map((item) => (item.id === id ? { ...item, links: result.association.links } : item))
+      )
+      toast.success("Association links updated successfully.")
+      router.refresh()
+      return true
+    } catch (_e) {
+      toast.error("There was an error saving the association links.")
       return false
     }
   }
@@ -150,11 +170,13 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
             logoSvg={item.logoSvg}
             descriptionIt={item.descriptionIt}
             descriptionEn={item.descriptionEn}
+            links={item.links}
             initialEditActive={editingAssociationId === item.id}
             isDraft={draftAssociationIds.has(item.id)}
             onCancelCreate={() => removeAssociationLocally(item.id)}
             onDelete={() => handleDelete(item.id)}
             onSave={(values) => handleSave(item.id, values)}
+            onSaveLinks={(links) => handleSaveLinks(item.id, links)}
           />
         ))}
       </div>

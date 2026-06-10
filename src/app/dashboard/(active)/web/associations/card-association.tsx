@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getInitials } from "@/lib/utils"
 import { cn } from "@/lib/utils/shadcn"
-import type { Association } from "./types"
+import { AssociationLinksDialog } from "./association-links"
+import type { Association, AssociationLinks } from "./types"
 
 export default function CardAssociation(
   item: Association & {
@@ -20,6 +21,7 @@ export default function CardAssociation(
     onCancelCreate?: () => void
     onDelete: () => void
     onSave: (values: Association) => boolean | Promise<boolean>
+    onSaveLinks: (links: AssociationLinks) => boolean | Promise<boolean>
   }
 ) {
   const iconInputId = `association-icon-${item.id}`
@@ -28,6 +30,7 @@ export default function CardAssociation(
   const [logoSvg, setLogoSvg] = useState(item.logoSvg)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
+  const [links, setLinks] = useState(item.links)
   const [pending, setPending] = useState(false)
   const initials = getInitials(name)
 
@@ -48,19 +51,28 @@ export default function CardAssociation(
     setLogoSvg(item.logoSvg)
     setDescriptionIt(item.descriptionIt)
     setDescriptionEn(item.descriptionEn)
+    setLinks(item.links)
     setEditActive(false)
   }
 
+  // TODO: forse spostare la cosa salvata per ultima nella lista? Perche poi ordinata per id finisce li
+  // se gli id sono crescenti. O tipo la creo direttamente ultima e non in cima? Pero poi devi scorrere per editarla
   async function saveChanges() {
     if (pending) return
 
     setPending(true)
     try {
-      const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn })
+      const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn, links })
       if (saved) setEditActive(false)
     } finally {
       setPending(false)
     }
+  }
+
+  async function saveLinks(nextLinks: AssociationLinks) {
+    const saved = await item.onSaveLinks(nextLinks)
+    if (saved) setLinks(nextLinks)
+    return saved
   }
 
   function renderIcon() {
@@ -73,7 +85,6 @@ export default function CardAssociation(
         />
       )
     }
-
     return (
       <span
         className="flex size-11 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground"
@@ -144,6 +155,7 @@ export default function CardAssociation(
             </>
           ) : (
             <>
+              <AssociationLinksDialog name={name} links={links} onSave={saveLinks} />
               <Button
                 type="button"
                 variant="default"
