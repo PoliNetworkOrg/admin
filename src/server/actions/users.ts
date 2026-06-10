@@ -16,8 +16,8 @@ export async function searchUserInfo(username: string) {
   return (await trpc.tg.users.getByUsername.query({ username })).user ?? null
 }
 
-export async function searchUser(username: string) {
-  const user = await searchUserInfo(username)
+export async function getUserDetails(userId: number) {
+  const { user } = await trpc.tg.users.get.query({ userId: userId })
   if (!user) return null
 
   const { roles, groupAdmin } = await trpc.tg.permissions.getRoles.query({ userId: user.id })

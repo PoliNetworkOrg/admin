@@ -14,19 +14,18 @@ function parseCookie(cookie: string) {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get(COOKIES.SIDEBAR_CATEGORY_STATE)?.value
-  const DSCategoryState = cookie ? parseCookie(cookie) : {}
+  const sidebarCookies = await getSidebarCookies()
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarCookies.open}
       style={
         {
           "--sidebar-width": "19rem",
         } as React.CSSProperties
       }
     >
-      <DashboardSidebar categoryState={DSCategoryState} />
+      <DashboardSidebar categoryState={sidebarCookies.state} />
       <SidebarInset className="px-4">
         <header className="flex h-16 shrink-0 relative items-center justify-between gap-2 border-b mb-8">
           <SidebarTrigger className="-ml-1" size="icon" />
@@ -38,4 +37,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </SidebarProvider>
   )
 }
-// <Separator orientation="vertical" className="mr-2 data-vertical:h-4 data-vertical:self-auto" />
+
+async function getSidebarCookies() {
+  const cookieStore = await cookies()
+
+  const sidebarCategoryStateCookie = cookieStore.get(COOKIES.SIDEBAR_CATEGORY_STATE)?.value
+  const sidebarOpenCookie = cookieStore.get(COOKIES.SIDEBAR_OPEN)?.value
+  const state: Record<string, boolean> = sidebarCategoryStateCookie ? parseCookie(sidebarCategoryStateCookie) : {}
+  const open: boolean = sidebarOpenCookie !== undefined ? parseCookie(sidebarOpenCookie) : true
+
+  return { state, open }
+}

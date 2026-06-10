@@ -5,12 +5,12 @@ import { NewGrant } from "./new-grant"
 export default async function Loading() {
   return (
     <div className="container h-full">
-      <div className="pb-4 flex gap-4 justify-start items-center">
+      <div className="flex gap-4 justify-start items-center">
         <p>Telegram Grants</p>
         <NewGrant />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="w-full">
         <TabsList>
           <TabsTrigger className="w-30" value="all">
             All
@@ -36,7 +36,7 @@ export default async function Loading() {
 function Content() {
   return (
     <div className="flex flex-col w-full items-start justify-start py-4">
-      <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-semibold">
+      <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-bold">
         <p>Telegram ID</p>
         <p>Username</p>
         <p>Start Date</p>
