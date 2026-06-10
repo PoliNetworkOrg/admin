@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { getUserDetails } from "@/server/actions/users"
 import { AuditLogCard } from "./card-audit-log"
@@ -10,6 +11,8 @@ import { NewGroupAdmin } from "./new-group-admin"
 export default async function TgUserDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const data = await getUserDetails(parseInt(id, 10))
+
+  if (!data) notFound()
 
   return (
     <div className="container">

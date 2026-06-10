@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 export default async function Loading() {
   return (
     <div className="container">
-      <div className="grid grid-cols-3 items-start gap-4">
+      <div className="grid grid-cols-3 items-start gap-4 w-full">
         <Skeleton className="w-full h-44 rounded-xl" />
         <Skeleton className="w-full h-44 rounded-xl" />
       </div>
@@ -17,7 +17,7 @@ export default async function Loading() {
       </div>
 
       <div className="w-full">
-        <p className="pt-6">Last messages (max 12):</p>
+        <p>Last messages (max 12):</p>
         <div className="grid grid-cols-3 py-3 gap-4 w-full">
           <Skeleton className="w-full h-44 rounded-xl" />
           <Skeleton className="w-full h-44 rounded-xl" />
@@ -25,7 +25,7 @@ export default async function Loading() {
       </div>
 
       <div className="w-full">
-        <p className="pt-6">Audit log:</p>
+        <p>Audit log:</p>
         <div className="grid grid-cols-3 py-3 gap-4 w-full">
           {new Array(9).fill(0).map((_, i) => (
             <Skeleton key={i} className="w-full h-44 rounded-xl" />
