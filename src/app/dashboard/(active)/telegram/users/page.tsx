@@ -46,7 +46,7 @@ function UserRow({ row: r }: { row: Users[number] }) {
       </p>
       <div className="flex justify-end gap-2 items-center">
         <Link href={`/dashboard/telegram/users/${r.id}`}>
-          <Button size="icon">
+          <Button size="icon" aria-label="see user details">
             <Eye />
           </Button>
         </Link>
