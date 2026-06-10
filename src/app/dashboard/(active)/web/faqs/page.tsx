@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Check, LucidePencil, PlusIcon, Trash, X } from "lucide-react"
+import { ArrowLeft, Check, LucidePencil, PlusIcon, Trash, Undo2, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -232,7 +232,7 @@ function FaqEditHeader({ id, question, setQuestion, onSave, onCancel }: FaqEditH
       />
       <div className="flex items-center gap-1.5 shrink-0">
         <FaqButton icon={Check} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
-        <FaqButton icon={X} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
+        <FaqButton icon={Undo2} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
       </div>
     </div>
   )
@@ -254,12 +254,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
           <Popover>
             <PopoverTrigger
               render={
-                <FaqButton
-                  icon={Trash}
-                  onClick={(e) => e.stopPropagation()}
-                  color="destructive"
-                  ariaLabel="Delete FAQ"
-                />
+                <FaqButton icon={X} onClick={(e) => e.stopPropagation()} color="destructive" ariaLabel="Delete FAQ" />
               }
             />
             <PopoverContent className="flex flex-row items-center gap-2" align="end">
