@@ -247,7 +247,7 @@ interface FaqDisplayHeaderProps {
 function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
   return (
     <AccordionTrigger
-      className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary/90"
+      className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary"
       actions={
         <div className="flex items-center gap-1.5">
           <FaqButton icon={LucidePencil} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
@@ -264,7 +264,9 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
             />
             <PopoverContent className="flex flex-row items-center gap-2" align="end">
               <PopoverHeader>
-                <PopoverTitle className="">Are you sure you want to delete this FAQ?</PopoverTitle>
+                <PopoverTitle className="text-primary-foreground">
+                  Are you sure you want to delete this FAQ?
+                </PopoverTitle>
               </PopoverHeader>
               <FaqButton
                 icon={Trash}
