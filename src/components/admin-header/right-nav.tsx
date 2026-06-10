@@ -1,8 +1,8 @@
 "use client"
-import { LogOutIcon, Settings2 } from "lucide-react"
+import { LogOutIcon, Settings2, UserIcon } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -24,8 +24,9 @@ export function RightNav() {
         render={
           <Button variant="ghost" size="icon" className="rounded-full">
             <Avatar size="lg">
-              <AvatarFallback className="text-foreground text-base">
-                {data.user.name ? getInitials(data.user.name) : data.user.email.slice(0, 2)}
+              <AvatarImage src={data.user.image || undefined} alt={`propic of ${data.user.name}`} />
+              <AvatarFallback className="rounded-full text-base text-foreground">
+                {data.user.name ? getInitials(data.user.name) : <UserIcon className="size-5" />}
               </AvatarFallback>
             </Avatar>
           </Button>
