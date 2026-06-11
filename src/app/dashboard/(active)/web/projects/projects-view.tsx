@@ -70,6 +70,7 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     const project = projects.find((item) => item.id === id)
     if (!project || project.category === category) return
 
+    setActiveCategory(category)
     setProjects((items) => items.map((item) => (item.id === id ? { ...item, category } : item)))
 
     if (draftProjectIds.has(id)) return
@@ -79,12 +80,14 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
 
       if (result.error === "UNAUTHORIZED") {
         toast.error("You don't have permission to move projects.")
+        setActiveCategory(project.category)
         setProjects((items) => items.map((item) => (item.id === id ? project : item)))
         return
       }
 
       if (result.error === "NOT_FOUND" || !result.project) {
         toast.error("There was an error moving the project.")
+        setActiveCategory(project.category)
         setProjects((items) => items.map((item) => (item.id === id ? project : item)))
         return
       }
@@ -94,6 +97,7 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
       router.refresh()
     } catch (_e) {
       toast.error("There was an error moving the project.")
+      setActiveCategory(project.category)
       setProjects((items) => items.map((item) => (item.id === id ? project : item)))
     }
   }

@@ -2,7 +2,7 @@ import type { Project } from "./types"
 
 export const PROJECT_CATEGORY = {
   NEWS: "news",
-  OTHER: "other",
+  GENERAL: "general",
   DEPRECATED: "deprecated",
 } as const
 
@@ -13,9 +13,9 @@ export const PROJECT_CATEGORIES = [
     emptyLabel: 'No news projects found. Click "Add Project" to create one.',
   },
   {
-    value: PROJECT_CATEGORY.OTHER,
-    label: "Other",
-    emptyLabel: 'No other projects found. Click "Add Project" to create one.',
+    value: PROJECT_CATEGORY.GENERAL,
+    label: "General",
+    emptyLabel: 'No general projects found. Click "Add Project" to create one.',
   },
   {
     value: PROJECT_CATEGORY.DEPRECATED,
@@ -30,5 +30,5 @@ export const DEFAULT_PROJECT: Omit<Project, "id"> = {
   descriptionIt: "Description in Italian",
   descriptionEn: "Description in English",
   link: null,
-  category: PROJECT_CATEGORY.OTHER,
+  category: PROJECT_CATEGORY.GENERAL,
 }
