@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fmtUser } from "@/lib/utils/telegram"
-import type { searchUser } from "@/server/actions/users"
+import type { getUserDetails } from "@/server/actions/users"
 
-type Data = Awaited<ReturnType<typeof searchUser>>
+type Data = Awaited<ReturnType<typeof getUserDetails>>
 type Log = NonNullable<Data>["audits"][number]
 
 export function AuditLogCard({ log: m }: { log: Log }) {

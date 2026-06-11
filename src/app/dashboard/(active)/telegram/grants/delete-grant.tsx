@@ -19,7 +19,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { interruptGrant } from "@/server/actions/grants"
 
-export function DeleteGrant({ userId, onDelete }: { userId: number; onDelete(): void }) {
+export function DeleteGrant({
+  userId,
+  // onDelete
+}: {
+  userId: number
+  // onDelete(): void
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
@@ -33,7 +39,7 @@ export function DeleteGrant({ userId, onDelete }: { userId: number; onDelete(): 
       else {
         toast.success("Grant interrupted successfully")
         router.refresh()
-        onDelete()
+        // onDelete()
       }
     } catch (err) {
       toast.error("There was an error")

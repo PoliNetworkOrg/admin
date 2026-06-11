@@ -1,6 +1,7 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
 import { Plus } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
@@ -29,7 +30,15 @@ const ARRAY_USER_ROLES = [
   USER_ROLE.PRESIDENT,
 ] as const
 
-export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRoles: TgUserRole[]; onAdd(): void }) {
+export function AddRole({
+  user,
+  alreadyRoles,
+  // onAdd
+}: {
+  user: TgUser
+  alreadyRoles: TgUserRole[]
+  // onAdd(): void
+}) {
   const availableRoles = ARRAY_USER_ROLES.filter((r) => !alreadyRoles.includes(r)).map((g) => ({
     value: g,
     label: `${g.slice(0, 1).toUpperCase()}${g.slice(1)}`,
@@ -38,6 +47,8 @@ export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRo
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
+
+  const router = useRouter()
 
   async function submit() {
     if (!selectedRole) return toast.warning("No group selected, cannot proceed")
@@ -53,7 +64,8 @@ export function AddRole({ user, alreadyRoles, onAdd }: { user: TgUser; alreadyRo
       else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot add roles to yourself")
       else {
         toast.success(`Role added!`)
-        onAdd()
+        router.refresh()
+        // onAdd()
       }
       handleOpenChange(false)
     } catch (err) {

@@ -43,9 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <div className="flex h-screen overflow-y-auto w-full flex-col items-center justify-start px-4 sm:px-8">
-              {children}
-            </div>
+            <div className="flex h-screen overflow-y-auto w-full flex-col items-center justify-start ">{children}</div>
             <Toaster richColors position="bottom-center" />
           </TooltipProvider>
         </ThemeProvider>

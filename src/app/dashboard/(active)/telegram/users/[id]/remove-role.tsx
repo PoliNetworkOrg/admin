@@ -1,6 +1,7 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
 import { Minus } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
@@ -33,11 +34,11 @@ const ARRAY_USER_ROLES = [
 export function RemoveRole({
   user,
   alreadyRoles,
-  onDelete,
+  // onDelete,
 }: {
   user: TgUser
   alreadyRoles: TgUserRole[]
-  onDelete(): void
+  // onDelete(): void
 }) {
   const sesh = useSession()
   const removerId = sesh.data?.user.telegramId
@@ -50,6 +51,8 @@ export function RemoveRole({
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [selectedRole, setSelectedRole] = useState<TgUserRole | null>(null)
+
+  const router = useRouter()
 
   async function submit() {
     if (!removerId) return toast.warning("Invalid session, try reloading the page")
@@ -66,7 +69,8 @@ export function RemoveRole({
       else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot delete on yourself")
       else {
         toast.success("Role removed!")
-        onDelete()
+        router.refresh()
+        // onDelete()
       }
     } catch (err) {
       console.error(err)

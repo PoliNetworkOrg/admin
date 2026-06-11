@@ -8,13 +8,13 @@ export default async function GrantsPage() {
   const { grants: scheduled } = await trpc.tg.grants.getScheduled.query()
 
   return (
-    <div className="container p-8 h-full">
-      <div className="py-4 flex  gap-4 justify-start items-center">
+    <div className="container">
+      <div className="flex gap-4 justify-start items-center">
         <p>Telegram Grants</p>
         <NewGrant />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="w-full">
         <TabsList>
           <TabsTrigger className="w-30" value="all">
             All

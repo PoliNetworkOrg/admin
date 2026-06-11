@@ -8,7 +8,7 @@ export default async function AssocMembers() {
   const members = await getAzureMembers()
 
   return (
-    <div className="container p-8">
+    <div className="container">
       <ErrorBoundary fallback={<div>Something went wrong</div>}>
         <Suspense fallback={<Spinner />}>
           <AssocTable members={members} />

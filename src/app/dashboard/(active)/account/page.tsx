@@ -21,7 +21,7 @@ export default async function Account() {
   const { user } = session
 
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container">
       <h2 className="text-accent-foreground mb-4 text-3xl font-bold">Account</h2>
       <div className="flex gap-4 mb-12">
         <ProfilePic user={user} />

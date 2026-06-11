@@ -1,6 +1,6 @@
+import { SearchInput } from "@/components/search-input"
 import { trpc } from "@/server/trpc"
 import { GroupRow } from "./group-row"
-import { SearchInput } from "./search-input"
 
 export default async function TgGroups({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
@@ -12,18 +12,18 @@ export default async function TgGroups({ searchParams }: { searchParams: Promise
   const sorted = rows.sort((a, b) => a.title.localeCompare(b.title))
 
   return (
-    <div className="container p-8">
+    <div className="container">
       <SearchInput />
-      <p className="pt-4 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Count: <span className="text-foreground">{rows.length}</span>
       </p>
-      <div className="flex flex-col w-full items-start justify-start py-4">
-        <div className="grid gap-4 items-center grid-cols-[1fr_2fr_1fr_3fr_1fr] w-full border-b py-2">
-          <p>telegram ID</p>
+      <div className="flex flex-col w-full items-start justify-start">
+        <div className="grid gap-4 items-center grid-cols-[1fr_2fr_1fr_3fr_1fr] w-full border-b py-2 font-bold">
+          <p>Telegram ID</p>
           <p>Title</p>
           <p>Tag</p>
           <p>Invite Link</p>
-          <p>Actions</p>
+          <p className="text-end">Actions</p>
         </div>
         {sorted.map((r) => (
           <GroupRow row={r} key={r.telegramId} />

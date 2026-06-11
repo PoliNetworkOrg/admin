@@ -1,3 +1,4 @@
+"use client"
 import { Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,11 +13,11 @@ type UserRoles = ApiOutput["tg"]["permissions"]["getRoles"]["roles"]
 export function UserInfoCard({
   user,
   roles,
-  onUpdate,
+  // onUpdate,
 }: {
   user: NonNullable<User>
   roles: UserRoles
-  onUpdate(): void
+  // onUpdate(): void
 }) {
   const sesh = useSession()
   const seshUserId = sesh.data?.user.telegramId
@@ -49,8 +50,8 @@ export function UserInfoCard({
         </div>
       </CardContent>
       <CardFooter className="gap-2">
-        <AddRole alreadyRoles={roles ?? []} user={user} onAdd={onUpdate} />
-        <RemoveRole alreadyRoles={roles ?? []} user={user} onDelete={onUpdate} />
+        <AddRole alreadyRoles={roles ?? []} user={user} />
+        <RemoveRole alreadyRoles={roles ?? []} user={user} />
       </CardFooter>
     </Card>
   )

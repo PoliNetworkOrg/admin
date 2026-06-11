@@ -3,9 +3,17 @@ import { format } from "date-fns"
 import { Sparkle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TgGrant, TgUser } from "@/server/trpc/types"
-import { DeleteGrant } from "../grants/delete-grant"
+import { DeleteGrant } from "../../grants/delete-grant"
 
-export function UserGrantCard({ user, grant, onDelete }: { user: TgUser; grant: TgGrant; onDelete(): void }) {
+export function UserGrantCard({
+  user,
+  grant,
+  //onDelete
+}: {
+  user: TgUser
+  grant: TgGrant
+  //onDelete(): void
+}) {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -19,7 +27,7 @@ export function UserGrantCard({ user, grant, onDelete }: { user: TgUser; grant: 
         <p>End: {format(grant.validUntil, "yyyy/MM/dd HH:mm")}</p>
       </CardContent>
       <CardFooter className="gap-2">
-        <DeleteGrant userId={user.id} onDelete={onDelete} />
+        <DeleteGrant userId={user.id} />
       </CardFooter>
     </Card>
   )
