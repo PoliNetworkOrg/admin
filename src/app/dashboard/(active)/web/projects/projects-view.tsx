@@ -1,5 +1,6 @@
 "use client"
 
+import { useSortable } from "@dnd-kit/react/sortable"
 import { PlusIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -70,13 +71,15 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     const project = projects.find((item) => item.id === id)
     if (!project || project.category === category) return
 
+    const movedProject = { ...project, category }
+
     setActiveCategory(category)
-    setProjects((items) => items.map((item) => (item.id === id ? { ...item, category } : item)))
+    setProjects((items) => items.map((item) => (item.id === id ? movedProject : item)))
 
     if (draftProjectIds.has(id)) return
 
     try {
-      const result = await editProject({ ...project, category })
+      const result = await editProject(movedProject)
 
       if (result.error === "UNAUTHORIZED") {
         toast.error("You don't have permission to move projects.")
@@ -108,7 +111,6 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
       const isDraft = draftProjectIds.has(id)
       const result = isDraft
         ? await createProject({
-            id: id,
             title: values.title,
             logo: values.logo,
             descriptionIt: values.descriptionIt,
@@ -155,6 +157,31 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     }
   }
 
+  function Sortable({ item, id, index }: { item: Project; id: number; index: number }) {
+    const { ref } = useSortable({ id, index })
+
+    return (
+      <div ref={ref}>
+        <CardProject
+          key={item.id}
+          id={item.id}
+          title={item.title}
+          logo={item.logo}
+          descriptionIt={item.descriptionIt}
+          descriptionEn={item.descriptionEn}
+          link={item.link}
+          category={item.category}
+          initialEditActive={editingProjectId === item.id}
+          isDraft={draftProjectIds.has(item.id)}
+          onCancelCreate={() => removeProjectLocally(item.id)}
+          onDelete={() => handleDelete(item.id)}
+          onCategoryChange={(nextCategory) => handleCategoryChange(item.id, nextCategory)}
+          onSave={(values) => handleSave(item.id, values)}
+        />
+      </div>
+    )
+  }
+
   return (
     <>
       <WebHeader
@@ -192,21 +219,11 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
                   </div>
                 )}
                 {categoryProjects.map((item) => (
-                  <CardProject
+                  <Sortable
                     key={item.id}
+                    item={item}
                     id={item.id}
-                    title={item.title}
-                    logo={item.logo}
-                    descriptionIt={item.descriptionIt}
-                    descriptionEn={item.descriptionEn}
-                    link={item.link}
-                    category={item.category}
-                    initialEditActive={editingProjectId === item.id}
-                    isDraft={draftProjectIds.has(item.id)}
-                    onCancelCreate={() => removeProjectLocally(item.id)}
-                    onDelete={() => handleDelete(item.id)}
-                    onCategoryChange={(nextCategory) => handleCategoryChange(item.id, nextCategory)}
-                    onSave={(values) => handleSave(item.id, values)}
+                    index={projects.findIndex((p) => p.id === item.id)}
                   />
                 ))}
               </TabsContent>
