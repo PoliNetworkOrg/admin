@@ -10,7 +10,9 @@ import { NewGroupAdmin } from "./new-group-admin"
 
 export default async function TgUserDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getUserDetails(parseInt(id, 10))
+  const parsedInt = parseInt(id, 10)
+  if (isNaN(parsedInt)) notFound()
+  const data = await getUserDetails(parsedInt)
 
   if (!data) notFound()
 
@@ -45,7 +47,7 @@ export default async function TgUserDetails({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="w-full">
-            <p>Last messages (max 12):</p>
+            <p>Last messages (max 15):</p>
             <div className="grid grid-cols-3 py-3 gap-4 w-full">
               {data.messages?.map((m) => (
                 <MessageCard message={m} key={`${m.chatId}-${m.messageId}`} />

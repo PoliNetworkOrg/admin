@@ -1,4 +1,4 @@
-import { MessageCircleMoreIcon, Sparkle, Users, Globe, Folders } from "lucide-react"
+import { Folders, Globe, MessageCircleMoreIcon, Sparkle, Users } from "lucide-react"
 import Image from "next/image"
 import azureSvg from "@/assets/svg/azure.svg"
 import telegramSvg from "@/assets/svg/telegram.svg"

@@ -1,8 +1,18 @@
 "use server"
-import { requireRole } from "../auth"
+import { getServerSession, requireRole } from "../auth"
 import { trpc } from "../trpc"
 import type { ApiOutput, TgUserRole } from "../trpc/types"
 import { getUserGrant } from "./grants"
+
+export async function updateProfilePic(file: File) {
+  const session = await getServerSession()
+  if (!session.data) return { success: false }
+
+  const fd = new FormData()
+  fd.set("userId", session.data.user.id)
+  fd.set("image", file)
+  return await trpc.auth.updateProfilePic.mutate(fd)
+}
 
 export async function getUserInfo(userId: number) {
   return (await trpc.tg.users.get.query({ userId })).user ?? null
