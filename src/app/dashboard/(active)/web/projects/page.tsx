@@ -6,7 +6,7 @@ export default async function WebProjectsIndex() {
   const projects: Project[] = await trpc.web.projects.getAllProjects.query()
 
   return (
-    <div className="container space-y-6">
+    <div className="container">
       <ProjectsView initialProjects={projects} />
     </div>
   )
