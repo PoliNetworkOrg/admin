@@ -1,7 +1,6 @@
 "use client"
 
 import { PlusIcon } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -19,7 +18,6 @@ function getPersistedProjectIds(items: Project[], category: ProjectCategory, dra
 }
 
 export function ProjectsView({ initialProjects }: { initialProjects: Project[] }) {
-  const router = useRouter()
   const [projects, setProjects] = useState(initialProjects)
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
   const [draftProjectIds, setDraftProjectIds] = useState<Set<number>>(new Set())
@@ -229,16 +227,25 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
         return false
       }
 
-      // anche qui, se facessi il refresh perderei gli altri edit locali
-      setProjects((items) => items.map((item) => (item.id === id ? result.project : item)))
-      setDraftProjectIds((ids) => {
-        const nextIds = new Set(ids)
-        nextIds.delete(id)
-        return nextIds
-      })
+      const savedProjects = projects.map((item) => (item.id === id ? result.project : item))
+      const nextDraftProjectIds = new Set(draftProjectIds)
+      nextDraftProjectIds.delete(id)
+
+      setProjects(savedProjects)
+      setDraftProjectIds(nextDraftProjectIds)
       setEditingProjectId((editingId) => (editingId === id ? null : editingId))
       toast.success(`Project ${isDraft ? "created" : "updated"} successfully.`)
-      router.refresh()
+
+      if (isDraft) {
+        const requestId = reorderRequestId.current + 1
+        reorderRequestId.current = requestId
+        const projectIds = getPersistedProjectIds(savedProjects, result.project.category, nextDraftProjectIds)
+
+        if (projectIds.length > 0) {
+          await persistProjectOrder(projectIds, savedProjects, requestId)
+        }
+      }
+
       // Mi ritorna true cosi poi chiudo l'edit della card
       return true
     } catch (_e) {
