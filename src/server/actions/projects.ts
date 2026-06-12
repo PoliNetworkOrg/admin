@@ -30,3 +30,10 @@ export async function deleteProject(id: number) {
 
   return await trpc.web.projects.deleteProject.mutate({ id })
 }
+
+export async function reorderProjects(input: ApiInput["web"]["projects"]["reorderProjects"]) {
+  const { allowed } = await requireRole(["owner", "direttivo", "president"])
+  if (!allowed) return { error: "UNAUTHORIZED" }
+
+  return await trpc.web.projects.reorderProjects.mutate(input)
+}

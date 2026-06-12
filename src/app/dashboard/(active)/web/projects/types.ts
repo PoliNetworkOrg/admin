@@ -11,3 +11,31 @@ export type Project = {
   link: string | null
   category: ProjectCategory
 }
+
+export type ProjectsReorder = {
+  nextProjects: Project[]
+  orderedIds: number[]
+  previousProjects: Project[]
+}
+
+export type ProjectsDragProps = {
+  projects: Project[]
+  activeCategory: ProjectCategory
+  editingProjectId: number | null
+  draftProjectIds: Set<number>
+  onReorder: (reorder: ProjectsReorder) => void
+  onCancelCreate: (id: number) => void
+  onDelete: (id: number) => void
+  onCategoryChange: (id: number, category: ProjectCategory) => void
+  onSave: (id: number, values: Project) => Promise<boolean>
+}
+
+export type CardProjectProps = Project & {
+  initialEditActive?: boolean
+  isDraft?: boolean
+  sortableIndex?: number
+  onCancelCreate?: () => void
+  onDelete: () => void
+  onCategoryChange: (category: ProjectCategory) => void
+  onSave: (values: Project) => boolean | Promise<boolean>
+}

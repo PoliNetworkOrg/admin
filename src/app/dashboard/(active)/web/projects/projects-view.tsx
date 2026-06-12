@@ -1,16 +1,22 @@
 "use client"
 
-import { useSortable } from "@dnd-kit/react/sortable"
 import { PlusIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WebHeader from "@/components/web-header"
-import { createProject, deleteProject, editProject } from "@/server/actions/projects"
-import CardProject from "./card-project"
+import { createProject, deleteProject, editProject, reorderProjects } from "@/server/actions/projects"
 import { DEFAULT_PROJECT, PROJECT_CATEGORIES } from "./constants"
-import type { Project, ProjectCategory } from "./types"
+import { ProjectsDrag } from "./projects-drag"
+import type { Project, ProjectCategory, ProjectsReorder } from "./types"
+
+function getPersistedProjectIds(items: Project[], category: ProjectCategory, draftProjectIds: Set<number>) {
+  return items
+    .filter((project) => project.category === category)
+    .filter((project) => !draftProjectIds.has(project.id))
+    .map((project) => project.id)
+}
 
 export function ProjectsView({ initialProjects }: { initialProjects: Project[] }) {
   const router = useRouter()
@@ -18,6 +24,56 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
   const [draftProjectIds, setDraftProjectIds] = useState<Set<number>>(new Set())
   const [activeCategory, setActiveCategory] = useState<ProjectCategory>(DEFAULT_PROJECT.category)
+  // contatore della versione della ultima operazione cosi se arrivano risposte non in ordine o vecchie, non sovrascrivo
+  const reorderRequestId = useRef(0)
+
+  // nextProjects é l'ordine nuovo, previous quello vecchio
+  function handleProjectsReorder({ nextProjects, orderedIds, previousProjects }: ProjectsReorder) {
+    const requestId = reorderRequestId.current + 1
+    reorderRequestId.current = requestId
+
+    setProjects(nextProjects)
+
+    // aggiorno la ui subito, se é draft non lo considero
+    const projectIds = orderedIds.filter((id) => !draftProjectIds.has(id))
+    if (projectIds.length < 2) return
+
+    // aspetto che la ui si aggiorni prima di mandare
+    window.setTimeout(() => {
+      void persistProjectOrder(projectIds, previousProjects, requestId)
+    }, 0)
+  }
+
+  function restoreProjectSnapshot(rollbackProjects: Project[], requestId: number, activeCategory?: ProjectCategory) {
+    if (reorderRequestId.current !== requestId) return false
+
+    setProjects(rollbackProjects)
+    if (activeCategory) setActiveCategory(activeCategory)
+    return true
+  }
+
+  function rollbackProjectOrder(rollbackProjects: Project[], requestId: number, message: string) {
+    if (!restoreProjectSnapshot(rollbackProjects, requestId)) return
+
+    toast.error(message)
+  }
+
+  async function persistProjectOrder(projectIds: number[], rollbackProjects: Project[], requestId: number) {
+    try {
+      const result = await reorderProjects({ projectIds })
+
+      if (result.error === "UNAUTHORIZED") {
+        rollbackProjectOrder(rollbackProjects, requestId, "You don't have permission to reorder projects.")
+        return
+      }
+
+      if (result.error) {
+        rollbackProjectOrder(rollbackProjects, requestId, "There was an error reordering projects.")
+      }
+    } catch (_e) {
+      rollbackProjectOrder(rollbackProjects, requestId, "There was an error reordering projects.")
+    }
+  }
 
   // Creates a new temporary project, id will not be saved and will be replaced
   function handleAdd() {
@@ -42,28 +98,52 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     setEditingProjectId((editingId) => (editingId === id ? null : editingId))
   }
 
+  // remove implica reorder
   async function handleDelete(id: number) {
     if (draftProjectIds.has(id)) {
       removeProjectLocally(id)
       return
     }
 
+    const project = projects.find((item) => item.id === id)
+    if (!project) return
+
+    const previousProjects = projects
+    const nextProjects = projects.filter((item) => item.id !== id)
+    const requestId = reorderRequestId.current + 1
+    reorderRequestId.current = requestId
+
+    setProjects(nextProjects)
+    setEditingProjectId((editingId) => (editingId === id ? null : editingId))
+
     try {
       const result = await deleteProject(id)
+      if (reorderRequestId.current !== requestId) return
 
       if (result.error === "UNAUTHORIZED") {
-        toast.error("You don't have permission to delete projects.")
+        if (restoreProjectSnapshot(previousProjects, requestId)) {
+          toast.error("You don't have permission to delete projects.")
+        }
         return
       } else if (result.error === "NOT_FOUND") {
         toast.info("This project was already deleted.")
+      } else if (result.error) {
+        if (restoreProjectSnapshot(previousProjects, requestId)) {
+          toast.error("There was an error deleting the project.")
+        }
+        return
       } else {
         toast.success("Project deleted successfully.")
       }
 
-      removeProjectLocally(id)
-      router.refresh()
+      const projectIds = getPersistedProjectIds(nextProjects, project.category, draftProjectIds)
+      if (projectIds.length > 0) {
+        await persistProjectOrder(projectIds, nextProjects, requestId)
+      }
     } catch (_e) {
-      toast.error("There was an error deleting the project.")
+      if (restoreProjectSnapshot(previousProjects, requestId)) {
+        toast.error("There was an error deleting the project.")
+      }
     }
   }
 
@@ -71,37 +151,47 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     const project = projects.find((item) => item.id === id)
     if (!project || project.category === category) return
 
+    const previousProjects = projects
     const movedProject = { ...project, category }
+    const nextProjects = projects.map((item) => (item.id === id ? movedProject : item))
+    const requestId = reorderRequestId.current + 1
+    reorderRequestId.current = requestId
 
     setActiveCategory(category)
-    setProjects((items) => items.map((item) => (item.id === id ? movedProject : item)))
+    setProjects(nextProjects)
 
     if (draftProjectIds.has(id)) return
 
     try {
       const result = await editProject(movedProject)
+      if (reorderRequestId.current !== requestId) return
 
       if (result.error === "UNAUTHORIZED") {
-        toast.error("You don't have permission to move projects.")
-        setActiveCategory(project.category)
-        setProjects((items) => items.map((item) => (item.id === id ? project : item)))
+        if (restoreProjectSnapshot(previousProjects, requestId, project.category)) {
+          toast.error("You don't have permission to move projects.")
+        }
         return
       }
 
       if (result.error === "NOT_FOUND" || !result.project) {
-        toast.error("There was an error moving the project.")
-        setActiveCategory(project.category)
-        setProjects((items) => items.map((item) => (item.id === id ? project : item)))
+        if (restoreProjectSnapshot(previousProjects, requestId, project.category)) {
+          toast.error("There was an error moving the project.")
+        }
         return
       }
 
-      setProjects((items) => items.map((item) => (item.id === id ? result.project : item)))
+      const savedProjects = nextProjects.map((item) => (item.id === id ? result.project : item))
+      setProjects(savedProjects)
       toast.success("Project moved successfully.")
-      router.refresh()
+
+      const projectIds = getPersistedProjectIds(savedProjects, category, draftProjectIds)
+      if (projectIds.length > 0) {
+        await persistProjectOrder(projectIds, savedProjects, requestId)
+      }
     } catch (_e) {
-      toast.error("There was an error moving the project.")
-      setActiveCategory(project.category)
-      setProjects((items) => items.map((item) => (item.id === id ? project : item)))
+      if (restoreProjectSnapshot(previousProjects, requestId, project.category)) {
+        toast.error("There was an error moving the project.")
+      }
     }
   }
 
@@ -157,31 +247,6 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
     }
   }
 
-  function Sortable({ item, id, index }: { item: Project; id: number; index: number }) {
-    const { ref } = useSortable({ id, index })
-
-    return (
-      <div ref={ref}>
-        <CardProject
-          key={item.id}
-          id={item.id}
-          title={item.title}
-          logo={item.logo}
-          descriptionIt={item.descriptionIt}
-          descriptionEn={item.descriptionEn}
-          link={item.link}
-          category={item.category}
-          initialEditActive={editingProjectId === item.id}
-          isDraft={draftProjectIds.has(item.id)}
-          onCancelCreate={() => removeProjectLocally(item.id)}
-          onDelete={() => handleDelete(item.id)}
-          onCategoryChange={(nextCategory) => handleCategoryChange(item.id, nextCategory)}
-          onSave={(values) => handleSave(item.id, values)}
-        />
-      </div>
-    )
-  }
-
   return (
     <>
       <WebHeader
@@ -208,27 +273,17 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
             ))}
           </TabsList>
 
-          {PROJECT_CATEGORIES.map((category) => {
-            const categoryProjects = projects.filter((project) => project.category === category.value)
-
-            return (
-              <TabsContent key={category.value} value={category.value} className="border-0 p-0 space-y-4">
-                {categoryProjects.length === 0 && (
-                  <div className="grid min-h-64 place-items-center">
-                    <p className="text-center text-lg text-muted-foreground">{category.emptyLabel}</p>
-                  </div>
-                )}
-                {categoryProjects.map((item) => (
-                  <Sortable
-                    key={item.id}
-                    item={item}
-                    id={item.id}
-                    index={projects.findIndex((p) => p.id === item.id)}
-                  />
-                ))}
-              </TabsContent>
-            )
-          })}
+          <ProjectsDrag
+            projects={projects}
+            activeCategory={activeCategory}
+            editingProjectId={editingProjectId}
+            draftProjectIds={draftProjectIds}
+            onReorder={handleProjectsReorder}
+            onCancelCreate={removeProjectLocally}
+            onDelete={handleDelete}
+            onCategoryChange={handleCategoryChange}
+            onSave={handleSave}
+          />
         </Tabs>
       </div>
     </>

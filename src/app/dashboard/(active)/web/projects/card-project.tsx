@@ -1,5 +1,6 @@
 "use client"
 
+import { useSortable } from "@dnd-kit/react/sortable"
 import { Languages, Link, LucidePencil, Save, Upload, X } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { useState } from "react"
@@ -12,18 +13,15 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getInitials } from "@/lib/utils"
 import { cn } from "@/lib/utils/shadcn"
-import type { Project, ProjectCategory } from "./types"
+import type { CardProjectProps } from "./types"
 
-export default function CardProject(
-  item: Project & {
-    initialEditActive?: boolean
-    isDraft?: boolean
-    onCancelCreate?: () => void
-    onDelete: () => void
-    onCategoryChange: (category: ProjectCategory) => void
-    onSave: (values: Project) => boolean | Promise<boolean>
-  }
-) {
+export default function CardProject(item: CardProjectProps) {
+  const { ref } = useSortable({
+    id: item.id,
+    index: item.sortableIndex ?? 0,
+    group: item.category,
+    disabled: item.sortableIndex === undefined,
+  })
   const iconInputId = `project-icon-${item.id}`
   const [editActive, setEditActive] = useState(item.initialEditActive ?? false)
   const [title, setTitle] = useState(item.title)
@@ -98,7 +96,7 @@ export default function CardProject(
   }
 
   return (
-    <Card key={item.id} className="border border-border bg-card">
+    <Card ref={ref} key={item.id} className="border border-border bg-card">
       <CardHeader className="grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1">
         <CardTitle className="flex items-center gap-3 self-center text-lg">
           {editActive ? (
