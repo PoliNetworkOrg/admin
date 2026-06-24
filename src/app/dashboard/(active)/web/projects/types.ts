@@ -12,6 +12,10 @@ export type Project = {
   category: ProjectCategory
 }
 
+export type ProjectSaveValues = Project & {
+  logoFile?: File | null
+}
+
 export type ProjectsReorder = {
   nextProjects: Project[]
   orderedIds: number[]
@@ -27,7 +31,7 @@ export type ProjectsDragProps = {
   onCancelCreate: (id: number) => void
   onDelete: (id: number) => void
   onCategoryChange: (id: number, category: ProjectCategory) => void
-  onSave: (id: number, values: Project) => Promise<boolean>
+  onSave: (id: number, values: ProjectSaveValues) => Promise<boolean>
 }
 
 export type CardProjectProps = Project & {
@@ -37,5 +41,5 @@ export type CardProjectProps = Project & {
   onCancelCreate?: () => void
   onDelete: () => void
   onCategoryChange: (category: ProjectCategory) => void
-  onSave: (values: Project) => boolean | Promise<boolean>
+  onSave: (values: ProjectSaveValues) => boolean | Promise<boolean>
 }

@@ -8,7 +8,7 @@ import WebHeader from "@/components/web-header"
 import { createProject, deleteProject, editProject, reorderProjects } from "@/server/actions/projects"
 import { DEFAULT_PROJECT, PROJECT_CATEGORIES } from "./constants"
 import { ProjectsDrag } from "./projects-drag"
-import type { Project, ProjectCategory, ProjectsReorder } from "./types"
+import type { Project, ProjectCategory, ProjectSaveValues, ProjectsReorder } from "./types"
 
 function getPersistedProjectIds(items: Project[], category: ProjectCategory, draftProjectIds: Set<number>) {
   return items
@@ -194,13 +194,13 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
   }
 
   // Draft ne crea una nuova, altrimenti modifica quella esistente
-  async function handleSave(id: number, values: Project) {
+  async function handleSave(id: number, values: ProjectSaveValues) {
     try {
       const isDraft = draftProjectIds.has(id)
       const result = isDraft
         ? await createProject({
             title: values.title,
-            logo: values.logo,
+            logoFile: values.logoFile,
             descriptionIt: values.descriptionIt,
             descriptionEn: values.descriptionEn,
             link: values.link,
@@ -209,7 +209,7 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
         : await editProject({
             id,
             title: values.title,
-            logo: values.logo,
+            logoFile: values.logoFile,
             descriptionIt: values.descriptionIt,
             descriptionEn: values.descriptionEn,
             link: values.link,

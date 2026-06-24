@@ -2,8 +2,9 @@
 
 import { useSortable } from "@dnd-kit/react/sortable"
 import { Languages, Link, LucidePencil, Save, Upload, X } from "lucide-react"
+import Image from "next/image"
 import type { ChangeEvent } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ProjectCategoryMenu } from "@/app/dashboard/(active)/web/projects/category-menu"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +26,8 @@ export default function CardProject(item: CardProjectProps) {
   const iconInputId = `project-icon-${item.id}`
   const [editActive, setEditActive] = useState(item.initialEditActive ?? false)
   const [title, setTitle] = useState(item.title)
-  const [logo, setLogo] = useState(item.logo)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
   const [link, setLinks] = useState(item.link)
@@ -35,8 +37,15 @@ export default function CardProject(item: CardProjectProps) {
   async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    setLogo(await file.text())
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
   }
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview)
+    }
+  }, [logoPreview])
 
   // If it's draft, remove the card, otherwise reset the values to the original ones
   function handleCancelEdit() {
@@ -46,7 +55,8 @@ export default function CardProject(item: CardProjectProps) {
     }
 
     setTitle(item.title)
-    setLogo(item.logo)
+    setLogoFile(null)
+    setLogoPreview(null)
     setDescriptionIt(item.descriptionIt)
     setDescriptionEn(item.descriptionEn)
     setLinks(item.link)
@@ -63,27 +73,27 @@ export default function CardProject(item: CardProjectProps) {
       const saved = await item.onSave({
         id: item.id,
         title,
-        logo,
+        logo: item.logo,
+        logoFile,
         descriptionIt,
         descriptionEn,
         link,
         category: item.category,
       })
-      if (saved) setEditActive(false)
+      if (saved) {
+        setLogoFile(null)
+        setLogoPreview(null)
+        setEditActive(false)
+      }
     } finally {
       setPending(false)
     }
   }
 
   function renderIcon() {
-    if (logo) {
-      return (
-        <span
-          className="flex size-11 items-center justify-center text-foreground [&_svg]:size-full"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: logo }}
-        />
-      )
+    const logoSource = logoPreview ?? item.logo
+    if (logoSource) {
+      return <Image src={logoSource} alt="" width={44} height={44} unoptimized className="size-full object-contain" />
     }
     return (
       <span
@@ -112,7 +122,7 @@ export default function CardProject(item: CardProjectProps) {
                 <Input
                   id={iconInputId}
                   type="file"
-                  accept=".svg,image/svg+xml"
+                  accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
                   onChange={handleIconUpload}
                   aria-label={`Upload ${title} icon`}
                   className="sr-only"
