@@ -255,7 +255,7 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
   }
 
   return (
-    <>
+    <div className="flex w-full flex-col gap-6">
       <WebHeader
         title="Projects"
         description="Manage and view projects displayed on the web platform."
@@ -293,6 +293,6 @@ export function ProjectsView({ initialProjects }: { initialProjects: Project[] }
           />
         </Tabs>
       </div>
-    </>
+    </div>
   )
 }
