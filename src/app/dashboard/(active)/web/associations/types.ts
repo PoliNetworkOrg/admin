@@ -15,6 +15,10 @@ export type Association = {
   name: string
   descriptionIt: string
   descriptionEn: string
-  logoSvg: string | null
+  logo: string | null
   links: AssociationLinks
+}
+
+export type AssociationSaveValues = Association & {
+  logoFile: File | null
 }

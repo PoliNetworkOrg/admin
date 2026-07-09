@@ -1,8 +1,9 @@
 "use client"
 
 import { Languages, LucidePencil, Save, Upload, X } from "lucide-react"
+import Image from "next/image"
 import type { ChangeEvent } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { getInitials } from "@/lib/utils"
 import { cn } from "@/lib/utils/shadcn"
 import { AssociationLinksDialog } from "./association-links"
-import type { Association, AssociationLinks } from "./types"
+import type { Association, AssociationLinks, AssociationSaveValues } from "./types"
 
 export default function CardAssociation(
   item: Association & {
@@ -20,14 +21,15 @@ export default function CardAssociation(
     isDraft?: boolean
     onCancelCreate?: () => void
     onDelete: () => void
-    onSave: (values: Association) => boolean | Promise<boolean>
+    onSave: (values: AssociationSaveValues) => boolean | Promise<boolean>
     onSaveLinks: (links: AssociationLinks) => boolean | Promise<boolean>
   }
 ) {
   const iconInputId = `association-icon-${item.id}`
   const [editActive, setEditActive] = useState(item.initialEditActive ?? false)
   const [name, setName] = useState(item.name)
-  const [logoSvg, setLogoSvg] = useState(item.logoSvg)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [descriptionIt, setDescriptionIt] = useState(item.descriptionIt)
   const [descriptionEn, setDescriptionEn] = useState(item.descriptionEn)
   const [links, setLinks] = useState(item.links)
@@ -37,8 +39,15 @@ export default function CardAssociation(
   async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    setLogoSvg(await file.text())
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
   }
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview)
+    }
+  }, [logoPreview])
 
   // If it's draft, remove the card, otherwise reset the values to the original ones
   function handleCancelEdit() {
@@ -48,7 +57,8 @@ export default function CardAssociation(
     }
 
     setName(item.name)
-    setLogoSvg(item.logoSvg)
+    setLogoFile(null)
+    setLogoPreview(null)
     setDescriptionIt(item.descriptionIt)
     setDescriptionEn(item.descriptionEn)
     setLinks(item.links)
@@ -62,8 +72,20 @@ export default function CardAssociation(
 
     setPending(true)
     try {
-      const saved = await item.onSave({ id: item.id, name, logoSvg, descriptionIt, descriptionEn, links })
-      if (saved) setEditActive(false)
+      const saved = await item.onSave({
+        id: item.id,
+        name,
+        logoFile,
+        descriptionIt,
+        descriptionEn,
+        links,
+        logo: null,
+      })
+      if (saved) {
+        setLogoFile(null)
+        setLogoPreview(null)
+        setEditActive(false)
+      }
     } finally {
       setPending(false)
     }
@@ -76,14 +98,9 @@ export default function CardAssociation(
   }
 
   function renderIcon() {
-    if (logoSvg) {
-      return (
-        <span
-          className="flex size-11 items-center justify-center text-foreground [&_svg]:size-full"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: logoSvg }}
-        />
-      )
+    const logoSource = logoPreview ?? item.logo
+    if (logoSource) {
+      return <Image src={logoSource} alt="" width={44} height={44} unoptimized className="size-full object-contain" />
     }
     return (
       <span
@@ -112,7 +129,7 @@ export default function CardAssociation(
                 <Input
                   id={iconInputId}
                   type="file"
-                  accept=".svg,image/svg+xml"
+                  accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
                   onChange={handleIconUpload}
                   aria-label={`Upload ${name} icon`}
                   className="sr-only"

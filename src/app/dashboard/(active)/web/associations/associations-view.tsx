@@ -8,7 +8,7 @@ import WebHeader from "@/components/web-header"
 import { createAssociation, deleteAssociation, editAssociation, editAssociationLinks } from "@/server/actions/web"
 import CardAssociation from "./card-association"
 import { EMPTY_ASSOCIATION_LINKS } from "./constants"
-import type { Association, AssociationLinks } from "./types"
+import type { Association, AssociationLinks, AssociationSaveValues } from "./types"
 
 export function AssociationsView({ initialAssociations }: { initialAssociations: Association[] }) {
   const router = useRouter()
@@ -21,7 +21,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
     const association: Association = {
       id: Date.now(),
       name: "New Association",
-      logoSvg: null,
+      logo: null,
       descriptionIt: "Description in Italian",
       descriptionEn: "Description in English",
       links: EMPTY_ASSOCIATION_LINKS,
@@ -68,7 +68,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
   }
 
   // Draft ne crea una nuova, altrimenti modifica quella esistente
-  async function handleSave(id: number, values: Association) {
+  async function handleSave(id: number, values: AssociationSaveValues) {
     try {
       const isDraft = draftAssociationIds.has(id)
       const result = isDraft
@@ -76,14 +76,14 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
             name: values.name,
             descriptionIt: values.descriptionIt,
             descriptionEn: values.descriptionEn,
-            logoSvg: values.logoSvg,
+            logoFile: values.logoFile,
           })
         : await editAssociation({
             id,
             name: values.name,
             descriptionIt: values.descriptionIt,
             descriptionEn: values.descriptionEn,
-            logoSvg: values.logoSvg,
+            logoFile: values.logoFile,
           })
 
       if (result.error === "UNAUTHORIZED") {
@@ -143,7 +143,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
   }
 
   return (
-    <>
+    <div className="flex w-full flex-col gap-6">
       <WebHeader
         title="Associations"
         description="Manage and view associations displayed on the web platform."
@@ -154,7 +154,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
         }}
       />
 
-      <div className="grid gap-4">
+      <div className="grid w-full gap-4">
         {associations.length === 0 && (
           <div className="grid min-h-64 place-items-center">
             <p className="text-center text-lg text-muted-foreground">
@@ -167,7 +167,7 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
             key={item.id}
             id={item.id}
             name={item.name}
-            logoSvg={item.logoSvg}
+            logo={item.logo}
             descriptionIt={item.descriptionIt}
             descriptionEn={item.descriptionEn}
             links={item.links}
@@ -180,6 +180,6 @@ export function AssociationsView({ initialAssociations }: { initialAssociations:
           />
         ))}
       </div>
-    </>
+    </div>
   )
 }
