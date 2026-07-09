@@ -11,8 +11,19 @@ const config: NextConfig = {
   },
   output: "standalone",
   transpilePackages: ["@t3-oss/env-nextjs", "@t3-oss/env-core"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.blob.core.windows.net",
+      },
+    ],
+  },
   experimental: {
     reactCompiler: true,
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
   },
 }
 
