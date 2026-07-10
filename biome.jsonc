@@ -10,11 +10,10 @@
     "includes": [
       "**",
       "!node_modules",
-      "!.next",
       "!dist",
       "!build",
-      "!src/app/globals.css", // modified by shadcn
-      "!src/components/ui/*" // modified by shadcn
+      "!.output",
+      "!.tanstack"
     ]
   },
   "formatter": {
@@ -36,29 +35,21 @@
       "recommended": true,
       "suspicious": {
         "noVar": "error"
-        // "noUnknownAtRules": "off" // until fix for tailwind rules is released
+        // Project-specific suspicious rules live here.
       },
       "nursery": {
         "noFloatingPromises": "error",
         "noMisusedPromises": "error",
         "noUnnecessaryConditions": "error",
         "noImportCycles": "warn",
-        "useSortedClasses": {
-          "options": {
-            "attributes": ["classList"],
-            "functions": ["cn"]
-          }
-        }
+        "useSortedClasses": "off"
       },
       "correctness": {
         "useJsonImportAttributes": "warn",
         "noPrivateImports": "error"
       }
     },
-    "domains": {
-      "project": "recommended",
-      "next": "recommended"
-    }
+    "domains": { "project": "recommended" }
   },
   "javascript": {
     "formatter": {
