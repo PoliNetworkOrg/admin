@@ -30,7 +30,7 @@ function requestHeaders(): Record<string, string> {
 
 function client() {
   const url = `${backendOrigin()}${TRPC_PATH}`
-  const headers = requestHeaders
+  const headers = requestHeaders()
 
   return createTRPCClient<AppRouter>({
     links: [
@@ -49,6 +49,16 @@ function client() {
     ],
   })
 }
+
+export const testBackend = createServerFn().handler(async () => {
+  try {
+    await client().test.dbQuery.query({ dbName: "web" })
+    return true
+  } catch (e) {
+    console.error("Backend error: ", e)
+    return false
+  }
+})
 
 async function readSession(): Promise<AdminSession | null> {
   try {

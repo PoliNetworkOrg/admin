@@ -1,13 +1,14 @@
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router"
 import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, Mail, ShieldCheck } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import logoUrl from "@/assets/logo.svg"
 import { AppMark } from "@/components/app-mark"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { auth } from "@/lib/auth"
-import { getCurrentSession } from "@/server/api.functions"
+import { getCurrentSession, testBackend } from "@/server/api.functions"
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -50,6 +51,12 @@ function Login() {
     if (data) router.navigate({ to: "/dashboard" })
     else setNotice(error?.message ?? "Passkey sign in was cancelled or unavailable.")
   }
+
+  useEffect(() => {
+    void testBackend().then((r) => {
+      if (!r) toast.error("Backend is offline or unavailable")
+    })
+  }, [])
 
   return (
     <main className="flex min-h-screen flex-col bg-sidebar px-[max(5vw,38px)] pt-7 pb-[18px] text-[#f5f5ec] max-[600px]:px-[25px]">
