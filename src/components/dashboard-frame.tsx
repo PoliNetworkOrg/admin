@@ -1,11 +1,11 @@
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router"
 import { Database, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, UsersRound, X } from "lucide-react"
 import { useState } from "react"
-import { AppMark } from "./app-mark"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { auth, useSession } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
+import { AppMark } from "./app-mark"
 
 const navigation = [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
@@ -134,6 +134,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
       </aside>
       {open && (
         <button
+          type="button"
           className="fixed inset-0 z-40 hidden border-0 bg-[#0d1d36]/50 max-[900px]:block"
           aria-label="Close navigation"
           onClick={() => setOpen(false)}

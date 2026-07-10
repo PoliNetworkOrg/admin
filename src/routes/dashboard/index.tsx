@@ -53,7 +53,6 @@ function Overview() {
         >
           {Array.from({ length: 6 }, (_, index) => (
             <span
-              // biome-ignore lint/suspicious/noArrayIndexKey: decorative, static tiles
               key={index}
               className={cn(
                 "size-14",

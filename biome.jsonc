@@ -7,14 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!node_modules",
-      "!dist",
-      "!build",
-      "!.output",
-      "!.tanstack"
-    ]
+    "includes": ["**", "!node_modules", "!dist", "!build", "!.output", "!.tanstack", "!src/routeTree.gen.ts"]
   },
   "formatter": {
     "enabled": true,

@@ -12,7 +12,6 @@ import {
   UserRound,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { uploadProfilePicture } from "@/server/api.functions"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,9 +19,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
 import { auth, useSession } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
+import { uploadProfilePicture } from "@/server/api.functions"
 
 type Passkey = { id: string; name?: string | null; createdAt?: Date | string; deviceType?: string }
 type ActiveSession = {

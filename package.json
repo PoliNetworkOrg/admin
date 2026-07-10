@@ -9,8 +9,8 @@
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check": "biome check --linter-enabled=false --assist-enabled=false src/routes src/components src/lib src/server/api.functions.ts src/router.tsx src/styles.css tailwind.config.ts vite.config.ts",
-    "check:fix": "biome check --write --linter-enabled=false --assist-enabled=false src/routes src/components src/lib src/server/api.functions.ts src/router.tsx src/styles.css tailwind.config.ts vite.config.ts"
+    "check": "biome check",
+    "check:fix": "biome check --write --unsafe"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

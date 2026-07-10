@@ -1,5 +1,5 @@
 import { Plus, Search } from "lucide-react"
-import type { ReactNode } from "react"
+import { type ReactNode, useId } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -20,6 +20,8 @@ export function DataToolbar({
   onAction?: () => void
   children?: ReactNode
 }) {
+  const searchId = useId()
+
   return (
     <>
       <section className="flex flex-col items-start justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end">
@@ -41,9 +43,13 @@ export function DataToolbar({
         )}
       </section>
       <section className="flex flex-wrap items-center gap-3 py-4">
-        <label className="relative flex h-9 w-full max-w-[300px] items-center border border-border bg-card text-muted-foreground sm:w-[300px]">
+        <label
+          htmlFor={searchId}
+          className="relative flex h-9 w-full max-w-[300px] items-center border border-border bg-card text-muted-foreground sm:w-[300px]"
+        >
           <Search className="pointer-events-none absolute left-2.5" />
           <Input
+            id={searchId}
             aria-label={`Search ${title}`}
             className="h-full rounded-none border-0 bg-transparent pl-8 text-xs shadow-none focus-visible:ring-0"
             onChange={(event) => onSearch?.(event.target.value)}

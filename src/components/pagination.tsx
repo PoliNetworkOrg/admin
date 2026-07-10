@@ -1,11 +1,11 @@
 import {
-  Pagination as PaginationRoot,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  Pagination as PaginationRoot,
 } from "@/components/ui/pagination"
 
 export function Pagination({
