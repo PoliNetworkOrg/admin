@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, LoaderCircle, UsersRound } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
@@ -45,7 +45,10 @@ function AzureMembers() {
   const response = Route.useLoaderData()
   const router = useRouter()
   const [dialog, setDialog] = useState<{ mode: "create" } | { mode: "edit"; member: AzureMember } | null>(null)
-  const members = response.data as AzureMember[]
+  const loadedMembers = response.data as AzureMember[]
+  const [members, setMembers] = useState(loadedMembers)
+
+  useEffect(() => setMembers(loadedMembers), [loadedMembers])
 
   const columns = useMemo(() => {
     const header = (
@@ -147,6 +150,7 @@ function AzureMembers() {
       pagination: { pageIndex: 0, pageSize: 25 },
       globalFilter: { query: "", membersOnly: false },
     },
+    autoResetPageIndex: false,
     globalFilterFn: (row, _columnId, value) => {
       const filter = (value ?? {}) as Partial<MemberFilter>
       const member = row.original
@@ -251,10 +255,19 @@ function AzureMembers() {
         <MemberDialog
           dialog={dialog}
           onClose={() => setDialog(null)}
-          onSaved={async () => {
+          onOptimisticUpdate={(member) => {
+            const previous = members.find((current) => current.id === member.id)
+            setMembers((current) => current.map((item) => (item.id === member.id ? member : item)))
+            return () => {
+              if (previous) setMembers((current) => current.map((item) => (item.id === member.id ? previous : item)))
+            }
+          }}
+          onSaved={async (mode) => {
             setDialog(null)
-            await new Promise((resolve) => setTimeout(resolve, 1500))
-            await router.invalidate({ sync: true })
+            if (mode === "create") {
+              await new Promise((resolve) => setTimeout(resolve, 1500))
+              await router.invalidate({ sync: true })
+            }
           }}
         />
       )}
@@ -265,11 +278,13 @@ function AzureMembers() {
 function MemberDialog({
   dialog,
   onClose,
+  onOptimisticUpdate,
   onSaved,
 }: {
   dialog: { mode: "create" } | { mode: "edit"; member: AzureMember }
   onClose: () => void
-  onSaved: () => Promise<void>
+  onOptimisticUpdate: (member: AzureMember) => () => void
+  onSaved: (mode: "create" | "edit") => Promise<void>
 }) {
   const editing = dialog.mode === "edit"
   const [firstName, setFirstName] = useState("")
@@ -284,11 +299,18 @@ function MemberDialog({
     setPending(true)
     setError("")
     const assocNumber = Number.parseInt(memberId, 10)
+    let rollback: (() => void) | undefined
     try {
-      if (editing) await setAzureMemberNumber({ data: { userId: dialog.member.id, assocNumber } })
-      else await createAzureMember({ data: { firstName, lastName, assocNumber, sendEmailTo: email } })
-      await onSaved()
+      if (editing) {
+        rollback = onOptimisticUpdate({ ...dialog.member, employeeId: String(assocNumber), isMember: true })
+        await setAzureMemberNumber({ data: { userId: dialog.member.id, assocNumber } })
+        await onSaved("edit")
+      } else {
+        await createAzureMember({ data: { firstName, lastName, assocNumber, sendEmailTo: email } })
+        await onSaved("create")
+      }
     } catch {
+      rollback?.()
       setError("The member could not be saved. Check the values and your permissions.")
       setPending(false)
     }
