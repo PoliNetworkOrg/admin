@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
+import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +33,7 @@ type SortKey = "employeeId" | "displayName" | "mail" | "licenses"
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   loader: () => getAzureMembers(),
+  pendingComponent: () => <DataPageSkeleton columns={5} />,
   component: AzureMembers,
 })
 

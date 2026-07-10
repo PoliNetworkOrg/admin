@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
+import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +26,7 @@ type TelegramGroup = {
 
 export const Route = createFileRoute("/dashboard/telegram/groups")({
   loader: () => getTelegramGroups(),
+  pendingComponent: () => <DataPageSkeleton columns={5} />,
   component: TelegramGroups,
 })
 

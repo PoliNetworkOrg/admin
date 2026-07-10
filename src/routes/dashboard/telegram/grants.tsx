@@ -4,6 +4,7 @@ import { useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
+import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -19,6 +20,7 @@ type Grant = {
 }
 export const Route = createFileRoute("/dashboard/telegram/grants")({
   loader: async () => ({ ongoing: await getOngoingGrants(), scheduled: await getScheduledGrants() }),
+  pendingComponent: () => <DataPageSkeleton columns={5} withTabs />,
   component: Grants,
 })
 

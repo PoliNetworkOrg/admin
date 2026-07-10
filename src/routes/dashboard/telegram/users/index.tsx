@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
+import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getTelegramUsers } from "@/server/api.functions"
@@ -20,6 +21,7 @@ type TelegramUser = {
 
 export const Route = createFileRoute("/dashboard/telegram/users/")({
   loader: () => getTelegramUsers(),
+  pendingComponent: () => <DataPageSkeleton columns={4} />,
   component: TelegramUsers,
 })
 

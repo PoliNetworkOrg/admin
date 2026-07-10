@@ -29,7 +29,6 @@ export function DataToolbar({
           <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
             DIRECTORY
           </p>
-          <h2 className="mt-2 font-serif text-[25px] leading-[1.1] tracking-[-0.05em]">{title}</h2>
           <p className="mt-2 text-xs text-muted-foreground">{description}</p>
         </div>
         {action && onAction && (

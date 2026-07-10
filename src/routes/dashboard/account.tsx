@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { auth, useSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
@@ -53,13 +54,18 @@ function Account() {
   const [name, setName] = useState(user?.name ?? "")
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [sessions, setSessions] = useState<ActiveSession[]>([])
+  const [securityLoading, setSecurityLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const refreshSecurityData = useCallback(async () => {
-    const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
-    setPasskeys((passkeyResult.data ?? []) as Passkey[])
-    setSessions((sessionResult.data ?? []) as ActiveSession[])
+    try {
+      const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
+      setPasskeys((passkeyResult.data ?? []) as Passkey[])
+      setSessions((sessionResult.data ?? []) as ActiveSession[])
+    } finally {
+      setSecurityLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -161,7 +167,6 @@ function Account() {
         <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
           OPERATOR PROFILE
         </p>
-        <h2 className="mt-2 font-serif text-[25px] leading-[1.1] tracking-[-0.05em]">Account settings</h2>
         <p className="mt-2 text-xs text-muted-foreground">Manage your profile and authentication methods.</p>
       </section>
       {notice && (
@@ -317,37 +322,41 @@ function Account() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <SecurityList>
-              {passkeys.map((passkey) => (
-                <SecurityItem
-                  key={passkey.id}
-                  icon={KeyRound}
-                  title={passkey.name || "Unnamed passkey"}
-                  description={
-                    <>
-                      <Calendar className="size-4" /> Added{" "}
-                      {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : "recently"}
-                      {passkey.deviceType ? ` · ${passkey.deviceType}` : ""}
-                    </>
-                  }
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="rounded-none text-destructive"
-                      onClick={() => void deletePasskey(passkey.id)}
-                      disabled={busy === passkey.id}
-                      aria-label="Delete passkey"
-                    >
-                      <Trash2 />
-                    </Button>
-                  }
-                />
-              ))}
-              {!passkeys.length && (
-                <p className="px-5 py-7 text-[11px] text-muted-foreground">No passkeys registered yet.</p>
-              )}
-            </SecurityList>
+            {securityLoading ? (
+              <SecurityLoading rows={2} />
+            ) : (
+              <SecurityList>
+                {passkeys.map((passkey) => (
+                  <SecurityItem
+                    key={passkey.id}
+                    icon={KeyRound}
+                    title={passkey.name || "Unnamed passkey"}
+                    description={
+                      <>
+                        <Calendar className="size-4" /> Added{" "}
+                        {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : "recently"}
+                        {passkey.deviceType ? ` · ${passkey.deviceType}` : ""}
+                      </>
+                    }
+                    action={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="rounded-none text-destructive"
+                        onClick={() => void deletePasskey(passkey.id)}
+                        disabled={busy === passkey.id}
+                        aria-label="Delete passkey"
+                      >
+                        <Trash2 />
+                      </Button>
+                    }
+                  />
+                ))}
+                {!passkeys.length && (
+                  <p className="px-5 py-7 text-[11px] text-muted-foreground">No passkeys registered yet.</p>
+                )}
+              </SecurityList>
+            )}
           </CardContent>
         </Card>
 
@@ -375,28 +384,32 @@ function Account() {
             )}
           </CardHeader>
           <CardContent className="p-0">
-            <SecurityList>
-              {sessions.map((activeSession) => (
-                <SecurityItem
-                  key={activeSession.id}
-                  icon={MonitorSmartphone}
-                  title={activeSession.userAgent || "Unknown device"}
-                  description={
-                    <>
-                      {activeSession.ipAddress || "Unknown IP"}
-                      {activeSession.createdAt
-                        ? ` · Since ${new Date(activeSession.createdAt).toLocaleDateString()}`
-                        : ""}
-                    </>
-                  }
-                  action={
-                    activeSession.id === session.session?.id ? (
-                      <Badge className="h-5 rounded-none px-1.5 font-mono text-[9px]">Current</Badge>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </SecurityList>
+            {securityLoading ? (
+              <SecurityLoading rows={2} />
+            ) : (
+              <SecurityList>
+                {sessions.map((activeSession) => (
+                  <SecurityItem
+                    key={activeSession.id}
+                    icon={MonitorSmartphone}
+                    title={activeSession.userAgent || "Unknown device"}
+                    description={
+                      <>
+                        {activeSession.ipAddress || "Unknown IP"}
+                        {activeSession.createdAt
+                          ? ` · Since ${new Date(activeSession.createdAt).toLocaleDateString()}`
+                          : ""}
+                      </>
+                    }
+                    action={
+                      activeSession.id === session.session?.id ? (
+                        <Badge className="h-5 rounded-none px-1.5 font-mono text-[9px]">Current</Badge>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </SecurityList>
+            )}
             <Separator />
             <Button
               variant="ghost"
@@ -415,6 +428,23 @@ function Account() {
 
 function SecurityList({ children }: { children: React.ReactNode }) {
   return <div className="grid">{children}</div>
+}
+
+function SecurityLoading({ rows }: { rows: number }) {
+  return (
+    <div className="grid" aria-busy="true">
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex items-center gap-3 border-b border-border px-5 py-4 last:border-0">
+          <Skeleton className="size-7 rounded-none" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-3 w-40 max-w-full rounded-none" />
+            <Skeleton className="h-2.5 w-56 max-w-full rounded-none" />
+          </div>
+          <Skeleton className="size-7 rounded-none" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function SecurityItem({

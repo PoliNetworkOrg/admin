@@ -10,12 +10,14 @@ import {
   UsersRound,
 } from "lucide-react"
 import { LiveStatus } from "@/components/live-status"
+import { DetailPageSkeleton } from "@/components/loading-skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getTelegramUserDetails } from "@/server/api.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
   loader: ({ params }) => getTelegramUserDetails({ data: { userId: Number.parseInt(params.userId, 10) } }),
+  pendingComponent: DetailPageSkeleton,
   component: UserProfile,
 })
 
