@@ -1,4 +1,12 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Pagination as PaginationRoot,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export function Pagination({
   page,
@@ -16,25 +24,59 @@ export function Pagination({
     .sort((a, b) => a - b)
 
   return (
-    <nav className="pagination" aria-label="Table pagination">
-      <button disabled={page === 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
-        <ChevronLeft size={15} />
-      </button>
-      {pages.map((value, index) => (
-        <span key={value} className="pagination-slot">
-          {index > 0 && pages[index - 1] !== value - 1 && <i>…</i>}
-          <button
-            className={value === page ? "active" : ""}
-            aria-current={value === page ? "page" : undefined}
-            onClick={() => onPageChange(value)}
-          >
-            {value}
-          </button>
-        </span>
-      ))}
-      <button disabled={page === pageCount} onClick={() => onPageChange(page + 1)} aria-label="Next page">
-        <ChevronRight size={15} />
-      </button>
-    </nav>
+    <PaginationRoot className="justify-end pt-3">
+      <PaginationContent className="gap-1">
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            aria-disabled={page === 1}
+            className={
+              page === 1
+                ? "pointer-events-none opacity-40"
+                : "rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+            }
+            onClick={(event) => {
+              event.preventDefault()
+              if (page > 1) onPageChange(page - 1)
+            }}
+            text=""
+          />
+        </PaginationItem>
+        {pages.map((value, index) => (
+          <PaginationItem key={value}>
+            {index > 0 && pages[index - 1] !== value - 1 ? (
+              <PaginationEllipsis className="text-muted-foreground" />
+            ) : null}
+            <PaginationLink
+              href="#"
+              isActive={value === page}
+              className="size-8 rounded-none border-border font-mono text-[10px] text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary data-[active=true]:border-primary data-[active=true]:bg-accent data-[active=true]:text-primary"
+              onClick={(event) => {
+                event.preventDefault()
+                onPageChange(value)
+              }}
+            >
+              {value}
+            </PaginationLink>
+          </PaginationItem>
+        ))}
+        <PaginationItem>
+          <PaginationNext
+            href="#"
+            aria-disabled={page === pageCount}
+            className={
+              page === pageCount
+                ? "pointer-events-none opacity-40"
+                : "rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+            }
+            onClick={(event) => {
+              event.preventDefault()
+              if (page < pageCount) onPageChange(page + 1)
+            }}
+            text=""
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </PaginationRoot>
   )
 }

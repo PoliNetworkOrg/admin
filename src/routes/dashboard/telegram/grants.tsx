@@ -4,6 +4,9 @@ import { useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { getOngoingGrants, getScheduledGrants } from "@/server/api.functions"
 
 type Grant = {
@@ -28,7 +31,7 @@ function Grants() {
     tab === "ongoing" ? ongoingGrants : tab === "scheduled" ? scheduledGrants : [...ongoingGrants, ...scheduledGrants]
   const connected = ongoing.connected && scheduled.connected
   return (
-    <div className="data-page reveal">
+    <div className="animate-appear">
       <DataToolbar
         title="Access grants"
         description="See who has temporary access, when it begins, and when it expires."
@@ -36,47 +39,86 @@ function Grants() {
         action="New grant"
       />
       <LiveStatus connected={connected} message={ongoing.message ?? scheduled.message} />
-      <div className="segmented" role="tablist">
-        <button className={tab === "all" ? "selected" : ""} onClick={() => setTab("all")}>
-          All <b>{ongoingGrants.length + scheduledGrants.length}</b>
-        </button>
-        <button className={tab === "ongoing" ? "selected" : ""} onClick={() => setTab("ongoing")}>
-          Ongoing <b>{ongoingGrants.length}</b>
-        </button>
-        <button className={tab === "scheduled" ? "selected" : ""} onClick={() => setTab("scheduled")}>
-          Scheduled <b>{scheduledGrants.length}</b>
-        </button>
-      </div>
+      <ToggleGroup
+        variant="outline"
+        size="sm"
+        spacing={1}
+        value={[tab]}
+        onValueChange={(value) => {
+          const next = value[0]
+          if (next === "all" || next === "ongoing" || next === "scheduled") setTab(next)
+        }}
+        className="my-1"
+        aria-label="Grant status"
+      >
+        <ToggleGroupItem
+          value="all"
+          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+        >
+          All <b className="ml-1 font-mono text-[10px]">{ongoingGrants.length + scheduledGrants.length}</b>
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="ongoing"
+          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+        >
+          Ongoing <b className="ml-1 font-mono text-[10px]">{ongoingGrants.length}</b>
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="scheduled"
+          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+        >
+          Scheduled <b className="ml-1 font-mono text-[10px]">{scheduledGrants.length}</b>
+        </ToggleGroupItem>
+      </ToggleGroup>
       {grants.length ? (
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead>
+        <div className="overflow-auto border border-border bg-card">
+          <Table className="min-w-[700px] text-left">
+            <TableHeader>
               <tr>
-                <th>User</th>
-                <th>Role</th>
-                <th>Granted by</th>
-                <th>Schedule</th>
-                <th>Status</th>
+                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                  User
+                </TableHead>
+                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                  Role
+                </TableHead>
+                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                  Granted by
+                </TableHead>
+                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                  Schedule
+                </TableHead>
+                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                  Status
+                </TableHead>
               </tr>
-            </thead>
-            <tbody>
+            </TableHeader>
+            <TableBody>
               {grants.map((grant, index) => (
-                <tr key={`${grant.userId}-${index}`}>
-                  <td className="mono">{grant.userId}</td>
-                  <td>
-                    <span className="tag">{grant.role ?? "Access grant"}</span>
-                  </td>
-                  <td className="mono">{grant.grantorId ?? "—"}</td>
-                  <td>{grant.scheduledAt ?? grant.createdAt ?? "—"}</td>
-                  <td>
-                    <span className={`status-pill ${grant.scheduledAt ? "quiet" : ""}`}>
+                <TableRow key={`${grant.userId}-${index}`} className="hover:bg-[#f6f9fe]">
+                  <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">{grant.userId}</TableCell>
+                  <TableCell className="px-[15px] py-3">
+                    <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
+                      {grant.role ?? "Access grant"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">
+                    {grant.grantorId ?? "—"}
+                  </TableCell>
+                  <TableCell className="px-[15px] py-3 text-xs">
+                    {grant.scheduledAt ?? grant.createdAt ?? "—"}
+                  </TableCell>
+                  <TableCell className="px-[15px] py-3">
+                    <Badge
+                      variant={grant.scheduledAt ? "secondary" : "default"}
+                      className="h-5 rounded-none px-1.5 font-mono text-[9px]"
+                    >
                       {grant.scheduledAt ? "Scheduled" : "Active"}
-                    </span>
-                  </td>
-                </tr>
+                    </Badge>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : (
         <EmptyState

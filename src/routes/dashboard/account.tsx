@@ -11,10 +11,18 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { uploadProfilePicture } from "@/server/api.functions"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 import { auth, useSession } from "@/lib/auth"
 import type { AdminSession } from "@/server/api.functions"
-import { uploadProfilePicture } from "@/server/api.functions"
 
 type Passkey = { id: string; name?: string | null; createdAt?: Date | string; deviceType?: string }
 type ActiveSession = {
@@ -48,11 +56,11 @@ function Account() {
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  async function refreshSecurityData() {
+  const refreshSecurityData = useCallback(async () => {
     const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
     setPasskeys((passkeyResult.data ?? []) as Passkey[])
     setSessions((sessionResult.data ?? []) as ActiveSession[])
-  }
+  }, [])
 
   useEffect(() => {
     void refreshSecurityData()
@@ -148,188 +156,288 @@ function Account() {
   }
 
   return (
-    <div className="account-page reveal">
-      <section className="data-intro">
-        <div>
-          <p className="eyebrow">OPERATOR PROFILE</p>
-          <h2>Account settings</h2>
-          <p>Manage your profile and authentication methods.</p>
-        </div>
+    <div className="animate-appear">
+      <section className="flex flex-col items-start border-b border-border pb-6">
+        <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
+          OPERATOR PROFILE
+        </p>
+        <h2 className="mt-2 font-serif text-[25px] leading-[1.1] tracking-[-0.05em]">Account settings</h2>
+        <p className="mt-2 text-xs text-muted-foreground">Manage your profile and authentication methods.</p>
       </section>
-      {notice && <div className={`account-notice ${notice.type}`}>{notice.text}</div>}
-
-      <section className="account-profile-card">
-        <div className="account-avatar-wrap">
-          {user?.image ? (
-            <img className="account-avatar" src={user.image} alt="Your profile" />
-          ) : (
-            <span className="account-avatar fallback">{avatarText(user?.name, user?.email)}</span>
+      {notice && (
+        <div
+          className={cn(
+            "my-4 border px-3 py-2.5 text-[11px]",
+            notice.type === "success"
+              ? "border-primary/30 bg-accent text-primary"
+              : "border-destructive/30 bg-destructive/10 text-destructive"
           )}
-          <button
-            onClick={() => fileInput.current?.click()}
-            disabled={busy === "image"}
-            aria-label="Upload profile picture"
-          >
-            <Camera size={15} />
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/png,image/jpeg"
-            hidden
-            onChange={(event) => void uploadImage(event.target.files?.[0])}
-          />
+        >
+          {notice.text}
         </div>
-        <div className="account-identity">
-          <h3>{user?.name || "Complete your profile"}</h3>
-          <p>{user?.email}</p>
-          <span>
-            {user?.telegramUsername
-              ? `@${user.telegramUsername}`
-              : user?.telegramId
-                ? `Telegram ID ${user.telegramId}`
-                : "Telegram not linked"}
-          </span>
-        </div>
-        {user?.image && (
-          <button className="secondary-button danger" onClick={() => void removeImage()} disabled={busy === "image"}>
-            Remove picture
-          </button>
-        )}
-      </section>
+      )}
 
-      <div className="account-grid">
-        <section className="account-panel">
-          <header>
-            <span>
-              <UserRound size={18} />
-              <div>
-                <h3>Profile details</h3>
-                <p>Displayed throughout the admin console.</p>
-              </div>
-            </span>
-          </header>
-          <form className="account-form" onSubmit={(event) => void updateName(event)}>
-            <label>
-              Full name
-              <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
-            </label>
-            <label>
-              Email address
-              <input value={user?.email ?? ""} disabled />
-            </label>
-            <button className="primary-button" disabled={busy === "name" || name.trim() === user?.name}>
-              {busy === "name" && <LoaderCircle className="spin" size={14} />} Save profile
-            </button>
-          </form>
-        </section>
-
-        <section className="account-panel">
-          <header>
-            <span>
-              <Mail size={18} />
-              <div>
-                <h3>Telegram identity</h3>
-                <p>Used to determine roles and permissions.</p>
-              </div>
-            </span>
-          </header>
-          <dl className="account-details">
-            <div>
-              <dt>Username</dt>
-              <dd>{user?.telegramUsername ? `@${user.telegramUsername}` : "Not available"}</dd>
-            </div>
-            <div>
-              <dt>Telegram ID</dt>
-              <dd className="mono">{user?.telegramId ?? "Not linked"}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section className="account-panel full">
-          <header>
-            <span>
-              <KeyRound size={18} />
-              <div>
-                <h3>Passkeys</h3>
-                <p>Phishing-resistant access from your trusted devices.</p>
-              </div>
-            </span>
-            <button className="primary-button" onClick={() => void addPasskey()} disabled={busy === "passkey"}>
-              <KeyRound size={14} /> Add passkey
-            </button>
-          </header>
-          <div className="security-list">
-            {passkeys.map((passkey) => (
-              <article key={passkey.id}>
-                <span className="security-icon">
-                  <KeyRound size={17} />
-                </span>
-                <div>
-                  <h4>{passkey.name || "Unnamed passkey"}</h4>
-                  <p>
-                    <Calendar size={12} /> Added{" "}
-                    {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : "recently"}
-                    {passkey.deviceType ? ` · ${passkey.deviceType}` : ""}
-                  </p>
-                </div>
-                <button
-                  className="icon-action danger"
-                  onClick={() => void deletePasskey(passkey.id)}
-                  disabled={busy === passkey.id}
-                  aria-label="Delete passkey"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </article>
-            ))}
-            {!passkeys.length && <p className="section-empty">No passkeys registered yet.</p>}
+      <Card className="mt-5 rounded-none py-0 shadow-none">
+        <CardContent className="flex items-center gap-4 p-5 max-[600px]:flex-wrap">
+          <div className="relative">
+            <Avatar size="lg" className="size-[58px] after:border-0">
+              {user?.image && <AvatarImage src={user.image} alt="Your profile" />}
+              <AvatarFallback className="bg-sidebar-primary font-mono text-base text-sidebar">
+                {avatarText(user?.name, user?.email)}
+              </AvatarFallback>
+            </Avatar>
+            <Button
+              variant="secondary"
+              size="icon-xs"
+              className="absolute right-[-5px] bottom-[-5px] rounded-full border border-background bg-card"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy === "image"}
+              aria-label="Upload profile picture"
+            >
+              <Camera />
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg"
+              hidden
+              onChange={(event) => void uploadImage(event.target.files?.[0])}
+            />
           </div>
-        </section>
-
-        <section className="account-panel full">
-          <header>
-            <span>
-              <Shield size={18} />
-              <div>
-                <h3>Active sessions</h3>
-                <p>Devices currently signed in to your account.</p>
-              </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold">{user?.name || "Complete your profile"}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">{user?.email}</p>
+            <span className="mt-1.5 block font-mono text-[10px] text-primary">
+              {user?.telegramUsername
+                ? `@${user.telegramUsername}`
+                : user?.telegramId
+                  ? `Telegram ID ${user.telegramId}`
+                  : "Telegram not linked"}
             </span>
+          </div>
+          {user?.image && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none text-[10px] text-destructive"
+              onClick={() => void removeImage()}
+              disabled={busy === "image"}
+            >
+              Remove picture
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="mt-3.5 grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
+        <Card className="rounded-none py-0 shadow-none">
+          <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
+            <UserRound className="mt-0.5 shrink-0 text-primary" />
+            <span>
+              <CardTitle className="text-[13px]">Profile details</CardTitle>
+              <CardDescription className="mt-1 text-[10px]">Displayed throughout the admin console.</CardDescription>
+            </span>
+          </CardHeader>
+          <CardContent className="p-5">
+            <form onSubmit={(event) => void updateName(event)}>
+              <FieldGroup className="gap-3.5">
+                <Field>
+                  <FieldLabel htmlFor="full-name" className="font-mono text-[10px] font-medium text-muted-foreground">
+                    Full name
+                  </FieldLabel>
+                  <Input
+                    id="full-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    autoComplete="name"
+                    required
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="account-email"
+                    className="font-mono text-[10px] font-medium text-muted-foreground"
+                  >
+                    Email address
+                  </FieldLabel>
+                  <Input id="account-email" value={user?.email ?? ""} disabled />
+                </Field>
+                <Button
+                  type="submit"
+                  className="w-max rounded-none bg-primary text-[11px] hover:bg-primary/85"
+                  disabled={busy === "name" || name.trim() === user?.name}
+                >
+                  {busy === "name" && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Save
+                  profile
+                </Button>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-none py-0 shadow-none">
+          <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
+            <Mail className="mt-0.5 shrink-0 text-primary" />
+            <span>
+              <CardTitle className="text-[13px]">Telegram identity</CardTitle>
+              <CardDescription className="mt-1 text-[10px]">Used to determine roles and permissions.</CardDescription>
+            </span>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-5 text-xs">
+            <dl className="grid gap-3">
+              <div>
+                <dt className="font-mono text-[10px] text-muted-foreground">Username</dt>
+                <dd className="mt-1">{user?.telegramUsername ? `@${user.telegramUsername}` : "Not available"}</dd>
+              </div>
+              <div>
+                <dt className="font-mono text-[10px] text-muted-foreground">Telegram ID</dt>
+                <dd className="mt-1 font-mono text-[10px]">{user?.telegramId ?? "Not linked"}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
+            <div className="flex items-start gap-3">
+              <KeyRound className="mt-0.5 shrink-0 text-primary" />
+              <span>
+                <CardTitle className="text-[13px]">Passkeys</CardTitle>
+                <CardDescription className="mt-1 text-[10px]">
+                  Phishing-resistant access from your trusted devices.
+                </CardDescription>
+              </span>
+            </div>
+            <Button
+              className="rounded-none bg-primary text-[10px] hover:bg-primary/85"
+              onClick={() => void addPasskey()}
+              disabled={busy === "passkey"}
+            >
+              <KeyRound data-icon="inline-start" /> Add passkey
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <SecurityList>
+              {passkeys.map((passkey) => (
+                <SecurityItem
+                  key={passkey.id}
+                  icon={KeyRound}
+                  title={passkey.name || "Unnamed passkey"}
+                  description={
+                    <>
+                      <Calendar /> Added{" "}
+                      {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : "recently"}
+                      {passkey.deviceType ? ` · ${passkey.deviceType}` : ""}
+                    </>
+                  }
+                  action={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="rounded-none text-destructive"
+                      onClick={() => void deletePasskey(passkey.id)}
+                      disabled={busy === passkey.id}
+                      aria-label="Delete passkey"
+                    >
+                      <Trash2 />
+                    </Button>
+                  }
+                />
+              ))}
+              {!passkeys.length && (
+                <p className="px-5 py-7 text-[11px] text-muted-foreground">No passkeys registered yet.</p>
+              )}
+            </SecurityList>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
+            <div className="flex items-start gap-3">
+              <Shield className="mt-0.5 shrink-0 text-primary" />
+              <span>
+                <CardTitle className="text-[13px]">Active sessions</CardTitle>
+                <CardDescription className="mt-1 text-[10px]">
+                  Devices currently signed in to your account.
+                </CardDescription>
+              </span>
+            </div>
             {sessions.length > 1 && (
-              <button
-                className="secondary-button"
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-none text-[10px]"
                 onClick={() => void revokeOtherSessions()}
                 disabled={busy === "sessions"}
               >
                 Sign out other sessions
-              </button>
+              </Button>
             )}
-          </header>
-          <div className="security-list">
-            {sessions.map((activeSession) => (
-              <article key={activeSession.id}>
-                <span className="security-icon">
-                  <MonitorSmartphone size={17} />
-                </span>
-                <div>
-                  <h4>{activeSession.userAgent || "Unknown device"}</h4>
-                  <p>
-                    {activeSession.ipAddress || "Unknown IP"}
-                    {activeSession.createdAt
-                      ? ` · Since ${new Date(activeSession.createdAt).toLocaleDateString()}`
-                      : ""}
-                  </p>
-                </div>
-                {activeSession.id === session.session?.id && <span className="status-pill">Current</span>}
-              </article>
-            ))}
-          </div>
-          <button className="logout-wide" onClick={() => void logout()} disabled={busy === "logout"}>
-            <LogOut size={15} /> Sign out of this device
-          </button>
-        </section>
+          </CardHeader>
+          <CardContent className="p-0">
+            <SecurityList>
+              {sessions.map((activeSession) => (
+                <SecurityItem
+                  key={activeSession.id}
+                  icon={MonitorSmartphone}
+                  title={activeSession.userAgent || "Unknown device"}
+                  description={
+                    <>
+                      {activeSession.ipAddress || "Unknown IP"}
+                      {activeSession.createdAt
+                        ? ` · Since ${new Date(activeSession.createdAt).toLocaleDateString()}`
+                        : ""}
+                    </>
+                  }
+                  action={
+                    activeSession.id === session.session?.id ? (
+                      <Badge className="h-5 rounded-none px-1.5 font-mono text-[9px]">Current</Badge>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </SecurityList>
+            <Separator />
+            <Button
+              variant="ghost"
+              className="m-4 rounded-none text-[11px] text-destructive"
+              onClick={() => void logout()}
+              disabled={busy === "logout"}
+            >
+              <LogOut data-icon="inline-start" /> Sign out of this device
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
+  )
+}
+
+function SecurityList({ children }: { children: React.ReactNode }) {
+  return <div className="grid">{children}</div>
+}
+
+function SecurityItem({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: typeof KeyRound
+  title: string
+  description: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <article className="flex items-center gap-3 border-b border-border px-5 py-3.5 last:border-b-0">
+      <span className="grid size-9 shrink-0 place-items-center bg-accent text-primary">
+        <Icon />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h4 className="truncate text-xs font-semibold">{title}</h4>
+        <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </article>
   )
 }

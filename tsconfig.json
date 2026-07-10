@@ -19,19 +19,5 @@
     "types": ["vite/client"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": [
-    "src/routes/**/*",
-    "src/components/app-mark.tsx",
-    "src/components/dashboard-frame.tsx",
-    "src/components/data-toolbar.tsx",
-    "src/components/empty-state.tsx",
-    "src/components/live-status.tsx",
-    "src/components/pagination.tsx",
-    "src/lib/auth.ts",
-    "src/server/api.functions.ts",
-    "src/router.tsx",
-    "src/routeTree.gen.ts",
-    "src/vite-env.d.ts",
-    "vite.config.ts"
-  ]
+  "include": ["src/**/*", "vite.config.ts", "tailwind.config.ts"]
 }

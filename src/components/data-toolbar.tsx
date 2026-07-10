@@ -1,5 +1,7 @@
 import { Plus, Search } from "lucide-react"
 import type { ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 export function DataToolbar({
   title,
@@ -20,30 +22,36 @@ export function DataToolbar({
 }) {
   return (
     <>
-      <section className="data-intro">
+      <section className="flex flex-col items-start justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end">
         <div>
-          <p className="eyebrow">DIRECTORY</p>
-          <h2>{title}</h2>
-          <p>{description}</p>
+          <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
+            DIRECTORY
+          </p>
+          <h2 className="mt-2 font-serif text-[25px] leading-[1.1] tracking-[-0.05em]">{title}</h2>
+          <p className="mt-2 text-xs text-muted-foreground">{description}</p>
         </div>
         {action && onAction && (
-          <button className="primary-button" onClick={onAction}>
-            <Plus size={16} />
+          <Button
+            className="h-9 rounded-none bg-primary px-3 text-[11px] font-semibold text-primary-foreground hover:bg-primary/85"
+            onClick={onAction}
+          >
+            <Plus data-icon="inline-start" />
             {action}
-          </button>
+          </Button>
         )}
       </section>
-      <section className="table-tools">
-        <label className="search-field">
-          <Search size={16} />
-          <input
+      <section className="flex flex-wrap items-center gap-3 py-4">
+        <label className="relative flex h-9 w-full max-w-[300px] items-center border border-border bg-card text-muted-foreground sm:w-[300px]">
+          <Search className="pointer-events-none absolute left-2.5" />
+          <Input
             aria-label={`Search ${title}`}
+            className="h-full rounded-none border-0 bg-transparent pl-8 text-xs shadow-none focus-visible:ring-0"
             onChange={(event) => onSearch?.(event.target.value)}
             placeholder="Filter records…"
           />
         </label>
-        <span className="record-count">
-          <b>{count}</b> records
+        <span className="ml-auto text-[11px] text-muted-foreground max-sm:ml-0">
+          <b className="text-foreground">{count}</b> records
         </span>
         {children}
       </section>

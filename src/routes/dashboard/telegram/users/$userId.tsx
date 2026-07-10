@@ -10,6 +10,8 @@ import {
   UsersRound,
 } from "lucide-react"
 import { LiveStatus } from "@/components/live-status"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getTelegramUserDetails } from "@/server/api.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
@@ -33,16 +35,16 @@ function UserProfile() {
 
   if (!data) {
     return (
-      <div className="profile-page reveal">
-        <Link to="/dashboard/telegram/users" className="back-link">
-          <ArrowLeft size={16} /> Back to users
-        </Link>
+      <div className="animate-appear">
+        <BackLink />
         <LiveStatus connected={response.connected} message={response.message} />
-        <div className="empty-profile">
-          <UserRound size={26} />
-          <h2>User not found</h2>
-          <p>No Telegram user exists with ID {userId}.</p>
-        </div>
+        <Card className="mt-[18px] rounded-none border-dashed py-0 text-center shadow-none">
+          <CardContent className="px-5 py-14">
+            <UserRound className="mx-auto text-primary" />
+            <h2 className="mt-2 font-serif text-[21px] font-normal tracking-[-0.04em]">User not found</h2>
+            <p className="mt-2 text-xs text-muted-foreground">No Telegram user exists with ID {userId}.</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -51,134 +53,174 @@ function UserProfile() {
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
 
   return (
-    <div className="profile-page reveal">
-      <Link to="/dashboard/telegram/users" className="back-link">
-        <ArrowLeft size={16} /> Back to users
-      </Link>
-      <section className="profile-hero">
-        <div className="profile-avatar">
+    <div className="animate-appear">
+      <BackLink />
+      <section className="mt-[18px] flex items-center gap-[18px] bg-sidebar px-[35px] py-[35px] text-[#eff1e9] max-[600px]:grid max-[600px]:grid-cols-[55px_1fr] max-[600px]:px-6 max-[600px]:py-6">
+        <div className="grid size-[58px] shrink-0 place-items-center rounded-full bg-sidebar-primary font-mono text-[17px] text-sidebar">
           {(user.firstName?.[0] ?? user.username?.[0] ?? String(user.id).slice(-2)).toUpperCase()}
         </div>
         <div>
-          <p className="eyebrow">TELEGRAM PROFILE · {user.id}</p>
-          <h2>{displayName}</h2>
-          <p>{user.username ? `@${user.username}` : "No Telegram username"}</p>
+          <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-sidebar-primary">
+            TELEGRAM PROFILE · {user.id}
+          </p>
+          <h2 className="mt-1 font-serif text-[26px] font-normal tracking-[-0.05em]">{displayName}</h2>
+          <p className="text-[11px] text-[#b4c0b7]">{user.username ? `@${user.username}` : "No Telegram username"}</p>
         </div>
-        <span className="status-pill quiet">
+        <Badge
+          variant="secondary"
+          className="ml-auto h-5 rounded-none bg-muted px-1.5 font-mono text-[9px] text-muted-foreground max-[600px]:col-span-full max-[600px]:ml-0"
+        >
           {roles.length} role{roles.length === 1 ? "" : "s"}
-        </span>
+        </Badge>
       </section>
 
-      <section className="detail-summary-grid">
-        <article className="detail-card">
-          <UserRound size={18} />
-          <p className="eyebrow">IDENTITY</p>
-          <dl>
-            <div>
-              <dt>Telegram ID</dt>
-              <dd className="mono">{user.id}</dd>
-            </div>
-            <div>
-              <dt>Name</dt>
-              <dd>{displayName}</dd>
-            </div>
-            <div>
-              <dt>Username</dt>
-              <dd>{user.username ? `@${user.username}` : "—"}</dd>
-            </div>
+      <section className="mt-[18px] grid grid-cols-3 gap-3.5 max-[900px]:grid-cols-1">
+        <SummaryCard icon={UserRound} label="IDENTITY">
+          <dl className="grid gap-2 text-xs">
+            <Definition label="Telegram ID">
+              <span className="font-mono text-[10px]">{user.id}</span>
+            </Definition>
+            <Definition label="Name">{displayName}</Definition>
+            <Definition label="Username">{user.username ? `@${user.username}` : "—"}</Definition>
           </dl>
-        </article>
-        <article className="detail-card">
-          <ShieldCheck size={18} />
-          <p className="eyebrow">ROLES</p>
-          <div className="role-list">
+        </SummaryCard>
+        <SummaryCard icon={ShieldCheck} label="ROLES">
+          <div className="flex flex-wrap gap-1.5">
             {roles.length ? (
               roles.map((role) => (
-                <span className="tag" key={role}>
+                <Badge key={role} className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
                   {role}
-                </span>
+                </Badge>
               ))
             ) : (
-              <span className="muted">No assigned roles</span>
+              <span className="text-[11px] italic text-muted-foreground">No assigned roles</span>
             )}
           </div>
-        </article>
-        <article className="detail-card">
-          <CalendarClock size={18} />
-          <p className="eyebrow">ACCESS GRANT</p>
+        </SummaryCard>
+        <SummaryCard icon={CalendarClock} label="ACCESS GRANT">
           {grant ? (
-            <dl>
-              <div>
-                <dt>Valid from</dt>
-                <dd>{formatDate(grant.validSince)}</dd>
-              </div>
-              <div>
-                <dt>Valid until</dt>
-                <dd>{formatDate(grant.validUntil)}</dd>
-              </div>
+            <dl className="grid gap-2 text-xs">
+              <Definition label="Valid from">{formatDate(grant.validSince)}</Definition>
+              <Definition label="Valid until">{formatDate(grant.validUntil)}</Definition>
             </dl>
           ) : (
-            <span className="muted">No ongoing grant</span>
+            <span className="text-[11px] italic text-muted-foreground">No ongoing grant</span>
           )}
-        </article>
+        </SummaryCard>
       </section>
 
       <DetailSection icon={UsersRound} title="Group administration" count={groupAdmin.length}>
-        <div className="detail-grid">
+        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {groupAdmin
             .filter((entry) => entry !== null)
             .map((entry) => (
-              <article className="activity-card" key={entry.group.id}>
-                <h3>{entry.group.title}</h3>
-                <p className="mono">{entry.group.id}</p>
-                <small>
-                  Added by {entry.addedBy.firstName}
-                  {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
-                </small>
-              </article>
+              <Card className="rounded-none py-0 shadow-none" key={entry.group.id}>
+                <CardContent className="p-5">
+                  <h3 className="text-[13px]">{entry.group.title}</h3>
+                  <p className="mt-1 font-mono text-[10px] text-[#51647f]">{entry.group.id}</p>
+                  <small className="mt-3 block text-[10px] text-muted-foreground">
+                    Added by {entry.addedBy.firstName}
+                    {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
+                  </small>
+                </CardContent>
+              </Card>
             ))}
-          {!groupAdmin.length && <p className="section-empty">This user does not administer any group.</p>}
+          {!groupAdmin.length && <SectionEmpty text="This user does not administer any group." />}
         </div>
       </DetailSection>
-
       <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
-        <div className="detail-grid">
+        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {messages.map((message) => (
-            <article className="activity-card message-card" key={`${message.chatId}-${message.messageId}`}>
-              <div>
-                <h3>{message.group?.title ?? `Chat ${message.chatId}`}</h3>
-                <time>{formatDate(message.timestamp)}</time>
-              </div>
-              <p>{message.message}</p>
-              <a href={messageLink(message.chatId, message.messageId)} target="_blank" rel="noreferrer">
-                Open message <ExternalLink size={13} />
-              </a>
-            </article>
+            <Card className="rounded-none py-0 shadow-none" key={`${message.chatId}-${message.messageId}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[13px]">{message.group?.title ?? `Chat ${message.chatId}`}</h3>
+                  <time className="shrink-0 text-[10px] text-muted-foreground">{formatDate(message.timestamp)}</time>
+                </div>
+                <p className="mt-3 text-xs leading-[1.5]">{message.message}</p>
+                <a
+                  className="mt-3 flex items-center gap-1 font-mono text-[10px] font-medium text-primary hover:underline"
+                  href={messageLink(message.chatId, message.messageId)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open message <ExternalLink />
+                </a>
+              </CardContent>
+            </Card>
           ))}
-          {!messages.length && <p className="section-empty">No recent messages from this user.</p>}
+          {!messages.length && <SectionEmpty text="No recent messages from this user." />}
         </div>
       </DetailSection>
-
       <DetailSection icon={History} title="Audit log" count={audits.length}>
-        <div className="detail-grid">
+        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {audits.map((audit) => (
-            <article className="activity-card" key={`${audit.id}-${audit.type}`}>
-              <div>
-                <h3>{audit.type}</h3>
-                <time>{formatDate(audit.createdAt)}</time>
-              </div>
-              <p>{audit.reason ?? "No reason provided"}</p>
-              {audit.groupTitle && (
-                <small>
-                  {audit.groupTitle} · {audit.groupId}
-                </small>
-              )}
-            </article>
+            <Card className="rounded-none py-0 shadow-none" key={`${audit.id}-${audit.type}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[13px]">{audit.type}</h3>
+                  <time className="shrink-0 text-[10px] text-muted-foreground">{formatDate(audit.createdAt)}</time>
+                </div>
+                <p className="mt-3 text-xs leading-[1.5]">{audit.reason ?? "No reason provided"}</p>
+                {audit.groupTitle && (
+                  <small className="mt-2 block text-[10px] text-muted-foreground">
+                    {audit.groupTitle} · {audit.groupId}
+                  </small>
+                )}
+              </CardContent>
+            </Card>
           ))}
-          {!audits.length && <p className="section-empty">No audit events found for this user.</p>}
+          {!audits.length && <SectionEmpty text="No audit events found for this user." />}
         </div>
       </DetailSection>
     </div>
+  )
+}
+
+function BackLink() {
+  return (
+    <Link
+      to="/dashboard/telegram/users"
+      className="flex w-max items-center gap-1.5 font-mono text-[11px] text-primary hover:underline"
+    >
+      <ArrowLeft /> Back to users
+    </Link>
+  )
+}
+
+function SummaryCard({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof UserRound
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <Card className="rounded-none py-0 shadow-none">
+      <CardHeader className="gap-3 p-5 pb-3">
+        <Icon className="text-primary" />
+        <CardTitle className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5 pt-0">{children}</CardContent>
+    </Card>
+  )
+}
+
+function Definition({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="font-mono text-[9px] text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5">{children}</dd>
+    </div>
+  )
+}
+function SectionEmpty({ text }: { text: string }) {
+  return (
+    <p className="border border-dashed border-border px-5 py-8 text-center text-[11px] text-muted-foreground">{text}</p>
   )
 }
 
@@ -194,13 +236,13 @@ function DetailSection({
   children: React.ReactNode
 }) {
   return (
-    <section className="detail-section">
-      <header>
-        <span>
-          <Icon size={17} />
-          <h2>{title}</h2>
+    <section className="mt-[34px]">
+      <header className="mb-3 flex items-center justify-between border-b border-border pb-3">
+        <span className="flex items-center gap-2">
+          <Icon className="text-primary" />
+          <h2 className="font-serif text-[20px] font-normal tracking-[-0.04em]">{title}</h2>
         </span>
-        <b>{count}</b>
+        <b className="font-mono text-[10px] text-muted-foreground">{count}</b>
       </header>
       {children}
     </section>

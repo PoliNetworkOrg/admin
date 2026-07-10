@@ -5,6 +5,11 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { Pagination } from "@/components/pagination"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 import { getTelegramGroups, setGroupVisibility } from "@/server/api.functions"
 
 const PAGE_SIZE = 20
@@ -67,7 +72,7 @@ function TelegramGroups() {
   }
 
   return (
-    <div className="data-page reveal">
+    <div className="animate-appear">
       <DataToolbar
         title="Telegram groups"
         description="Maintain the community groups connected to PoliNetwork."
@@ -78,70 +83,102 @@ function TelegramGroups() {
         }}
       />
       <LiveStatus connected={response.connected} message={response.message} />
-      {mutationError && <div className="connection-note">{mutationError}</div>}
+      {mutationError && (
+        <Alert className="mb-4 rounded-none border-l-[3px] border-l-[#d86b3f] bg-[#fff4e8] px-3 py-2.5 text-[11px] text-[#895322]">
+          <AlertDescription className="text-[11px] leading-[1.45] text-[#895322]">{mutationError}</AlertDescription>
+        </Alert>
+      )}
       {filtered.length ? (
         <>
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
+          <div className="overflow-auto border border-border bg-card">
+            <Table className="min-w-[700px] text-left">
+              <TableHeader>
                 <tr>
-                  <th>Group</th>
-                  <th>Telegram ID</th>
-                  <th>Tag</th>
-                  <th>Visibility</th>
-                  <th>Invite</th>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Group
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Telegram ID
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Tag
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Visibility
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Invite
+                  </TableHead>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHeader>
+              <TableBody>
                 {visibleGroups.map((group) => {
                   const link = group.link ?? group.inviteLink
                   const pending = updatingId === group.telegramId
                   return (
-                    <tr key={group.telegramId}>
-                      <td>
-                        <div className="identity">
-                          <span className="mini-avatar group">
-                            <MessageCircleMore size={15} />
+                    <TableRow key={group.telegramId} className="hover:bg-[#f6f9fe]">
+                      <TableCell className="px-[15px] py-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#e9e8df] text-primary">
+                            <MessageCircleMore />
                           </span>
                           <b>{group.title}</b>
                         </div>
-                      </td>
-                      <td className="mono">{group.telegramId}</td>
-                      <td>
-                        {group.tag ? <span className="tag">@{group.tag}</span> : <span className="muted">—</span>}
-                      </td>
-                      <td>
-                        <button
-                          className={`status-pill visibility-toggle ${group.hide ? "quiet" : ""}`}
+                      </TableCell>
+                      <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">
+                        {group.telegramId}
+                      </TableCell>
+                      <TableCell className="px-[15px] py-3">
+                        {group.tag ? (
+                          <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
+                            @{group.tag}
+                          </Badge>
+                        ) : (
+                          <span className="text-[11px] italic text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-[15px] py-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-6 rounded-none border-transparent px-1.5 font-mono text-[9px]",
+                            group.hide ? "bg-muted text-muted-foreground" : "bg-[#e5effc] text-primary"
+                          )}
                           disabled={pending}
                           onClick={() => void toggleVisibility(group)}
                           title="Toggle group visibility"
                         >
                           {group.hide ? (
                             <>
-                              <EyeOff size={12} /> Hidden
+                              <EyeOff data-icon="inline-start" /> Hidden
                             </>
                           ) : (
                             <>
-                              <Eye size={12} /> Visible
+                              <Eye data-icon="inline-start" /> Visible
                             </>
                           )}
-                        </button>
-                      </td>
-                      <td>
+                        </Button>
+                      </TableCell>
+                      <TableCell className="px-[15px] py-3">
                         {link ? (
-                          <a className="table-link" href={link} target="_blank" rel="noreferrer">
+                          <a
+                            className="font-mono text-[11px] font-medium text-primary hover:underline"
+                            href={link}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Open link
                           </a>
                         ) : (
-                          <span className="muted">Not shared</span>
+                          <span className="text-[11px] italic text-muted-foreground">Not shared</span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </>

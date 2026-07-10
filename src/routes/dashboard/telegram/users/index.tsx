@@ -5,6 +5,7 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { Pagination } from "@/components/pagination"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getTelegramUsers } from "@/server/api.functions"
 
 const PAGE_SIZE = 25
@@ -49,7 +50,7 @@ function TelegramUsers() {
   useEffect(() => setPage((current) => Math.min(current, pageCount)), [pageCount])
 
   return (
-    <div className="data-page reveal">
+    <div className="animate-appear">
       <DataToolbar
         title="Telegram users"
         description="Browse members known to the PoliNetwork Telegram ecosystem."
@@ -62,49 +63,55 @@ function TelegramUsers() {
       <LiveStatus connected={response.connected} message={response.message} />
       {filtered.length ? (
         <>
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
+          <div className="overflow-auto border border-border bg-card">
+            <Table className="min-w-[700px] text-left">
+              <TableHeader>
                 <tr>
-                  <th>Telegram ID</th>
-                  <th>Identity</th>
-                  <th>Username</th>
-                  <th aria-label="Actions" />
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Telegram ID
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Identity
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
+                    Username
+                  </TableHead>
+                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px]" aria-label="Actions" />
                 </tr>
-              </thead>
-              <tbody>
+              </TableHeader>
+              <TableBody>
                 {visibleUsers.map(({ user }) => (
-                  <tr key={user.id}>
-                    <td className="mono">{user.id}</td>
-                    <td>
-                      <div className="identity">
-                        <span className="mini-avatar">
+                  <TableRow key={user.id} className="hover:bg-[#f6f9fe]">
+                    <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">{user.id}</TableCell>
+                    <TableCell className="px-[15px] py-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-primary">
                           {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
                         </span>
                         <span>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"}</span>
                       </div>
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell className="px-[15px] py-3">
                       {user.username ? (
-                        <span className="handle">@{user.username}</span>
+                        <span className="font-mono text-[11px] font-medium text-primary">@{user.username}</span>
                       ) : (
-                        <span className="muted">Not set</span>
+                        <span className="text-[11px] italic text-muted-foreground">Not set</span>
                       )}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell className="px-[15px] py-3">
                       <Link
                         to="/dashboard/telegram/users/$userId"
                         params={{ userId: String(user.id) }}
-                        className="row-action"
+                        className="grid size-7 place-items-center bg-accent text-primary transition-colors hover:bg-[#dce9fa]"
                         aria-label={`Open ${user.username ?? user.id}`}
                       >
-                        <Eye size={16} />
+                        <Eye />
                       </Link>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </>

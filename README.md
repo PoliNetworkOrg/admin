@@ -1,6 +1,6 @@
 # PoliNetwork Admin
 
-The PoliNetwork operations console, rebuilt with the latest TanStack Start, React 19, Vite, and Nitro.
+The PoliNetwork operations console, rebuilt with the latest TanStack Start, React 19, Vite, Nitro, Tailwind CSS v4, and shadcn/ui.
 
 ## Development
 
@@ -10,6 +10,8 @@ pnpm dev
 ```
 
 Open `http://localhost:3001`. The production server is generated with `pnpm build` and starts with `pnpm start`.
+
+The UI uses shadcn's base components with a custom semantic theme in `src/styles.css`. The theme preserves the console's paper canvas, dark navy shell, cobalt `#1156ae` primary, DM Sans body copy, Libre Baskerville headings, and DM Mono metadata while keeping page layout in Tailwind utilities.
 
 ## Environment
 
