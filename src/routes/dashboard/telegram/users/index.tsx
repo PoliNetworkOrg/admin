@@ -7,6 +7,7 @@ import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getTelegramUsers } from "@/server/api.functions"
 
 const PAGE_SIZE = 25
@@ -18,6 +19,8 @@ type TelegramUser = {
   lastName?: string | null
   profilePicUrl?: string | null
 }
+
+const userColumnHelper = createAppColumnHelper<TelegramUser>()
 
 export const Route = createFileRoute("/dashboard/telegram/users/")({
   loader: () => getTelegramUsers(),
@@ -49,6 +52,58 @@ function TelegramUsers() {
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visibleUsers = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
+  const columns = useMemo(
+    () =>
+      userColumnHelper.columns([
+        userColumnHelper.accessor("id", {
+          header: "Telegram ID",
+          cell: ({ getValue }) => getValue(),
+        }),
+        userColumnHelper.display({
+          id: "identity",
+          header: "Identity",
+          cell: ({ row }) => {
+            const user = row.original
+            return (
+              <div className="flex items-center gap-2">
+                <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-primary">
+                  {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
+                </span>
+                <span>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"}</span>
+              </div>
+            )
+          },
+        }),
+        userColumnHelper.accessor("username", {
+          header: "Username",
+          cell: ({ getValue }) => {
+            const username = getValue()
+            return username ? (
+              <span className="font-mono text-[11px] font-medium text-primary">@{username}</span>
+            ) : (
+              <span className="text-[11px] italic text-muted-foreground">Not set</span>
+            )
+          },
+        }),
+        userColumnHelper.display({
+          id: "actions",
+          header: "",
+          cell: ({ row }) => (
+            <Link
+              to="/dashboard/telegram/users/$userId"
+              params={{ userId: String(row.original.id) }}
+              className="grid size-7 place-items-center bg-accent text-primary transition-colors hover:bg-[#dce9fa]"
+              aria-label={`Open ${row.original.username ?? row.original.id}`}
+            >
+              <Eye className="size-4" />
+            </Link>
+          ),
+        }),
+      ]),
+    []
+  )
+  const table = useAppTable({ key: "telegram-users", columns, data: visibleUsers.map(({ user }) => user) })
+
   useEffect(() => setPage((current) => Math.min(current, pageCount)), [pageCount])
 
   return (
@@ -68,48 +123,27 @@ function TelegramUsers() {
           <div className="overflow-auto border border-border bg-card">
             <Table className="min-w-[700px] text-left">
               <TableHeader>
-                <tr>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Telegram ID
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Identity
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Username
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px]" aria-label="Actions" />
-                </tr>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="border-0">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
+                      >
+                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
-                {visibleUsers.map(({ user }) => (
-                  <TableRow key={user.id} className="hover:bg-[#f6f9fe]">
-                    <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">{user.id}</TableCell>
-                    <TableCell className="px-[15px] py-3 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-primary">
-                          {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
-                        </span>
-                        <span>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-[15px] py-3">
-                      {user.username ? (
-                        <span className="font-mono text-[11px] font-medium text-primary">@{user.username}</span>
-                      ) : (
-                        <span className="text-[11px] italic text-muted-foreground">Not set</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-[15px] py-3">
-                      <Link
-                        to="/dashboard/telegram/users/$userId"
-                        params={{ userId: String(user.id) }}
-                        className="grid size-7 place-items-center bg-accent text-primary transition-colors hover:bg-[#dce9fa]"
-                        aria-label={`Open ${user.username ?? user.id}`}
-                      >
-                        <Eye className="size-4" />
-                      </Link>
-                    </TableCell>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                        <table.FlexRender cell={cell} />
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { getTelegramGroups, setGroupVisibility } from "@/server/api.functions"
 
@@ -23,6 +24,8 @@ type TelegramGroup = {
   inviteLink?: string | null
   hide?: boolean | null
 }
+
+const groupColumnHelper = createAppColumnHelper<TelegramGroup>()
 
 export const Route = createFileRoute("/dashboard/telegram/groups")({
   loader: () => getTelegramGroups(),
@@ -73,6 +76,87 @@ function TelegramGroups() {
     }
   }
 
+  const columns = useMemo(
+    () =>
+      groupColumnHelper.columns([
+        groupColumnHelper.accessor("title", {
+          header: "Group",
+          cell: ({ row }) => (
+            <div className="flex items-center gap-2">
+              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#e9e8df] text-primary">
+                <MessageCircleMore className="size-4" />
+              </span>
+              <b>{row.original.title}</b>
+            </div>
+          ),
+        }),
+        groupColumnHelper.accessor("telegramId", { header: "Telegram ID", cell: ({ getValue }) => getValue() }),
+        groupColumnHelper.accessor("tag", {
+          header: "Tag",
+          cell: ({ getValue }) =>
+            getValue() ? (
+              <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
+                @{getValue()}
+              </Badge>
+            ) : (
+              <span className="text-[11px] italic text-muted-foreground">—</span>
+            ),
+        }),
+        groupColumnHelper.display({
+          id: "visibility",
+          header: "Visibility",
+          cell: ({ row }) => {
+            const group = row.original
+            const pending = updatingId === group.telegramId
+            return (
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-6 rounded-none border-transparent px-1.5 font-mono text-[9px]",
+                  group.hide ? "bg-muted text-muted-foreground" : "bg-[#e5effc] text-primary"
+                )}
+                disabled={pending}
+                onClick={() => void toggleVisibility(group)}
+                title="Toggle group visibility"
+              >
+                {group.hide ? (
+                  <>
+                    <EyeOff data-icon="inline-start" /> Hidden
+                  </>
+                ) : (
+                  <>
+                    <Eye data-icon="inline-start" /> Visible
+                  </>
+                )}
+              </Button>
+            )
+          },
+        }),
+        groupColumnHelper.display({
+          id: "invite",
+          header: "Invite",
+          cell: ({ row }) => {
+            const link = row.original.link ?? row.original.inviteLink
+            return link ? (
+              <a
+                className="font-mono text-[11px] font-medium text-primary hover:underline"
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open link
+              </a>
+            ) : (
+              <span className="text-[11px] italic text-muted-foreground">Not shared</span>
+            )
+          },
+        }),
+      ]),
+    [updatingId]
+  )
+  const table = useAppTable({ key: "telegram-groups", columns, data: visibleGroups })
+
   return (
     <div className="animate-appear">
       <DataToolbar
@@ -95,90 +179,29 @@ function TelegramGroups() {
           <div className="overflow-auto border border-border bg-card">
             <Table className="min-w-[700px] text-left">
               <TableHeader>
-                <tr>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Group
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Telegram ID
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Tag
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Visibility
-                  </TableHead>
-                  <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                    Invite
-                  </TableHead>
-                </tr>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="border-0">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
+                      >
+                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
-                {visibleGroups.map((group) => {
-                  const link = group.link ?? group.inviteLink
-                  const pending = updatingId === group.telegramId
-                  return (
-                    <TableRow key={group.telegramId} className="hover:bg-[#f6f9fe]">
-                      <TableCell className="px-[15px] py-3 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#e9e8df] text-primary">
-                            <MessageCircleMore className="size-4" />
-                          </span>
-                          <b>{group.title}</b>
-                        </div>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                        <table.FlexRender cell={cell} />
                       </TableCell>
-                      <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">
-                        {group.telegramId}
-                      </TableCell>
-                      <TableCell className="px-[15px] py-3">
-                        {group.tag ? (
-                          <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
-                            @{group.tag}
-                          </Badge>
-                        ) : (
-                          <span className="text-[11px] italic text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-[15px] py-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-6 rounded-none border-transparent px-1.5 font-mono text-[9px]",
-                            group.hide ? "bg-muted text-muted-foreground" : "bg-[#e5effc] text-primary"
-                          )}
-                          disabled={pending}
-                          onClick={() => void toggleVisibility(group)}
-                          title="Toggle group visibility"
-                        >
-                          {group.hide ? (
-                            <>
-                              <EyeOff data-icon="inline-start" /> Hidden
-                            </>
-                          ) : (
-                            <>
-                              <Eye data-icon="inline-start" /> Visible
-                            </>
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="px-[15px] py-3">
-                        {link ? (
-                          <a
-                            className="font-mono text-[11px] font-medium text-primary hover:underline"
-                            href={link}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Open link
-                          </a>
-                        ) : (
-                          <span className="text-[11px] italic text-muted-foreground">Not shared</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                    ))}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>

@@ -8,6 +8,7 @@ import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getOngoingGrants, getScheduledGrants } from "@/server/api.functions"
 
 type Grant = {
@@ -18,6 +19,7 @@ type Grant = {
   expiresAt?: string | null
   scheduledAt?: string | null
 }
+const grantColumnHelper = createAppColumnHelper<Grant>()
 export const Route = createFileRoute("/dashboard/telegram/grants")({
   loader: async () => ({ ongoing: await getOngoingGrants(), scheduled: await getScheduledGrants() }),
   pendingComponent: () => <DataPageSkeleton columns={5} withTabs />,
@@ -32,6 +34,36 @@ function Grants() {
   const grants =
     tab === "ongoing" ? ongoingGrants : tab === "scheduled" ? scheduledGrants : [...ongoingGrants, ...scheduledGrants]
   const connected = ongoing.connected && scheduled.connected
+  const columns = grantColumnHelper.columns([
+    grantColumnHelper.accessor("userId", { header: "User", cell: ({ getValue }) => getValue() }),
+    grantColumnHelper.accessor("role", {
+      header: "Role",
+      cell: ({ getValue }) => (
+        <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
+          {getValue() ?? "Access grant"}
+        </Badge>
+      ),
+    }),
+    grantColumnHelper.accessor("grantorId", { header: "Granted by", cell: ({ getValue }) => getValue() ?? "—" }),
+    grantColumnHelper.display({
+      id: "schedule",
+      header: "Schedule",
+      cell: ({ row }) => row.original.scheduledAt ?? row.original.createdAt ?? "—",
+    }),
+    grantColumnHelper.display({
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.scheduledAt ? "secondary" : "default"}
+          className="h-5 rounded-none px-1.5 font-mono text-[9px]"
+        >
+          {row.original.scheduledAt ? "Scheduled" : "Active"}
+        </Badge>
+      ),
+    }),
+  ])
+  const table = useAppTable({ key: "telegram-grants", columns, data: grants })
   return (
     <div className="animate-appear">
       <DataToolbar
@@ -76,47 +108,27 @@ function Grants() {
         <div className="overflow-auto border border-border bg-card">
           <Table className="min-w-[700px] text-left">
             <TableHeader>
-              <tr>
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                  User
-                </TableHead>
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                  Role
-                </TableHead>
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                  Granted by
-                </TableHead>
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                  Schedule
-                </TableHead>
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-                  Status
-                </TableHead>
-              </tr>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="border-0">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
+                    >
+                      {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {grants.map((grant, index) => (
-                <TableRow key={`${grant.userId}-${index}`} className="hover:bg-[#f6f9fe]">
-                  <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">{grant.userId}</TableCell>
-                  <TableCell className="px-[15px] py-3">
-                    <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
-                      {grant.role ?? "Access grant"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">
-                    {grant.grantorId ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3 text-xs">
-                    {grant.scheduledAt ?? grant.createdAt ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3">
-                    <Badge
-                      variant={grant.scheduledAt ? "secondary" : "default"}
-                      className="h-5 rounded-none px-1.5 font-mono text-[9px]"
-                    >
-                      {grant.scheduledAt ? "Scheduled" : "Active"}
-                    </Badge>
-                  </TableCell>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>

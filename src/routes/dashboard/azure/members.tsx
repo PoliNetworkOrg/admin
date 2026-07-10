@@ -18,6 +18,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { createAzureMember, getAzureMembers, setAzureMemberNumber } from "@/server/api.functions"
 
@@ -30,6 +31,7 @@ type AzureMember = {
   assignedLicensesIds?: string[]
 }
 type SortKey = "employeeId" | "displayName" | "mail" | "licenses"
+const memberColumnHelper = createAppColumnHelper<AzureMember>()
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   loader: () => getAzureMembers(),
@@ -75,6 +77,90 @@ function AzureMembers() {
     setSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" }))
   }
 
+  const columns = useMemo(() => {
+    const header = (label: string, key: SortKey) => {
+      const active = sort.key === key
+      const Icon = !active ? ChevronsUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 rounded-none px-0 font-mono text-[9px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
+          onClick={() => toggleSort(key)}
+        >
+          {label}
+          <Icon data-icon="inline-end" />
+        </Button>
+      )
+    }
+    return memberColumnHelper.columns([
+      memberColumnHelper.accessor("employeeId", {
+        id: "employeeId",
+        header: () => header("Member ID", "employeeId"),
+        cell: ({ getValue }) => getValue() ?? "—",
+      }),
+      memberColumnHelper.accessor("displayName", {
+        header: () => header("Member", "displayName"),
+        cell: ({ row }) => {
+          const member = row.original
+          return (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#dbe8ff] font-mono text-[10px] font-medium text-[#2454a6]">
+                {member.displayName?.[0] ?? "?"}
+              </span>
+              <span>
+                <b className="block text-xs">{member.displayName ?? "Unnamed member"}</b>
+                {member.isMember && (
+                  <small className="mt-0.5 block text-[9px] text-muted-foreground">Association member</small>
+                )}
+              </span>
+            </div>
+          )
+        },
+      }),
+      memberColumnHelper.accessor("mail", {
+        header: () => header("Email", "mail"),
+        cell: ({ getValue }) =>
+          getValue() ?? <span className="text-[11px] italic text-muted-foreground">Not assigned</span>,
+      }),
+      memberColumnHelper.display({
+        id: "licenses",
+        header: () => header("Licenses", "licenses"),
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.assignedLicensesIds?.length ? (
+              row.original.assignedLicensesIds.map((license) => (
+                <Badge
+                  className="h-5 rounded-none bg-[#e8edfa] px-1.5 font-mono text-[9px] text-[#465a93]"
+                  key={license}
+                >
+                  {license.replaceAll("_", " ")}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-[11px] italic text-muted-foreground">No licenses</span>
+            )}
+          </div>
+        ),
+      }),
+      memberColumnHelper.display({
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto rounded-none px-1 py-1 text-[10px] font-semibold text-primary"
+            onClick={() => setDialog({ mode: "edit", member: row.original })}
+          >
+            Manage
+          </Button>
+        ),
+      }),
+    ])
+  }, [sort])
+  const table = useAppTable({ key: "azure-members", columns, data: filtered })
+
   return (
     <div className="animate-appear">
       <DataToolbar
@@ -119,62 +205,27 @@ function AzureMembers() {
         <div className="overflow-auto border border-border bg-card">
           <Table className="min-w-[800px] text-left">
             <TableHeader>
-              <TableRow className="border-0">
-                <SortableHeader label="Member ID" sortKey="employeeId" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Member" sortKey="displayName" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Email" sortKey="mail" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Licenses" sortKey="licenses" sort={sort} onSort={toggleSort} />
-                <TableHead className="h-[39px] bg-[#efeee7] px-[15px]" />
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="border-0">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
+                    >
+                      {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {filtered.map((member) => (
-                <TableRow key={member.id} className="hover:bg-[#f6f9fe]">
-                  <TableCell className="px-[15px] py-3 font-mono text-[10px] text-[#51647f]">
-                    {member.employeeId ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#dbe8ff] font-mono text-[10px] font-medium text-[#2454a6]">
-                        {member.displayName?.[0] ?? "?"}
-                      </span>
-                      <span>
-                        <b className="block text-xs">{member.displayName ?? "Unnamed member"}</b>
-                        {member.isMember && (
-                          <small className="mt-0.5 block text-[9px] text-muted-foreground">Association member</small>
-                        )}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3 text-xs">
-                    {member.mail ?? <span className="text-[11px] italic text-muted-foreground">Not assigned</span>}
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {member.assignedLicensesIds?.length ? (
-                        member.assignedLicensesIds.map((license) => (
-                          <Badge
-                            className="h-5 rounded-none bg-[#e8edfa] px-1.5 font-mono text-[9px] text-[#465a93]"
-                            key={license}
-                          >
-                            {license.replaceAll("_", " ")}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-[11px] italic text-muted-foreground">No licenses</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-[15px] py-3">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto rounded-none px-1 py-1 text-[10px] font-semibold text-primary"
-                      onClick={() => setDialog({ mode: "edit", member })}
-                    >
-                      Manage
-                    </Button>
-                  </TableCell>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>
@@ -330,33 +381,5 @@ function MemberDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  sort,
-  onSort,
-}: {
-  label: string
-  sortKey: SortKey
-  sort: { key: SortKey; direction: "asc" | "desc" }
-  onSort: (key: SortKey) => void
-}) {
-  const active = sort.key === sortKey
-  const Icon = !active ? ChevronsUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown
-  return (
-    <TableHead className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 rounded-none px-0 font-mono text-[9px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
-        onClick={() => onSort(sortKey)}
-      >
-        {label}
-        <Icon data-icon="inline-end" />
-      </Button>
-    </TableHead>
   )
 }
