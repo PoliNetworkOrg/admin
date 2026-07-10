@@ -141,7 +141,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
         />
       )}
       <main className="min-w-0">
-        <header className="sticky top-0 z-40 flex h-[91px] items-center border-b border-border bg-background/90 px-[42px] backdrop-blur-[10px] max-[900px]:px-5 max-[600px]:h-[72px] max-[600px]:px-3.5">
+        <header className="sticky top-0 z-30 flex h-[91px] items-center border-b border-border bg-background/90 px-[42px] backdrop-blur-[10px] max-[900px]:px-5 max-[600px]:h-[72px] max-[600px]:px-3.5">
           <div className="flex items-center gap-[15px]">
             <Button
               variant="ghost"

@@ -1,5 +1,5 @@
 import { Plus, Search } from "lucide-react"
-import { type ReactNode, useId } from "react"
+import { type ReactNode, useDeferredValue, useEffect, useId, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -21,6 +21,14 @@ export function DataToolbar({
   children?: ReactNode
 }) {
   const searchId = useId()
+  const [searchValue, setSearchValue] = useState("")
+  const deferredSearchValue = useDeferredValue(searchValue)
+  const onSearchRef = useRef(onSearch)
+  onSearchRef.current = onSearch
+
+  useEffect(() => {
+    onSearchRef.current?.(deferredSearchValue)
+  }, [deferredSearchValue])
 
   return (
     <>
@@ -51,7 +59,8 @@ export function DataToolbar({
             id={searchId}
             aria-label={`Search ${title}`}
             className="h-full rounded-none border-0 bg-transparent pl-8 text-xs shadow-none focus-visible:ring-0"
-            onChange={(event) => onSearch?.(event.target.value)}
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
             placeholder="Filter records…"
           />
         </label>

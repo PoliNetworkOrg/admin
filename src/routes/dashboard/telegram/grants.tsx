@@ -5,6 +5,7 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { Pagination } from "@/components/pagination"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -63,13 +64,31 @@ function Grants() {
       ),
     }),
   ])
-  const table = useAppTable({ key: "telegram-grants", columns, data: grants })
+  const table = useAppTable({
+    key: "telegram-grants",
+    columns,
+    data: grants,
+    initialState: { sorting: [{ id: "userId", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
+    globalFilterFn: (row, _columnId, value) => {
+      const grant = row.original
+      const query = String(value ?? "")
+        .trim()
+        .toLocaleLowerCase()
+      return (
+        !query ||
+        `${grant.userId} ${grant.grantorId ?? ""} ${grant.role ?? ""} ${grant.scheduledAt ?? ""} ${grant.createdAt ?? ""}`
+          .toLocaleLowerCase()
+          .includes(query)
+      )
+    },
+  })
   return (
     <div className="animate-appear">
       <DataToolbar
         title="Access grants"
         description="See who has temporary access, when it begins, and when it expires."
-        count={grants.length}
+        count={table.getFilteredRowModel().rows.length}
+        onSearch={(value) => table.setGlobalFilter(value)}
         action="New grant"
       />
       <LiveStatus connected={connected} message={ongoing.message ?? scheduled.message} />
@@ -104,7 +123,7 @@ function Grants() {
           Scheduled <b className="ml-1 font-mono text-[10px]">{scheduledGrants.length}</b>
         </ToggleGroupItem>
       </ToggleGroup>
-      {grants.length ? (
+      {table.getFilteredRowModel().rows.length ? (
         <div className="overflow-auto border border-border bg-card">
           <Table className="min-w-[700px] text-left">
             <TableHeader>
@@ -124,7 +143,7 @@ function Grants() {
             <TableBody>
               {table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
                       <table.FlexRender cell={cell} />
                     </TableCell>
@@ -139,6 +158,15 @@ function Grants() {
           icon={CalendarClock}
           title="No grants in this view"
           text="Create a grant to give a member scoped, auditable access."
+        />
+      )}
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <Pagination
+          page={table.state.pagination.pageIndex + 1}
+          pageCount={table.getPageCount()}
+          pageSize={table.state.pagination.pageSize}
+          onPageChange={(page) => table.setPageIndex(page - 1)}
+          onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
         />
       )}
     </div>

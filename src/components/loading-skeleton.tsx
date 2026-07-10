@@ -94,21 +94,3 @@ export function DetailPageSkeleton() {
     </div>
   )
 }
-
-export function DashboardPageSkeleton() {
-  return (
-    <div className="flex flex-col gap-6" aria-busy="true">
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-2.5 w-28 rounded-none" />
-        <Skeleton className="h-11 w-80 max-w-full rounded-none" />
-        <Skeleton className="h-3 w-full max-w-md rounded-none" />
-      </div>
-      <div className="grid grid-cols-3 gap-3.5 max-[900px]:grid-cols-1">
-        {Array.from({ length: 3 }, (_, index) => (
-          <Skeleton key={index} className="h-28 rounded-none" />
-        ))}
-      </div>
-      <Skeleton className="h-36 rounded-none" />
-    </div>
-  )
-}

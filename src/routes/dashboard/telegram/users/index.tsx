@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Eye, MessageCircle } from "lucide-react"
-import { useDeferredValue, useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
@@ -9,8 +9,6 @@ import { Pagination } from "@/components/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getTelegramUsers } from "@/server/api.functions"
-
-const PAGE_SIZE = 25
 
 type TelegramUser = {
   id: number
@@ -30,27 +28,7 @@ export const Route = createFileRoute("/dashboard/telegram/users/")({
 
 function TelegramUsers() {
   const response = Route.useLoaderData()
-  const [query, setQuery] = useState("")
-  const [page, setPage] = useState(1)
-  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase().replace(/^@/, ""))
   const users = (response.data as { users?: TelegramUser[] }).users ?? []
-
-  const searchIndex = useMemo(
-    () =>
-      users.map((user) => ({
-        user,
-        searchable:
-          `${user.username ?? ""}\u0000${user.firstName ?? ""}\u0000${user.lastName ?? ""}`.toLocaleLowerCase(),
-      })),
-    [users]
-  )
-
-  const filtered = useMemo(
-    () => (deferredQuery ? searchIndex.filter(({ searchable }) => searchable.includes(deferredQuery)) : searchIndex),
-    [deferredQuery, searchIndex]
-  )
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const visibleUsers = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const columns = useMemo(
     () =>
@@ -102,23 +80,36 @@ function TelegramUsers() {
       ]),
     []
   )
-  const table = useAppTable({ key: "telegram-users", columns, data: visibleUsers.map(({ user }) => user) })
-
-  useEffect(() => setPage((current) => Math.min(current, pageCount)), [pageCount])
+  const table = useAppTable({
+    key: "telegram-users",
+    columns,
+    data: users,
+    initialState: { pagination: { pageIndex: 0, pageSize: 25 } },
+    globalFilterFn: (row, _columnId, value) => {
+      const user = row.original
+      const query = String(value ?? "")
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/^@/, "")
+      return (
+        !query ||
+        `${user.username ?? ""}\u0000${user.firstName ?? ""}\u0000${user.lastName ?? ""}`
+          .toLocaleLowerCase()
+          .includes(query)
+      )
+    },
+  })
 
   return (
     <div className="animate-appear">
       <DataToolbar
         title="Telegram users"
         description="Browse members known to the PoliNetwork Telegram ecosystem."
-        count={filtered.length}
-        onSearch={(value) => {
-          setQuery(value)
-          setPage(1)
-        }}
+        count={table.getFilteredRowModel().rows.length}
+        onSearch={(value) => table.setGlobalFilter(value)}
       />
       <LiveStatus connected={response.connected} message={response.message} />
-      {filtered.length ? (
+      {table.getFilteredRowModel().rows.length ? (
         <>
           <div className="overflow-auto border border-border bg-card">
             <Table className="min-w-[700px] text-left">
@@ -139,7 +130,7 @@ function TelegramUsers() {
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
                         <table.FlexRender cell={cell} />
                       </TableCell>
@@ -149,7 +140,13 @@ function TelegramUsers() {
               </TableBody>
             </Table>
           </div>
-          <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+          <Pagination
+            page={table.state.pagination.pageIndex + 1}
+            pageCount={table.getPageCount()}
+            pageSize={table.state.pagination.pageSize}
+            onPageChange={(page) => table.setPageIndex(page - 1)}
+            onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+          />
         </>
       ) : (
         <EmptyState

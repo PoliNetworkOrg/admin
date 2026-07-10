@@ -14,8 +14,6 @@ import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { getTelegramGroups, setGroupVisibility } from "@/server/api.functions"
 
-const PAGE_SIZE = 20
-
 type TelegramGroup = {
   telegramId: number
   title: string
@@ -38,25 +36,10 @@ function TelegramGroups() {
   const router = useRouter()
   const loadedGroups = response.data as TelegramGroup[]
   const [groups, setGroups] = useState(loadedGroups)
-  const [query, setQuery] = useState("")
-  const [page, setPage] = useState(1)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState("")
 
   useEffect(() => setGroups(loadedGroups), [loadedGroups])
-
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase().replace(/^@/, "")
-    return groups
-      .filter(
-        (group) => !normalized || `${group.title}\u0000${group.tag ?? ""}`.toLocaleLowerCase().includes(normalized)
-      )
-      .toSorted((a, b) => a.title.localeCompare(b.title))
-  }, [groups, query])
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const visibleGroups = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  useEffect(() => setPage((current) => Math.min(current, pageCount)), [pageCount])
 
   async function toggleVisibility(group: TelegramGroup) {
     if (updatingId !== null) return
@@ -67,7 +50,7 @@ function TelegramGroups() {
 
     try {
       await setGroupVisibility({ data: { telegramId: group.telegramId, hide } })
-      await router.invalidate()
+      await router.invalidate({ sync: true })
     } catch {
       setGroups((current) => current.map((item) => (item.telegramId === group.telegramId ? group : item)))
       setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
@@ -155,18 +138,28 @@ function TelegramGroups() {
       ]),
     [updatingId]
   )
-  const table = useAppTable({ key: "telegram-groups", columns, data: visibleGroups })
+  const table = useAppTable({
+    key: "telegram-groups",
+    columns,
+    data: groups,
+    initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
+    globalFilterFn: (row, _columnId, value) => {
+      const group = row.original
+      const query = String(value ?? "")
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/^@/, "")
+      return !query || `${group.title}\u0000${group.tag ?? ""}`.toLocaleLowerCase().includes(query)
+    },
+  })
 
   return (
     <div className="animate-appear">
       <DataToolbar
         title="Telegram groups"
         description="Maintain the community groups connected to PoliNetwork."
-        count={filtered.length}
-        onSearch={(value) => {
-          setQuery(value)
-          setPage(1)
-        }}
+        count={table.getFilteredRowModel().rows.length}
+        onSearch={(value) => table.setGlobalFilter(value)}
       />
       <LiveStatus connected={response.connected} message={response.message} />
       {mutationError && (
@@ -174,7 +167,7 @@ function TelegramGroups() {
           <AlertDescription className="text-[11px] leading-[1.45] text-[#895322]">{mutationError}</AlertDescription>
         </Alert>
       )}
-      {filtered.length ? (
+      {table.getFilteredRowModel().rows.length ? (
         <>
           <div className="overflow-auto border border-border bg-card">
             <Table className="min-w-[700px] text-left">
@@ -195,7 +188,7 @@ function TelegramGroups() {
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
                         <table.FlexRender cell={cell} />
                       </TableCell>
@@ -205,7 +198,13 @@ function TelegramGroups() {
               </TableBody>
             </Table>
           </div>
-          <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+          <Pagination
+            page={table.state.pagination.pageIndex + 1}
+            pageCount={table.getPageCount()}
+            pageSize={table.state.pagination.pageSize}
+            onPageChange={(page) => table.setPageIndex(page - 1)}
+            onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+          />
         </>
       ) : (
         <EmptyState

@@ -1,19 +1,35 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { Combobox } from "@base-ui/react/combobox"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import {
   ArrowLeft,
   CalendarClock,
+  Check,
+  ChevronDown,
   ExternalLink,
   History,
+  LoaderCircle,
   MessageCircle,
   ShieldCheck,
+  UserPlus,
   UserRound,
   UsersRound,
 } from "lucide-react"
+import { useEffect, useState } from "react"
 import { LiveStatus } from "@/components/live-status"
 import { DetailPageSkeleton } from "@/components/loading-skeleton"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getTelegramUserDetails } from "@/server/api.functions"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { addTelegramGroupAdmin, getTelegramUserDetails } from "@/server/api.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
   loader: ({ params }) => getTelegramUserDetails({ data: { userId: Number.parseInt(params.userId, 10) } }),
@@ -33,6 +49,8 @@ function messageLink(chatId: number, messageId: number) {
 function UserProfile() {
   const response = Route.useLoaderData()
   const { userId } = Route.useParams()
+  const router = useRouter()
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false)
   const data = Array.isArray(response.data) ? null : response.data
 
   if (!data) {
@@ -51,7 +69,7 @@ function UserProfile() {
     )
   }
 
-  const { user, roles, groupAdmin, messages, audits, grant } = data
+  const { user, roles, groupAdmin, groups, messages, audits, grant } = data
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
 
   return (
@@ -111,7 +129,21 @@ function UserProfile() {
         </SummaryCard>
       </section>
 
-      <DetailSection icon={UsersRound} title="Group administration" count={groupAdmin.length}>
+      <DetailSection
+        icon={UsersRound}
+        title="Group administration"
+        count={groupAdmin.length}
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-none text-[10px]"
+            onClick={() => setAdminDialogOpen(true)}
+          >
+            <UserPlus data-icon="inline-start" /> Add group
+          </Button>
+        }
+      >
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {groupAdmin
             .filter((entry) => entry !== null)
@@ -130,6 +162,17 @@ function UserProfile() {
           {!groupAdmin.length && <SectionEmpty text="This user does not administer any group." />}
         </div>
       </DetailSection>
+      <AddGroupAdminDialog
+        open={adminDialogOpen}
+        userId={user.id}
+        groups={groups}
+        administeredGroupIds={new Set(groupAdmin.filter((entry) => entry !== null).map((entry) => entry.group.id))}
+        onClose={() => setAdminDialogOpen(false)}
+        onSaved={async () => {
+          setAdminDialogOpen(false)
+          await router.invalidate({ sync: true })
+        }}
+      />
       <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {messages.map((message) => (
@@ -230,11 +273,13 @@ function DetailSection({
   icon: Icon,
   title,
   count,
+  action,
   children,
 }: {
   icon: typeof UserRound
   title: string
   count: number
+  action?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
@@ -244,9 +289,135 @@ function DetailSection({
           <Icon className="size-5 text-primary" />
           <h2 className="font-serif text-[20px] font-normal tracking-[-0.04em]">{title}</h2>
         </span>
-        <b className="font-mono text-[10px] text-muted-foreground">{count}</b>
+        <span className="flex items-center gap-3">
+          {action}
+          <b className="font-mono text-[10px] text-muted-foreground">{count}</b>
+        </span>
       </header>
       {children}
     </section>
+  )
+}
+
+function AddGroupAdminDialog({
+  open,
+  userId,
+  groups,
+  administeredGroupIds,
+  onClose,
+  onSaved,
+}: {
+  open: boolean
+  userId: number
+  groups: Array<{ telegramId: number; title: string }>
+  administeredGroupIds: Set<number>
+  onClose: () => void
+  onSaved: () => Promise<void>
+}) {
+  const [groupId, setGroupId] = useState("")
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState("")
+  const availableGroups = groups.filter((group) => !administeredGroupIds.has(group.telegramId))
+
+  useEffect(() => {
+    if (open) {
+      setGroupId("")
+      setError("")
+    }
+  }, [open])
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!groupId) return
+    setPending(true)
+    setError("")
+    try {
+      await addTelegramGroupAdmin({ data: { userId, groupId: Number(groupId) } })
+      await onSaved()
+    } catch {
+      setError("The user could not be added as a group administrator.")
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="max-w-lg rounded-none border-border p-0">
+        <DialogHeader className="border-b border-border px-6 py-5">
+          <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">
+            GROUP ADMINISTRATION
+          </p>
+          <DialogTitle className="font-serif text-[24px] font-normal tracking-[-0.05em]">
+            Add group administrator
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Choose a group this user should administer.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="px-6 py-5" onSubmit={(event) => void submit(event)}>
+          <Field>
+            <FieldLabel htmlFor="admin-group" className="font-mono text-[10px] font-medium text-muted-foreground">
+              Group
+            </FieldLabel>
+            <Combobox.Root
+              items={availableGroups}
+              value={availableGroups.find((group) => String(group.telegramId) === groupId) ?? null}
+              onValueChange={(group) => setGroupId(group ? String(group.telegramId) : "")}
+              itemToStringLabel={(group) => group.title}
+              itemToStringValue={(group) => String(group.telegramId)}
+              disabled={!availableGroups.length}
+            >
+              <Combobox.InputGroup className="flex h-9 w-full border border-input bg-background focus-within:border-primary">
+                <Combobox.Input
+                  id="admin-group"
+                  placeholder="Search groups…"
+                  className="min-w-0 flex-1 bg-transparent px-3 text-xs outline-none placeholder:text-muted-foreground"
+                  required
+                />
+                <Combobox.Trigger className="grid w-9 place-items-center text-muted-foreground hover:text-primary">
+                  <ChevronDown className="size-4" />
+                </Combobox.Trigger>
+              </Combobox.InputGroup>
+              <Combobox.Portal>
+                <Combobox.Positioner className="z-[60]">
+                  <Combobox.Popup className="max-h-60 min-w-[var(--anchor-width)] overflow-auto border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+                    <Combobox.Empty className="px-3 py-2 text-muted-foreground">No matching groups</Combobox.Empty>
+                    <Combobox.List>
+                      {(group) => (
+                        <Combobox.Item
+                          key={group.telegramId}
+                          value={group}
+                          className="flex cursor-default items-center gap-2 px-3 py-2 outline-none data-highlighted:bg-accent data-highlighted:text-primary"
+                        >
+                          <Combobox.ItemIndicator>
+                            <Check className="size-3.5" />
+                          </Combobox.ItemIndicator>
+                          <span>{group.title}</span>
+                        </Combobox.Item>
+                      )}
+                    </Combobox.List>
+                  </Combobox.Popup>
+                </Combobox.Positioner>
+              </Combobox.Portal>
+            </Combobox.Root>
+          </Field>
+          {!availableGroups.length && (
+            <p className="mt-3 text-[10px] text-muted-foreground">
+              This user already administers every available group.
+            </p>
+          )}
+          {error && <p className="mt-3 text-[10px] text-destructive">{error}</p>}
+          <DialogFooter className="-mx-6 -mb-5 mt-5 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
+            <Button type="button" variant="outline" className="rounded-none text-[11px]" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" className="rounded-none text-[11px]" disabled={pending || !availableGroups.length}>
+              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
+              Add administrator
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

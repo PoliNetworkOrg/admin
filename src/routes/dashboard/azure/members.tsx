@@ -1,10 +1,12 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
+import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, LoaderCircle, UsersRound } from "lucide-react"
 import { useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { Pagination } from "@/components/pagination"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,7 +20,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createAppColumnHelper, useAppTable } from "@/lib/table"
+import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { createAzureMember, getAzureMembers, setAzureMemberNumber } from "@/server/api.functions"
 
@@ -30,8 +32,8 @@ type AzureMember = {
   isMember?: boolean
   assignedLicensesIds?: string[]
 }
-type SortKey = "employeeId" | "displayName" | "mail" | "licenses"
 const memberColumnHelper = createAppColumnHelper<AzureMember>()
+type MemberFilter = { query: string; membersOnly: boolean }
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   loader: () => getAzureMembers(),
@@ -42,51 +44,22 @@ export const Route = createFileRoute("/dashboard/azure/members")({
 function AzureMembers() {
   const response = Route.useLoaderData()
   const router = useRouter()
-  const [query, setQuery] = useState("")
-  const [membersOnly, setMembersOnly] = useState(false)
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "employeeId", direction: "asc" })
   const [dialog, setDialog] = useState<{ mode: "create" } | { mode: "edit"; member: AzureMember } | null>(null)
   const members = response.data as AzureMember[]
 
-  const filtered = useMemo(() => {
-    const normalized = query.toLowerCase()
-    const visible = members.filter(
-      (member) =>
-        (!membersOnly || member.isMember) &&
-        `${member.displayName ?? ""} ${member.mail ?? ""} ${member.employeeId ?? ""}`.toLowerCase().includes(normalized)
-    )
-
-    return visible.toSorted((a, b) => {
-      let result = 0
-      if (sort.key === "employeeId") {
-        const aNumber = a.employeeId ? Number.parseInt(a.employeeId, 10) : Number.POSITIVE_INFINITY
-        const bNumber = b.employeeId ? Number.parseInt(b.employeeId, 10) : Number.POSITIVE_INFINITY
-        result = aNumber - bNumber
-      } else if (sort.key === "displayName") {
-        result = (a.displayName ?? "").localeCompare(b.displayName ?? "")
-      } else if (sort.key === "mail") {
-        result = (a.mail ?? "").localeCompare(b.mail ?? "")
-      } else {
-        result = (a.assignedLicensesIds?.length ?? 0) - (b.assignedLicensesIds?.length ?? 0)
-      }
-      return sort.direction === "asc" ? result : -result
-    })
-  }, [members, membersOnly, query, sort])
-
-  function toggleSort(key: SortKey) {
-    setSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" }))
-  }
-
   const columns = useMemo(() => {
-    const header = (label: string, key: SortKey) => {
-      const active = sort.key === key
-      const Icon = !active ? ChevronsUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown
+    const header = (
+      label: string,
+      column: Pick<Column<typeof dashboardFeatures, AzureMember>, "getIsSorted" | "getToggleSortingHandler">
+    ) => {
+      const sorted = column.getIsSorted()
+      const Icon = !sorted ? ChevronsUpDown : sorted === "asc" ? ArrowUp : ArrowDown
       return (
         <Button
           variant="ghost"
           size="sm"
           className="h-7 rounded-none px-0 font-mono text-[9px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
-          onClick={() => toggleSort(key)}
+          onClick={column.getToggleSortingHandler()}
         >
           {label}
           <Icon data-icon="inline-end" />
@@ -94,13 +67,19 @@ function AzureMembers() {
       )
     }
     return memberColumnHelper.columns([
-      memberColumnHelper.accessor("employeeId", {
+      memberColumnHelper.accessor((member) => member.employeeId ?? undefined, {
         id: "employeeId",
-        header: () => header("Member ID", "employeeId"),
+        header: ({ column }) => header("Member ID", column),
+        sortUndefined: "last",
+        sortFn: (rowA, rowB, columnId) => {
+          const a = Number(rowA.getValue(columnId))
+          const b = Number(rowB.getValue(columnId))
+          return a - b
+        },
         cell: ({ getValue }) => getValue() ?? "—",
       }),
       memberColumnHelper.accessor("displayName", {
-        header: () => header("Member", "displayName"),
+        header: ({ column }) => header("Member", column),
         cell: ({ row }) => {
           const member = row.original
           return (
@@ -119,13 +98,13 @@ function AzureMembers() {
         },
       }),
       memberColumnHelper.accessor("mail", {
-        header: () => header("Email", "mail"),
+        header: ({ column }) => header("Email", column),
         cell: ({ getValue }) =>
           getValue() ?? <span className="text-[11px] italic text-muted-foreground">Not assigned</span>,
       }),
-      memberColumnHelper.display({
+      memberColumnHelper.accessor((member) => member.assignedLicensesIds?.length ?? 0, {
         id: "licenses",
-        header: () => header("Licenses", "licenses"),
+        header: ({ column }) => header("Licenses", column),
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {row.original.assignedLicensesIds?.length ? (
@@ -158,16 +137,37 @@ function AzureMembers() {
         ),
       }),
     ])
-  }, [sort])
-  const table = useAppTable({ key: "azure-members", columns, data: filtered })
+  }, [])
+  const table = useAppTable({
+    key: "azure-members",
+    columns,
+    data: members,
+    initialState: {
+      sorting: [{ id: "employeeId", desc: false }],
+      pagination: { pageIndex: 0, pageSize: 25 },
+      globalFilter: { query: "", membersOnly: false },
+    },
+    globalFilterFn: (row, _columnId, value) => {
+      const filter = (value ?? {}) as Partial<MemberFilter>
+      const member = row.original
+      return (
+        (!filter.membersOnly || !!member.isMember) &&
+        `${member.displayName ?? ""} ${member.mail ?? ""} ${member.employeeId ?? ""}`
+          .toLocaleLowerCase()
+          .includes((filter.query ?? "").toLocaleLowerCase())
+      )
+    },
+  })
+  const memberFilter = table.state.globalFilter as MemberFilter
+  const membersOnly = memberFilter.membersOnly
 
   return (
     <div className="animate-appear">
       <DataToolbar
         title="Azure members"
         description="Association membership and Microsoft 365 license information."
-        count={filtered.length}
-        onSearch={setQuery}
+        count={table.getFilteredRowModel().rows.length}
+        onSearch={(value) => table.setGlobalFilter({ ...memberFilter, query: value })}
         action="Add member"
         onAction={() => setDialog({ mode: "create" })}
       >
@@ -178,7 +178,7 @@ function AzureMembers() {
             "rounded-none text-[10px] text-muted-foreground",
             membersOnly && "border-primary bg-accent text-primary"
           )}
-          onClick={() => setMembersOnly((current) => !current)}
+          onClick={() => table.setGlobalFilter({ ...memberFilter, membersOnly: !membersOnly })}
         >
           <Check data-icon="inline-start" /> Members only
         </Button>
@@ -201,7 +201,7 @@ function AzureMembers() {
           </span>
         </div>
       </section>
-      {filtered.length ? (
+      {table.getFilteredRowModel().rows.length ? (
         <div className="overflow-auto border border-border bg-card">
           <Table className="min-w-[800px] text-left">
             <TableHeader>
@@ -221,7 +221,7 @@ function AzureMembers() {
             <TableBody>
               {table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
                       <table.FlexRender cell={cell} />
                     </TableCell>
@@ -238,13 +238,23 @@ function AzureMembers() {
           text="Members will be loaded from Microsoft Entra when the backend is connected."
         />
       )}
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <Pagination
+          page={table.state.pagination.pageIndex + 1}
+          pageCount={table.getPageCount()}
+          pageSize={table.state.pagination.pageSize}
+          onPageChange={(page) => table.setPageIndex(page - 1)}
+          onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+        />
+      )}
       {dialog && (
         <MemberDialog
           dialog={dialog}
           onClose={() => setDialog(null)}
           onSaved={async () => {
             setDialog(null)
-            await router.invalidate()
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            await router.invalidate({ sync: true })
           }}
         />
       )}

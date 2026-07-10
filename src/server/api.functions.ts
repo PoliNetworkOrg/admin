@@ -138,6 +138,7 @@ export const getTelegramUserDetails = createServerFn()
         user,
         roles: permissions.roles ?? [],
         groupAdmin: permissions.groupAdmin.filter(Boolean),
+        groups: await api.tg.groups.getAll.query(),
         messages: messages.messages ?? [],
         audits,
         grant: grant.grant ?? null,
@@ -152,6 +153,13 @@ export const setGroupVisibility = createServerFn({ method: "POST" })
     return client().tg.groups.setHide.mutate(data)
   })
 
+export const addTelegramGroupAdmin = createServerFn({ method: "POST" })
+  .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    return client().tg.permissions.addGroup.mutate({ ...data, adderId: telegramId })
+  })
+
 export const createAzureMember = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -163,14 +171,18 @@ export const createAzureMember = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await requireAdminRole()
-    return client().azure.members.create.mutate(data)
+    const result = await client().azure.members.create.mutate(data)
+    if (result.error) throw new Error(result.error)
+    return result
   })
 
 export const setAzureMemberNumber = createServerFn({ method: "POST" })
   .validator(z.object({ userId: z.string().min(1), assocNumber: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireAdminRole()
-    return client().azure.members.setAssocNumber.mutate(data)
+    const result = await client().azure.members.setAssocNumber.mutate(data)
+    if (result.error) throw new Error(result.error)
+    return result
   })
 
 export const uploadProfilePicture = createServerFn({ method: "POST", strict: false })
