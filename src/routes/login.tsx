@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
+import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router"
 import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, Mail, ShieldCheck } from "lucide-react"
 import { useState } from "react"
 import logoUrl from "@/assets/logo.svg"
@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { auth } from "@/lib/auth"
+import { getCurrentSession } from "@/server/api.functions"
 
-export const Route = createFileRoute("/login")({ component: Login })
+export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    if (await getCurrentSession()) throw redirect({ to: "/dashboard" })
+  },
+  component: Login,
+})
 
 function Login() {
   const [email, setEmail] = useState("")
