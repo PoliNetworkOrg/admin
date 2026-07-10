@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, Mail, ShieldCheck } from "lucide-react"
 import { useState } from "react"
-import logoUrl from "@/assets/logo.png"
+import logoUrl from "@/assets/logo.svg"
 import { AppMark } from "@/components/app-mark"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -66,13 +66,13 @@ function Login() {
           </p>
           <div className="mt-7 flex flex-wrap gap-[15px] text-[10px] text-[#d5e5f8] max-[600px]:grid max-[600px]:gap-2">
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="text-sidebar-primary" /> Role-aware access
+              <CheckCircle2 className="size-4 text-sidebar-primary" /> Role-aware access
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="text-sidebar-primary" /> Passkey-ready sign in
+              <CheckCircle2 className="size-4 text-sidebar-primary" /> Passkey-ready sign in
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="text-sidebar-primary" /> Auditable operations
+              <CheckCircle2 className="size-4 text-sidebar-primary" /> Auditable operations
             </span>
           </div>
           <div

@@ -120,7 +120,7 @@ function TelegramGroups() {
                       <TableCell className="px-[15px] py-3 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#e9e8df] text-primary">
-                            <MessageCircleMore />
+                            <MessageCircleMore className="size-4" />
                           </span>
                           <b>{group.title}</b>
                         </div>

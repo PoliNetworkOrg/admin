@@ -47,7 +47,7 @@ export function DataToolbar({
           htmlFor={searchId}
           className="relative flex h-9 w-full max-w-[300px] items-center border border-border bg-card text-muted-foreground sm:w-[300px]"
         >
-          <Search className="pointer-events-none absolute left-2.5" />
+          <Search className="pointer-events-none absolute left-2.5 size-5" />
           <Input
             id={searchId}
             aria-label={`Search ${title}`}

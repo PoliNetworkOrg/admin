@@ -105,7 +105,7 @@ function TelegramUsers() {
                         className="grid size-7 place-items-center bg-accent text-primary transition-colors hover:bg-[#dce9fa]"
                         aria-label={`Open ${user.username ?? user.id}`}
                       >
-                        <Eye />
+                        <Eye className="size-4" />
                       </Link>
                     </TableCell>
                   </TableRow>

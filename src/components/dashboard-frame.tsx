@@ -86,7 +86,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
               }}
               activeOptions={{ exact: to === "/dashboard" }}
             >
-              <Icon />
+              <Icon className="size-5" />
               <span>{label}</span>
             </Link>
           ))}
@@ -101,7 +101,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
                 "flex items-center gap-2.5 border-l-2 border-[#75adf4] bg-[#508fe0]/[0.18] px-2.5 py-2.5 text-[13px] text-[#f5f7ec]",
             }}
           >
-            <Settings />
+            <Settings className="size-5" />
             <span>Account settings</span>
           </Link>
           <div className="flex w-full items-center gap-2.5 bg-[#172c4d] p-2.5 text-left text-[#edf2ed]">

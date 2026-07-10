@@ -42,7 +42,7 @@ function Overview() {
             A focused workspace for the people who keep PoliNetwork’s communities, access and membership data moving.
           </p>
           <div className="mt-[37px] flex items-center gap-2 font-mono text-[11px] text-[#bdd8fa]">
-            <CheckCircle2 />
+            <CheckCircle2 className="size-4" />
             <span>Workspace ready for review</span>
             <b className="ml-2.5 font-normal text-[#81958a] max-[600px]:hidden">Last sync — just now</b>
           </div>
@@ -91,13 +91,13 @@ function Overview() {
             style={{ animationDelay: `${120 + index * 70}ms` }}
           >
             <span className="grid size-[37px] place-items-center bg-accent text-primary">
-              <Icon />
+              <Icon className="size-5" />
             </span>
             <span>
               <h3 className="mt-0.5 text-[13px]">{title}</h3>
               <p className="mt-1 text-[11px] leading-[1.45] text-muted-foreground">{text}</p>
             </span>
-            <ArrowUpRight className="mt-0.5 text-primary" />
+            <ArrowUpRight className="mt-0.5 size-5 text-primary" />
           </Link>
         ))}
       </section>

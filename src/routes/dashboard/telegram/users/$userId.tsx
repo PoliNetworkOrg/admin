@@ -40,7 +40,7 @@ function UserProfile() {
         <LiveStatus connected={response.connected} message={response.message} />
         <Card className="mt-[18px] rounded-none border-dashed py-0 text-center shadow-none">
           <CardContent className="px-5 py-14">
-            <UserRound className="mx-auto text-primary" />
+            <UserRound className="mx-auto size-6 text-primary" />
             <h2 className="mt-2 font-serif text-[21px] font-normal tracking-[-0.04em]">User not found</h2>
             <p className="mt-2 text-xs text-muted-foreground">No Telegram user exists with ID {userId}.</p>
           </CardContent>
@@ -144,7 +144,7 @@ function UserProfile() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open message <ExternalLink />
+                  Open message <ExternalLink className="size-4" />
                 </a>
               </CardContent>
             </Card>
@@ -183,7 +183,7 @@ function BackLink() {
       to="/dashboard/telegram/users"
       className="flex w-max items-center gap-1.5 font-mono text-[11px] text-primary hover:underline"
     >
-      <ArrowLeft /> Back to users
+      <ArrowLeft className="size-4" /> Back to users
     </Link>
   )
 }
@@ -200,7 +200,7 @@ function SummaryCard({
   return (
     <Card className="rounded-none py-0 shadow-none">
       <CardHeader className="gap-3 p-5 pb-3">
-        <Icon className="text-primary" />
+        <Icon className="size-5 text-primary" />
         <CardTitle className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
           {label}
         </CardTitle>
@@ -239,7 +239,7 @@ function DetailSection({
     <section className="mt-[34px]">
       <header className="mb-3 flex items-center justify-between border-b border-border pb-3">
         <span className="flex items-center gap-2">
-          <Icon className="text-primary" />
+          <Icon className="size-5 text-primary" />
           <h2 className="font-serif text-[20px] font-normal tracking-[-0.04em]">{title}</h2>
         </span>
         <b className="font-mono text-[10px] text-muted-foreground">{count}</b>

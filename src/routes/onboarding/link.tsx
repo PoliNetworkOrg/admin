@@ -9,7 +9,7 @@ function LinkTelegram() {
     <main className="grid min-h-screen place-items-center bg-background p-5">
       <div className="grid max-w-[440px] justify-items-center gap-3.5 border border-border bg-card p-[42px] text-center max-[600px]:p-7">
         <span className="grid size-[52px] place-items-center rounded-full bg-accent text-primary">
-          <MessageCircle />
+          <MessageCircle className="size-6" />
         </span>
         <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
           ONE LAST STEP

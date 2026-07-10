@@ -232,7 +232,7 @@ function Account() {
       <div className="mt-3.5 grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
         <Card className="rounded-none py-0 shadow-none">
           <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
-            <UserRound className="mt-0.5 shrink-0 text-primary" />
+            <UserRound className="mt-0.5 size-5 shrink-0 text-primary" />
             <span>
               <CardTitle className="text-[13px]">Profile details</CardTitle>
               <CardDescription className="mt-1 text-[10px]">Displayed throughout the admin console.</CardDescription>
@@ -300,7 +300,7 @@ function Account() {
         <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
           <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
             <div className="flex items-start gap-3">
-              <KeyRound className="mt-0.5 shrink-0 text-primary" />
+              <KeyRound className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
                 <CardTitle className="text-[13px]">Passkeys</CardTitle>
                 <CardDescription className="mt-1 text-[10px]">
@@ -325,7 +325,7 @@ function Account() {
                   title={passkey.name || "Unnamed passkey"}
                   description={
                     <>
-                      <Calendar /> Added{" "}
+                      <Calendar className="size-4" /> Added{" "}
                       {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : "recently"}
                       {passkey.deviceType ? ` · ${passkey.deviceType}` : ""}
                     </>
@@ -354,7 +354,7 @@ function Account() {
         <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
           <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
             <div className="flex items-start gap-3">
-              <Shield className="mt-0.5 shrink-0 text-primary" />
+              <Shield className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
                 <CardTitle className="text-[13px]">Active sessions</CardTitle>
                 <CardDescription className="mt-1 text-[10px]">
@@ -431,7 +431,7 @@ function SecurityItem({
   return (
     <article className="flex items-center gap-3 border-b border-border px-5 py-3.5 last:border-b-0">
       <span className="grid size-9 shrink-0 place-items-center bg-accent text-primary">
-        <Icon />
+        <Icon className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
         <h4 className="truncate text-xs font-semibold">{title}</h4>

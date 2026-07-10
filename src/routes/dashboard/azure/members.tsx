@@ -98,13 +98,13 @@ function AzureMembers() {
       <LiveStatus connected={response.connected} message={response.message} />
       <section className="mb-3.5 flex flex-wrap gap-6 bg-[#eaf2fc] px-3.5 py-2.5 text-[11px] text-[#51647f] max-[600px]:grid max-[600px]:gap-2">
         <div className="flex items-center gap-2">
-          <Building2 className="text-primary" />
+          <Building2 className="size-6 text-primary" />
           <span>
             <b className="text-primary">{members.filter((member) => member.isMember).length}</b> association members
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <UsersRound className="text-primary" />
+          <UsersRound className="size-6 text-primary" />
           <span>
             <b className="text-primary">
               {members.filter((member) => member.assignedLicensesIds?.includes("OFFICE_365")).length}
