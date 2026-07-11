@@ -15,7 +15,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as OnboardingLinkRouteImport } from './routes/onboarding/link'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
-import { Route as DashboardTelegramUsersRouteImport } from './routes/dashboard/telegram/users'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
@@ -53,11 +52,6 @@ const DashboardAccountRoute = DashboardAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardTelegramUsersRoute = DashboardTelegramUsersRouteImport.update({
-  id: '/telegram/users',
-  path: '/telegram/users',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardTelegramGroupsRoute = DashboardTelegramGroupsRouteImport.update({
   id: '/telegram/groups',
   path: '/telegram/groups',
@@ -80,15 +74,15 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 const DashboardTelegramUsersIndexRoute =
   DashboardTelegramUsersIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => DashboardTelegramUsersRoute,
+    id: '/telegram/users/',
+    path: '/telegram/users/',
+    getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardTelegramUsersUserIdRoute =
   DashboardTelegramUsersUserIdRouteImport.update({
-    id: '/$userId',
-    path: '/$userId',
-    getParentRoute: () => DashboardTelegramUsersRoute,
+    id: '/telegram/users/$userId',
+    path: '/telegram/users/$userId',
+    getParentRoute: () => DashboardRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -102,7 +96,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
-  '/dashboard/telegram/users': typeof DashboardTelegramUsersRouteWithChildren
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
 }
@@ -131,7 +124,6 @@ export interface FileRoutesById {
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
-  '/dashboard/telegram/users': typeof DashboardTelegramUsersRouteWithChildren
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
 }
@@ -148,7 +140,6 @@ export interface FileRouteTypes {
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
-    | '/dashboard/telegram/users'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/telegram/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -176,7 +167,6 @@ export interface FileRouteTypes {
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
-    | '/dashboard/telegram/users'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/telegram/users/'
   fileRoutesById: FileRoutesById
@@ -233,13 +223,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/telegram/users': {
-      id: '/dashboard/telegram/users'
-      path: '/telegram/users'
-      fullPath: '/dashboard/telegram/users'
-      preLoaderRoute: typeof DashboardTelegramUsersRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/telegram/groups': {
       id: '/dashboard/telegram/groups'
       path: '/telegram/groups'
@@ -270,36 +253,20 @@ declare module '@tanstack/react-router' {
     }
     '/dashboard/telegram/users/': {
       id: '/dashboard/telegram/users/'
-      path: '/'
+      path: '/telegram/users'
       fullPath: '/dashboard/telegram/users/'
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
-      parentRoute: typeof DashboardTelegramUsersRoute
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/telegram/users/$userId': {
       id: '/dashboard/telegram/users/$userId'
-      path: '/$userId'
+      path: '/telegram/users/$userId'
       fullPath: '/dashboard/telegram/users/$userId'
       preLoaderRoute: typeof DashboardTelegramUsersUserIdRouteImport
-      parentRoute: typeof DashboardTelegramUsersRoute
+      parentRoute: typeof DashboardRoute
     }
   }
 }
-
-interface DashboardTelegramUsersRouteChildren {
-  DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
-  DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
-}
-
-const DashboardTelegramUsersRouteChildren: DashboardTelegramUsersRouteChildren =
-  {
-    DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
-    DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
-  }
-
-const DashboardTelegramUsersRouteWithChildren =
-  DashboardTelegramUsersRoute._addFileChildren(
-    DashboardTelegramUsersRouteChildren,
-  )
 
 interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
@@ -307,7 +274,8 @@ interface DashboardRouteChildren {
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
-  DashboardTelegramUsersRoute: typeof DashboardTelegramUsersRouteWithChildren
+  DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
+  DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -316,7 +284,8 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
-  DashboardTelegramUsersRoute: DashboardTelegramUsersRouteWithChildren,
+  DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
+  DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

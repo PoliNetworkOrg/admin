@@ -6,6 +6,7 @@ import { auth, useSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
 import { AppMark } from "./app-mark"
+import { ThemeToggle } from "./theme-toggle"
 
 const navigation = [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
@@ -141,7 +142,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
         />
       )}
       <main className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-[91px] items-center border-b border-border bg-background/90 px-[42px] backdrop-blur-[10px] max-[900px]:px-5 max-[600px]:h-[72px] max-[600px]:px-3.5">
+        <header className="sticky top-0 z-30 flex h-[91px] items-center justify-between border-b border-border bg-background/90 px-[42px] backdrop-blur-[10px] max-[900px]:px-5 max-[600px]:h-[72px] max-[600px]:px-3.5">
           <div className="flex items-center gap-[15px]">
             <Button
               variant="ghost"
@@ -159,6 +160,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
               <h1 className="mt-1 text-[19px] tracking-[-0.04em] max-[600px]:text-base">{title}</h1>
             </div>
           </div>
+          <ThemeToggle />
         </header>
         <div className="mx-auto max-w-[1410px] px-[42px] py-[42px] max-[900px]:px-5 max-[900px]:py-7 max-[600px]:px-3.5 max-[600px]:py-[22px]">
           <Outlet />
