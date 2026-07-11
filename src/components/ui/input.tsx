@@ -1,19 +1,9 @@
-import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
+import type * as React from "react"
 
-import { cn } from "@/lib/utils/shadcn"
+import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
-const ignoreManagerAttrs =
-  props.autoComplete === "off"
-    ? {
-        "data-1p-ignore": true,      // 1Password
-        "data-lpignore": true,        // LastPass
-        "data-bwignore": true,        // Bitwarden
-        "data-form-type": "other",    // Dashlane
-      }
-    : {};
-
   return (
     <InputPrimitive
       type={type}
@@ -23,7 +13,6 @@ const ignoreManagerAttrs =
         className
       )}
       {...props}
-      {...ignoreManagerAttrs}
     />
   )
 }
