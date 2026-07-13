@@ -1,23 +1,12 @@
-import { type AppRouter, AUTH_PATH, TRPC_PATH } from "@polinetwork/backend"
+import { type AppRouter, TRPC_PATH } from "@polinetwork/backend"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { createTRPCClient, httpBatchLink, httpLink, isNonJsonSerializable, splitLink } from "@trpc/client"
 import SuperJSON from "superjson"
 import { z } from "zod"
+import { auth } from "@/lib/auth"
 
 export type BackendState<T> = { data: T; connected: boolean; message?: string }
-
-export type AdminSession = {
-  session?: { id?: string; expiresAt?: Date | string }
-  user?: {
-    id: string
-    email?: string
-    name?: string | null
-    image?: string | null
-    telegramId?: number | null
-    telegramUsername?: string | null
-  }
-}
 
 function backendOrigin() {
   return process.env.BACKEND_URL ?? "http://localhost:3000"
@@ -60,16 +49,16 @@ export const testBackend = createServerFn().handler(async () => {
   }
 })
 
-async function readSession(): Promise<AdminSession | null> {
+async function readSession() {
   try {
-    const response = await fetch(new URL(`${AUTH_PATH}/get-session`, backendOrigin()), {
-      headers: requestHeaders(),
-      cache: "no-store",
-    })
+    const response = await auth.getSession({ fetchOptions: { headers: requestHeaders() } })
+    if (response.error) {
+      console.error("SESSION ERROR", response.error.statusText, response.error.message)
+    }
 
-    if (!response.ok) return null
-    return (await response.json()) as AdminSession
-  } catch {
+    return response.data
+  } catch (err) {
+    console.error(err)
     return null
   }
 }
@@ -166,7 +155,7 @@ export const createAzureMember = createServerFn({ method: "POST" })
       firstName: z.string().min(1),
       lastName: z.string().min(1),
       assocNumber: z.number().int().positive(),
-      sendEmailTo: z.string().email(),
+      sendEmailTo: z.email(),
     })
   )
   .handler(async ({ data }) => {

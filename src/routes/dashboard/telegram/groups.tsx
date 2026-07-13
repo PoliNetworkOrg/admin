@@ -94,7 +94,7 @@ function TelegramGroups() {
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "border-transparent font-mono text-xs",
+                  "border-transparent font-mono text-xs w-full gap-2",
                   group.hide ? "bg-muted text-muted-foreground" : "bg-accent text-primary"
                 )}
                 disabled={pending}
@@ -169,7 +169,7 @@ function TelegramGroups() {
       {table.getFilteredRowModel().rows.length ? (
         <>
           <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <Table className="min-w-[700px] text-left">
+            <Table className="text-left">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="border-0">

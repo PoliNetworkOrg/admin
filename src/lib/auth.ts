@@ -8,7 +8,7 @@ const telegramPlugin = () =>
   ({ id: "telegram", $InferServerPlugin: {} as ReturnType<TelegramPlugin> }) satisfies BetterAuthClientPlugin
 
 export const auth = createAuthClient({
-  baseURL: typeof window === "undefined" ? undefined : window.location.origin,
+  baseURL: process.env.BACKEND_URL ?? "http://localhost:3000",
   basePath: AUTH_PATH,
   plugins: [telegramPlugin(), emailOTPClient(), passkeyClient()],
 })
