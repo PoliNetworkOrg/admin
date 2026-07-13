@@ -7,7 +7,7 @@ import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getOngoingGrants, getScheduledGrants } from "@/server/api.functions"
@@ -40,9 +40,7 @@ function Grants() {
     grantColumnHelper.accessor("role", {
       header: "Role",
       cell: ({ getValue }) => (
-        <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
-          {getValue() ?? "Access grant"}
-        </Badge>
+        <Badge className="h-5 bg-accent px-1.5 font-mono text-[9px] text-primary">{getValue() ?? "Access grant"}</Badge>
       ),
     }),
     grantColumnHelper.accessor("grantorId", { header: "Granted by", cell: ({ getValue }) => getValue() ?? "—" }),
@@ -55,10 +53,7 @@ function Grants() {
       id: "status",
       header: "Status",
       cell: ({ row }) => (
-        <Badge
-          variant={row.original.scheduledAt ? "secondary" : "default"}
-          className="h-5 rounded-none px-1.5 font-mono text-[9px]"
-        >
+        <Badge variant={row.original.scheduledAt ? "secondary" : "default"} className="h-5 px-1.5 font-mono text-[9px]">
           {row.original.scheduledAt ? "Scheduled" : "Active"}
         </Badge>
       ),
@@ -85,11 +80,11 @@ function Grants() {
   return (
     <div className="animate-appear">
       <DataToolbar
+        eyebrow="Telegram"
         title="Access grants"
         description="See who has temporary access, when it begins, and when it expires."
         count={table.getFilteredRowModel().rows.length}
         onSearch={(value) => table.setGlobalFilter(value)}
-        action="New grant"
       />
       <LiveStatus connected={connected} message={ongoing.message ?? scheduled.message} />
       <ToggleGroup
@@ -101,50 +96,47 @@ function Grants() {
           const next = value[0]
           if (next === "all" || next === "ongoing" || next === "scheduled") setTab(next)
         }}
-        className="my-1"
+        className="mb-4"
         aria-label="Grant status"
       >
         <ToggleGroupItem
           value="all"
-          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+          className="text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
         >
           All <b className="ml-1 font-mono text-[10px]">{ongoingGrants.length + scheduledGrants.length}</b>
         </ToggleGroupItem>
         <ToggleGroupItem
           value="ongoing"
-          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+          className="text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
         >
           Ongoing <b className="ml-1 font-mono text-[10px]">{ongoingGrants.length}</b>
         </ToggleGroupItem>
         <ToggleGroupItem
           value="scheduled"
-          className="rounded-none text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
+          className="text-[10px] text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-accent data-[state=on]:text-primary"
         >
           Scheduled <b className="ml-1 font-mono text-[10px]">{scheduledGrants.length}</b>
         </ToggleGroupItem>
       </ToggleGroup>
       {table.getFilteredRowModel().rows.length ? (
-        <div className="overflow-auto border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <Table className="min-w-[700px] text-left">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-0">
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
-                    >
+                    <DataTableHead key={header.id}>
                       {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                    </TableHead>
+                    </DataTableHead>
                   ))}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                <TableRow key={row.id}>
                   {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                    <TableCell key={cell.id} className="px-4 py-3 text-sm">
                       <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}

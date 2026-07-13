@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react"
 import { LiveStatus } from "@/components/live-status"
 import { DetailPageSkeleton } from "@/components/loading-skeleton"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,10 +59,10 @@ function UserProfile() {
       <div className="animate-appear">
         <BackLink />
         <LiveStatus connected={response.connected} message={response.message} />
-        <Card className="mt-[18px] rounded-none border-dashed py-0 text-center shadow-none">
-          <CardContent className="px-5 py-14">
+        <Card className="mt-5 border-dashed text-center">
+          <CardContent className="px-5 py-10">
             <UserRound className="mx-auto size-6 text-primary" />
-            <h2 className="mt-2 font-serif text-[21px] font-normal tracking-[-0.04em]">User not found</h2>
+            <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">User not found</h2>
             <p className="mt-2 text-xs text-muted-foreground">No Telegram user exists with ID {userId}.</p>
           </CardContent>
         </Card>
@@ -75,24 +76,27 @@ function UserProfile() {
   return (
     <div className="animate-appear">
       <BackLink />
-      <section className="mt-[18px] flex items-center gap-[18px] bg-sidebar px-[35px] py-[35px] text-[#eff1e9] max-[600px]:grid max-[600px]:grid-cols-[55px_1fr] max-[600px]:px-6 max-[600px]:py-6">
-        <div className="grid size-[58px] shrink-0 place-items-center rounded-full bg-sidebar-primary font-mono text-[17px] text-sidebar">
-          {(user.firstName?.[0] ?? user.username?.[0] ?? String(user.id).slice(-2)).toUpperCase()}
-        </div>
-        <div>
-          <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-sidebar-primary">
-            TELEGRAM PROFILE · {user.id}
-          </p>
-          <h2 className="mt-1 font-serif text-[26px] font-normal tracking-[-0.05em]">{displayName}</h2>
-          <p className="text-[11px] text-[#b4c0b7]">{user.username ? `@${user.username}` : "No Telegram username"}</p>
-        </div>
-        <Badge
-          variant="secondary"
-          className="ml-auto h-5 rounded-none bg-muted px-1.5 font-mono text-[9px] text-muted-foreground max-[600px]:col-span-full max-[600px]:ml-0"
-        >
-          {roles.length} role{roles.length === 1 ? "" : "s"}
-        </Badge>
-      </section>
+      <Card className="mt-5 [--card-spacing:--spacing(5)]">
+        <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
+          <Avatar className="size-14">
+            <AvatarFallback className="bg-primary font-mono text-base font-semibold text-primary-foreground">
+              {(user.firstName?.[0] ?? user.username?.[0] ?? String(user.id).slice(-2)).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-medium tracking-[0.08em] text-primary uppercase">
+              Telegram profile · {user.id}
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em]">{displayName}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {user.username ? `@${user.username}` : "No Telegram username"}
+            </p>
+          </div>
+          <Badge variant="secondary">
+            {roles.length} role{roles.length === 1 ? "" : "s"}
+          </Badge>
+        </CardHeader>
+      </Card>
 
       <section className="mt-[18px] grid grid-cols-3 gap-3.5 max-[900px]:grid-cols-1">
         <SummaryCard icon={UserRound} label="IDENTITY">
@@ -108,7 +112,7 @@ function UserProfile() {
           <div className="flex flex-wrap gap-1.5">
             {roles.length ? (
               roles.map((role) => (
-                <Badge key={role} className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
+                <Badge key={role} className="h-5 bg-accent px-1.5 font-mono text-[9px] text-primary">
                   {role}
                 </Badge>
               ))
@@ -134,12 +138,7 @@ function UserProfile() {
         title="Group administration"
         count={groupAdmin.length}
         action={
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-none text-[10px]"
-            onClick={() => setAdminDialogOpen(true)}
-          >
+          <Button variant="outline" size="sm" className="text-[10px]" onClick={() => setAdminDialogOpen(true)}>
             <UserPlus data-icon="inline-start" /> Add group
           </Button>
         }
@@ -148,10 +147,10 @@ function UserProfile() {
           {groupAdmin
             .filter((entry) => entry !== null)
             .map((entry) => (
-              <Card className="rounded-none py-0 shadow-none" key={entry.group.id}>
+              <Card size="sm" key={entry.group.id}>
                 <CardContent className="p-5">
                   <h3 className="text-[13px]">{entry.group.title}</h3>
-                  <p className="mt-1 font-mono text-[10px] text-[#51647f]">{entry.group.id}</p>
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.group.id}</p>
                   <small className="mt-3 block text-[10px] text-muted-foreground">
                     Added by {entry.addedBy.firstName}
                     {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
@@ -176,7 +175,7 @@ function UserProfile() {
       <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {messages.map((message) => (
-            <Card className="rounded-none py-0 shadow-none" key={`${message.chatId}-${message.messageId}`}>
+            <Card size="sm" key={`${message.chatId}-${message.messageId}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-[13px]">{message.group?.title ?? `Chat ${message.chatId}`}</h3>
@@ -200,7 +199,7 @@ function UserProfile() {
       <DetailSection icon={History} title="Audit log" count={audits.length}>
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {audits.map((audit) => (
-            <Card className="rounded-none py-0 shadow-none" key={`${audit.id}-${audit.type}`}>
+            <Card size="sm" key={`${audit.id}-${audit.type}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-[13px]">{audit.type}</h3>
@@ -243,7 +242,7 @@ function SummaryCard({
   children: React.ReactNode
 }) {
   return (
-    <Card className="rounded-none py-0 shadow-none">
+    <Card size="sm">
       <CardHeader className="gap-3 p-5 pb-3">
         <Icon className="size-5 text-primary" />
         <CardTitle className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
@@ -287,7 +286,7 @@ function DetailSection({
       <header className="mb-3 flex items-center justify-between border-b border-border pb-3">
         <span className="flex items-center gap-2">
           <Icon className="size-5 text-primary" />
-          <h2 className="font-serif text-[20px] font-normal tracking-[-0.04em]">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-[-0.025em]">{title}</h2>
         </span>
         <span className="flex items-center gap-3">
           {action}
@@ -342,14 +341,12 @@ function AddGroupAdminDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-w-lg rounded-none border-border p-0">
+      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">
             GROUP ADMINISTRATION
           </p>
-          <DialogTitle className="font-serif text-[24px] font-normal tracking-[-0.05em]">
-            Add group administrator
-          </DialogTitle>
+          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">Add group administrator</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             Choose a group this user should administer.
           </DialogDescription>
@@ -367,7 +364,7 @@ function AddGroupAdminDialog({
               itemToStringValue={(group) => String(group.telegramId)}
               disabled={!availableGroups.length}
             >
-              <Combobox.InputGroup className="flex h-9 w-full border border-input bg-background focus-within:border-primary">
+              <Combobox.InputGroup className="flex h-10 w-full rounded-lg border border-input bg-background focus-within:border-primary focus-within:ring-3 focus-within:ring-ring/20">
                 <Combobox.Input
                   id="admin-group"
                   placeholder="Search groups…"
@@ -379,15 +376,15 @@ function AddGroupAdminDialog({
                 </Combobox.Trigger>
               </Combobox.InputGroup>
               <Combobox.Portal>
-                <Combobox.Positioner className="z-[60]">
-                  <Combobox.Popup className="max-h-60 min-w-[var(--anchor-width)] overflow-auto border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+                <Combobox.Positioner>
+                  <Combobox.Popup className="max-h-60 min-w-[var(--anchor-width)] overflow-auto rounded-lg border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
                     <Combobox.Empty className="px-3 py-2 text-muted-foreground">No matching groups</Combobox.Empty>
                     <Combobox.List>
                       {(group) => (
                         <Combobox.Item
                           key={group.telegramId}
                           value={group}
-                          className="flex cursor-default items-center gap-2 px-3 py-2 outline-none data-highlighted:bg-accent data-highlighted:text-primary"
+                          className="flex cursor-default items-center gap-2 rounded-md px-3 py-2 outline-none data-highlighted:bg-accent data-highlighted:text-primary"
                         >
                           <Combobox.ItemIndicator>
                             <Check className="size-3.5" />
@@ -408,10 +405,10 @@ function AddGroupAdminDialog({
           )}
           {error && <p className="mt-3 text-[10px] text-destructive">{error}</p>}
           <DialogFooter className="-mx-6 -mb-5 mt-5 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" className="rounded-none text-[11px]" onClick={onClose}>
+            <Button type="button" variant="outline" className="text-[11px]" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" className="rounded-none text-[11px]" disabled={pending || !availableGroups.length}>
+            <Button type="submit" className="text-[11px]" disabled={pending || !availableGroups.length}>
               {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
               Add administrator
             </Button>

@@ -1,34 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight, MessageCircle } from "lucide-react"
+import { ArrowLeft, MessageCircle } from "lucide-react"
+import { AppMark } from "@/components/app-mark"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export const Route = createFileRoute("/onboarding/link")({ component: LinkTelegram })
 
 function LinkTelegram() {
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-5">
-      <div className="grid max-w-[440px] justify-items-center gap-3.5 border border-border bg-card p-[42px] text-center max-[600px]:p-7">
-        <span className="grid size-[52px] place-items-center rounded-full bg-accent text-primary">
-          <MessageCircle className="size-6" />
-        </span>
-        <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
-          ONE LAST STEP
-        </p>
-        <h1 className="font-serif text-[28px] leading-[1.1] tracking-[-0.06em]">Link your Telegram account</h1>
-        <p className="text-xs leading-[1.6] text-muted-foreground">
-          We use your Telegram identity to verify the administrative roles that grant access to this workspace.
-        </p>
-        <Button className="mt-1 rounded-none bg-primary text-[11px] hover:bg-primary/85">
-          Connect Telegram <ArrowRight data-icon="inline-end" />
-        </Button>
-        <Button
-          variant="link"
-          className="h-auto rounded-none px-0 py-1 text-[11px] text-primary"
-          render={<Link to="/login" />}
-        >
-          Back to sign in
-        </Button>
-      </div>
+    <main className="flex min-h-dvh flex-col bg-background p-6 max-[520px]:p-3">
+      <header className="flex items-center justify-between">
+        <AppMark />
+        <ThemeToggle />
+      </header>
+      <Card className="m-auto w-full max-w-[460px] [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <span className="mb-3 flex size-11 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <MessageCircle className="size-5" />
+          </span>
+          <CardTitle className="text-2xl tracking-[-0.035em]">Telegram access</CardTitle>
+          <CardDescription className="leading-6">
+            Your Telegram identity is used to verify the administrative roles that unlock this workspace. Sign in first;
+            if your account is not linked, the administrator onboarding flow will guide you through the connection.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button render={<Link to="/login" />} nativeButton={false}>
+            <ArrowLeft data-icon="inline-start" /> Back to sign in
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   )
 }

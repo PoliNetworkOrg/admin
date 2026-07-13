@@ -9,7 +9,7 @@ import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { getTelegramGroups, setGroupVisibility } from "@/server/api.functions"
@@ -66,7 +66,7 @@ function TelegramGroups() {
           header: "Group",
           cell: ({ row }) => (
             <div className="flex items-center gap-2">
-              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#e9e8df] text-primary">
+              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent text-primary">
                 <MessageCircleMore className="size-4" />
               </span>
               <b>{row.original.title}</b>
@@ -78,9 +78,7 @@ function TelegramGroups() {
           header: "Tag",
           cell: ({ getValue }) =>
             getValue() ? (
-              <Badge className="h-5 rounded-none bg-accent px-1.5 font-mono text-[9px] text-primary">
-                @{getValue()}
-              </Badge>
+              <Badge className="h-5 bg-accent px-1.5 font-mono text-[9px] text-primary">@{getValue()}</Badge>
             ) : (
               <span className="text-[11px] italic text-muted-foreground">—</span>
             ),
@@ -96,8 +94,8 @@ function TelegramGroups() {
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "h-6 rounded-none border-transparent px-1.5 font-mono text-[9px]",
-                  group.hide ? "bg-muted text-muted-foreground" : "bg-[#e5effc] text-primary"
+                  "border-transparent font-mono text-xs",
+                  group.hide ? "bg-muted text-muted-foreground" : "bg-accent text-primary"
                 )}
                 disabled={pending}
                 onClick={() => void toggleVisibility(group)}
@@ -156,6 +154,7 @@ function TelegramGroups() {
   return (
     <div className="animate-appear">
       <DataToolbar
+        eyebrow="Telegram"
         title="Telegram groups"
         description="Maintain the community groups connected to PoliNetwork."
         count={table.getFilteredRowModel().rows.length}
@@ -163,33 +162,30 @@ function TelegramGroups() {
       />
       <LiveStatus connected={response.connected} message={response.message} />
       {mutationError && (
-        <Alert className="mb-4 rounded-none border-l-[3px] border-l-[#d86b3f] bg-[#fff4e8] px-3 py-2.5 text-[11px] text-[#895322]">
-          <AlertDescription className="text-[11px] leading-[1.45] text-[#895322]">{mutationError}</AlertDescription>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{mutationError}</AlertDescription>
         </Alert>
       )}
       {table.getFilteredRowModel().rows.length ? (
         <>
-          <div className="overflow-auto border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <Table className="min-w-[700px] text-left">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="border-0">
                     {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
-                      >
+                      <DataTableHead key={header.id}>
                         {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                      </TableHead>
+                      </DataTableHead>
                     ))}
                   </TableRow>
                 ))}
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                  <TableRow key={row.id}>
                     {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                      <TableCell key={cell.id} className="px-4 py-3 text-sm">
                         <table.FlexRender cell={cell} />
                       </TableCell>
                     ))}

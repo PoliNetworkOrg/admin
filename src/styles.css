@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,12 +7,12 @@
 
 :root {
   --ink: #0d1d36;
-  --paper: #f5f7fb;
-  --mist: #e9eef7;
-  --line: #d7deea;
-  --muted-blue: #68778f;
+  --paper: #f6f7f9;
+  --mist: #eef1f5;
+  --line: #dfe3e9;
+  --muted-blue: #657186;
   --cobalt: #1156ae;
-  --mint: #dce9fa;
+  --mint: #e5eef9;
   --sky: #78adf0;
   --orange: #d86b3f;
   --white: #ffffff;
@@ -48,29 +48,29 @@
   --chart-3: var(--ink);
   --chart-4: var(--orange);
   --chart-5: var(--muted-blue);
-  --radius: 0.2rem;
-  --sidebar: var(--ink);
-  --sidebar-foreground: #ecf1e9;
-  --sidebar-primary: var(--sky);
-  --sidebar-primary-foreground: var(--ink);
-  --sidebar-accent: #172c4d;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.12);
-  --sidebar-ring: var(--sky);
+  --radius: 0.625rem;
+  --sidebar: #f9fafc;
+  --sidebar-foreground: #19243a;
+  --sidebar-primary: #1156ae;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #0d1d36;
+  --sidebar-border: #dce2ec;
+  --sidebar-ring: #1156ae;
 }
 
 .dark {
   color-scheme: dark;
   --ink: #edf2f0;
-  --paper: #0a1018;
-  --mist: #141e2b;
-  --line: #253246;
-  --muted-blue: #91a2b8;
-  --cobalt: #78adf0;
+  --paper: #0d1219;
+  --mist: #171e28;
+  --line: #283241;
+  --muted-blue: #98a4b5;
+  --cobalt: #1156ae;
   --mint: #1b3047;
   --sky: #a5c9f7;
   --orange: #ed9a70;
-  --white: #121b27;
+  --white: #131a23;
   --toast-success: #73d9a0;
   --toast-success-soft: #112a24;
   --toast-info: #a5c9f7;
@@ -82,12 +82,12 @@
 
   --background: var(--paper);
   --foreground: var(--ink);
-  --card: #101925;
+  --card: #131a23;
   --card-foreground: var(--ink);
-  --popover: #141f2d;
+  --popover: #171f2a;
   --popover-foreground: var(--ink);
   --primary: var(--cobalt);
-  --primary-foreground: #081321;
+  --primary-foreground: #ffffff;
   --secondary: #182434;
   --secondary-foreground: #dbe6f2;
   --muted: #172332;
@@ -103,11 +103,11 @@
   --chart-3: #dce7e3;
   --chart-4: var(--orange);
   --chart-5: var(--muted-blue);
-  --sidebar: #0d1723;
+  --sidebar: #0d151f;
   --sidebar-foreground: #e8efec;
-  --sidebar-primary: var(--sky);
-  --sidebar-primary-foreground: #081321;
-  --sidebar-accent: #17283d;
+  --sidebar-primary: #1156ae;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #172331;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(165, 201, 247, 0.16);
   --sidebar-ring: var(--sky);
@@ -115,7 +115,7 @@
 
 @theme inline {
   --font-sans: "DM Sans", sans-serif;
-  --font-serif: "Libre Baskerville", serif;
+  --font-serif: "DM Sans", sans-serif;
   --font-mono: "DM Mono", monospace;
   --font-heading: "DM Sans", sans-serif;
   --color-background: var(--background);
@@ -224,60 +224,6 @@
   p {
     @apply m-0;
   }
-}
-
-/* Dark mode keeps the cobalt brand as a signal, not a wallpaper. */
-.dark .bg-\[\#efeee7\] {
-  background: #172231;
-}
-
-.dark .hover\:bg-\[\#f6f9fe\]:hover {
-  background: #162231;
-}
-
-.dark .bg-\[\#eaf2fc\] {
-  background: #122337;
-  color: #aabbd0;
-}
-
-.dark .bg-\[\#fff4e8\] {
-  background: #302218;
-}
-
-.dark .text-\[\#895322\] {
-  color: #f0b87a;
-}
-
-.dark .bg-\[\#e5e9df\] {
-  background: #1b2938;
-}
-
-.dark .hover\:bg-\[\#dbe1d4\]:hover {
-  background: #243648;
-}
-
-.dark input.bg-\[\#fffefa\] {
-  background: #0d1723;
-}
-
-.dark input.border-\[\#cbd0c7\] {
-  border-color: #33445a;
-}
-
-.dark .bg-\[\#dbe8ff\] {
-  background: #1e3854;
-}
-
-.dark .bg-\[\#e8edfa\] {
-  background: #1d2d46;
-}
-
-.dark .bg-\[\#e5effc\] {
-  background: #1b3047;
-}
-
-.dark .bg-\[\#e9e8df\] {
-  background: #1b2937;
 }
 
 @media (prefers-reduced-motion: reduce) {

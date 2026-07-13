@@ -39,7 +39,7 @@ export function Pagination({
           aria-label="Rows per page"
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-8 rounded-none border border-border bg-card px-2 font-mono text-[10px] text-foreground outline-none focus:border-primary"
+          className="h-8 rounded-lg border border-border bg-card px-2 font-mono text-[10px] text-foreground outline-none focus:border-primary"
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -58,8 +58,8 @@ export function Pagination({
                 aria-disabled={page === 1}
                 className={
                   page === 1
-                    ? "pointer-events-none size-8 rounded-none border-border text-muted-foreground opacity-40"
-                    : "size-8 rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+                    ? "pointer-events-none size-8 border-border text-muted-foreground opacity-40"
+                    : "size-8 border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
                 }
                 onClick={(event) => {
                   event.preventDefault()
@@ -76,7 +76,7 @@ export function Pagination({
                 className={
                   page === 1
                     ? "pointer-events-none opacity-40"
-                    : "rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+                    : "border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
                 }
                 onClick={(event) => {
                   event.preventDefault()
@@ -96,7 +96,7 @@ export function Pagination({
                   <PaginationLink
                     href="#"
                     isActive={value === page}
-                    className="size-8 rounded-none border-border font-mono text-[10px] text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary data-[active=true]:border-primary data-[active=true]:bg-accent data-[active=true]:text-primary"
+                    className="size-8 border-border font-mono text-[10px] text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary data-[active=true]:border-primary data-[active=true]:bg-accent data-[active=true]:text-primary"
                     onClick={(event) => {
                       event.preventDefault()
                       onPageChange(value)
@@ -114,7 +114,7 @@ export function Pagination({
                 className={
                   page === pageCount
                     ? "pointer-events-none opacity-40"
-                    : "rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+                    : "border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
                 }
                 onClick={(event) => {
                   event.preventDefault()
@@ -130,8 +130,8 @@ export function Pagination({
                 aria-disabled={page === pageCount}
                 className={
                   page === pageCount
-                    ? "pointer-events-none size-8 rounded-none border-border text-muted-foreground opacity-40"
-                    : "size-8 rounded-none border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+                    ? "pointer-events-none size-8 border-border text-muted-foreground opacity-40"
+                    : "size-8 border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
                 }
                 onClick={(event) => {
                   event.preventDefault()

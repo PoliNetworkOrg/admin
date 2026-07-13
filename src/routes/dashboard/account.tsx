@@ -12,6 +12,8 @@ import {
   UserRound,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { PageHeader } from "@/components/page-header"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,7 +23,6 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { auth, useSession } from "@/lib/auth"
-import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
 import { uploadProfilePicture } from "@/server/api.functions"
 
@@ -163,37 +164,29 @@ function Account() {
 
   return (
     <div className="animate-appear">
-      <section className="flex flex-col items-start border-b border-border pb-6">
-        <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
-          OPERATOR PROFILE
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">Manage your profile and authentication methods.</p>
-      </section>
+      <PageHeader
+        eyebrow="Account"
+        title="Profile and security"
+        description="Manage your identity, passkeys and active sessions."
+      />
       {notice && (
-        <div
-          className={cn(
-            "my-4 border px-3 py-2.5 text-[11px]",
-            notice.type === "success"
-              ? "border-primary/30 bg-accent text-primary"
-              : "border-destructive/30 bg-destructive/10 text-destructive"
-          )}
-        >
-          {notice.text}
-        </div>
+        <Alert variant={notice.type === "error" ? "destructive" : "default"} className="mt-4">
+          <AlertDescription>{notice.text}</AlertDescription>
+        </Alert>
       )}
 
-      <Card className="mt-5 rounded-none py-0 shadow-none">
-        <CardContent className="flex items-center gap-4 p-5 max-[600px]:flex-wrap">
+      <Card className="mt-5 [--card-spacing:--spacing(5)]">
+        <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
           <div className="relative">
             <Avatar size="lg" className="size-[58px] after:border-0">
               {user?.image && <AvatarImage src={user.image} alt="Your profile" />}
-              <AvatarFallback className="bg-sidebar-primary font-mono text-base text-sidebar">
+              <AvatarFallback className="bg-primary font-mono text-base text-primary-foreground">
                 {avatarText(user?.name, user?.email)}
               </AvatarFallback>
             </Avatar>
             <Button
               variant="secondary"
-              size="icon-xs"
+              size="icon-sm"
               className="absolute right-[-5px] bottom-[-5px] rounded-full border border-background bg-card"
               onClick={() => fileInput.current?.click()}
               disabled={busy === "image"}
@@ -224,32 +217,30 @@ function Account() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-none text-[10px] text-destructive"
+              className="text-[10px] text-destructive"
               onClick={() => void removeImage()}
               disabled={busy === "image"}
             >
               Remove picture
             </Button>
           )}
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <div className="mt-3.5 grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-        <Card className="rounded-none py-0 shadow-none">
+        <Card className="py-0">
           <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
             <UserRound className="mt-0.5 size-5 shrink-0 text-primary" />
             <span>
-              <CardTitle className="text-[13px]">Profile details</CardTitle>
-              <CardDescription className="mt-1 text-[10px]">Displayed throughout the admin console.</CardDescription>
+              <CardTitle>Profile details</CardTitle>
+              <CardDescription className="mt-1">Displayed throughout the admin console.</CardDescription>
             </span>
           </CardHeader>
           <CardContent className="p-5">
             <form onSubmit={(event) => void updateName(event)}>
               <FieldGroup className="gap-3.5">
                 <Field>
-                  <FieldLabel htmlFor="full-name" className="font-mono text-[10px] font-medium text-muted-foreground">
-                    Full name
-                  </FieldLabel>
+                  <FieldLabel htmlFor="full-name">Full name</FieldLabel>
                   <Input
                     id="full-name"
                     value={name}
@@ -259,19 +250,10 @@ function Account() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel
-                    htmlFor="account-email"
-                    className="font-mono text-[10px] font-medium text-muted-foreground"
-                  >
-                    Email address
-                  </FieldLabel>
+                  <FieldLabel htmlFor="account-email">Email address</FieldLabel>
                   <Input id="account-email" value={user?.email ?? ""} disabled />
                 </Field>
-                <Button
-                  type="submit"
-                  className="w-max rounded-none bg-primary text-[11px] hover:bg-primary/85"
-                  disabled={busy === "name" || name.trim() === user?.name}
-                >
+                <Button type="submit" className="w-max" disabled={busy === "name" || name.trim() === user?.name}>
                   {busy === "name" && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Save
                   profile
                 </Button>
@@ -280,12 +262,12 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-none py-0 shadow-none">
+        <Card className="py-0">
           <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
             <Mail className="mt-0.5 shrink-0 text-primary" />
             <span>
-              <CardTitle className="text-[13px]">Telegram identity</CardTitle>
-              <CardDescription className="mt-1 text-[10px]">Used to determine roles and permissions.</CardDescription>
+              <CardTitle>Telegram identity</CardTitle>
+              <CardDescription className="mt-1">Used to determine roles and permissions.</CardDescription>
             </span>
           </CardHeader>
           <CardContent className="grid gap-3 p-5 text-xs">
@@ -302,22 +284,16 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
+        <Card className="col-span-2 py-0 max-[900px]:col-span-1">
           <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
             <div className="flex items-start gap-3">
               <KeyRound className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
-                <CardTitle className="text-[13px]">Passkeys</CardTitle>
-                <CardDescription className="mt-1 text-[10px]">
-                  Phishing-resistant access from your trusted devices.
-                </CardDescription>
+                <CardTitle>Passkeys</CardTitle>
+                <CardDescription className="mt-1">Phishing-resistant access from your trusted devices.</CardDescription>
               </span>
             </div>
-            <Button
-              className="rounded-none bg-primary text-[10px] hover:bg-primary/85"
-              onClick={() => void addPasskey()}
-              disabled={busy === "passkey"}
-            >
+            <Button onClick={() => void addPasskey()} disabled={busy === "passkey"}>
               <KeyRound data-icon="inline-start" /> Add passkey
             </Button>
           </CardHeader>
@@ -342,7 +318,7 @@ function Account() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="rounded-none text-destructive"
+                        className="text-destructive"
                         onClick={() => void deletePasskey(passkey.id)}
                         disabled={busy === passkey.id}
                         aria-label="Delete passkey"
@@ -360,22 +336,19 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 rounded-none py-0 shadow-none max-[900px]:col-span-1">
+        <Card className="col-span-2 py-0 max-[900px]:col-span-1">
           <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
-                <CardTitle className="text-[13px]">Active sessions</CardTitle>
-                <CardDescription className="mt-1 text-[10px]">
-                  Devices currently signed in to your account.
-                </CardDescription>
+                <CardTitle>Active sessions</CardTitle>
+                <CardDescription className="mt-1">Devices currently signed in to your account.</CardDescription>
               </span>
             </div>
             {sessions.length > 1 && (
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-none text-[10px]"
                 onClick={() => void revokeOtherSessions()}
                 disabled={busy === "sessions"}
               >
@@ -403,7 +376,7 @@ function Account() {
                     }
                     action={
                       activeSession.id === session.session?.id ? (
-                        <Badge className="h-5 rounded-none px-1.5 font-mono text-[9px]">Current</Badge>
+                        <Badge className="h-5 px-1.5 font-mono text-[9px]">Current</Badge>
                       ) : undefined
                     }
                   />
@@ -413,7 +386,7 @@ function Account() {
             <Separator />
             <Button
               variant="ghost"
-              className="m-4 rounded-none text-[11px] text-destructive"
+              className="m-4 text-[11px] text-destructive"
               onClick={() => void logout()}
               disabled={busy === "logout"}
             >
@@ -435,12 +408,12 @@ function SecurityLoading({ rows }: { rows: number }) {
     <div className="grid" aria-busy="true">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-3 border-b border-border px-5 py-4 last:border-0">
-          <Skeleton className="size-7 rounded-none" />
+          <Skeleton className="size-7" />
           <div className="flex flex-1 flex-col gap-2">
-            <Skeleton className="h-3 w-40 max-w-full rounded-none" />
-            <Skeleton className="h-2.5 w-56 max-w-full rounded-none" />
+            <Skeleton className="h-3 w-40 max-w-full" />
+            <Skeleton className="h-2.5 w-56 max-w-full" />
           </div>
-          <Skeleton className="size-7 rounded-none" />
+          <Skeleton className="size-7" />
         </div>
       ))}
     </div>
@@ -460,12 +433,12 @@ function SecurityItem({
 }) {
   return (
     <article className="flex items-center gap-3 border-b border-border px-5 py-3.5 last:border-b-0">
-      <span className="grid size-9 shrink-0 place-items-center bg-accent text-primary">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-primary">
         <Icon className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
         <h4 className="truncate text-xs font-semibold">{title}</h4>
-        <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">{description}</p>
+        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">{description}</p>
       </div>
       {action}
     </article>

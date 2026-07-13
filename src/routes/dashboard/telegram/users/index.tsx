@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getTelegramUsers } from "@/server/api.functions"
 
@@ -70,7 +70,7 @@ function TelegramUsers() {
             <Link
               to="/dashboard/telegram/users/$userId"
               params={{ userId: String(row.original.id) }}
-              className="grid size-7 place-items-center bg-accent text-primary transition-colors hover:bg-[#dce9fa]"
+              className="grid size-8 place-items-center rounded-lg bg-accent text-primary transition-colors hover:bg-muted"
               aria-label={`Open ${row.original.username ?? row.original.id}`}
             >
               <Eye className="size-4" />
@@ -103,6 +103,7 @@ function TelegramUsers() {
   return (
     <div className="animate-appear">
       <DataToolbar
+        eyebrow="Telegram"
         title="Telegram users"
         description="Browse members known to the PoliNetwork Telegram ecosystem."
         count={table.getFilteredRowModel().rows.length}
@@ -111,27 +112,24 @@ function TelegramUsers() {
       <LiveStatus connected={response.connected} message={response.message} />
       {table.getFilteredRowModel().rows.length ? (
         <>
-          <div className="overflow-auto border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <Table className="min-w-[700px] text-left">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="border-0">
                     {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
-                      >
+                      <DataTableHead key={header.id}>
                         {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                      </TableHead>
+                      </DataTableHead>
                     ))}
                   </TableRow>
                 ))}
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                  <TableRow key={row.id}>
                     {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                      <TableCell key={cell.id} className="px-4 py-3 text-sm">
                         <table.FlexRender cell={cell} />
                       </TableCell>
                     ))}

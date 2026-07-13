@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { createAzureMember, getAzureMembers, setAzureMemberNumber } from "@/server/api.functions"
@@ -61,7 +61,7 @@ function AzureMembers() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 rounded-none px-0 font-mono text-[9px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
+          className="px-0 font-mono text-[10px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
           onClick={column.getToggleSortingHandler()}
         >
           {label}
@@ -87,7 +87,7 @@ function AzureMembers() {
           const member = row.original
           return (
             <div className="flex items-center gap-2 text-xs">
-              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[#dbe8ff] font-mono text-[10px] font-medium text-[#2454a6]">
+              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-accent-foreground">
                 {member.displayName?.[0] ?? "?"}
               </span>
               <span>
@@ -112,10 +112,7 @@ function AzureMembers() {
           <div className="flex flex-wrap gap-1">
             {row.original.assignedLicensesIds?.length ? (
               row.original.assignedLicensesIds.map((license) => (
-                <Badge
-                  className="h-5 rounded-none bg-[#e8edfa] px-1.5 font-mono text-[9px] text-[#465a93]"
-                  key={license}
-                >
+                <Badge className="h-5 bg-accent px-1.5 font-mono text-[9px] text-accent-foreground" key={license}>
                   {license.replaceAll("_", " ")}
                 </Badge>
               ))
@@ -132,7 +129,7 @@ function AzureMembers() {
           <Button
             variant="link"
             size="sm"
-            className="h-auto rounded-none px-1 py-1 text-[10px] font-semibold text-primary"
+            className="text-primary"
             onClick={() => setDialog({ mode: "edit", member: row.original })}
           >
             Manage
@@ -168,6 +165,7 @@ function AzureMembers() {
   return (
     <div className="animate-appear">
       <DataToolbar
+        eyebrow="Azure"
         title="Azure members"
         description="Association membership and Microsoft 365 license information."
         count={table.getFilteredRowModel().rows.length}
@@ -178,17 +176,14 @@ function AzureMembers() {
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "rounded-none text-[10px] text-muted-foreground",
-            membersOnly && "border-primary bg-accent text-primary"
-          )}
+          className={cn("text-[10px] text-muted-foreground", membersOnly && "border-primary bg-accent text-primary")}
           onClick={() => table.setGlobalFilter({ ...memberFilter, membersOnly: !membersOnly })}
         >
           <Check data-icon="inline-start" /> Members only
         </Button>
       </DataToolbar>
       <LiveStatus connected={response.connected} message={response.message} />
-      <section className="mb-3.5 flex flex-wrap gap-6 bg-[#eaf2fc] px-3.5 py-2.5 text-[11px] text-[#51647f] max-[600px]:grid max-[600px]:gap-2">
+      <section className="mb-4 flex flex-wrap gap-6 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground max-[600px]:grid max-[600px]:gap-2">
         <div className="flex items-center gap-2">
           <Building2 className="size-6 text-primary" />
           <span>
@@ -206,27 +201,24 @@ function AzureMembers() {
         </div>
       </section>
       {table.getFilteredRowModel().rows.length ? (
-        <div className="overflow-auto border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <Table className="min-w-[800px] text-left">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-0">
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="h-[39px] bg-[#efeee7] px-[15px] font-mono text-[9px] font-medium tracking-[0.08em] text-muted-foreground"
-                    >
+                    <DataTableHead key={header.id}>
                       {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                    </TableHead>
+                    </DataTableHead>
                   ))}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-[#f6f9fe]">
+                <TableRow key={row.id}>
                   {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-[15px] py-3 text-xs">
+                    <TableCell key={cell.id} className="px-4 py-3 text-sm">
                       <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}
@@ -323,17 +315,17 @@ function MemberDialog({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-w-lg rounded-none border-border p-0">
+      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
-            AZURE DIRECTORY
+            AZURE MEMBERS
           </p>
-          <DialogTitle className="font-serif text-[24px] font-normal tracking-[-0.05em]">
+          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">
             {editing ? "Set member ID" : "Create a member"}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {editing
-              ? "Update the association number linked to this directory account."
+              ? "Update the association number linked to this Azure account."
               : "Create a member association and send a welcome email."}
           </DialogDescription>
         </DialogHeader>
@@ -398,14 +390,10 @@ function MemberDialog({
             {error && <p className="text-[10px] leading-[1.5] text-destructive">{error}</p>}
           </FieldGroup>
           <DialogFooter className="-mx-6 -mb-5 mt-2 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" className="rounded-none text-[11px]" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="rounded-none bg-primary text-[11px] hover:bg-primary/85"
-              disabled={pending}
-            >
+            <Button type="submit" disabled={pending}>
               {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
               {editing ? "Save member ID" : "Create member"}
             </Button>
