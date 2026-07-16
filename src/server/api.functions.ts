@@ -1,47 +1,14 @@
-import { type AppRouter, TRPC_PATH } from "@polinetwork/backend"
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeader } from "@tanstack/react-start/server"
-import { createTRPCClient, httpBatchLink, httpLink, isNonJsonSerializable, splitLink } from "@trpc/client"
-import SuperJSON from "superjson"
+import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
+import { trpc } from "@/lib/api"
 import { auth } from "@/lib/auth"
 
 export type BackendState<T> = { data: T; connected: boolean; message?: string }
 
-function backendOrigin() {
-  return process.env.BACKEND_URL ?? "http://localhost:3000"
-}
-
-function requestHeaders(): Record<string, string> {
-  const cookie = getRequestHeader("cookie")
-  return cookie ? { cookie } : {}
-}
-
-function client() {
-  const url = `${backendOrigin()}${TRPC_PATH}`
-  const headers = requestHeaders()
-
-  return createTRPCClient<AppRouter>({
-    links: [
-      splitLink({
-        condition: (operation) => isNonJsonSerializable(operation.input),
-        true: httpLink({
-          url,
-          headers,
-          transformer: {
-            serialize: (data) => data,
-            deserialize: (data) => SuperJSON.deserialize(data),
-          },
-        }),
-        false: httpBatchLink({ url, headers, transformer: SuperJSON }),
-      }),
-    ],
-  })
-}
-
 export const testBackend = createServerFn().handler(async () => {
   try {
-    await client().test.dbQuery.query({ dbName: "web" })
+    await trpc.test.dbQuery.query({ dbName: "web" })
     return true
   } catch (e) {
     console.error("Backend error: ", e)
@@ -51,7 +18,7 @@ export const testBackend = createServerFn().handler(async () => {
 
 async function readSession() {
   try {
-    const response = await auth.getSession({ fetchOptions: { headers: requestHeaders() } })
+    const response = await auth.getSession({ fetchOptions: { headers: getRequestHeaders() } })
     if (response.error) {
       console.error("SESSION ERROR", response.error.statusText, response.error.message)
     }
@@ -74,7 +41,7 @@ async function requireAdminRole() {
   const telegramId = session.user?.telegramId
   if (!telegramId) throw new Error("TELEGRAM_NOT_LINKED")
 
-  const { roles } = await client().tg.permissions.getRoles.query({ userId: telegramId })
+  const { roles } = await trpc.tg.permissions.getRoles.query({ userId: telegramId })
   if (!roles?.some((role) => ["owner", "direttivo", "president"].includes(role))) {
     throw new Error("UNAUTHORIZED")
   }
@@ -82,7 +49,7 @@ async function requireAdminRole() {
   return { session, telegramId }
 }
 
-async function safely<T>(request: () => Promise<T>): Promise<BackendState<T | []>> {
+async function safely<T>(request: () => Promise<T>): Promise<BackendState<T | null>> {
   try {
     await requireSession()
     return { data: await request(), connected: true }
@@ -92,7 +59,7 @@ async function safely<T>(request: () => Promise<T>): Promise<BackendState<T | []
         ? "Your session is no longer valid. Sign in again to load this data."
         : "The PoliNetwork backend is currently unavailable."
 
-    return { data: [], connected: false, message }
+    return { data: null, connected: false, message }
   }
 }
 
@@ -100,25 +67,23 @@ export type AdminSession = NonNullable<Awaited<ReturnType<typeof readSession>>>
 
 export const getCurrentSession = createServerFn().handler(readSession)
 
-export const getTelegramUsers = createServerFn().handler(() => safely(() => client().tg.users.getAll.query()))
+export const getTelegramUsers = createServerFn().handler(() => safely(() => trpc.tg.users.getAll.query()))
 
-export const getTelegramGroups = createServerFn().handler(() => safely(() => client().tg.groups.getAll.query()))
+export const getTelegramGroups = createServerFn().handler(() => safely(() => trpc.tg.groups.getAll.query()))
 
-export const getOngoingGrants = createServerFn().handler(() => safely(() => client().tg.grants.getOngoing.query()))
+export const getOngoingGrants = createServerFn().handler(() => safely(() => trpc.tg.grants.getOngoing.query()))
 
-export const getScheduledGrants = createServerFn().handler(() => safely(() => client().tg.grants.getScheduled.query()))
+export const getScheduledGrants = createServerFn().handler(() => safely(() => trpc.tg.grants.getScheduled.query()))
 
-export const getAzureMembers = createServerFn().handler(() => safely(() => client().azure.members.getAll.query()))
+export const getAzureMembers = createServerFn().handler(() => safely(() => trpc.azure.members.getAll.query()))
 
-export const getGuides = createServerFn().handler(() =>
-  safely(() => client().web.guides_matricole.getAllGuides.query())
-)
+export const getGuides = createServerFn().handler(() => safely(() => trpc.web.guides_matricole.getAllGuides.query()))
 
 export const getTelegramUserDetails = createServerFn()
   .validator(z.object({ userId: z.number().int().positive() }))
   .handler(async ({ data }) => {
     return safely(async () => {
-      const api = client()
+      const api = trpc
       const { user } = await api.tg.users.get.query({ userId: data.userId })
       if (!user) return null
 
@@ -145,14 +110,14 @@ export const setGroupVisibility = createServerFn({ method: "POST" })
   .validator(z.object({ telegramId: z.number().int(), hide: z.boolean() }))
   .handler(async ({ data }) => {
     await requireAdminRole()
-    return client().tg.groups.setHide.mutate(data)
+    return trpc.tg.groups.setHide.mutate(data)
   })
 
 export const addTelegramGroupAdmin = createServerFn({ method: "POST" })
   .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
   .handler(async ({ data }) => {
     const { telegramId } = await requireAdminRole()
-    return client().tg.permissions.addGroup.mutate({ ...data, adderId: telegramId })
+    return trpc.tg.permissions.addGroup.mutate({ ...data, adderId: telegramId })
   })
 
 export const createAzureMember = createServerFn({ method: "POST" })
@@ -166,7 +131,7 @@ export const createAzureMember = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await requireAdminRole()
-    const result = await client().azure.members.create.mutate(data)
+    const result = await trpc.azure.members.create.mutate(data)
     if (result.error) throw new Error(result.error)
     return result
   })
@@ -175,7 +140,7 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
   .validator(z.object({ userId: z.string().min(1), assocNumber: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireAdminRole()
-    const result = await client().azure.members.setAssocNumber.mutate(data)
+    const result = await trpc.azure.members.setAssocNumber.mutate(data)
     if (result.error) throw new Error(result.error)
     return result
   })
@@ -199,7 +164,7 @@ export const createGuide = createServerFn({ method: "POST", strict: false })
     formData.set("file", file)
     formData.set("createdBy", String(telegramId))
 
-    const result = await client().web.guides_matricole.addGuide.mutate(formData)
+    const result = await trpc.web.guides_matricole.addGuide.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return { id: result.id, version: result.version, date: result.date, file: result.file }
   })
@@ -208,7 +173,7 @@ export const deleteGuide = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireAdminRole()
-    const result = await client().web.guides_matricole.deleteGuide.mutate(data)
+    const result = await trpc.web.guides_matricole.deleteGuide.mutate(data)
     if (result.error) throw new Error(result.error)
     return result
   })
@@ -225,5 +190,5 @@ export const uploadProfilePicture = createServerFn({ method: "POST", strict: fal
     const formData = new FormData()
     formData.set("userId", session.user?.id ?? "")
     formData.set("image", image)
-    return client().auth.updateProfilePic.mutate(formData)
+    return trpc.auth.updateProfilePic.mutate(formData)
   })

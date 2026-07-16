@@ -6,20 +6,13 @@ import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import type { TgUser } from "@/lib/api/types"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getTelegramUsers } from "@/server/api.functions"
 
-type TelegramUser = {
-  id: number
-  username?: string | null
-  firstName?: string | null
-  lastName?: string | null
-  profilePicUrl?: string | null
-}
-
-const userColumnHelper = createAppColumnHelper<TelegramUser>()
+const userColumnHelper = createAppColumnHelper<TgUser>()
 
 export const Route = createFileRoute("/dashboard/telegram/users/")({
   loader: () => getTelegramUsers(),
@@ -29,49 +22,41 @@ export const Route = createFileRoute("/dashboard/telegram/users/")({
 
 function TelegramUsers() {
   const response = Route.useLoaderData()
-  const users = (response.data as { users?: TelegramUser[] }).users ?? []
+  const users = response.data?.users ?? []
 
   const columns = useMemo(
     () =>
       userColumnHelper.columns([
-        userColumnHelper.accessor("id", {
-          header: "Telegram ID",
-          cell: ({ getValue }) => <span className="font-mono text-xs font-medium">{getValue()}</span>,
-        }),
         userColumnHelper.display({
-          id: "identity",
-          header: "Identity",
+          id: "name",
+          header: "Name",
           cell: ({ row }) => {
-            const user = row.original
-            const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
+            const { firstName, lastName } = row.original
+            const name = [firstName, lastName].filter(Boolean).join(" ")
             return (
-              <Link
-                to="/dashboard/telegram/users/$userId"
-                params={{ userId: String(user.id) }}
-                className="flex w-max items-center gap-3 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-              >
+              <div className="flex items-center gap-2">
                 <Avatar className="size-9">
-                  {user.profilePicUrl && <AvatarImage src={user.profilePicUrl} alt="" />}
-                  <AvatarFallback className="bg-accent font-mono text-[10px] font-medium text-accent-foreground">
-                    {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
+                  <AvatarFallback className="bg-accent font-mono text-sm font-medium text-accent-foreground">
+                    {[firstName[0], lastName?.[0] ?? ""].join("").trim().toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span>
-                  <span className="block font-medium tracking-[-0.01em]">{name}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">Open member details</span>
-                </span>
-              </Link>
+                <span className="block font-medium">{name}</span>
+              </div>
             )
           },
+        }),
+        userColumnHelper.accessor("id", {
+          header: "Telegram ID",
+          cell: ({ getValue }) => <span className="font-mono text-sm font-medium">{getValue()}</span>,
         }),
         userColumnHelper.accessor("username", {
           header: "Username",
           cell: ({ getValue }) => {
             const username = getValue()
             return username ? (
-              <span className="font-mono text-[11px] font-medium text-primary">@{username}</span>
+              <span className="font-mono text-sm font-medium text-primary">@{username}</span>
             ) : (
-              <span className="text-xs italic text-muted-foreground">Not set</span>
+              <span className="text-sm italic text-muted-foreground">Not set</span>
             )
           },
         }),

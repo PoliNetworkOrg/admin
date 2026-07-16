@@ -13,7 +13,7 @@ export function AppMark({ compact = false }: { compact?: boolean }) {
         <span className="block leading-none">
           <strong className="block text-sm font-semibold tracking-[-0.025em]">PoliNetwork</strong>
           <small className="mt-1.5 block text-[9px] leading-none font-medium tracking-[0.12em] text-current/65 uppercase">
-            Admin console
+            Admin dashboard
           </small>
         </span>
       )}
