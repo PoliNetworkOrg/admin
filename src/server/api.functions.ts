@@ -110,6 +110,10 @@ export const getScheduledGrants = createServerFn().handler(() => safely(() => cl
 
 export const getAzureMembers = createServerFn().handler(() => safely(() => client().azure.members.getAll.query()))
 
+export const getGuides = createServerFn().handler(() =>
+  safely(() => client().web.guides_matricole.getAllGuides.query())
+)
+
 export const getTelegramUserDetails = createServerFn()
   .validator(z.object({ userId: z.number().int().positive() }))
   .handler(async ({ data }) => {
@@ -172,6 +176,39 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdminRole()
     const result = await client().azure.members.setAssocNumber.mutate(data)
+    if (result.error) throw new Error(result.error)
+    return result
+  })
+
+export const createGuide = createServerFn({ method: "POST", strict: false })
+  .validator((data: FormData) => data)
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    const version = data.get("version")
+    const date = data.get("date")
+    const file = data.get("file")
+
+    if (typeof version !== "string" || !version.trim()) throw new Error("INVALID_VERSION")
+    if (typeof date !== "string" || Number.isNaN(Date.parse(date))) throw new Error("INVALID_DATE")
+    if (!(file instanceof File) || file.type !== "application/pdf") throw new Error("INVALID_FILE_TYPE")
+    if (file.size > 2 * 1024 * 1024) throw new Error("FILE_TOO_LARGE")
+
+    const formData = new FormData()
+    formData.set("version", version.trim())
+    formData.set("date", date)
+    formData.set("file", file)
+    formData.set("createdBy", String(telegramId))
+
+    const result = await client().web.guides_matricole.addGuide.mutate(formData)
+    if ("error" in result) throw new Error(result.error)
+    return { id: result.id, version: result.version, date: result.date, file: result.file }
+  })
+
+export const deleteGuide = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.number().int().positive() }))
+  .handler(async ({ data }) => {
+    await requireAdminRole()
+    const result = await client().web.guides_matricole.deleteGuide.mutate(data)
     if (result.error) throw new Error(result.error)
     return result
   })

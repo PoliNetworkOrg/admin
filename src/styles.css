@@ -92,7 +92,7 @@
   --muted-foreground: var(--muted-blue);
   --accent: var(--mint);
   --accent-foreground: #bddcff;
-  --destructive: #ff9b86;
+  --destructive: #f74040;
   --success: oklch(0.792 0.209 151.711);
   --success-foreground: oklch(0.723 0.219 149.579);
   --border: var(--line);

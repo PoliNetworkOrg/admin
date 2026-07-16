@@ -62,7 +62,7 @@ function UserProfile() {
     return (
       <div className="animate-appear">
         <BackLink />
-        <LiveStatus connected={response.connected} message={response.message} />
+        <LiveStatus connected={response.connected} message={"message" in response ? response.message : undefined} />
         <Card className="mt-5 border-dashed text-center">
           <CardContent className="px-5 py-10">
             <UserRound className="mx-auto size-6 text-primary" />
@@ -81,7 +81,7 @@ function UserProfile() {
   return (
     <div className="animate-appear">
       <BackLink />
-      <LiveStatus connected={response.connected} message={response.message} />
+      <LiveStatus connected={response.connected} message={"message" in response ? response.message : undefined} />
       <Card className="mt-5 [--card-spacing:--spacing(5)]">
         <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
           <Avatar className="size-14">
