@@ -57,7 +57,11 @@ export function CreateGuide({
     setPending(true)
 
     try {
-      const { guide, error } = await createGuide({ version: trimmedVersion, date: date.toISOString(), file })
+      const formData = new FormData()
+      formData.set("version", trimmedVersion)
+      formData.set("date", date.toISOString())
+      formData.set("file", file)
+      const { guide, error } = await createGuide(formData)
 
       if (error === "UNAUTHORIZED") toast.error("You don't have permission to add guides.")
       else if (error === "DUPLICATE_VERSION") toast.error("This version already exists.")
@@ -96,7 +100,7 @@ export function CreateGuide({
             <Input
               id="version"
               autoComplete="off"
-              placeholder="v.1.0.0"
+              placeholder="1.0"
               value={version}
               required
               aria-invalid={isDuplicate}
