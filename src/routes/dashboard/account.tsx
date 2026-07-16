@@ -11,13 +11,13 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -58,6 +58,8 @@ function Account() {
   const [securityLoading, setSecurityLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  const sortedSessions = useMemo(() => sessions.toSorted((a) => (a.id === session.session.id ? -1 : 0)), [sessions])
 
   const refreshSecurityData = useCallback(async () => {
     try {
@@ -209,68 +211,68 @@ function Account() {
         </Alert>
       )}
 
-      <Card className="mt-5 [--card-spacing:--spacing(5)]">
-        <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
-          <div className="relative">
-            <Avatar size="lg" className="size-[58px] after:border-0">
-              {user?.image && <AvatarImage src={user.image} alt="Your profile" />}
-              <AvatarFallback className="bg-primary font-mono text-base text-primary-foreground">
-                {avatarText(user?.name, user?.email)}
-              </AvatarFallback>
-            </Avatar>
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              className="absolute right-[-5px] bottom-[-5px] rounded-full border border-background bg-card"
-              onClick={() => fileInput.current?.click()}
-              disabled={busy === "image"}
-              aria-label="Upload profile picture"
-            >
-              <Camera />
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/png,image/jpeg"
-              hidden
-              onChange={(event) => void uploadImage(event.target.files?.[0])}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold">{user?.name || "Complete your profile"}</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">{user?.email}</p>
-            <span className="mt-1.5 block font-mono text-[10px] text-primary">
-              {user?.telegramUsername
-                ? `@${user.telegramUsername}`
-                : user?.telegramId
-                  ? `Telegram ID ${user.telegramId}`
-                  : "Telegram not linked"}
-            </span>
-          </div>
-          {user?.image && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[10px] text-destructive"
-              onClick={() => void removeImage()}
-              disabled={busy === "image"}
-            >
-              Remove picture
-            </Button>
-          )}
-        </CardHeader>
-      </Card>
+      <div className="mt-5 grid grid-cols-2 gap-5 max-[900px]:grid-cols-1">
+        <Card className="col-span-2 max-[900px]:grid-cols-1">
+          <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
+            <div className="relative">
+              <Avatar className="size-20 after:border-0">
+                {user?.image && <AvatarImage src={user.image} alt="Your profile" />}
+                <AvatarFallback className="bg-primary font-mono text-base text-primary-foreground">
+                  {avatarText(user?.name, user?.email)}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                className="absolute right-[-5px] bottom-[-5px] rounded-full border border-background bg-card"
+                onClick={() => fileInput.current?.click()}
+                disabled={busy === "image"}
+                aria-label="Upload profile picture"
+              >
+                <Camera />
+              </Button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/png,image/jpeg"
+                hidden
+                onChange={(event) => void uploadImage(event.target.files?.[0])}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold">{user?.name || "Complete your profile"}</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">{user?.email}</p>
+              <span className="mt-1.5 block font-mono text-[10px] text-primary">
+                {user?.telegramUsername
+                  ? `@${user.telegramUsername}`
+                  : user?.telegramId
+                    ? `Telegram ID ${user.telegramId}`
+                    : "Telegram not linked"}
+              </span>
+            </div>
+            {user?.image && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[10px] text-destructive"
+                onClick={() => void removeImage()}
+                disabled={busy === "image"}
+              >
+                Remove picture
+              </Button>
+            )}
+          </CardHeader>
+        </Card>
 
-      <div className="mt-3.5 grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-        <Card className="py-0">
-          <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
+        <Card>
+          <CardHeader className="flex flex-row items-start gap-3 border-b border-border">
             <UserRound className="mt-0.5 size-5 shrink-0 text-primary" />
             <span>
               <CardTitle>Profile details</CardTitle>
               <CardDescription className="mt-1">Displayed throughout the admin console.</CardDescription>
             </span>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent>
             <form onSubmit={(event) => void updateName(event)}>
               <FieldGroup className="gap-3.5">
                 <Field>
@@ -296,15 +298,15 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="py-0">
-          <CardHeader className="flex flex-row items-start gap-3 border-b border-border p-5">
+        <Card>
+          <CardHeader className="flex flex-row items-start gap-3 border-b border-border">
             <Mail className="mt-0.5 shrink-0 text-primary" />
             <span>
               <CardTitle>Telegram identity</CardTitle>
               <CardDescription className="mt-1">Used to determine roles and permissions.</CardDescription>
             </span>
           </CardHeader>
-          <CardContent className="grid gap-3 p-5 text-xs">
+          <CardContent className="grid gap-3 text-xs">
             <dl className="grid gap-3">
               <div>
                 <dt className="font-mono text-[10px] text-muted-foreground">Username</dt>
@@ -318,8 +320,8 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 py-0 max-[900px]:col-span-1">
-          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
+        <Card className="col-span-2 max-[900px]:col-span-1">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border">
             <div className="flex items-start gap-3">
               <KeyRound className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
@@ -331,7 +333,7 @@ function Account() {
               <KeyRound data-icon="inline-start" /> Add passkey
             </Button>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent>
             {securityLoading ? (
               <SecurityLoading rows={2} />
             ) : (
@@ -370,8 +372,8 @@ function Account() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 py-0 max-[900px]:col-span-1">
-          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border p-5">
+        <Card className="col-span-2 max-[900px]:col-span-1">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border">
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 size-5 shrink-0 text-primary" />
               <span>
@@ -390,12 +392,12 @@ function Account() {
               </Button>
             )}
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent>
             {securityLoading ? (
               <SecurityLoading rows={2} />
             ) : (
               <SecurityList>
-                {sessions.map((activeSession) => (
+                {sortedSessions.map((activeSession) => (
                   <SecurityItem
                     key={activeSession.id}
                     icon={MonitorSmartphone}
@@ -417,16 +419,18 @@ function Account() {
                 ))}
               </SecurityList>
             )}
-            <Separator />
+          </CardContent>
+          <CardFooter>
             <Button
-              variant="ghost"
-              className="m-4 text-[11px] text-destructive"
+              variant="destructive"
+              size="sm"
+              className="text-destructive"
               onClick={() => void logout()}
               disabled={busy === "logout"}
             >
               <LogOut data-icon="inline-start" /> Sign out of this device
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     </div>
@@ -434,7 +438,7 @@ function Account() {
 }
 
 function SecurityList({ children }: { children: React.ReactNode }) {
-  return <div className="grid">{children}</div>
+  return <div className="grid gap-5">{children}</div>
 }
 
 function SecurityLoading({ rows }: { rows: number }) {
@@ -466,7 +470,7 @@ function SecurityItem({
   action?: React.ReactNode
 }) {
   return (
-    <article className="flex items-center gap-3 border-b border-border px-5 py-3.5 last:border-b-0">
+    <article className="flex items-center gap-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-primary">
         <Icon className="size-5" />
       </span>
