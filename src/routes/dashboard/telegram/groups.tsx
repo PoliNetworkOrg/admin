@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { Eye, EyeOff, MessageCircleMore } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, MessageCircleMore } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
@@ -9,7 +9,7 @@ import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { getTelegramGroups, setGroupVisibility } from "@/server/api.functions"
@@ -65,22 +65,27 @@ function TelegramGroups() {
         groupColumnHelper.accessor("title", {
           header: "Group",
           cell: ({ row }) => (
-            <div className="flex items-center gap-2">
-              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent text-primary">
+            <div className="flex items-center gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-primary">
                 <MessageCircleMore className="size-4" />
               </span>
               <b>{row.original.title}</b>
             </div>
           ),
         }),
-        groupColumnHelper.accessor("telegramId", { header: "Telegram ID", cell: ({ getValue }) => getValue() }),
+        groupColumnHelper.accessor("telegramId", {
+          header: "Telegram ID",
+          cell: ({ getValue }) => <span className="font-mono text-xs">{getValue()}</span>,
+        }),
         groupColumnHelper.accessor("tag", {
           header: "Tag",
           cell: ({ getValue }) =>
             getValue() ? (
-              <Badge className="h-5 bg-accent px-1.5 font-mono text-[9px] text-primary">@{getValue()}</Badge>
+              <Badge variant="secondary" className="font-mono text-[10px] text-primary">
+                @{getValue()}
+              </Badge>
             ) : (
-              <span className="text-[11px] italic text-muted-foreground">—</span>
+              <span className="text-xs italic text-muted-foreground">Not set</span>
             ),
         }),
         groupColumnHelper.display({
@@ -89,27 +94,22 @@ function TelegramGroups() {
           cell: ({ row }) => {
             const group = row.original
             const pending = updatingId === group.telegramId
+            const visible = !group.hide
             return (
               <Button
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "border-transparent font-mono text-xs w-full gap-2",
-                  group.hide ? "bg-muted text-muted-foreground" : "bg-accent text-primary"
+                  "gap-1 text-xs",
+                  visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
                 )}
                 disabled={pending}
+                aria-pressed={visible}
+                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
                 onClick={() => void toggleVisibility(group)}
-                title="Toggle group visibility"
               >
-                {group.hide ? (
-                  <>
-                    <EyeOff data-icon="inline-start" /> Hidden
-                  </>
-                ) : (
-                  <>
-                    <Eye data-icon="inline-start" /> Visible
-                  </>
-                )}
+                {visible ? <Eye /> : <EyeOff />}
+                {visible ? "Visible" : "Hidden"}
               </Button>
             )
           },
@@ -121,15 +121,16 @@ function TelegramGroups() {
             const link = row.original.link ?? row.original.inviteLink
             return link ? (
               <a
-                className="font-mono text-[11px] font-medium text-primary hover:underline"
+                className="rounded-md font-medium text-primary flex items-center gap-1 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
                 href={link}
                 target="_blank"
                 rel="noreferrer"
               >
-                Open link
+                <ExternalLink className="size-3" />
+                Open invite link
               </a>
             ) : (
-              <span className="text-[11px] italic text-muted-foreground">Not shared</span>
+              <span className="text-xs italic text-muted-foreground">Not shared</span>
             )
           },
         }),
@@ -147,9 +148,11 @@ function TelegramGroups() {
         .trim()
         .toLocaleLowerCase()
         .replace(/^@/, "")
-      return !query || `${group.title}\u0000${group.tag ?? ""}`.toLocaleLowerCase().includes(query)
+      return !query || [group.title, group.tag].filter(Boolean).join(" ").toLocaleLowerCase().includes(query)
     },
   })
+  const filteredCount = table.getFilteredRowModel().rows.length
+  const hasSearch = Boolean(String(table.state.globalFilter ?? "").trim())
 
   return (
     <div className="animate-appear">
@@ -157,8 +160,13 @@ function TelegramGroups() {
         eyebrow="Telegram"
         title="Telegram groups"
         description="Maintain the community groups connected to PoliNetwork."
-        count={table.getFilteredRowModel().rows.length}
-        onSearch={(value) => table.setGlobalFilter(value)}
+        count={filteredCount}
+        total={groups.length}
+        searchPlaceholder="Search by group name or tag…"
+        onSearch={(value) => {
+          table.setGlobalFilter(value)
+          table.setPageIndex(0)
+        }}
       />
       <LiveStatus connected={response.connected} message={response.message} />
       {mutationError && (
@@ -166,49 +174,52 @@ function TelegramGroups() {
           <AlertDescription>{mutationError}</AlertDescription>
         </Alert>
       )}
-      {table.getFilteredRowModel().rows.length ? (
-        <>
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <Table className="text-left">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="border-0">
-                    {headerGroup.headers.map((header) => (
-                      <DataTableHead key={header.id}>
-                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                      </DataTableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-4 py-3 text-sm">
-                        <table.FlexRender cell={cell} />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <Pagination
-            page={table.state.pagination.pageIndex + 1}
-            pageCount={table.getPageCount()}
-            pageSize={table.state.pagination.pageSize}
-            onPageChange={(page) => table.setPageIndex(page - 1)}
-            onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+      {response.connected &&
+        (filteredCount ? (
+          <>
+            <TableSurface>
+              <Table className="min-w-[760px] text-left">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="border-0 hover:bg-transparent">
+                      {headerGroup.headers.map((header) => (
+                        <DataTableHead key={header.id}>
+                          {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                        </DataTableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getAllCells().map((cell) => (
+                        <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
+                          <table.FlexRender cell={cell} />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableSurface>
+            <Pagination
+              page={table.state.pagination.pageIndex + 1}
+              pageCount={table.getPageCount()}
+              pageSize={table.state.pagination.pageSize}
+              onPageChange={(page) => table.setPageIndex(page - 1)}
+              onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+            />
+          </>
+        ) : (
+          <EmptyState
+            icon={MessageCircleMore}
+            title={hasSearch ? "No groups match this search" : "No Telegram groups yet"}
+            text={
+              hasSearch ? "Clear the search or try a different group name or tag." : "No Telegram groups were returned."
+            }
           />
-        </>
-      ) : (
-        <EmptyState
-          icon={MessageCircleMore}
-          title="No matching groups"
-          text="Try another filter or check the backend connection."
-        />
-      )}
+        ))}
     </div>
   )
 }

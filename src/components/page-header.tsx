@@ -12,13 +12,15 @@ export function PageHeader({
   action?: ReactNode
 }) {
   return (
-    <section className="flex items-end justify-between gap-6 border-b border-border pb-5 max-[640px]:items-start max-[640px]:flex-col">
-      <div>
-        <p className="text-[10px] font-semibold tracking-[0.1em] text-primary uppercase">{eyebrow}</p>
-        <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.035em]">{title}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+    <header className="flex items-start justify-between gap-8 max-[640px]:flex-col max-[640px]:gap-4">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold tracking-[0.1em] text-primary uppercase">{eyebrow}</p>
+        <h2 className="mt-2 text-[clamp(1.75rem,3vw,2.25rem)] leading-[1.08] font-semibold tracking-[-0.045em]">
+          {title}
+        </h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
-      {action}
-    </section>
+      {action && <div className="shrink-0 max-[640px]:w-full max-[640px]:[&>*]:w-full">{action}</div>}
+    </header>
   )
 }

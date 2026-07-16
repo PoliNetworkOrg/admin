@@ -64,6 +64,8 @@ function Account() {
       const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
       setPasskeys((passkeyResult.data ?? []) as Passkey[])
       setSessions((sessionResult.data ?? []) as ActiveSession[])
+    } catch {
+      setNotice({ type: "error", text: "Could not load passkeys and active sessions." })
     } finally {
       setSecurityLoading(false)
     }
@@ -78,13 +80,18 @@ function Account() {
     event.preventDefault()
     setBusy("name")
     setNotice(null)
-    const result = await auth.updateUser({ name: name.trim() })
-    if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not update your name." })
-    else {
-      await sessionQuery.refetch()
-      setNotice({ type: "success", text: "Profile name updated." })
+    try {
+      const result = await auth.updateUser({ name: name.trim() })
+      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not update your name." })
+      else {
+        await sessionQuery.refetch()
+        setNotice({ type: "success", text: "Profile name updated." })
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not update your name." })
+    } finally {
+      setBusy(null)
     }
-    setBusy(null)
   }
 
   async function uploadImage(file?: File) {
@@ -110,56 +117,83 @@ function Account() {
   async function removeImage() {
     setBusy("image")
     setNotice(null)
-    const result = await auth.updateUser({ image: null })
-    if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not remove the picture." })
-    else {
-      await sessionQuery.refetch()
-      setNotice({ type: "success", text: "Profile picture removed." })
+    try {
+      const result = await auth.updateUser({ image: null })
+      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not remove the picture." })
+      else {
+        await sessionQuery.refetch()
+        setNotice({ type: "success", text: "Profile picture removed." })
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not remove the picture." })
+    } finally {
+      setBusy(null)
     }
-    setBusy(null)
   }
 
   async function addPasskey() {
     setBusy("passkey")
     setNotice(null)
-    const result = await auth.passkey.addPasskey({ name: `Passkey ${passkeys.length + 1}` })
-    if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
-    else {
-      await refreshSecurityData()
-      setNotice({ type: "success", text: "Passkey created." })
+    try {
+      const result = await auth.passkey.addPasskey({ name: `Passkey ${passkeys.length + 1}` })
+      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
+      else {
+        await refreshSecurityData()
+        setNotice({ type: "success", text: "Passkey created." })
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not create the passkey." })
+    } finally {
+      setBusy(null)
     }
-    setBusy(null)
   }
 
   async function deletePasskey(id: string) {
     setBusy(id)
     setNotice(null)
-    const result = await auth.passkey.deletePasskey({ id })
-    if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
-    else {
-      await refreshSecurityData()
-      setNotice({ type: "success", text: "Passkey deleted." })
+    try {
+      const result = await auth.passkey.deletePasskey({ id })
+      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
+      else {
+        await refreshSecurityData()
+        setNotice({ type: "success", text: "Passkey deleted." })
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not delete the passkey." })
+    } finally {
+      setBusy(null)
     }
-    setBusy(null)
   }
 
   async function revokeOtherSessions() {
     setBusy("sessions")
     setNotice(null)
-    const result = await auth.revokeOtherSessions()
-    if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
-    else {
-      await refreshSecurityData()
-      setNotice({ type: "success", text: "Other sessions signed out." })
+    try {
+      const result = await auth.revokeOtherSessions()
+      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
+      else {
+        await refreshSecurityData()
+        setNotice({ type: "success", text: "Other sessions signed out." })
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not revoke other sessions." })
+    } finally {
+      setBusy(null)
     }
-    setBusy(null)
   }
 
   async function logout() {
     setBusy("logout")
-    await auth.signOut()
-    await router.invalidate()
-    await router.navigate({ to: "/login", replace: true })
+    setNotice(null)
+    try {
+      const result = await auth.signOut()
+      if (result.error) throw new Error(result.error.message)
+      await router.invalidate()
+      await router.navigate({ to: "/login", replace: true })
+    } catch {
+      setNotice({ type: "error", text: "Could not sign out. Please try again." })
+      setBusy(null)
+    }
   }
 
   return (

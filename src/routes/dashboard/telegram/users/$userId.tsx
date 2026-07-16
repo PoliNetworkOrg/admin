@@ -33,7 +33,11 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { addTelegramGroupAdmin, getTelegramUserDetails } from "@/server/api.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
-  loader: ({ params }) => getTelegramUserDetails({ data: { userId: Number.parseInt(params.userId, 10) } }),
+  loader: ({ params }) => {
+    const userId = Number(params.userId)
+    if (!Number.isInteger(userId) || userId <= 0) return { data: null, connected: true }
+    return getTelegramUserDetails({ data: { userId } })
+  },
   pendingComponent: DetailPageSkeleton,
   component: UserProfile,
 })
@@ -71,11 +75,13 @@ function UserProfile() {
   }
 
   const { user, roles, groupAdmin, groups, messages, audits, grant } = data
+  const administeredGroups = groupAdmin.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
 
   return (
     <div className="animate-appear">
       <BackLink />
+      <LiveStatus connected={response.connected} message={response.message} />
       <Card className="mt-5 [--card-spacing:--spacing(5)]">
         <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
           <Avatar className="size-14">
@@ -136,7 +142,7 @@ function UserProfile() {
       <DetailSection
         icon={UsersRound}
         title="Group administration"
-        count={groupAdmin.length}
+        count={administeredGroups.length}
         action={
           <Button variant="outline" size="sm" className="text-[10px]" onClick={() => setAdminDialogOpen(true)}>
             <UserPlus data-icon="inline-start" /> Add group
@@ -144,28 +150,26 @@ function UserProfile() {
         }
       >
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-          {groupAdmin
-            .filter((entry) => entry !== null)
-            .map((entry) => (
-              <Card size="sm" key={entry.group.id}>
-                <CardContent className="p-5">
-                  <h3 className="text-[13px]">{entry.group.title}</h3>
-                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.group.id}</p>
-                  <small className="mt-3 block text-[10px] text-muted-foreground">
-                    Added by {entry.addedBy.firstName}
-                    {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
-                  </small>
-                </CardContent>
-              </Card>
-            ))}
-          {!groupAdmin.length && <SectionEmpty text="This user does not administer any group." />}
+          {administeredGroups.map((entry) => (
+            <Card size="sm" key={entry.group.id}>
+              <CardContent className="p-5">
+                <h3 className="text-[13px]">{entry.group.title}</h3>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.group.id}</p>
+                <small className="mt-3 block text-[10px] text-muted-foreground">
+                  Added by {entry.addedBy.firstName}
+                  {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
+                </small>
+              </CardContent>
+            </Card>
+          ))}
+          {!administeredGroups.length && <SectionEmpty text="This user does not administer any group." />}
         </div>
       </DetailSection>
       <AddGroupAdminDialog
         open={adminDialogOpen}
         userId={user.id}
         groups={groups}
-        administeredGroupIds={new Set(groupAdmin.filter((entry) => entry !== null).map((entry) => entry.group.id))}
+        administeredGroupIds={new Set(administeredGroups.map((entry) => entry.group.id))}
         onClose={() => setAdminDialogOpen(false)}
         onSaved={async () => {
           setAdminDialogOpen(false)
@@ -264,7 +268,9 @@ function Definition({ label, children }: { label: string; children: React.ReactN
 }
 function SectionEmpty({ text }: { text: string }) {
   return (
-    <p className="border border-dashed border-border px-5 py-8 text-center text-[11px] text-muted-foreground">{text}</p>
+    <p className="rounded-xl border border-dashed border-border bg-card px-5 py-8 text-center text-xs text-muted-foreground">
+      {text}
+    </p>
   )
 }
 
@@ -283,7 +289,7 @@ function DetailSection({
 }) {
   return (
     <section className="mt-[34px]">
-      <header className="mb-3 flex items-center justify-between border-b border-border pb-3">
+      <header className="mb-4 flex items-center justify-between gap-4">
         <span className="flex items-center gap-2">
           <Icon className="size-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-[-0.025em]">{title}</h2>

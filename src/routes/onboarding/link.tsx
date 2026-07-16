@@ -21,8 +21,8 @@ function LinkTelegram() {
           </span>
           <CardTitle className="text-2xl tracking-[-0.035em]">Telegram access</CardTitle>
           <CardDescription className="leading-6">
-            Your Telegram identity is used to verify the administrative roles that unlock this workspace. Sign in first;
-            if your account is not linked, the administrator onboarding flow will guide you through the connection.
+            Your Telegram identity is used to verify the administrative roles that unlock this workspace. If your
+            account is not linked yet, contact a PoliNetwork administrator before signing in again.
           </CardDescription>
         </CardHeader>
         <CardContent>

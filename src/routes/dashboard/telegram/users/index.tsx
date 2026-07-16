@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Eye, MessageCircle } from "lucide-react"
+import { ArrowRight, MessageCircle } from "lucide-react"
 import { useMemo } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
-import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { createAppColumnHelper, useAppTable } from "@/lib/table"
 import { getTelegramUsers } from "@/server/api.functions"
 
@@ -35,20 +36,31 @@ function TelegramUsers() {
       userColumnHelper.columns([
         userColumnHelper.accessor("id", {
           header: "Telegram ID",
-          cell: ({ getValue }) => getValue(),
+          cell: ({ getValue }) => <span className="font-mono text-xs font-medium">{getValue()}</span>,
         }),
         userColumnHelper.display({
           id: "identity",
           header: "Identity",
           cell: ({ row }) => {
             const user = row.original
+            const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
             return (
-              <div className="flex items-center gap-2">
-                <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-primary">
-                  {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
+              <Link
+                to="/dashboard/telegram/users/$userId"
+                params={{ userId: String(user.id) }}
+                className="flex w-max items-center gap-3 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+              >
+                <Avatar className="size-9">
+                  {user.profilePicUrl && <AvatarImage src={user.profilePicUrl} alt="" />}
+                  <AvatarFallback className="bg-accent font-mono text-[10px] font-medium text-accent-foreground">
+                    {(user.firstName?.[0] ?? user.username?.[0] ?? "?").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span>
+                  <span className="block font-medium tracking-[-0.01em]">{name}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">Open member details</span>
                 </span>
-                <span>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"}</span>
-              </div>
+              </Link>
             )
           },
         }),
@@ -59,7 +71,7 @@ function TelegramUsers() {
             return username ? (
               <span className="font-mono text-[11px] font-medium text-primary">@{username}</span>
             ) : (
-              <span className="text-[11px] italic text-muted-foreground">Not set</span>
+              <span className="text-xs italic text-muted-foreground">Not set</span>
             )
           },
         }),
@@ -70,10 +82,10 @@ function TelegramUsers() {
             <Link
               to="/dashboard/telegram/users/$userId"
               params={{ userId: String(row.original.id) }}
-              className="grid size-8 place-items-center rounded-lg bg-accent text-primary transition-colors hover:bg-muted"
+              className="ml-auto flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/25"
               aria-label={`Open ${row.original.username ?? row.original.id}`}
             >
-              <Eye className="size-4" />
+              <ArrowRight className="size-4" />
             </Link>
           ),
         }),
@@ -91,68 +103,74 @@ function TelegramUsers() {
         .trim()
         .toLocaleLowerCase()
         .replace(/^@/, "")
-      return (
-        !query ||
-        `${user.username ?? ""}\u0000${user.firstName ?? ""}\u0000${user.lastName ?? ""}`
-          .toLocaleLowerCase()
-          .includes(query)
-      )
+      const searchable = [user.username, user.firstName, user.lastName].filter(Boolean).join(" ").toLocaleLowerCase()
+      return !query || searchable.includes(query)
     },
   })
+  const filteredCount = table.getFilteredRowModel().rows.length
+  const hasSearch = Boolean(String(table.state.globalFilter ?? "").trim())
 
   return (
     <div className="animate-appear">
       <DataToolbar
         eyebrow="Telegram"
         title="Telegram users"
-        description="Browse members known to the PoliNetwork Telegram ecosystem."
-        count={table.getFilteredRowModel().rows.length}
-        onSearch={(value) => table.setGlobalFilter(value)}
+        description="Find people across the PoliNetwork Telegram ecosystem and inspect their membership footprint."
+        count={filteredCount}
+        total={users.length}
+        searchPlaceholder="Search by name or username…"
+        onSearch={(value) => {
+          table.setGlobalFilter(value)
+          table.setPageIndex(0)
+        }}
       />
       <LiveStatus connected={response.connected} message={response.message} />
-      {table.getFilteredRowModel().rows.length ? (
-        <>
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <Table className="min-w-[700px] text-left">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="border-0">
-                    {headerGroup.headers.map((header) => (
-                      <DataTableHead key={header.id}>
-                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                      </DataTableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-4 py-3 text-sm">
-                        <table.FlexRender cell={cell} />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <Pagination
-            page={table.state.pagination.pageIndex + 1}
-            pageCount={table.getPageCount()}
-            pageSize={table.state.pagination.pageSize}
-            onPageChange={(page) => table.setPageIndex(page - 1)}
-            onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+      {response.connected &&
+        (filteredCount ? (
+          <>
+            <TableSurface>
+              <Table className="min-w-[700px] text-left">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="border-0 hover:bg-transparent">
+                      {headerGroup.headers.map((header) => (
+                        <DataTableHead key={header.id} className="last:w-16">
+                          {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                        </DataTableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getAllCells().map((cell) => (
+                        <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
+                          <table.FlexRender cell={cell} />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableSurface>
+            <Pagination
+              page={table.state.pagination.pageIndex + 1}
+              pageCount={table.getPageCount()}
+              pageSize={table.state.pagination.pageSize}
+              onPageChange={(page) => table.setPageIndex(page - 1)}
+              onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+            />
+          </>
+        ) : (
+          <EmptyState
+            icon={MessageCircle}
+            title={hasSearch ? "No users match this search" : "No Telegram users yet"}
+            text={
+              hasSearch ? "Clear the search or try a different name or username." : "No Telegram users were returned."
+            }
           />
-        </>
-      ) : (
-        <EmptyState
-          icon={MessageCircle}
-          title="No matching Telegram users"
-          text="Try another filter or check the backend connection."
-        />
-      )}
+        ))}
     </div>
   )
 }

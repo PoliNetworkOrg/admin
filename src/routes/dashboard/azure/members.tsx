@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import type { Column } from "@tanstack/react-table"
-import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, LoaderCircle, UsersRound } from "lucide-react"
+import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, LoaderCircle, Plus, UsersRound } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 import { createAzureMember, getAzureMembers, setAzureMemberNumber } from "@/server/api.functions"
@@ -61,8 +61,9 @@ function AzureMembers() {
         <Button
           variant="ghost"
           size="sm"
-          className="px-0 font-mono text-[10px] tracking-[0.08em] text-muted-foreground hover:bg-transparent hover:text-primary"
+          className="-ml-2 px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={column.getToggleSortingHandler()}
+          aria-label={`${label}, ${sorted ? `sorted ${sorted === "asc" ? "ascending" : "descending"}` : "not sorted"}`}
         >
           {label}
           <Icon data-icon="inline-end" />
@@ -169,71 +170,99 @@ function AzureMembers() {
         title="Azure members"
         description="Association membership and Microsoft 365 license information."
         count={table.getFilteredRowModel().rows.length}
-        onSearch={(value) => table.setGlobalFilter({ ...memberFilter, query: value })}
-        action="Add member"
-        onAction={() => setDialog({ mode: "create" })}
+        total={members.length}
+        searchPlaceholder="Search by name, email, or member ID…"
+        onSearch={(value) => {
+          table.setGlobalFilter({ ...memberFilter, query: value })
+          table.setPageIndex(0)
+        }}
+        action={
+          <Button onClick={() => setDialog({ mode: "create" })}>
+            <Plus data-icon="inline-start" /> Add member
+          </Button>
+        }
       >
         <Button
           variant="outline"
           size="sm"
           className={cn("text-[10px] text-muted-foreground", membersOnly && "border-primary bg-accent text-primary")}
-          onClick={() => table.setGlobalFilter({ ...memberFilter, membersOnly: !membersOnly })}
+          aria-pressed={membersOnly}
+          onClick={() => {
+            table.setGlobalFilter({ ...memberFilter, membersOnly: !membersOnly })
+            table.setPageIndex(0)
+          }}
         >
-          <Check data-icon="inline-start" /> Members only
+          {membersOnly && <Check data-icon="inline-start" />} Members only
         </Button>
       </DataToolbar>
       <LiveStatus connected={response.connected} message={response.message} />
-      <section className="mb-4 flex flex-wrap gap-6 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground max-[600px]:grid max-[600px]:gap-2">
-        <div className="flex items-center gap-2">
-          <Building2 className="size-6 text-primary" />
-          <span>
-            <b className="text-primary">{members.filter((member) => member.isMember).length}</b> association members
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <UsersRound className="size-6 text-primary" />
-          <span>
-            <b className="text-primary">
-              {members.filter((member) => member.assignedLicensesIds?.includes("OFFICE_365")).length}
-            </b>{" "}
-            Office 365 licenses
-          </span>
-        </div>
-      </section>
-      {table.getFilteredRowModel().rows.length ? (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <Table className="min-w-[800px] text-left">
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-0">
-                  {headerGroup.headers.map((header) => (
-                    <DataTableHead key={header.id}>
-                      {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                    </DataTableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-4 py-3 text-sm">
-                      <table.FlexRender cell={cell} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <EmptyState
-          icon={UsersRound}
-          title="No matching Azure members"
-          text="Members will be loaded from Microsoft Entra when the backend is connected."
-        />
+      {response.connected && (
+        <section className="mb-4 flex flex-wrap gap-6 rounded-xl border border-border bg-card px-4 py-3.5 text-xs text-muted-foreground shadow-[0_1px_2px_rgb(15_23_42/4%)] max-[600px]:grid max-[600px]:gap-2 dark:shadow-none">
+          <div className="flex items-center gap-2">
+            <Building2 className="size-6 text-primary" />
+            <span>
+              <b className="text-primary">{members.filter((member) => member.isMember).length}</b> association members
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <UsersRound className="size-6 text-primary" />
+            <span>
+              <b className="text-primary">
+                {members.filter((member) => member.assignedLicensesIds?.includes("OFFICE_365")).length}
+              </b>{" "}
+              Office 365 licenses
+            </span>
+          </div>
+        </section>
       )}
+      {response.connected &&
+        (table.getFilteredRowModel().rows.length ? (
+          <TableSurface>
+            <Table className="min-w-[800px] text-left">
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="border-0">
+                    {headerGroup.headers.map((header) => (
+                      <DataTableHead
+                        key={header.id}
+                        aria-sort={
+                          header.column.getIsSorted() === "asc"
+                            ? "ascending"
+                            : header.column.getIsSorted() === "desc"
+                              ? "descending"
+                              : undefined
+                        }
+                      >
+                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                      </DataTableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getAllCells().map((cell) => (
+                      <TableCell key={cell.id} className="px-4 py-3 text-sm">
+                        <table.FlexRender cell={cell} />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableSurface>
+        ) : (
+          <EmptyState
+            icon={UsersRound}
+            title={members.length ? "No members match these filters" : "No Azure members yet"}
+            text={
+              members.length
+                ? "Clear the search or turn off the members-only filter."
+                : "No members were returned from Microsoft Entra."
+            }
+          />
+        ))}
       {table.getFilteredRowModel().rows.length > 0 && (
         <Pagination
           page={table.state.pagination.pageIndex + 1}
@@ -256,10 +285,7 @@ function AzureMembers() {
           }}
           onSaved={async (mode) => {
             setDialog(null)
-            if (mode === "create") {
-              await new Promise((resolve) => setTimeout(resolve, 1500))
-              await router.invalidate({ sync: true })
-            }
+            if (mode === "create") await router.invalidate({ sync: true })
           }}
         />
       )}
@@ -291,6 +317,11 @@ function MemberDialog({
     setPending(true)
     setError("")
     const assocNumber = Number.parseInt(memberId, 10)
+    if (!Number.isInteger(assocNumber) || assocNumber <= 0) {
+      setError("Enter a valid positive member ID.")
+      setPending(false)
+      return
+    }
     let rollback: (() => void) | undefined
     try {
       if (editing) {

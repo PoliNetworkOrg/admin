@@ -1,14 +1,6 @@
-import { ChevronsLeft, ChevronsRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal } from "lucide-react"
 import { Fragment } from "react"
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  Pagination as PaginationRoot,
-} from "@/components/ui/pagination"
+import { Button } from "@/components/ui/button"
 
 export function Pagination({
   page,
@@ -25,21 +17,19 @@ export function Pagination({
   pageSizeOptions?: number[]
   onPageSizeChange: (pageSize: number) => void
 }) {
-  if (pageCount <= 1 && !onPageSizeChange) return null
-
   const pages = [...new Set([1, page - 1, page, page + 1, pageCount])]
     .filter((value) => value >= 1 && value <= pageCount)
     .sort((a, b) => a - b)
 
   return (
-    <div className="flex items-center justify-between gap-3 pt-3">
-      <label className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
         Rows per page
         <select
           aria-label="Rows per page"
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-8 rounded-lg border border-border bg-card px-2 font-mono text-[10px] text-foreground outline-none focus:border-primary"
+          className="h-9 rounded-lg border border-input bg-card px-2 text-xs text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -49,101 +39,80 @@ export function Pagination({
         </select>
       </label>
       {pageCount > 1 && (
-        <PaginationRoot className="justify-end">
-          <PaginationContent className="gap-1">
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                aria-label="Go to first page"
-                aria-disabled={page === 1}
-                className={
-                  page === 1
-                    ? "pointer-events-none size-8 border-border text-muted-foreground opacity-40"
-                    : "size-8 border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
-                }
-                onClick={(event) => {
-                  event.preventDefault()
-                  if (page > 1) onPageChange(1)
-                }}
-              >
-                <ChevronsLeft className="size-4" />
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                aria-disabled={page === 1}
-                className={
-                  page === 1
-                    ? "pointer-events-none opacity-40"
-                    : "border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
-                }
-                onClick={(event) => {
-                  event.preventDefault()
-                  if (page > 1) onPageChange(page - 1)
-                }}
-                text=""
-              />
-            </PaginationItem>
+        <nav aria-label="Pagination">
+          <ul className="flex items-center gap-1">
+            <li className="max-[520px]:hidden">
+              <PageButton label="Go to first page" disabled={page === 1} onClick={() => onPageChange(1)}>
+                <ChevronsLeft />
+              </PageButton>
+            </li>
+            <li>
+              <PageButton label="Go to previous page" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
+                <ChevronLeft />
+              </PageButton>
+            </li>
             {pages.map((value, index) => (
               <Fragment key={value}>
                 {index > 0 && pages[index - 1] !== value - 1 && (
-                  <PaginationItem>
-                    <PaginationEllipsis className="text-muted-foreground" />
-                  </PaginationItem>
+                  <li
+                    className="flex size-9 items-center justify-center text-muted-foreground max-[520px]:hidden"
+                    aria-hidden
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </li>
                 )}
-                <PaginationItem>
-                  <PaginationLink
-                    href="#"
-                    isActive={value === page}
-                    className="size-8 border-border font-mono text-[10px] text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary data-[active=true]:border-primary data-[active=true]:bg-accent data-[active=true]:text-primary"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      onPageChange(value)
-                    }}
+                <li className={value === page ? "" : "max-[520px]:hidden"}>
+                  <Button
+                    variant={value === page ? "outline" : "ghost"}
+                    size="icon-sm"
+                    aria-label={`Go to page ${value}`}
+                    aria-current={value === page ? "page" : undefined}
+                    className={value === page ? "border-primary bg-accent text-primary" : "text-muted-foreground"}
+                    onClick={() => onPageChange(value)}
                   >
                     {value}
-                  </PaginationLink>
-                </PaginationItem>
+                  </Button>
+                </li>
               </Fragment>
             ))}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                aria-disabled={page === pageCount}
-                className={
-                  page === pageCount
-                    ? "pointer-events-none opacity-40"
-                    : "border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
-                }
-                onClick={(event) => {
-                  event.preventDefault()
-                  if (page < pageCount) onPageChange(page + 1)
-                }}
-                text=""
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                aria-label="Go to last page"
-                aria-disabled={page === pageCount}
-                className={
-                  page === pageCount
-                    ? "pointer-events-none size-8 border-border text-muted-foreground opacity-40"
-                    : "size-8 border-border text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
-                }
-                onClick={(event) => {
-                  event.preventDefault()
-                  if (page < pageCount) onPageChange(pageCount)
-                }}
-              >
-                <ChevronsRight className="size-4" />
-              </PaginationLink>
-            </PaginationItem>
-          </PaginationContent>
-        </PaginationRoot>
+            <li>
+              <PageButton label="Go to next page" disabled={page === pageCount} onClick={() => onPageChange(page + 1)}>
+                <ChevronRight />
+              </PageButton>
+            </li>
+            <li className="max-[520px]:hidden">
+              <PageButton label="Go to last page" disabled={page === pageCount} onClick={() => onPageChange(pageCount)}>
+                <ChevronsRight />
+              </PageButton>
+            </li>
+          </ul>
+        </nav>
       )}
     </div>
+  )
+}
+
+function PageButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string
+  disabled: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      aria-label={label}
+      disabled={disabled}
+      className="text-muted-foreground hover:text-primary"
+      onClick={onClick}
+    >
+      {children}
+    </Button>
   )
 }

@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { type ReactNode, useDeferredValue, useEffect, useId, useRef, useState } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -8,18 +8,20 @@ export function DataToolbar({
   title,
   description,
   count,
+  total,
   onSearch,
+  searchPlaceholder,
   action,
-  onAction,
   children,
   eyebrow = "Directory",
 }: {
   title: string
   description: string
   count: number
+  total?: number
   onSearch?: (value: string) => void
-  action?: string
-  onAction?: () => void
+  searchPlaceholder?: string
+  action?: ReactNode
   children?: ReactNode
   eyebrow?: string
 }) {
@@ -33,40 +35,51 @@ export function DataToolbar({
     onSearchRef.current?.(deferredSearchValue)
   }, [deferredSearchValue])
 
+  const resultLabel =
+    total !== undefined && total !== count
+      ? `${count.toLocaleString()} of ${total.toLocaleString()}`
+      : count.toLocaleString()
+
   return (
     <>
-      <PageHeader
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-        action={
-          action && onAction ? (
-            <Button onClick={onAction}>
-              <Plus data-icon="inline-start" />
-              {action}
-            </Button>
-          ) : undefined
-        }
-      />
-      <section className="flex flex-wrap items-center gap-3 py-4" aria-label={`${title} controls`}>
-        <label
-          htmlFor={searchId}
-          className="relative flex h-10 w-full max-w-[320px] items-center rounded-lg border border-input bg-card text-muted-foreground shadow-xs sm:w-[320px]"
-        >
-          <Search className="pointer-events-none absolute left-3 size-4" />
-          <Input
-            id={searchId}
-            aria-label={`Search ${title}`}
-            className="h-full border-0 bg-transparent pl-9 text-sm shadow-none focus-visible:ring-0"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Filter records…"
-          />
-        </label>
-        <span className="ml-auto text-xs text-muted-foreground max-sm:ml-0">
-          <b className="font-mono font-medium text-foreground">{count}</b> records
-        </span>
+      <PageHeader eyebrow={eyebrow} title={title} description={description} action={action} />
+      <section
+        className="my-5 flex min-h-16 flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_1px_2px_rgb(15_23_42/4%)] dark:shadow-none"
+        aria-label={`${title} controls`}
+      >
+        {onSearch && (
+          <div className="relative w-full sm:max-w-sm">
+            <label htmlFor={searchId} className="sr-only">
+              Search {title}
+            </label>
+            <Search className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id={searchId}
+              type="search"
+              aria-label={`Search ${title}`}
+              className="pr-9 pl-9"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={searchPlaceholder ?? `Search ${title.toLocaleLowerCase()}…`}
+            />
+            {searchValue && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
+                onClick={() => setSearchValue("")}
+                aria-label={`Clear ${title} search`}
+              >
+                <X />
+              </Button>
+            )}
+          </div>
+        )}
         {children}
+        <p className="ml-auto text-xs text-muted-foreground max-sm:ml-0 max-sm:w-full">
+          <span className="font-medium text-foreground">{resultLabel}</span> {count === 1 ? "result" : "results"}
+        </p>
       </section>
     </>
   )

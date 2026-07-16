@@ -96,6 +96,8 @@ async function safely<T>(request: () => Promise<T>): Promise<BackendState<T | []
   }
 }
 
+export type AdminSession = NonNullable<Awaited<ReturnType<typeof readSession>>>
+
 export const getCurrentSession = createServerFn().handler(readSession)
 
 export const getTelegramUsers = createServerFn().handler(() => safely(() => client().tg.users.getAll.query()))

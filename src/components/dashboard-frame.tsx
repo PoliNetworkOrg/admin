@@ -1,13 +1,13 @@
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router"
 import { BookOpen, Database, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, UsersRound, X } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import azureIcon from "@/assets/svg/azure.svg"
 import telegramIcon from "@/assets/svg/telegram.svg"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { auth, useSession } from "@/lib/auth"
-import { cn } from "@/lib/utils"
 import type { AdminSession } from "@/server/api.functions"
 import { AppMark } from "./app-mark"
 import { ThemeToggle } from "./theme-toggle"
@@ -36,15 +36,15 @@ const navigationGroups = [
   },
 ] as const
 
-function currentTitle(pathname: string) {
-  if (pathname.includes("/telegram/users/")) return "Member details"
-  if (pathname.includes("/telegram/users")) return "Users"
-  if (pathname.includes("/telegram/groups")) return "Groups"
-  if (pathname.includes("/telegram/grants")) return "Access grants"
-  if (pathname.includes("/azure/members")) return "Members"
-  if (pathname.includes("/web/guides")) return "Guides"
-  if (pathname.includes("/account")) return "Account"
-  return "Overview"
+function currentPage(pathname: string) {
+  if (pathname.includes("/telegram/users/")) return { group: "Telegram / Users", title: "Member details" }
+  if (pathname.includes("/telegram/users")) return { group: "Telegram", title: "Users" }
+  if (pathname.includes("/telegram/groups")) return { group: "Telegram", title: "Groups" }
+  if (pathname.includes("/telegram/grants")) return { group: "Telegram", title: "Access grants" }
+  if (pathname.includes("/azure/members")) return { group: "Azure", title: "Members" }
+  if (pathname.includes("/web/guides")) return { group: "Web", title: "Guides" }
+  if (pathname.includes("/account")) return { group: "Workspace", title: "Account" }
+  return { group: "Workspace", title: "Overview" }
 }
 
 function initials(name?: string | null, email?: string) {
@@ -57,138 +57,180 @@ function initials(name?: string | null, email?: string) {
 }
 
 export function DashboardFrame({ initialSession }: { initialSession: AdminSession }) {
-  const [open, setOpen] = useState(false)
+  const [navigationOpen, setNavigationOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const router = useRouter()
   const sessionQuery = useSession()
-  const session = (sessionQuery.data as AdminSession | null) ?? initialSession
-  const user = session.user
+  const liveSession = sessionQuery.data as AdminSession | null | undefined
+  const session = liveSession === undefined ? initialSession : liveSession
+  const user = session?.user
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const page = currentPage(pathname)
 
   async function logout() {
+    if (loggingOut) return
     setLoggingOut(true)
-    await auth.signOut()
-    await router.invalidate()
-    await router.navigate({ to: "/login", replace: true })
+    try {
+      const result = await auth.signOut()
+      if (result.error) throw new Error(result.error.message)
+      await router.invalidate()
+      await router.navigate({ to: "/login", replace: true })
+    } catch {
+      toast.error("Could not sign out. Please try again.")
+      setLoggingOut(false)
+    }
   }
 
+  const sidebar = (onNavigate: () => void, mobile = false) => (
+    <SidebarContent
+      user={user}
+      loggingOut={loggingOut}
+      onLogout={() => void logout()}
+      onNavigate={onNavigate}
+      mobile={mobile}
+    />
+  )
+
   return (
-    <div className="grid min-h-dvh grid-cols-[248px_minmax(0,1fr)] bg-background max-[960px]:grid-cols-1">
-      <aside
-        data-open={open}
-        className={cn(
-          "sticky top-0 z-50 flex h-dvh flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 text-sidebar-foreground",
-          "max-[960px]:fixed max-[960px]:left-0 max-[960px]:w-[280px] max-[960px]:-translate-x-full max-[960px]:shadow-xl max-[960px]:transition-transform max-[960px]:duration-200",
-          open && "max-[960px]:translate-x-0"
-        )}
-      >
-        <div className="flex h-11 items-center justify-between px-2">
-          <AppMark />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden max-[960px]:inline-flex"
-            onClick={() => setOpen(false)}
-            aria-label="Close navigation"
+    <div className="grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-background max-[960px]:grid-cols-1">
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground min-[961px]:flex">
+        {sidebar(() => undefined)}
+      </aside>
+
+      <main className="min-w-0">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/92 px-7 backdrop-blur-xl max-[640px]:px-4">
+          <Dialog open={navigationOpen} onOpenChange={setNavigationOpen}>
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden max-[960px]:inline-flex"
+                  aria-label="Open navigation"
+                  aria-controls="mobile-navigation"
+                />
+              }
+            >
+              <Menu />
+            </DialogTrigger>
+            <DialogContent id="mobile-navigation" side="left" showCloseButton={false}>
+              {sidebar(() => setNavigationOpen(false), true)}
+            </DialogContent>
+          </Dialog>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              {page.group}
+            </p>
+            <h1 className="truncate text-sm font-semibold tracking-[-0.01em]">{page.title}</h1>
+          </div>
+          <ThemeToggle />
+        </header>
+        <div className="mx-auto max-w-[1440px] px-7 py-8 max-[640px]:px-4 max-[640px]:py-6">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function SidebarContent({
+  user,
+  loggingOut,
+  onLogout,
+  onNavigate,
+  mobile,
+}: {
+  user: AdminSession["user"] | undefined
+  loggingOut: boolean
+  onLogout: () => void
+  onNavigate: () => void
+  mobile: boolean
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-20 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
+        <AppMark />
+        {mobile && (
+          <DialogClose
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+                aria-label="Close navigation"
+              />
+            }
           >
             <X />
-          </Button>
+          </DialogClose>
+        )}
+      </div>
+
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5" aria-label="Main navigation">
+        <div className="mb-6">
+          {navigation.map(({ label, to, icon }) => (
+            <NavLink key={to} to={to} label={label} icon={icon} exact onNavigate={onNavigate} />
+          ))}
         </div>
-        <Separator className="my-4 bg-sidebar-border" />
-        <nav className="flex flex-col gap-5" aria-label="Main navigation">
-          <div className="flex flex-col gap-1">
-            {navigation.map(({ label, to, icon: Icon }) => (
-              <NavLink key={to} to={to} label={label} icon={Icon} exact onNavigate={() => setOpen(false)} />
-            ))}
-          </div>
+
+        <div className="grid gap-6">
           {navigationGroups.map(({ label, iconSrc, items }) => (
             <section key={label} aria-labelledby={`${label.toLowerCase()}-nav-label`}>
               <div
                 id={`${label.toLowerCase()}-nav-label`}
-                className="mb-1 flex h-7 items-center gap-2 px-3 text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/45 uppercase"
+                className="mb-2 flex items-center gap-2 px-3 text-[10px] font-semibold tracking-[0.1em] text-sidebar-foreground/65 uppercase"
               >
                 {iconSrc ? (
-                  <img src={iconSrc} alt="" className="size-4 object-contain" />
+                  <img src={iconSrc} alt="" className="size-4 object-contain opacity-90" />
                 ) : (
                   <BookOpen className="size-4" />
                 )}
                 <span>{label}</span>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="grid gap-1">
                 {items.map(({ label: itemLabel, to, icon }) => (
-                  <NavLink key={to} to={to} label={itemLabel} icon={icon} onNavigate={() => setOpen(false)} />
+                  <NavLink key={to} to={to} label={itemLabel} icon={icon} onNavigate={onNavigate} />
                 ))}
               </div>
             </section>
           ))}
-        </nav>
-
-        <div className="mt-auto">
-          <Separator className="mb-3 bg-sidebar-border" />
-          <div className="rounded-xl border border-sidebar-border bg-sidebar-accent p-2">
-            <Link
-              to="/dashboard/account"
-              onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-lg px-1.5 transition-colors hover:bg-sidebar"
-            >
-              <Avatar>
-                {user?.image && <AvatarImage src={user.image} alt={user.name || "Account avatar"} />}
-                <AvatarFallback className="bg-primary text-[10px] font-semibold text-primary-foreground">
-                  {initials(user?.name, user?.email)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-xs font-semibold">{user?.name || "PoliNetwork member"}</b>
-                <small className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-sidebar-foreground/55">
-                  <Settings className="size-3" /> Account settings
-                </small>
-              </span>
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-1 w-full justify-start text-sidebar-foreground/60 hover:bg-sidebar hover:text-sidebar-foreground"
-              onClick={() => void logout()}
-              disabled={loggingOut}
-            >
-              <LogOut data-icon="inline-start" /> Sign out
-            </Button>
-          </div>
         </div>
-      </aside>
+      </nav>
 
-      {open && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 hidden border-0 bg-foreground/40 max-[960px]:block"
-          aria-label="Close navigation"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <main className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-6 backdrop-blur-sm max-[640px]:px-3">
+      <div className="shrink-0 border-t border-sidebar-border p-3">
+        <div className="overflow-hidden rounded-xl border border-sidebar-border bg-white/[0.04]">
+          <Link
+            to="/dashboard/account"
+            onClick={onNavigate}
+            className="group flex min-h-16 items-center gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent"
+            activeProps={{ className: "bg-sidebar-accent" }}
+          >
+            <Avatar className="size-9 after:border-white/15">
+              {user?.image && <AvatarImage src={user.image} alt={user.name || "Account avatar"} />}
+              <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
+                {initials(user?.name, user?.email)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="min-w-0 flex-1">
+              <b className="block truncate text-xs font-semibold text-white">{user?.name || "PoliNetwork member"}</b>
+              <small className="mt-1 block truncate text-[10px] text-sidebar-foreground/65">
+                {user?.email || "Open account settings"}
+              </small>
+            </span>
+            <Settings className="size-4 text-sidebar-foreground/55 transition-colors group-hover:text-white" />
+          </Link>
           <Button
             variant="ghost"
-            size="icon"
-            className="hidden max-[960px]:inline-flex"
-            onClick={() => setOpen(true)}
-            aria-label="Open navigation"
+            size="sm"
+            className="w-full justify-start rounded-none border-t border-sidebar-border px-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white"
+            onClick={onLogout}
+            disabled={loggingOut}
           >
-            <Menu />
+            <LogOut data-icon="inline-start" /> {loggingOut ? "Signing out…" : "Sign out"}
           </Button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-              PoliNetwork admin
-            </p>
-            <h1 className="truncate text-base font-semibold tracking-[-0.02em]">{currentTitle(pathname)}</h1>
-          </div>
-          <ThemeToggle />
-        </header>
-        <div className="mx-auto max-w-[1400px] px-6 py-7 max-[640px]:px-3 max-[640px]:py-5">
-          <Outlet />
         </div>
-      </main>
+      </div>
     </div>
   )
 }
@@ -210,14 +252,14 @@ function NavLink({
     <Link
       to={to}
       onClick={onNavigate}
-      className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/68 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      className="relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-sidebar-foreground/72 outline-none transition-colors before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-transparent hover:bg-sidebar-accent hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
       activeProps={{
         className:
-          "flex min-h-10 items-center gap-3 rounded-lg bg-sidebar-primary px-3 text-sm font-semibold text-sidebar-primary-foreground",
+          "bg-sidebar-accent text-white before:bg-sidebar-primary shadow-[inset_0_0_0_1px_rgb(255_255_255/5%)]",
       }}
       activeOptions={{ exact }}
     >
-      <Icon className="size-[18px]" />
+      <Icon className="size-4" />
       <span>{label}</span>
     </Link>
   )

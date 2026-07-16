@@ -2,6 +2,19 @@ import type * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+function TableSurface({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="table-surface"
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(15_23_42/4%)] dark:shadow-none",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
@@ -33,7 +46,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/45 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors hover:bg-muted/55 has-aria-expanded:bg-muted/70 data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -58,7 +71,7 @@ function DataTableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <TableHead
       className={cn(
-        "h-10 bg-muted/65 px-4 font-mono text-[10px] font-medium tracking-[0.06em] text-muted-foreground uppercase",
+        "h-11 bg-muted/75 px-4 font-mono text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase",
         className
       )}
       {...props}
@@ -82,4 +95,15 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   )
 }
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, DataTableHead, TableRow, TableCell, TableCaption }
+export {
+  Table,
+  TableSurface,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  DataTableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+}
