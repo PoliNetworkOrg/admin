@@ -1,5 +1,6 @@
 import type { AppRouter } from "@polinetwork/backend"
 import type { inferRouterError, inferRouterInputs, inferRouterOutputs } from "@trpc/server"
+import type { trpc } from "."
 
 export type ApiOutput = inferRouterOutputs<AppRouter>
 export type ApiInput = inferRouterInputs<AppRouter>
@@ -11,3 +12,6 @@ export type TgGroup = NonNullable<ApiOutput["tg"]["groups"]["search"]["groups"][
 export type TgUserRole = NonNullable<ApiInput["tg"]["permissions"]["addRole"]["role"]>
 
 export type AzureMember = ApiOutput["azure"]["members"]["getAll"][number]
+
+export type FAQs = Awaited<ReturnType<typeof trpc.web.faqs.getAllFaqs.query>>
+export type FAQItem = FAQs[number]["faqItems"][number]

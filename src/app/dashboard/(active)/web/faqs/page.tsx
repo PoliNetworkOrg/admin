@@ -2,37 +2,168 @@
 
 import { ArrowLeft, Check, LucidePencil, PlusIcon, Trash, Undo2, X } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
-
-interface FaqItem {
-  id: string
-  question: string
-  answer: string
-}
-
-const initialFaqs: FaqItem[] = [
-  { id: "1", question: "What is the price of a house?", answer: "1 million dollars" },
-  { id: "2", question: "What is the price of a car?", answer: "100 thousand dollars" },
-  { id: "3", question: "What is the price of a bike?", answer: "10 thousand dollars" },
-  { id: "4", question: "What is the price of a boat?", answer: "100 million dollars" },
-  { id: "5", question: "What is the price of a plane?", answer: "1 billion dollars" },
-]
+import { addFAQ, editFAQ, deleteFAQ, listFAQs } from "@/server/actions/faqs"
+import type { FAQItem, FAQs } from "@/server/trpc/types"
 
 export default function WebFaqsIndex() {
-  const [faqs, setFaqs] = useState<FaqItem[]>(initialFaqs)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [faqs, setFaqs] = useState<FAQs>([])
+  const [categoryId, _setCategoryId] = useState<number>(1)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [editQuestion, setEditQuestion] = useState("")
   const [editAnswer, setEditAnswer] = useState("")
-  const [openItems, setOpenItems] = useState<string[]>([])
+  const [openItems, setOpenItems] = useState<number[]>([])
+  const [unsavedIds, setUnsavedIds] = useState<number[]>([])
 
-  const handleCancel = (id: string) => {
-    const item = faqs.find((f) => f.id === id)
-    if (item && !item.question.trim() && !item.answer.trim()) {
-      setFaqs((prev) => prev.filter((f) => f.id !== id))
+  //TODO: Aggiungere AddCategoryID
+
+  useEffect(() => {
+    listFAQs()
+      .then((f) => {
+        setFaqs(f)
+        console.log(f)
+      })
+      .catch((e: string) => toast.error(`Failed to fetch FAQs: ${e}`))
+  }, [])
+
+  const handleAdd = () => {
+    saveCurrentIfValid()
+
+    const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqItems.map((item) => item.faqId))) + 1
+    const newItem: FAQItem = {
+      faqId: newId,
+      titleIt: editQuestion,
+      titleEn: editQuestion,
+      descriptionIt: editAnswer,
+      descriptionEn: editAnswer,
+    }
+
+    setFaqs((prev) =>
+      prev.map((faq) => {
+        if (faq.categoryId === categoryId) {
+          return {
+            ...faq,
+            faqItems: [...faq.faqItems, newItem],
+          }
+        }
+        return faq
+      })
+    )
+
+    setUnsavedIds((prev) => [...prev, newId])
+    setEditingId(newId)
+    setEditQuestion("")
+    setEditAnswer("")
+    setOpenItems((prev) => [...prev, newId])
+  }
+
+  const handleEdit = (e: React.MouseEvent, item: FAQItem) => {
+    e.stopPropagation()
+    if (editingId !== item.faqId) {
+      saveCurrentIfValid()
+    }
+    setEditingId(item.faqId)
+    setEditQuestion(item.titleIt)
+    setEditAnswer(item.descriptionIt)
+    setOpenItems((prev) => (prev.includes(item.faqId) ? prev : [...prev, item.faqId]))
+  }
+
+  const handleSave = (id: number) => {
+    const q = editQuestion.trim()
+    const a = editAnswer.trim()
+    if (!q) return toast.error("Question cannot be empty.")
+    if (!a) return toast.error("Answer cannot be empty.")
+
+    const isNew = unsavedIds.includes(id)
+    const savePromise = isNew
+      ? addFAQ({ question: q, answer: a, categoryId })
+      : editFAQ({ id, question: q, answer: a, categoryId })
+
+    savePromise
+      .then(() => {
+        setFaqs((prev) =>
+          prev.map((faq) => {
+            if (faq.categoryId === categoryId) {
+              return {
+                ...faq,
+                faqItems: faq.faqItems.map((item) => {
+                  if (item.faqId === id) {
+                    return {
+                      ...item,
+                      faqId: id,
+                      titleIt: q,
+                      titleEn: q,
+                      descriptionIt: a,
+                      descriptionEn: a,
+                    }
+                  }
+                  return item
+                }),
+              }
+            }
+            return faq
+          })
+        )
+        setUnsavedIds((prev) => prev.filter((x) => x !== id))
+        setEditingId(null)
+        setEditQuestion("")
+        setEditAnswer("")
+        toast.success("FAQ saved successfully.")
+      })
+      .catch((e: string) => toast.error(`Failed to save FAQ: ${e}`))
+  }
+
+  const handleDelete = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation()
+
+    const isNew = unsavedIds.includes(id)
+    const deletePromise = isNew ? Promise.resolve() : deleteFAQ({ id })
+
+    deletePromise
+      .then(() => {
+        setFaqs((prev) =>
+          prev.map((faq) => {
+            if (faq.categoryId === categoryId) {
+              return {
+                ...faq,
+                faqItems: faq.faqItems.filter((item) => item.faqId !== id),
+              }
+            }
+            return faq
+          })
+        )
+
+        setUnsavedIds((prev) => prev.filter((x) => x !== id))
+        setOpenItems((prev) => prev.filter((v) => v !== id))
+        if (editingId === id) {
+          setEditingId(null)
+          setEditQuestion("")
+          setEditAnswer("")
+        }
+        toast.success("FAQ deleted successfully.")
+      })
+      .catch((e: string) => toast.error(`Failed to delete FAQ: ${e}`))
+  }
+
+  const handleCancel = (id: number) => {
+    const item = faqs?.flatMap((f) => f.faqItems).find((f) => f.faqId === id)
+    if (item && !item.titleIt.trim() && !item.descriptionIt.trim()) {
+      setFaqs((prev) =>
+        prev.map((faq) => {
+          if (faq.categoryId === categoryId) {
+            return {
+              ...faq,
+              faqItems: faq.faqItems.filter((item) => item.faqId !== id),
+            }
+          }
+          return faq
+        })
+      )
+      setUnsavedIds((prev) => prev.filter((x) => x !== id))
     }
     setEditingId(null)
     setEditQuestion("")
@@ -46,59 +177,43 @@ export default function WebFaqsIndex() {
 
     if (q && a) {
       const currentId = editingId
-      setFaqs((prev) => prev.map((f) => (f.id === currentId ? { ...f, question: q, answer: a } : f)))
+      const isNew = unsavedIds.includes(currentId)
+      const savePromise = isNew
+        ? addFAQ({ question: q, answer: a, categoryId })
+        : editFAQ({ id: currentId, question: q, answer: a, categoryId })
+
+      savePromise
+        .then(() => {
+          setFaqs((prev) =>
+            prev.map((faq) => {
+              if (faq.categoryId === categoryId) {
+                return {
+                  ...faq,
+                  faqItems: faq.faqItems.map((item) => {
+                    if (item.faqId === currentId) {
+                      return {
+                        ...item,
+                        faqId: currentId,
+                        titleIt: q,
+                        titleEn: q,
+                        descriptionIt: a,
+                        descriptionEn: a,
+                      }
+                    }
+                    return item
+                  }),
+                }
+              }
+              return faq
+            })
+          )
+          setUnsavedIds((prev) => prev.filter((x) => x !== currentId))
+          toast.success("Previous FAQ saved successfully.")
+        })
+        .catch((e: string) => toast.error(`Failed to auto-save previous FAQ: ${e}`))
     } else {
       handleCancel(editingId)
     }
-  }
-
-  const handleAdd = () => {
-    saveCurrentIfValid()
-
-    const newId = `faq-${Date.now()}`
-    const newItem: FaqItem = { id: newId, question: "", answer: "" }
-
-    setFaqs((prev) => [...prev, newItem])
-    setEditingId(newId)
-    setEditQuestion("")
-    setEditAnswer("")
-    setOpenItems((prev) => [...prev, newId])
-  }
-
-  const handleEdit = (e: React.MouseEvent, item: FaqItem) => {
-    e.stopPropagation()
-    if (editingId !== item.id) {
-      saveCurrentIfValid()
-    }
-    setEditingId(item.id)
-    setEditQuestion(item.question)
-    setEditAnswer(item.answer)
-    setOpenItems((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]))
-  }
-
-  const handleSave = (id: string) => {
-    const q = editQuestion.trim()
-    const a = editAnswer.trim()
-    if (!q) return toast.error("Question cannot be empty.")
-    if (!a) return toast.error("Answer cannot be empty.")
-
-    setFaqs((prev) => prev.map((item) => (item.id === id ? { ...item, question: q, answer: a } : item)))
-    setEditingId(null)
-    setEditQuestion("")
-    setEditAnswer("")
-    toast.success("FAQ saved successfully.")
-  }
-
-  const handleDelete = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation()
-    setFaqs((prev) => prev.filter((item) => item.id !== id))
-    setOpenItems((prev) => prev.filter((v) => v !== id))
-    if (editingId === id) {
-      setEditingId(null)
-      setEditQuestion("")
-      setEditAnswer("")
-    }
-    toast.success("FAQ deleted successfully.")
   }
 
   return (
@@ -128,21 +243,24 @@ export default function WebFaqsIndex() {
         </div>
 
         <Accordion className="gap-3.5" value={openItems} onValueChange={setOpenItems} multiple>
-          {faqs.map((item) => (
-            <FaqAccordionItem
-              key={item.id}
-              item={item}
-              isEditing={editingId === item.id}
-              editQuestion={editQuestion}
-              editAnswer={editAnswer}
-              setEditQuestion={setEditQuestion}
-              setEditAnswer={setEditAnswer}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              handleEdit={handleEdit}
-              handleDelete={handleDelete}
-            />
-          ))}
+          {faqs
+            ?.filter((item) => item.categoryId === categoryId)
+            .flatMap((item) => item.faqItems)
+            .map((item, index) => (
+              <FaqAccordionItem
+                key={`${item.faqId}-${index}`}
+                item={item}
+                isEditing={editingId === item.faqId}
+                editQuestion={editQuestion}
+                editAnswer={editAnswer}
+                setEditQuestion={setEditQuestion}
+                setEditAnswer={setEditAnswer}
+                handleSave={handleSave}
+                handleCancel={handleCancel}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+              />
+            ))}
         </Accordion>
       </div>
     </div>
@@ -150,16 +268,16 @@ export default function WebFaqsIndex() {
 }
 
 interface FaqAccordionItemProps {
-  item: FaqItem
+  item: FAQItem
   isEditing: boolean
   editQuestion: string
   editAnswer: string
   setEditQuestion: (val: string) => void
   setEditAnswer: (val: string) => void
-  handleSave: (id: string) => void
-  handleCancel: (id: string) => void
-  handleEdit: (e: React.MouseEvent, item: FaqItem) => void
-  handleDelete: (e: React.MouseEvent, id: string) => void
+  handleSave: (id: number) => void
+  handleCancel: (id: number) => void
+  handleEdit: (e: React.MouseEvent, item: FAQItem) => void
+  handleDelete: (e: React.MouseEvent, id: number) => void
 }
 
 function FaqAccordionItem({
@@ -176,12 +294,12 @@ function FaqAccordionItem({
 }: FaqAccordionItemProps) {
   return (
     <AccordionItem
-      value={item.id}
+      value={item.faqId}
       className="group rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm px-5 py-0.5 transition-all duration-300 hover:border-primary/20 hover:bg-card/90 hover:shadow-md hover:shadow-primary/2 data-[open]:border-primary/30 data-[open]:bg-card data-[open]:shadow-md data-[open]:shadow-primary/5"
     >
       {isEditing ? (
         <FaqEditHeader
-          id={item.id}
+          id={item.faqId}
           question={editQuestion}
           setQuestion={setEditQuestion}
           onSave={handleSave}
@@ -194,14 +312,14 @@ function FaqAccordionItem({
       <AccordionContent className="text-muted-foreground pb-4 leading-relaxed">
         {isEditing ? (
           <FaqEditContent
-            id={item.id}
+            id={item.faqId}
             answer={editAnswer}
             setAnswer={setEditAnswer}
             onSave={handleSave}
             onCancel={handleCancel}
           />
         ) : (
-          <p>{item.answer}</p>
+          <p>{item.descriptionIt}</p>
         )}
       </AccordionContent>
     </AccordionItem>
@@ -209,11 +327,11 @@ function FaqAccordionItem({
 }
 
 interface FaqEditHeaderProps {
-  id: string
+  id: number
   question: string
   setQuestion: (val: string) => void
-  onSave: (id: string) => void
-  onCancel: (id: string) => void
+  onSave: (id: number) => void
+  onCancel: (id: number) => void
 }
 
 function FaqEditHeader({ id, question, setQuestion, onSave, onCancel }: FaqEditHeaderProps) {
@@ -239,9 +357,9 @@ function FaqEditHeader({ id, question, setQuestion, onSave, onCancel }: FaqEditH
 }
 
 interface FaqDisplayHeaderProps {
-  item: FaqItem
-  onEdit: (e: React.MouseEvent, item: FaqItem) => void
-  onDelete: (e: React.MouseEvent, id: string) => void
+  item: FAQItem
+  onEdit: (e: React.MouseEvent, item: FAQItem) => void
+  onDelete: (e: React.MouseEvent, id: number) => void
 }
 
 function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
@@ -267,7 +385,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
                 icon={Trash}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onDelete(e, item.id)
+                  onDelete(e, item.faqId)
                 }}
                 color="destructive"
                 ariaLabel="Confirm delete FAQ"
@@ -278,17 +396,17 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
         </div>
       }
     >
-      {item.question}
+      {item.titleIt}
     </AccordionTrigger>
   )
 }
 
 interface FaqEditContentProps {
-  id: string
+  id: number
   answer: string
   setAnswer: (val: string) => void
-  onSave: (id: string) => void
-  onCancel: (id: string) => void
+  onSave: (id: number) => void
+  onCancel: (id: number) => void
 }
 
 function FaqEditContent({ id, answer, setAnswer, onSave, onCancel }: FaqEditContentProps) {

@@ -10,7 +10,7 @@ const config: NextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
-  transpilePackages: ["@t3-oss/env-nextjs", "@t3-oss/env-core"],
+  transpilePackages: ["@t3-oss/env-nextjs", "@t3-oss/env-core", "@polinetwork/backend"],
   experimental: {
     reactCompiler: true,
   },

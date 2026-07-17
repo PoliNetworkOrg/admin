@@ -18,8 +18,8 @@ importers:
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.55.0(react@18.3.1))
       '@polinetwork/backend':
-        specifier: ^0.15.17
-        version: 0.15.17
+        specifier: link:/mnt/SAN240GB/projects/polinetwork/backend/package
+        version: link:../backend/package
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -840,9 +840,6 @@ packages:
   '@peculiar/x509@1.14.3':
     resolution: {integrity: sha512-C2Xj8FZ0uHWeCXXqX5B4/gVFQmtSkiuOolzAgutjTfseNOHT3pUjljDZsTSxXFGgio54bCzVFqmEOUrIVk8RDA==}
     engines: {node: '>=20.0.0'}
-
-  '@polinetwork/backend@0.15.17':
-    resolution: {integrity: sha512-yZ2UvPpDTYds6ivOtF03/+u/BUaZimiPMzHFUsbuF5jiARimJb1Bz7t2OQQ9ajcCCaOi8Jy3D7Izb+8Zk6fxzw==}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -4178,8 +4175,6 @@ snapshots:
       reflect-metadata: 0.2.2
       tslib: 2.8.1
       tsyringe: 4.10.0
-
-  '@polinetwork/backend@0.15.17': {}
 
   '@radix-ui/number@1.1.1': {}
 
