@@ -48,3 +48,41 @@ export async function deleteFAQ(input: { id: number }) {
 
   return trpc.web.faqs.deleteFaqs.mutate({ id: input.id })
 }
+
+export async function addFAQCategory(input: { titleIt: string; titleEn?: string; icon?: string | null }) {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president", "admin", "creator", "hr"])
+  if (!allowed) {
+    throw new Error("UNAUTHORIZED")
+  }
+
+  return trpc.web.faqs.addFaqsCategory.mutate({
+    titleIt: input.titleIt,
+    titleEn: input.titleEn || input.titleIt,
+    icon: input.icon ?? null,
+    createdBy: telegramId,
+  })
+}
+
+export async function editFAQCategory(input: { id: number; titleIt: string; titleEn?: string; icon?: string | null }) {
+  const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president", "admin", "creator", "hr"])
+  if (!allowed) {
+    throw new Error("UNAUTHORIZED")
+  }
+
+  return trpc.web.faqs.editFaqsCategory.mutate({
+    id: input.id,
+    titleIt: input.titleIt,
+    titleEn: input.titleEn || input.titleIt,
+    icon: input.icon ?? null,
+    modifiedBy: telegramId,
+  })
+}
+
+export async function deleteFAQCategory(input: { id: number }) {
+  const { allowed } = await requireRole(["owner", "direttivo", "president", "admin", "creator", "hr"])
+  if (!allowed) {
+    throw new Error("UNAUTHORIZED")
+  }
+
+  return trpc.web.faqs.deleteFaqsCategory.mutate({ id: input.id })
+}

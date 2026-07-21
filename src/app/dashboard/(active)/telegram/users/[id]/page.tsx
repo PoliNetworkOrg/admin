@@ -11,7 +11,7 @@ import { NewGroupAdmin } from "./new-group-admin"
 export default async function TgUserDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const parsedInt = parseInt(id, 10)
-  if (isNaN(parsedInt)) notFound()
+  if (Number.isNaN(parsedInt)) notFound()
   const data = await getUserDetails(parsedInt)
 
   if (!data) notFound()

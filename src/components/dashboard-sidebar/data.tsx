@@ -1,4 +1,4 @@
-import { BookOpen, Globe, MessageCircleMoreIcon, Sparkle, Users } from "lucide-react"
+import { BookOpen, Globe, HelpCircle, MessageCircleMoreIcon, Sparkle, Users } from "lucide-react"
 import Image from "next/image"
 import azureSvg from "@/assets/svg/azure.svg"
 import telegramSvg from "@/assets/svg/telegram.svg"
@@ -22,7 +22,10 @@ export const DSData = {
     {
       title: "Web",
       icon: <Globe className="size-4" />,
-      items: [{ title: "Guide", url: "/dashboard/web/guide", icon: <BookOpen /> }],
+      items: [
+        { title: "Guide", url: "/dashboard/web/guide", icon: <BookOpen /> },
+        { title: "FAQ", url: "/dashboard/web/faqs", icon: <HelpCircle /> },
+      ],
     },
   ],
 }
