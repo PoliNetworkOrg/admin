@@ -14,4 +14,4 @@ export type TgUserRole = NonNullable<ApiInput["tg"]["permissions"]["addRole"]["r
 export type AzureMember = ApiOutput["azure"]["members"]["getAll"][number]
 
 export type FAQs = Awaited<ReturnType<typeof trpc.web.faqs.getAllFaqs.query>>
-export type FAQItem = FAQs[number]["faqItems"][number]
+export type FAQItem = FAQs[number]["faqs"][number]

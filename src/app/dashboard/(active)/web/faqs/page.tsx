@@ -46,7 +46,7 @@ export default function WebFaqsIndex() {
         titleIt: res.titleIt,
         titleEn: res.titleEn,
         icon: res.icon ?? null,
-        faqItems: [],
+        faqs: [],
       }
 
       setFaqs((prev) => [...prev, newCat])
@@ -85,7 +85,7 @@ export default function WebFaqsIndex() {
 
     saveCurrentIfValid()
 
-    const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqItems.map((item) => item.faqId))) + 1
+    const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqs.map((item) => item.faqId))) + 1
     const newItem: FAQItem = {
       faqId: newId,
       titleIt: editQuestion,
@@ -99,7 +99,7 @@ export default function WebFaqsIndex() {
         if (faq.categoryId === categoryId) {
           return {
             ...faq,
-            faqItems: [...faq.faqItems, newItem],
+            faqs: [...faq.faqs, newItem],
           }
         }
         return faq
@@ -143,7 +143,7 @@ export default function WebFaqsIndex() {
             if (faq.categoryId === categoryId) {
               return {
                 ...faq,
-                faqItems: faq.faqItems.map((item) => {
+                faqs: faq.faqs.map((item) => {
                   if (item.faqId === id) {
                     return {
                       ...item,
@@ -183,7 +183,7 @@ export default function WebFaqsIndex() {
             if (faq.categoryId === categoryId) {
               return {
                 ...faq,
-                faqItems: faq.faqItems.filter((item) => item.faqId !== id),
+                faqs: faq.faqs.filter((item) => item.faqId !== id),
               }
             }
             return faq
@@ -203,14 +203,14 @@ export default function WebFaqsIndex() {
   }
 
   const handleCancel = (id: number) => {
-    const item = faqs?.flatMap((f) => f.faqItems).find((f) => f.faqId === id)
+    const item = faqs?.flatMap((f) => f.faqs).find((f) => f.faqId === id)
     if (item && !item.titleIt.trim() && !item.descriptionIt.trim()) {
       setFaqs((prev) =>
         prev.map((faq) => {
           if (faq.categoryId === categoryId) {
             return {
               ...faq,
-              faqItems: faq.faqItems.filter((item) => item.faqId !== id),
+              faqs: faq.faqs.filter((item) => item.faqId !== id),
             }
           }
           return faq
@@ -242,7 +242,7 @@ export default function WebFaqsIndex() {
               if (faq.categoryId === categoryId) {
                 return {
                   ...faq,
-                  faqItems: faq.faqItems.map((item) => {
+                  faqs: faq.faqs.map((item) => {
                     if (item.faqId === currentId) {
                       return {
                         ...item,
@@ -270,7 +270,7 @@ export default function WebFaqsIndex() {
   }
 
   const activeCategory = faqs.find((c) => c.categoryId === categoryId)
-  const currentCategoryFaqs = activeCategory?.faqItems ?? []
+  const currentCategoryFaqs = activeCategory?.faqs ?? []
 
   return (
     <div className="mx-auto max-w-4xl py-10">

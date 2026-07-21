@@ -43,7 +43,7 @@ export function CategorySwitcher({
                 {categories.map((cat) => (
                   <SelectItem key={cat.categoryId} value={String(cat.categoryId)}>
                     <span className="font-medium">{cat.titleIt}</span>
-                    <span className="ml-1.5 text-xs text-muted-foreground">({cat.faqItems.length})</span>
+                    <span className="ml-1.5 text-xs text-muted-foreground">({cat.faqs.length})</span>
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -56,7 +56,7 @@ export function CategorySwitcher({
 
       {activeCategory && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{activeCategory.faqItems.length} FAQ in questa categoria</span>
+          <span>{activeCategory.faqs.length} FAQ in questa categoria</span>
           <Popover>
             <PopoverTrigger
               render={
