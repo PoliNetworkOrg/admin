@@ -1,0 +1,72 @@
+# Priority levels
+- name: "priority: low"
+  color: "c5def5"
+  description: "Low priority — nice to have or minor impact"
+
+- name: "priority: medium"
+  color: "f9d87a"
+  description: "Moderate priority — should be done soon"
+
+- name: "priority: high"
+  color: "d93f0b"
+  description: "High priority — critical for functionality or release"
+
+# Status tracking
+- name: "status: needs review"
+  color: "5319e7"
+  description: "Issue or PR awaiting review"
+
+- name: "status: in progress"
+  color: "0e8a16"
+  description: "Work is currently being done on this issue"
+
+- name: "status: blocked"
+  color: "b60205"
+  description: "Work cannot proceed until another issue is resolved"
+
+- name: "status: completed"
+  color: "6f42c1"
+  description: "Work finished and verified"
+
+# Areas of the project
+- name: "area: frontend"
+  color: "fbca04"
+  description: "Relates to frontend or user interface code"
+
+- name: "area: backend"
+  color: "0052cc"
+  description: "Relates to backend logic, APIs, or database"
+
+- name: "area: content"
+  color: "0b806a"
+  description: "Relates to text, media, or informational content"
+
+- name: "area: infrastructure"
+  color: "5319e7"
+  description: "Relates to deployment, CI/CD, or configuration"
+
+- name: "area: documentation"
+  color: "0366d6"
+  description: "Relates to documentation or project guides"
+
+# Difficulty estimation
+- name: "difficulty: easy"
+  color: "a2eeef"
+  description: "Beginner-friendly issue — low complexity"
+
+- name: "difficulty: medium"
+  color: "fbca04"
+  description: "Intermediate difficulty — moderate complexity"
+
+- name: "difficulty: hard"
+  color: "b60205"
+  description: "Advanced issue — complex or time-consuming"
+
+# Contributor guidance
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good entry point for new contributors"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Maintainers welcome community help on this issue"

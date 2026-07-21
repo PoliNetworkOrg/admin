@@ -1,11 +1,10 @@
-import { Calendar, CircleAlert, KeyIcon, UserIcon } from "lucide-react"
+import { Calendar, CircleAlert, KeyIcon } from "lucide-react"
 import { headers } from "next/headers"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { auth } from "@/lib/auth"
-import { getInitials } from "@/lib/utils"
 import { getServerSession } from "@/server/auth"
 import { DeletePasskey } from "./delete-passkey"
 import { NewPasskeyButton } from "./passkey-button"
+import { ProfilePic } from "./profile-pic"
 import { SetName } from "./set-name"
 import { Telegram } from "./telegram"
 
@@ -22,15 +21,10 @@ export default async function Account() {
   const { user } = session
 
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container">
       <h2 className="text-accent-foreground mb-4 text-3xl font-bold">Account</h2>
       <div className="flex gap-4 mb-12">
-        <Avatar className="h-32 w-32 rounded-lg after:rounded-lg">
-          {user.image && <AvatarImage src={user.image} alt={`propic of ${user.name}`} />}
-          <AvatarFallback className="rounded-lg text-3xl">
-            {user.name ? getInitials(user.name) : <UserIcon size={48} />}
-          </AvatarFallback>
-        </Avatar>
+        <ProfilePic user={user} />
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">

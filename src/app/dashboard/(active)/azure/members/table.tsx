@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { AzureMember } from "@/server/trpc/types"
 import { columns } from "./columns"
 import { CreateAssocUser } from "./create-assoc-member"
@@ -32,21 +33,40 @@ export function AssocTable({ members }: { members: AzureMember[] }) {
   const users = sociFilter ? members.filter((v) => v.isMember) : members
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full">
       <div className="flex gap-2 items-center">
         <p>Utenti MS @polinetwork.org</p>
-        <Badge onClick={() => setSociFilter((v) => !v)}>{members.filter((d) => d.isMember).length} Soci</Badge>
+        <Badge
+          className="cursor-pointer data-active:ring ring-white"
+          data-active={sociFilter}
+          onClick={() => setSociFilter((v) => !v)}
+        >
+          {members.filter((d) => d.isMember).length} Soci
+        </Badge>
         <Badge variant="secondary">{members.filter((d) => !d.isMember).length} fuori</Badge>
         <Badge>{users.filter((u) => u.assignedLicensesIds.includes("OFFICE_365")).length} licenze Office</Badge>
         <div className="grow" />
         <CreateAssocUser />
       </div>
 
-      <DataTable
-        data={sortByAssocNumber(users)}
-        // @ts-expect-error idk what is going on here
-        columns={columns}
-      />
+      <DataTable data={sortByAssocNumber(users)} columns={columns} />
+    </div>
+  )
+}
+
+export function SkeletonAssocTable() {
+  return (
+    <div className="space-y-3 w-full">
+      <div className="flex gap-2 items-center">
+        <p>Utenti MS @polinetwork.org</p>
+        <Badge className="animate-pulse w-15" />
+        <Badge className="animate-pulse w-15" variant="secondary" />
+        <Badge className="animate-pulse w-30" />
+        <div className="grow" />
+        <CreateAssocUser />
+      </div>
+
+      <Skeleton className="h-[70vh] w-full" />
     </div>
   )
 }

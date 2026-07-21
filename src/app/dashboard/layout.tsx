@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation"
-import { AdminHeader } from "@/components/admin-header"
 import { getServerSession } from "@/server/auth"
 import { trpc } from "@/server/trpc"
 
@@ -21,10 +20,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!roles.includes("owner") && !roles.includes("direttivo") && !roles.includes("president"))
     redirect("/onboarding/unauthorized")
 
-  return (
-    <>
-      <AdminHeader />
-      {children}
-    </>
-  )
+  return children
 }

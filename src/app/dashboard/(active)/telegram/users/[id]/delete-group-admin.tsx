@@ -1,6 +1,7 @@
 "use client"
 
 import { Trash2, Trash2Icon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
@@ -19,9 +20,19 @@ import {
 import { Button } from "@/components/ui/button"
 import { delGroupAdmin } from "@/server/actions/users"
 
-export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number; chatId: number; onDelete(): void }) {
+export function DeleteGroupAdmin({
+  userId,
+  chatId,
+  // onDelete
+}: {
+  userId: number
+  chatId: number
+  // onDelete(): void
+}) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
+
+  const router = useRouter()
 
   async function deleteGroupAdmin() {
     setPending(true)
@@ -35,7 +46,8 @@ export function DeleteGroupAdmin({ userId, chatId, onDelete }: { userId: number;
       else if (error === "UNAUTHORIZED_SELF_ASSIGN") toast.error("You cannot delete on yourself")
       else {
         toast.success("Group Admin deleted!")
-        onDelete()
+        router.refresh()
+        // onDelete()
       }
     } catch (err) {
       toast.error("There was an error")

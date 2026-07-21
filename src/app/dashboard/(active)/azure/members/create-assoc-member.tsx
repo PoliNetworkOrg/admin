@@ -129,7 +129,9 @@ export function CreateAssocUser() {
                 Cancel
               </Button>
             </SheetClose>
-            <Button disabled={pending}>{pending ? "Saving..." : "Create"}</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Create"}
+            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

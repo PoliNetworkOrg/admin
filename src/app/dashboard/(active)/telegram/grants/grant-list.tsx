@@ -5,10 +5,10 @@ import { DeleteGrant } from "./delete-grant"
 
 type Grants = NonNullable<ApiOutput["tg"]["grants"]["getOngoing"]["grants"]>
 
-export function GrantList({ grants }: { grants: Grants }) {
+export function GrantList({ grants, isScheduled }: { grants: Grants; isScheduled?: boolean }) {
   return (
     <div className="flex flex-col w-full items-start justify-start py-4">
-      <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-bold">
+      <div className="grid gap-4 items-center grid-cols-5 w-full border-b py-2 font-semibold">
         <p>Telegram ID</p>
         <p>Username</p>
         <p>Start Date</p>
@@ -18,7 +18,11 @@ export function GrantList({ grants }: { grants: Grants }) {
       {grants.map((r) => (
         <GrantRow row={r} key={r.grant.id} />
       ))}
-      {grants.length === 0 && <div className="w-full text-center py-2 italic">There are no ongoing grants</div>}
+      {grants.length === 0 && (
+        <div className="w-full text-center py-4 italic">
+          There are no {isScheduled ? "scheduled" : "ongoing"} grants
+        </div>
+      )}
     </div>
   )
 }
@@ -32,7 +36,7 @@ function GrantRow({ row: r }: { row: Grants[number] }) {
       </p>
       <p>{format(r.grant.validSince, "yyyy/MM/dd HH:mm")}</p>
       <p>{format(r.grant.validUntil, "yyyy/MM/dd HH:mm")}</p>
-      <DeleteGrant userId={r.grant.userId} onDelete={() => null} />
+      <DeleteGrant userId={r.grant.userId} />
     </div>
   )
 }

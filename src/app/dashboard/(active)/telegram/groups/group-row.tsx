@@ -57,7 +57,7 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
           <Copy />
         </Button>
       </div>
-      <div className="flex items-center justify-start gap-2">
+      <div className="flex items-center justify-end gap-2">
         <p>
           {r.hide ? (
             <Badge onClick={toggleHide} className="bg-yellow-800 hover:bg-yellow-600 cursor-pointer">

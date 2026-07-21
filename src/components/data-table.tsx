@@ -11,12 +11,13 @@ import {
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-interface DataTableProps<TData extends RowData, TValue = unknown> {
-  columns: ColumnDef<TData, TValue>[]
+interface DataTableProps<TData extends RowData> {
+  // biome-ignore lint/suspicious/noExplicitAny: columns commonly mix accessor value types (string, number, group columns...)
+  columns: ColumnDef<TData, any>[]
   data: TData[]
 }
 
-export function DataTable<TData extends RowData, TValue = unknown>({ columns, data }: DataTableProps<TData, TValue>) {
+export function DataTable<TData extends RowData>({ columns, data }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
     columns,
