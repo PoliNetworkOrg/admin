@@ -18,8 +18,8 @@ export const DSData = {
       title: "Azure",
       icon: <Image alt="azure logo" src={azureSvg} className="size-4" />,
       items: [
-        { title: "Members", url: "/dashboard/azure/members", icon: <Users /> },
         { title: "Groups", url: "/dashboard/azure/groups", icon: <UsersRound /> },
+        { title: "Members", url: "/dashboard/azure/members", icon: <Users /> },
       ],
     },
     {

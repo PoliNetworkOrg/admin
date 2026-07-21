@@ -64,9 +64,9 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
             </div>
             <Alert className="mt-2 " variant="info">
               <Info />
-              <AlertTitle>Looking for single-member groups?</AlertTitle>
+              <AlertTitle>Looking for groups with 0-1 member(s)?</AlertTitle>
               <AlertDescription>
-                Groups with exactly one member are collected in a collapsed section at the bottom of the page.
+                Groups with max one member are collected in a collapsed section at the bottom of the page.
               </AlertDescription>
             </Alert>
           </div>
@@ -86,10 +86,7 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
                         {multiMemberGroups.length} {singleMemberGroups.length === 1 ? "group" : "groups"}
                       </span>
                     </span>
-                    <ChevronDown
-                      data-icon="inline-end"
-                      className="transition-transform group-aria-expanded:rotate-180"
-                    />
+                    <ChevronDown className="transition-transform group-aria-expanded:rotate-180" />
                   </Button>
                 }
               />
@@ -119,10 +116,7 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
                         {singleMemberGroups.length} {singleMemberGroups.length === 1 ? "group" : "groups"}
                       </span>
                     </span>
-                    <ChevronDown
-                      data-icon="inline-end"
-                      className="transition-transform group-aria-expanded:rotate-180"
-                    />
+                    <ChevronDown className="transition-transform group-aria-expanded:rotate-180" />
                   </Button>
                 }
               />
@@ -152,10 +146,12 @@ function GroupRow({ group, directoryMembers }: { group: AzureGroup; directoryMem
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="truncate text-base font-medium">{group.displayName}</h2>
-          <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-            <Mail className="size-3.5 shrink-0" />
-            <span className="truncate">{group.mailAddress}</span>
-          </div>
+          {group.mailAddress && (
+            <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+              <Mail className="size-3.5 shrink-0" />
+              <span className="truncate">{group.mailAddress}</span>
+            </div>
+          )}
         </div>
         <Badge variant="secondary">
           {group.members.length} {group.members.length === 1 ? "member" : "members"}
@@ -186,7 +182,7 @@ function MemberAvatar({ member }: { member: AzureGroup["members"][number] }) {
   return (
     <Tooltip>
       <TooltipTrigger>
-        <Avatar className="size-9 ring-2 ring-background">
+        <Avatar className="size-9">
           <AvatarFallback>{initials(member.displayName)}</AvatarFallback>
         </Avatar>
       </TooltipTrigger>
@@ -263,7 +259,7 @@ function AddMemberDialog({ group, directoryMembers }: { group: AzureGroup; direc
         <TooltipTrigger
           render={
             <DialogTrigger
-              render={<Button variant="outline" size="icon-sm" aria-label={`Add a member to ${group.displayName}`} />}
+              render={<Button variant="secondary" size="icon" aria-label={`Add a member to ${group.displayName}`} />}
             />
           }
         >
@@ -376,8 +372,8 @@ function RemoveMemberDialog({ group, directoryMembers }: { group: AzureGroup; di
             <DialogTrigger
               render={
                 <Button
-                  variant="outline"
-                  size="icon-sm"
+                  variant="destructive"
+                  size="icon"
                   disabled={group.members.length === 0}
                   aria-label={`Remove a member from ${group.displayName}`}
                 />
