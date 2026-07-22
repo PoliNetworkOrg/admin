@@ -2,8 +2,9 @@ import { type AppRouter, TRPC_PATH } from "@polinetwork/backend"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { createTRPCClient, httpBatchLink, httpLink, isNonJsonSerializable, splitLink } from "@trpc/client"
 import { SuperJSON } from "superjson"
+import { env } from "@/env"
 
-const url = `${process.env.BACKEND_URL ?? "http://localhost:3000"}${TRPC_PATH}`
+const url = `${env.BACKEND_URL}${TRPC_PATH}`
 const cookie = getRequestHeader("cookie")
 const headers = cookie ? { cookie } : {}
 

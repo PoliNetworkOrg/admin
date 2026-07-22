@@ -1,10 +1,35 @@
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
+import { env } from "@/env"
 import { trpc } from "@/lib/api"
 import { auth } from "@/lib/auth"
 
 export type BackendState<T> = { data: T; connected: boolean; message?: string }
+
+type AuthSession = NonNullable<Awaited<ReturnType<typeof auth.getSession>>["data"]>
+
+const agentSession = {
+  session: {
+    id: "agent-preview-session",
+    token: "agent-preview-token",
+    userId: "agent-preview-user",
+    expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  },
+  user: {
+    id: "agent-preview-user",
+    name: "Preview Agent",
+    email: "agent@polinetwork.org",
+    emailVerified: true,
+    image: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    telegramId: 1,
+    telegramUsername: "preview-agent",
+  },
+} as unknown as AuthSession
 
 export const testBackend = createServerFn().handler(async () => {
   try {
@@ -17,6 +42,8 @@ export const testBackend = createServerFn().handler(async () => {
 })
 
 async function readSession() {
+  if (env.AGENT_MODE) return agentSession
+
   try {
     const response = await auth.getSession({ fetchOptions: { headers: getRequestHeaders() } })
     if (response.error) {
@@ -40,6 +67,8 @@ async function requireAdminRole() {
   const session = await requireSession()
   const telegramId = session.user?.telegramId
   if (!telegramId) throw new Error("TELEGRAM_NOT_LINKED")
+
+  if (env.AGENT_MODE) return { session, telegramId }
 
   const { roles } = await trpc.tg.permissions.getRoles.query({ userId: telegramId })
   if (!roles?.some((role) => ["owner", "direttivo", "president"].includes(role))) {
@@ -66,6 +95,8 @@ async function safely<T>(request: () => Promise<T>): Promise<BackendState<T | nu
 export type AdminSession = NonNullable<Awaited<ReturnType<typeof readSession>>>
 
 export const getCurrentSession = createServerFn().handler(readSession)
+
+export const getAgentMode = createServerFn().handler(() => (env.NODE_ENV === "development" ? env.AGENT_MODE : false))
 
 export const getTelegramUsers = createServerFn().handler(() => safely(() => trpc.tg.users.getAll.query()))
 

@@ -11,11 +11,12 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { auth } from "@/lib/auth"
-import { getCurrentSession, testBackend } from "@/server/api.functions"
+import { getAgentMode, getCurrentSession, testBackend } from "@/server/api.functions"
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
-    if (await getCurrentSession()) throw redirect({ to: "/dashboard" })
+    const [agentMode, session] = await Promise.all([getAgentMode(), getCurrentSession()])
+    if (!agentMode && session) throw redirect({ to: "/dashboard" })
   },
   component: Login,
 })

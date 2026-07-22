@@ -1,11 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { DashboardFrame } from "@/components/dashboard-frame"
-import { getCurrentSession } from "@/server/api.functions"
+import { getAgentMode, getCurrentSession } from "@/server/api.functions"
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
-    const session = await getCurrentSession()
-    if (!session?.user) throw redirect({ to: "/login" })
+    const [agentMode, session] = await Promise.all([getAgentMode(), getCurrentSession()])
+    if (!agentMode && !session?.user) throw redirect({ to: "/login" })
+    if (!session) throw new Error("Agent mode did not provide a preview session")
     return { session }
   },
   component: DashboardLayout,
