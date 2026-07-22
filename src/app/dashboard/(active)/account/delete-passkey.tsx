@@ -1,7 +1,7 @@
 "use client"
 
-import { Trash2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { FiTrash2 } from "react-icons/fi"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ export function DeletePasskey({ id }: { id: string }) {
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <Trash2Icon />
+            <FiTrash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>Remove passkey</AlertDialogTitle>
           <AlertDialogDescription>Are you sure you want to delete this passkey?</AlertDialogDescription>

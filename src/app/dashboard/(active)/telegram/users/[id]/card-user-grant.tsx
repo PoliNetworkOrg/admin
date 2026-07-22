@@ -1,6 +1,6 @@
 "use client"
 import { format } from "date-fns"
-import { Sparkle } from "lucide-react"
+import { FiZap } from "react-icons/fi"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TgGrant, TgUser } from "@/server/trpc/types"
 import { DeleteGrant } from "../../grants/delete-grant"
@@ -18,7 +18,7 @@ export function UserGrantCard({
     <Card className="h-full">
       <CardHeader>
         <CardTitle className="flex gap-2 items-center">
-          <Sparkle size={20} /> Ongoing Grant
+          <FiZap size={20} /> Ongoing Grant
         </CardTitle>
         <CardDescription>This user has an ongoing grant</CardDescription>
       </CardHeader>

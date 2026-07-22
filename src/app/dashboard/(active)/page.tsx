@@ -1,4 +1,4 @@
-import { InfoIcon } from "lucide-react"
+import { FiInfo } from "react-icons/fi"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CompleteProfile } from "./complete-profile"
 
@@ -7,7 +7,7 @@ export default function AdminHome() {
     <div className="container">
       <CompleteProfile />
       <Alert variant="info">
-        <InfoIcon />
+        <FiInfo />
         <AlertTitle>Page under construction</AlertTitle>
         <AlertDescription>Use the sidebar to access the sections</AlertDescription>
       </Alert>

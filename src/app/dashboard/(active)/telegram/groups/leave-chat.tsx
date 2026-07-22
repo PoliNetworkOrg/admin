@@ -1,8 +1,8 @@
 "use client"
 
-import { OctagonX, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiAlertOctagon, FiTrash2 } from "react-icons/fi"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
 import {
@@ -57,7 +57,7 @@ export function LeaveChat({ chatId }: { chatId: number }) {
       <AlertDialogTrigger
         render={
           <Button variant="destructive">
-            <Trash2 />
+            <FiTrash2 />
             Leave
           </Button>
         }
@@ -65,7 +65,7 @@ export function LeaveChat({ chatId }: { chatId: number }) {
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <OctagonX />
+            <FiAlertOctagon />
           </AlertDialogMedia>
           <AlertDialogTitle>Leave chat</AlertDialogTitle>
           <AlertDialogDescription>

@@ -1,8 +1,8 @@
 "use client"
-import { ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
+import { FiChevronRight } from "react-icons/fi"
 import { COOKIES } from "@/constants"
 import { useCookieStorage } from "@/hooks/use-cookie-storage"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
@@ -67,7 +67,7 @@ function DSMenuCategory({
           <SidebarMenuButton className="font-medium">
             {category.icon}
             {category.title}
-            <ChevronRight className="ml-auto transition-transform ease-linear rotate-0 group-data-open/collapsible:rotate-90" />
+            <FiChevronRight className="ml-auto transition-transform ease-linear rotate-0 group-data-open/collapsible:rotate-90" />
           </SidebarMenuButton>
         }
       />

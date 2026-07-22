@@ -1,8 +1,8 @@
 "use client"
 
-import { Trash2, Trash2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiTrash2 } from "react-icons/fi"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
 import {
@@ -63,7 +63,7 @@ export function DeleteGroupAdmin({
       <AlertDialogTrigger
         render={
           <Button variant="destructive">
-            <Trash2 />
+            <FiTrash2 />
             Delete
           </Button>
         }
@@ -71,7 +71,7 @@ export function DeleteGroupAdmin({
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <Trash2Icon />
+            <FiTrash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>Remove Group Admin</AlertDialogTitle>
           <AlertDialogDescription>Are you sure you want to remove the group admin?</AlertDialogDescription>

@@ -1,7 +1,7 @@
 "use client"
-import { LogIn, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { FiLogIn, FiLogOut } from "react-icons/fi"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { auth, useSession } from "@/lib/auth"
 import { Button } from "./ui/button"
@@ -24,7 +24,7 @@ export function HeaderLoginButton() {
           router.refresh()
         }}
       >
-        <LogOut size={20} /> Logout
+        <FiLogOut size={20} /> Logout
       </Button>
     )
 
@@ -36,7 +36,7 @@ export function HeaderLoginButton() {
         className="rounded-lg"
         size={isMobile ? "icon" : "default"}
       >
-        <LogIn size={20} />
+        <FiLogIn size={20} />
         <span className="max-md:hidden">Login</span>
       </Button>
     </Link>

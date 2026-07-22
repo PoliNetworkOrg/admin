@@ -58,9 +58,6 @@ importers:
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      lucide-react:
-        specifier: ^0.525.0
-        version: 0.525.0(react@18.3.1)
       next:
         specifier: ^15.5.18
         version: 15.5.18(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -88,6 +85,9 @@ importers:
       react-hook-form:
         specifier: ^7.55.0
         version: 7.55.0(react@18.3.1)
+      react-icons:
+        specifier: ^5.7.0
+        version: 5.7.0(react@18.3.1)
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -3932,14 +3932,6 @@ packages:
         integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==,
       }
 
-  lucide-react@0.525.0:
-    resolution:
-      {
-        integrity: sha512-Tm1txJ2OkymCGkvwoHt33Y2JpN5xucVq1slHcgE6Lk0WjDfjgKWor5CdVER8U6DvcfMwh4M8XxmpTiyzfmfDYQ==,
-      }
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   math-intrinsics@1.1.0:
     resolution:
       {
@@ -4511,6 +4503,14 @@ packages:
     engines: { node: ">=18.0.0" }
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
+
+  react-icons@5.7.0:
+    resolution:
+      {
+        integrity: sha512-LBLy340Rzqy6+/yVhZKT3B/QpP1BZaesGqasf09HPOBzRarcDIFH0WwXlXQfE7q7ipxK4MSiC5DIBWURCny6fw==,
+      }
+    peerDependencies:
+      react: "*"
 
   react-remove-scroll-bar@2.3.8:
     resolution:
@@ -7671,10 +7671,6 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@0.525.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   math-intrinsics@1.1.0: {}
 
   media-typer@1.1.0: {}
@@ -8034,6 +8030,10 @@ snapshots:
       react: 18.3.1
 
   react-hook-form@7.55.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+
+  react-icons@5.7.0(react@18.3.1):
     dependencies:
       react: 18.3.1
 

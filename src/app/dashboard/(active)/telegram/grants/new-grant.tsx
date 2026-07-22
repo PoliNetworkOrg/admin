@@ -1,9 +1,9 @@
 "use client"
 
 import { format } from "date-fns"
-import { ChevronDownIcon, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { FiChevronDown, FiPlus } from "react-icons/fi"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -99,7 +99,7 @@ export function NewGrant() {
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus size={20} /> New Grant
+            <FiPlus size={20} /> New Grant
           </Button>
         }
       />
@@ -184,7 +184,7 @@ function DatePicker({ onSelect }: { onSelect: (date: Date, startTime: number, du
             render={
               <Button variant="outline" id="date-picker-optional" className="w-32 justify-between font-normal">
                 {date ? format(date, "PPP") : "Select date"}
-                <ChevronDownIcon data-icon="inline-end" />
+                <FiChevronDown data-icon="inline-end" />
               </Button>
             }
           />

@@ -1,6 +1,6 @@
 "use client"
-import { Copy } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { FiCopy } from "react-icons/fi"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -54,7 +54,7 @@ export function GroupRow({ row: r }: { row: TgGroup }) {
             }
           }}
         >
-          <Copy />
+          <FiCopy />
         </Button>
       </div>
       <div className="flex items-center justify-end gap-2">

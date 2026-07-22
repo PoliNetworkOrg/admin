@@ -1,8 +1,8 @@
 "use client"
 
-import { OctagonX } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiAlertOctagon } from "react-icons/fi"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -58,7 +58,7 @@ export function DeleteGrant({
       <AlertDialogTrigger
         render={
           <Button variant="destructive">
-            <OctagonX />
+            <FiAlertOctagon />
             Interrupt
           </Button>
         }
@@ -66,7 +66,7 @@ export function DeleteGrant({
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <OctagonX />
+            <FiAlertOctagon />
           </AlertDialogMedia>
           <AlertDialogTitle>Interrupt Grant</AlertDialogTitle>
           <AlertDialogDescription>Are you sure you want to interrupt the grant?</AlertDialogDescription>

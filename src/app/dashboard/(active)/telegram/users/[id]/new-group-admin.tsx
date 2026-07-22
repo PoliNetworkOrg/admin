@@ -1,7 +1,7 @@
 "use client"
-import { Plus, Search, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiPlus, FiSearch, FiX } from "react-icons/fi"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -84,7 +84,7 @@ export function NewGroupAdmin({
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus size={20} /> New
+            <FiPlus size={20} /> New
           </Button>
         }
       />
@@ -119,12 +119,12 @@ export function NewGroupAdmin({
                 value={groupQuery}
               />
               <Button type="submit" size="icon">
-                <Search />
+                <FiSearch />
               </Button>
               <div className="grow" />
               {groups.length > 0 && (
                 <Button variant="outline" onClick={reset} className="justify-self-end">
-                  <X />
+                  <FiX />
                   Reset
                 </Button>
               )}
