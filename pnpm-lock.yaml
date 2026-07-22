@@ -16,10 +16,17 @@ importers:
       "@hookform/resolvers":
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.55.0(react@18.3.1))
+<<<<<<< HEAD
       "@polinetwork/backend":
         specifier: ^0.16.4
         version: 0.16.4
       "@radix-ui/react-dialog":
+=======
+      '@polinetwork/backend':
+        specifier: ^0.17.0
+        version: 0.17.0
+      '@radix-ui/react-dialog':
+>>>>>>> origin/main
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       "@t3-oss/env-nextjs":
@@ -1256,11 +1263,8 @@ packages:
       }
     engines: { node: ">=20.0.0" }
 
-  "@polinetwork/backend@0.16.4":
-    resolution:
-      {
-        integrity: sha512-IspiFAA92uPfYHR2eKj3FCQxX8lVbvlL6lMmEFxEhJbIIaca3Fq1vduRlyDWSo7QC1bpXqzpjjVDUa/jrK+OtA==,
-      }
+  '@polinetwork/backend@0.17.0':
+    resolution: {integrity: sha512-NfU0i4It86LOMsZ5xyOX8ccOcbazwsC8j/D/B4sBb9PaJjENAdyFS27l9I4i0ihM2MrcFBJixxDdmnPO7/D/Rg==}
 
   "@radix-ui/number@1.1.1":
     resolution:
@@ -6017,7 +6021,7 @@ snapshots:
       tslib: 2.8.1
       tsyringe: 4.10.0
 
-  "@polinetwork/backend@0.16.4": {}
+  '@polinetwork/backend@0.17.0': {}
 
   "@radix-ui/number@1.1.1": {}
 
