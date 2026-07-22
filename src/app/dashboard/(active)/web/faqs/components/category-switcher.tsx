@@ -1,8 +1,8 @@
-import { FiEdit, FiTrash2 } from "react-icons/fi"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
+import { FiEdit } from "react-icons/fi"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FAQs } from "@/server/trpc/types"
+import { DeletePopover } from "./delete-popover"
+import { FaqButton } from "./faq-button"
 
 export interface CategorySwitcherProps {
   categories: FAQs
@@ -63,45 +63,19 @@ export function CategorySwitcher({
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{activeCategory.faqs.length} FAQ in questa categoria</span>
           {onEditCategory && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-              title="Modifica categoria"
+            <FaqButton
+              icon={FiEdit}
               onClick={() => onEditCategory(activeCategory)}
-            >
-              <FiEdit className="size-3.5" />
-            </Button>
-          )}
-          <Popover>
-            <PopoverTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  title="Elimina categoria"
-                >
-                  <FiTrash2 className="size-3.5" />
-                </Button>
-              }
+              color="primary"
+              ariaLabel="Modifica categoria"
             />
-            <PopoverContent className="w-72 space-y-3 p-4" align="end">
-              <PopoverHeader>
-                <PopoverTitle className="text-sm font-semibold text-foreground">
-                  Eliminare "{activeCategory.titleIt}"?
-                </PopoverTitle>
-              </PopoverHeader>
-              <p className="text-xs text-muted-foreground">
-                Questa azione eliminerà la categoria e tutte le FAQ associate ad essa.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button size="sm" variant="destructive" onClick={() => onDeleteCategory(activeCategory.categoryId)}>
-                  Conferma Eliminazione
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          )}
+          <DeletePopover
+            title={`Eliminare "${activeCategory.titleIt}"?`}
+            description="Questa azione eliminerà la categoria e tutte le FAQ associate ad essa."
+            triggerAriaLabel="Elimina categoria"
+            onConfirm={() => onDeleteCategory(activeCategory.categoryId)}
+          />
         </div>
       )}
     </div>

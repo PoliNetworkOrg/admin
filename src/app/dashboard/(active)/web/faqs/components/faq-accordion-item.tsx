@@ -1,8 +1,8 @@
 import type React from "react"
-import { FiCheck, FiCornerDownLeft, FiEdit, FiTrash2, FiX } from "react-icons/fi"
+import { FiCheck, FiCornerDownLeft, FiEdit } from "react-icons/fi"
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import type { FAQItem } from "@/server/trpc/types"
+import { DeletePopover } from "./delete-popover"
 import { FaqButton } from "./faq-button"
 
 export interface FaqAccordionItemProps {
@@ -169,31 +169,14 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
     <AccordionTrigger
       className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary"
       actions={
-        <div className="flex items-center gap-1.5">
+        <div className="flex text-xs items-center gap-1.5">
           <FaqButton icon={FiEdit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
-          <Popover>
-            <PopoverTrigger
-              render={
-                <FaqButton icon={FiX} onClick={(e) => e.stopPropagation()} color="destructive" ariaLabel="Delete FAQ" />
-              }
-            />
-            <PopoverContent className="flex flex-row items-center gap-2" align="end">
-              <PopoverHeader>
-                <PopoverTitle className="text-primary-foreground">
-                  Are you sure you want to delete this FAQ?
-                </PopoverTitle>
-              </PopoverHeader>
-              <FaqButton
-                icon={FiTrash2}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(e, item.faqId)
-                }}
-                color="destructive"
-                ariaLabel="Confirm delete FAQ"
-              />
-            </PopoverContent>
-          </Popover>
+          <DeletePopover
+            title="Eliminare questa FAQ?"
+            triggerAriaLabel="Delete FAQ"
+            triggerOnClick={(e) => e.stopPropagation()}
+            onConfirm={(e) => onDelete(e, item.faqId)}
+          />
         </div>
       }
     >
