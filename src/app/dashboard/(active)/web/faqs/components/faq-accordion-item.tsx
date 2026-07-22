@@ -1,5 +1,5 @@
-import { Check, LucidePencil, Trash, Undo2, X } from "lucide-react"
 import type React from "react"
+import { FiCheck, FiCornerDownLeft, FiEdit, FiTrash2, FiX } from "react-icons/fi"
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import type { FAQItem } from "@/server/trpc/types"
@@ -151,8 +151,8 @@ function FaqEditHeader({
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0 pt-1">
-        <FaqButton icon={Check} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
-        <FaqButton icon={Undo2} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
+        <FaqButton icon={FiCheck} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
+        <FaqButton icon={FiCornerDownLeft} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
       </div>
     </div>
   )
@@ -170,11 +170,11 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
       className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary"
       actions={
         <div className="flex items-center gap-1.5">
-          <FaqButton icon={LucidePencil} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
+          <FaqButton icon={FiEdit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
           <Popover>
             <PopoverTrigger
               render={
-                <FaqButton icon={X} onClick={(e) => e.stopPropagation()} color="destructive" ariaLabel="Delete FAQ" />
+                <FaqButton icon={FiX} onClick={(e) => e.stopPropagation()} color="destructive" ariaLabel="Delete FAQ" />
               }
             />
             <PopoverContent className="flex flex-row items-center gap-2" align="end">
@@ -184,7 +184,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
                 </PopoverTitle>
               </PopoverHeader>
               <FaqButton
-                icon={Trash}
+                icon={FiTrash2}
                 onClick={(e) => {
                   e.stopPropagation()
                   onDelete(e, item.faqId)

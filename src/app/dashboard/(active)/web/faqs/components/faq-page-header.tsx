@@ -1,5 +1,5 @@
-import { ArrowLeft, FolderPlus, PlusIcon } from "lucide-react"
 import Link from "next/link"
+import { FiArrowLeft, FiFolderPlus, FiPlus } from "react-icons/fi"
 import { Button } from "@/components/ui/button"
 
 export interface FaqPageHeaderProps {
@@ -15,7 +15,7 @@ export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqP
         href="/dashboard/web"
         className="inline-flex gap-1 items-center text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors group"
       >
-        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" /> Back
+        <FiArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" /> Back
       </Link>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
         <div>
@@ -28,12 +28,12 @@ export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqP
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onOpenAddCategory}>
-            <FolderPlus className="size-4" />
+            <FiFolderPlus className="size-4" />
             Nuova Categoria
           </Button>
 
           <Button onClick={onAddFaq} disabled={!hasCategory}>
-            <PlusIcon className="size-4" />
+            <FiPlus className="size-4" />
             Add FAQ
           </Button>
         </div>

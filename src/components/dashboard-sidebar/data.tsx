@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { FiBookOpen, FiGlobe, FiMessageSquare, FiUsers, FiZap } from "react-icons/fi"
+import { FiBookOpen, FiGlobe, FiMessageCircle, FiMessageSquare, FiUsers, FiZap } from "react-icons/fi"
 import azureSvg from "@/assets/svg/azure.svg"
 import telegramSvg from "@/assets/svg/telegram.svg"
 
@@ -25,7 +25,10 @@ export const DSData = {
     {
       title: "Web",
       icon: <FiGlobe className="size-4" />,
-      items: [{ title: "Guide", url: "/dashboard/web/guide", icon: <FiBookOpen /> }],
+      items: [
+        { title: "Guide", url: "/dashboard/web/guide", icon: <FiBookOpen /> },
+        { title: "FAQs", url: "/dashboard/web/faqs", icon: <FiMessageCircle /> },
+      ],
     },
   ],
 }

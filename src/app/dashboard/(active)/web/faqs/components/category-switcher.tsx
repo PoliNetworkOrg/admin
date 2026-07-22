@@ -1,4 +1,4 @@
-import { LucidePencil, Trash } from "lucide-react"
+import { FiEdit, FiTrash2 } from "react-icons/fi"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -70,7 +70,7 @@ export function CategorySwitcher({
               title="Modifica categoria"
               onClick={() => onEditCategory(activeCategory)}
             >
-              <LucidePencil className="size-3.5" />
+              <FiEdit className="size-3.5" />
             </Button>
           )}
           <Popover>
@@ -82,7 +82,7 @@ export function CategorySwitcher({
                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   title="Elimina categoria"
                 >
-                  <Trash className="size-3.5" />
+                  <FiTrash2 className="size-3.5" />
                 </Button>
               }
             />
