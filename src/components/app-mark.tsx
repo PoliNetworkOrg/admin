@@ -5,10 +5,12 @@ import { cn } from "@/lib/utils"
 export function AppMark({
   compact = false,
   sidebarResponsive = false,
+  className,
   onClick,
 }: {
   compact?: boolean
   sidebarResponsive?: boolean
+  className?: string
   onClick?: React.MouseEventHandler<HTMLAnchorElement>
 }) {
   return (
@@ -16,7 +18,8 @@ export function AppMark({
       to="/dashboard"
       className={cn(
         "flex w-max items-center gap-3 rounded-lg text-inherit outline-none focus-visible:ring-3 focus-visible:ring-current/25",
-        sidebarResponsive && "group-data-[collapsible=icon]:gap-0"
+        sidebarResponsive && "group-data-[collapsible=icon]:gap-0",
+        className
       )}
       aria-label="PoliNetwork Admin home"
       onClick={onClick}

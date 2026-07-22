@@ -48,7 +48,9 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
       <DashboardSidebar user={user} loggingOut={loggingOut} onLogout={() => void logout()} />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/92 px-7 backdrop-blur-xl max-[640px]:px-4">
-          <SidebarTrigger className="-ml-1" />
+          {/* The collapse control lives in the sidebar header on desktop; on mobile the
+              sidebar is an off-canvas drawer, so it still needs a trigger up here. */}
+          <SidebarTrigger className="-ml-1 md:hidden" />
           <DashboardBreadcrumb className="min-w-0 flex-1" />
           <ThemeToggle />
         </header>
