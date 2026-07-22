@@ -1,10 +1,7 @@
-import { Combobox } from "@base-ui/react/combobox"
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import {
   ArrowLeft,
   CalendarClock,
-  Check,
-  ChevronDown,
   ExternalLink,
   History,
   LoaderCircle,
@@ -21,6 +18,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -362,7 +367,7 @@ function AddGroupAdminDialog({
             <FieldLabel htmlFor="admin-group" className="font-mono text-[10px] font-medium text-muted-foreground">
               Group
             </FieldLabel>
-            <Combobox.Root
+            <Combobox
               items={availableGroups}
               value={availableGroups.find((group) => String(group.telegramId) === groupId) ?? null}
               onValueChange={(group) => setGroupId(group ? String(group.telegramId) : "")}
@@ -370,39 +375,18 @@ function AddGroupAdminDialog({
               itemToStringValue={(group) => String(group.telegramId)}
               disabled={!availableGroups.length}
             >
-              <Combobox.InputGroup className="flex h-10 w-full rounded-lg border border-input bg-background focus-within:border-primary focus-within:ring-3 focus-within:ring-ring/20">
-                <Combobox.Input
-                  id="admin-group"
-                  placeholder="Search groups…"
-                  className="min-w-0 flex-1 bg-transparent px-3 text-xs outline-none placeholder:text-muted-foreground"
-                  required
-                />
-                <Combobox.Trigger className="grid w-9 place-items-center text-muted-foreground hover:text-primary">
-                  <ChevronDown className="size-4" />
-                </Combobox.Trigger>
-              </Combobox.InputGroup>
-              <Combobox.Portal>
-                <Combobox.Positioner>
-                  <Combobox.Popup className="max-h-60 min-w-[var(--anchor-width)] overflow-auto rounded-lg border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
-                    <Combobox.Empty className="px-3 py-2 text-muted-foreground">No matching groups</Combobox.Empty>
-                    <Combobox.List>
-                      {(group) => (
-                        <Combobox.Item
-                          key={group.telegramId}
-                          value={group}
-                          className="flex cursor-default items-center gap-2 rounded-md px-3 py-2 outline-none data-highlighted:bg-accent data-highlighted:text-primary"
-                        >
-                          <Combobox.ItemIndicator>
-                            <Check className="size-3.5" />
-                          </Combobox.ItemIndicator>
-                          <span>{group.title}</span>
-                        </Combobox.Item>
-                      )}
-                    </Combobox.List>
-                  </Combobox.Popup>
-                </Combobox.Positioner>
-              </Combobox.Portal>
-            </Combobox.Root>
+              <ComboboxInput id="admin-group" placeholder="Search groups…" required className="h-10 text-xs" />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching groups</ComboboxEmpty>
+                <ComboboxList>
+                  {(group) => (
+                    <ComboboxItem key={group.telegramId} value={group} className="text-xs">
+                      <span>{group.title}</span>
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </Field>
           {!availableGroups.length && (
             <p className="mt-3 text-[10px] text-muted-foreground">
