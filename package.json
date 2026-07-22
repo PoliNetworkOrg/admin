@@ -6,6 +6,7 @@
   "scripts": {
     "build": "next build",
     "dev": "PORT=3001 next dev --turbo",
+    "dev:turbofree": "PORT=3001 next dev",
     "check": "biome check",
     "check:fix": "biome check --fix --unsafe",
     "preview": "next build && next start",
