@@ -49,11 +49,7 @@ export function AssocTable({ members }: { members: AzureMember[] }) {
         <CreateAssocUser />
       </div>
 
-      <DataTable
-        data={sortByAssocNumber(users)}
-        // @ts-expect-error idk what is going on here
-        columns={columns}
-      />
+      <DataTable data={sortByAssocNumber(users)} columns={columns} />
     </div>
   )
 }
