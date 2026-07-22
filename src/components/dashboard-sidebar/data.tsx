@@ -27,6 +27,11 @@ export const DSData = {
       icon: <Globe className="size-4" />,
       items: [{ title: "Guide", url: "/dashboard/web/guide", icon: <BookOpen /> }],
     },
+    {
+      title: "Web",
+      icon: <Globe />,
+      items: [{ title: "Associations", url: "/dashboard/web/associations", icon: <Users /> }],
+    },
   ],
 }
 
