@@ -5,9 +5,9 @@ import {
   KeyRound,
   LoaderCircle,
   LogOut,
-  Mail,
   MonitorSmartphone,
   Shield,
+  ShieldCheck,
   Trash2,
   UserRound,
 } from "lucide-react"
@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { auth, useSession } from "@/lib/auth"
 import type { AdminSession } from "@/server/api.functions"
-import { uploadProfilePicture } from "@/server/api.functions"
+import { getCurrentTelegramRoles, uploadProfilePicture } from "@/server/api.functions"
 
 type Passkey = { id: string; name?: string | null; createdAt?: Date | string; deviceType?: string }
 type ActiveSession = {
@@ -34,7 +34,10 @@ type ActiveSession = {
   createdAt?: Date | string
 }
 
-export const Route = createFileRoute("/dashboard/account")({ component: Account })
+export const Route = createFileRoute("/dashboard/account")({
+  loader: () => getCurrentTelegramRoles(),
+  component: Account,
+})
 
 function avatarText(name?: string | null, email?: string) {
   return (name || email || "U")
@@ -46,10 +49,12 @@ function avatarText(name?: string | null, email?: string) {
 
 function Account() {
   const router = useRouter()
+  const rolesResponse = Route.useLoaderData()
   const initial = Route.useRouteContext().session as AdminSession
   const sessionQuery = useSession()
   const session = (sessionQuery.data as AdminSession | null) ?? initial
   const user = session.user
+  const telegramRoles = rolesResponse.data ?? []
   const fileInput = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(user?.name ?? "")
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
@@ -299,7 +304,7 @@ function Account() {
 
         <Card>
           <CardHeader className="flex flex-row items-start gap-3 border-b border-border">
-            <Mail className="mt-0.5 shrink-0 text-primary" />
+            <ShieldCheck className="mt-0.5 shrink-0 text-primary" />
             <span>
               <CardTitle>Telegram identity</CardTitle>
               <CardDescription className="mt-1">Used to determine roles and permissions.</CardDescription>
@@ -314,6 +319,22 @@ function Account() {
               <div>
                 <dt className="font-mono text-[10px] text-muted-foreground">Telegram ID</dt>
                 <dd className="mt-1 font-mono text-[10px]">{user?.telegramId ?? "Not linked"}</dd>
+              </div>
+              <div>
+                <dt className="font-mono text-[10px] text-muted-foreground">Roles</dt>
+                <dd className="mt-1.5 flex flex-wrap gap-1.5">
+                  {telegramRoles.length ? (
+                    telegramRoles.map((role) => (
+                      <Badge key={role} variant="secondary" className="font-mono text-[9px] text-primary">
+                        {role}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-[11px] italic text-muted-foreground">
+                      {rolesResponse.connected ? "No assigned roles" : "Roles unavailable"}
+                    </span>
+                  )}
+                </dd>
               </div>
             </dl>
           </CardContent>

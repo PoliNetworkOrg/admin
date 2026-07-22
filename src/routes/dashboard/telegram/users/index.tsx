@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ArrowRight, MessageCircle } from "lucide-react"
 import { useMemo } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/dashboard/telegram/users/")({
 function TelegramUsers() {
   const response = Route.useLoaderData()
   const users = response.data?.users ?? []
+  const navigate = useNavigate()
 
   const columns = useMemo(
     () =>
@@ -63,15 +64,10 @@ function TelegramUsers() {
         userColumnHelper.display({
           id: "actions",
           header: "",
-          cell: ({ row }) => (
-            <Link
-              to="/dashboard/telegram/users/$userId"
-              params={{ userId: String(row.original.id) }}
-              className="ml-auto flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/25"
-              aria-label={`Open ${row.original.username ?? row.original.id}`}
-            >
+          cell: () => (
+            <span className="ml-auto flex size-9 items-center justify-center text-muted-foreground transition-colors group-hover/row:text-primary">
               <ArrowRight className="size-4" />
-            </Link>
+            </span>
           ),
         }),
       ]),
@@ -127,15 +123,36 @@ function TelegramUsers() {
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getAllCells().map((cell) => (
-                        <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
-                          <table.FlexRender cell={cell} />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
+                  {table.getRowModel().rows.map((row) => {
+                    const user = row.original
+                    const openUser = () =>
+                      navigate({
+                        to: "/dashboard/telegram/users/$userId",
+                        params: { userId: String(user.id) },
+                      })
+
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className="group/row cursor-pointer outline-none focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25"
+                        tabIndex={0}
+                        aria-label={`Open details for ${[user.firstName, user.lastName].filter(Boolean).join(" ")}`}
+                        onClick={() => void openUser()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            void openUser()
+                          }
+                        }}
+                      >
+                        {row.getAllCells().map((cell) => (
+                          <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
+                            <table.FlexRender cell={cell} />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </TableSurface>

@@ -1,8 +1,10 @@
+import { USER_ROLE } from "@polinetwork/backend"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { env } from "@/env"
 import { trpc } from "@/lib/api"
+import type { TgUserRole } from "@/lib/api/types"
 import { auth } from "@/lib/auth"
 
 export type BackendState<T> = { data: T; connected: boolean; message?: string }
@@ -98,6 +100,24 @@ export const getCurrentSession = createServerFn().handler(readSession)
 
 export const getAgentMode = createServerFn().handler(() => (env.NODE_ENV === "development" ? env.AGENT_MODE : false))
 
+export const getCurrentTelegramRoles = createServerFn().handler(
+  async (): Promise<BackendState<TgUserRole[] | null>> => {
+    const session = await readSession()
+    if (!session?.user) {
+      return { data: null, connected: false, message: "Your session is no longer valid." }
+    }
+
+    if (!session.user.telegramId) return { data: [], connected: true }
+
+    try {
+      const permissions = await trpc.tg.permissions.getRoles.query({ userId: session.user.telegramId })
+      return { data: permissions.roles ?? [], connected: true }
+    } catch {
+      return { data: null, connected: false, message: "Telegram roles are currently unavailable." }
+    }
+  }
+)
+
 export const getTelegramUsers = createServerFn().handler(() => safely(() => trpc.tg.users.getAll.query()))
 
 export const getTelegramGroups = createServerFn().handler(() => safely(() => trpc.tg.groups.getAll.query()))
@@ -120,21 +140,25 @@ export const getTelegramUserDetails = createServerFn()
       const { user } = await api.tg.users.get.query({ userId: data.userId })
       if (!user) return null
 
-      const [permissions, messages, audits, grant] = await Promise.all([
+      const [permissions, messages, audits, grant, scheduledGrants] = await Promise.all([
         api.tg.permissions.getRoles.query({ userId: user.id }),
         api.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 }),
         api.tg.auditLog.getById.query({ targetId: user.id }),
         api.tg.grants.checkUser.query({ userId: user.id }),
+        api.tg.grants.getScheduled.query(),
       ])
+      const scheduledGrant = scheduledGrants.grants.find((record) => record.grant.userId === user.id)?.grant ?? null
 
       return {
         user,
         roles: permissions.roles ?? [],
+        configuredRoles: Object.values(USER_ROLE),
         groupAdmin: permissions.groupAdmin.filter(Boolean),
         groups: await api.tg.groups.getAll.query(),
         messages: messages.messages ?? [],
         audits,
-        grant: grant.grant ?? null,
+        grant: grant.grant ?? scheduledGrant,
+        grantStatus: grant.grant ? ("active" as const) : scheduledGrant ? ("scheduled" as const) : null,
       }
     })
   })
@@ -151,6 +175,48 @@ export const addTelegramGroupAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { telegramId } = await requireAdminRole()
     return trpc.tg.permissions.addGroup.mutate({ ...data, adderId: telegramId })
+  })
+
+const telegramRoleValues = Object.values(USER_ROLE) as [TgUserRole, ...TgUserRole[]]
+const telegramRoleInput = z.object({ userId: z.number().int().positive(), role: z.enum(telegramRoleValues) })
+
+export const addTelegramUserRole = createServerFn({ method: "POST" })
+  .validator(telegramRoleInput)
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    return trpc.tg.permissions.addRole.mutate({ ...data, adderId: telegramId })
+  })
+
+export const removeTelegramUserRole = createServerFn({ method: "POST" })
+  .validator(telegramRoleInput)
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    return trpc.tg.permissions.removeRole.mutate({ ...data, removerId: telegramId })
+  })
+
+export const createTelegramGrant = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      userId: z.number().int().positive(),
+      since: z.date(),
+      until: z.date(),
+      reason: z.string().trim().max(500).optional(),
+    })
+  )
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    return trpc.tg.grants.create.mutate({ ...data, adderId: telegramId, sendTgLog: true })
+  })
+
+export const interruptTelegramGrant = createServerFn({ method: "POST" })
+  .validator(z.object({ userId: z.number().int().positive() }))
+  .handler(async ({ data }) => {
+    const { telegramId } = await requireAdminRole()
+    return trpc.tg.grants.interrupt.mutate({
+      userId: data.userId,
+      interruptedById: telegramId,
+      sendTgLog: true,
+    })
   })
 
 export const createAzureMember = createServerFn({ method: "POST" })
