@@ -1,4 +1,4 @@
-import { BookOpen, Globe, MessageCircleMoreIcon, Sparkle, Users, UsersRound } from "lucide-react"
+import { BookOpen, Globe, HelpCircle, MessageCircleMoreIcon, Sparkle, Users, UsersRound } from "lucide-react"
 import Image from "next/image"
 import azureSvg from "@/assets/svg/azure.svg"
 import telegramSvg from "@/assets/svg/telegram.svg"
