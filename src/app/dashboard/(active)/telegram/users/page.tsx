@@ -1,5 +1,5 @@
-import { Eye } from "lucide-react"
 import Link from "next/link"
+import { FiEye } from "react-icons/fi"
 import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 import { trpc } from "@/server/trpc"
@@ -47,7 +47,7 @@ function UserRow({ row: r }: { row: Users[number] }) {
       <div className="flex justify-end gap-2 items-center">
         <Link href={`/dashboard/telegram/users/${r.id}`}>
           <Button size="icon" aria-label="see user details">
-            <Eye />
+            <FiEye />
           </Button>
         </Link>
       </div>

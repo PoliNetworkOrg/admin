@@ -1,5 +1,5 @@
-import { GlobeIcon } from "lucide-react"
 import Link from "next/link"
+import { FiGlobe } from "react-icons/fi"
 import { ThemeButton } from "@/components/theme-button"
 import { HeaderLoginButton } from "./header-login-button"
 import { Logo } from "./logo"
@@ -22,7 +22,7 @@ export async function Header() {
       <nav className="flex items-stretch space-x-2 sm:space-x-3">
         <ThemeButton />
         <Button disabled variant="ghost" size="icon">
-          <GlobeIcon size={20} />
+          <FiGlobe size={20} />
         </Button>
         <HeaderLoginButton />
       </nav>

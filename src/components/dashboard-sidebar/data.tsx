@@ -1,5 +1,5 @@
-import { BookOpen, Globe, MessageCircleMoreIcon, Sparkle, Users, UsersRound } from "lucide-react"
 import Image from "next/image"
+import { FiBookOpen, FiGlobe, FiMessageSquare, FiUsers, FiZap } from "react-icons/fi"
 import azureSvg from "@/assets/svg/azure.svg"
 import telegramSvg from "@/assets/svg/telegram.svg"
 
@@ -9,23 +9,23 @@ export const DSData = {
       title: "Telegram",
       icon: <Image alt="telegram logo" src={telegramSvg} className="size-4" />,
       items: [
-        { title: "Grants", url: "/dashboard/telegram/grants", icon: <Sparkle /> },
-        { title: "Groups", url: "/dashboard/telegram/groups", icon: <MessageCircleMoreIcon /> },
-        { title: "Users", url: "/dashboard/telegram/users", icon: <Users /> },
+        { title: "Grants", url: "/dashboard/telegram/grants", icon: <FiZap /> },
+        { title: "Groups", url: "/dashboard/telegram/groups", icon: <FiMessageSquare /> },
+        { title: "Users", url: "/dashboard/telegram/users", icon: <FiUsers /> },
       ],
     },
     {
       title: "Azure",
       icon: <Image alt="azure logo" src={azureSvg} className="size-4" />,
       items: [
-        { title: "Groups", url: "/dashboard/azure/groups", icon: <UsersRound /> },
-        { title: "Members", url: "/dashboard/azure/members", icon: <Users /> },
+        { title: "Groups", url: "/dashboard/azure/groups", icon: <FiUsers /> },
+        { title: "Members", url: "/dashboard/azure/members", icon: <FiUsers /> },
       ],
     },
     {
       title: "Web",
-      icon: <Globe className="size-4" />,
-      items: [{ title: "Guide", url: "/dashboard/web/guide", icon: <BookOpen /> }],
+      icon: <FiGlobe className="size-4" />,
+      items: [{ title: "Guide", url: "/dashboard/web/guide", icon: <FiBookOpen /> }],
     },
   ],
 }

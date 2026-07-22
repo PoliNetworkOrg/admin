@@ -1,5 +1,5 @@
 "use client"
-import { Star } from "lucide-react"
+import { FiStar } from "react-icons/fi"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSession } from "@/lib/auth"
@@ -30,7 +30,7 @@ export function UserInfoCard({
           # User ID: {user.id}{" "}
           {isSelf && (
             <Badge>
-              <Star /> You
+              <FiStar /> You
             </Badge>
           )}
         </CardTitle>

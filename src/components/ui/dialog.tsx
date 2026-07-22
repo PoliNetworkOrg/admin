@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils/shadcn"
 import { Button } from "@/components/ui/button"
-import { XIcon } from "lucide-react"
+import { FiX } from "react-icons/fi"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -61,7 +61,6 @@ function DialogContent({
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
-            data-slot="dialog-close"
             render={
               <Button
                 variant="ghost"
@@ -70,8 +69,7 @@ function DialogContent({
               />
             }
           >
-            <XIcon
-            />
+            <FiX />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

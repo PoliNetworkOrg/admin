@@ -1,8 +1,8 @@
 "use client"
 import { APIError } from "better-auth/api"
-import { CircleCheckBig, ClockAlertIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { FiCheckCircle, FiClock } from "react-icons/fi"
 import { toast } from "sonner"
 import { Code } from "@/components/code"
 import { InputWithPrefix } from "@/components/input-prefix"
@@ -104,7 +104,7 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
   if (success)
     return (
       <div className="flex flex-col items-center gap-4 py-8">
-        <CircleCheckBig className="text-green-500 dark:text-green-700" size={64} />
+        <FiCheckCircle className="text-green-500 dark:text-green-700" size={64} />
         <p className="text-xl font-bold">Linked successfully!</p>
         <p className="text-muted-foreground">Redirecting you in 5s...</p>
       </div>
@@ -113,7 +113,7 @@ export function TelegramLink({ botUsername }: { botUsername: string }) {
   if (expired)
     return (
       <div className="flex flex-col items-center gap-4 py-8">
-        <ClockAlertIcon size={64} />
+        <FiClock size={64} />
         <p>Code Expired!</p>
         <Button onClick={handleSubmit}>Regenerate</Button>
       </div>

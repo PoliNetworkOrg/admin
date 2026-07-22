@@ -1,8 +1,8 @@
 "use client"
 
-import { Bell, ChevronsUpDown, LogOut, UserIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { FiBell, FiChevronsDown, FiLogOut, FiUser } from "react-icons/fi"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -40,13 +40,13 @@ export function DSUserNav() {
               >
                 <Avatar className="size-8">
                   <AvatarImage src={user.image ?? undefined} alt={user.name} />
-                  <AvatarFallback>{user.name ? getInitials(user.name) : <UserIcon size={48} />}</AvatarFallback>
+                  <AvatarFallback>{user.name ? getInitials(user.name) : <FiUser size={48} />}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
-                <ChevronsUpDown className="ml-auto size-4" />
+                <FiChevronsDown className="ml-auto size-4" />
               </SidebarMenuButton>
             }
           />
@@ -61,7 +61,7 @@ export function DSUserNav() {
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="size-8">
                     <AvatarImage src={user.image ?? undefined} alt={user.name} />
-                    <AvatarFallback>{user.name ? getInitials(user.name) : <UserIcon size={48} />}</AvatarFallback>
+                    <AvatarFallback>{user.name ? getInitials(user.name) : <FiUser size={48} />}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -74,12 +74,12 @@ export function DSUserNav() {
             <DropdownMenuGroup>
               <Link href="/dashboard/account">
                 <DropdownMenuItem>
-                  <UserIcon />
+                  <FiUser />
                   Account
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuItem disabled>
-                <Bell />
+                <FiBell />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -97,7 +97,7 @@ export function DSUserNav() {
                 })
               }
             >
-              <LogOut />
+              <FiLogOut />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

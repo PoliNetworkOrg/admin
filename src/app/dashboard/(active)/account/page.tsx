@@ -1,5 +1,5 @@
-import { Calendar, CircleAlert, KeyIcon } from "lucide-react"
 import { headers } from "next/headers"
+import { FiAlertCircle, FiCalendar, FiKey } from "react-icons/fi"
 import { auth } from "@/lib/auth"
 import { getServerSession } from "@/server/auth"
 import { DeletePasskey } from "./delete-passkey"
@@ -28,7 +28,7 @@ export default async function Account() {
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            {!user.name && <CircleAlert className="text-yellow-500" />}
+            {!user.name && <FiAlertCircle className="text-yellow-500" />}
             <span className="text-accent-foreground/70">Name:</span>
             {user.name ? <p>{user.name}</p> : <SetName />}
           </div>
@@ -48,12 +48,12 @@ export default async function Account() {
         {passkeys?.map((p) => (
           <div className="grid grid-cols-[auto_1fr_auto] w-full gap-4 items-center" key={p.id}>
             <div className="bg-primary/30 h-full aspect-square flex justify-center items-center rounded-lg">
-              <KeyIcon size={16} />
+              <FiKey size={16} />
             </div>
             <div>
               <p>{p.name}</p>
               <p className="text-muted-foreground text-xs flex justify-start items-center gap-1">
-                <Calendar size={12} />
+                <FiCalendar size={12} />
                 Created on {p.createdAt.toLocaleDateString()}
               </p>
             </div>

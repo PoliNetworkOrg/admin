@@ -1,8 +1,8 @@
 "use client"
 
-import { ChevronDown, Info, LoaderCircle, Mail, UserMinus, UserPlus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
+import { FiChevronDown, FiInfo, FiLoader, FiMail, FiUserMinus, FiUserPlus } from "react-icons/fi"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar"
@@ -63,7 +63,7 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
               </div>
             </div>
             <Alert className="mt-2 " variant="info">
-              <Info />
+              <FiInfo />
               <AlertTitle>Looking for groups with 0-1 member(s)?</AlertTitle>
               <AlertDescription>
                 Groups with max one member are collected in a collapsed section at the bottom of the page.
@@ -86,7 +86,7 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
                         {multiMemberGroups.length} {singleMemberGroups.length === 1 ? "group" : "groups"}
                       </span>
                     </span>
-                    <ChevronDown className="transition-transform group-aria-expanded:rotate-180" />
+                    <FiChevronDown className="transition-transform group-aria-expanded:rotate-180" />
                   </Button>
                 }
               />
@@ -116,7 +116,7 @@ export function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[];
                         {singleMemberGroups.length} {singleMemberGroups.length === 1 ? "group" : "groups"}
                       </span>
                     </span>
-                    <ChevronDown className="transition-transform group-aria-expanded:rotate-180" />
+                    <FiChevronDown className="transition-transform group-aria-expanded:rotate-180" />
                   </Button>
                 }
               />
@@ -148,7 +148,7 @@ function GroupRow({ group, directoryMembers }: { group: AzureGroup; directoryMem
           <h2 className="truncate text-base font-medium">{group.displayName}</h2>
           {group.mailAddress && (
             <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-              <Mail className="size-3.5 shrink-0" />
+              <FiMail className="size-3.5 shrink-0" />
               <span className="truncate">{group.mailAddress}</span>
             </div>
           )}
@@ -263,7 +263,7 @@ function AddMemberDialog({ group, directoryMembers }: { group: AzureGroup; direc
             />
           }
         >
-          <UserPlus />
+          <FiUserPlus />
         </TooltipTrigger>
         <TooltipContent>Add member</TooltipContent>
       </Tooltip>
@@ -310,9 +310,9 @@ function AddMemberDialog({ group, directoryMembers }: { group: AzureGroup; direc
           />
           <Button onClick={addMember} disabled={!selectedMember || pending}>
             {pending ? (
-              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+              <FiLoader data-icon="inline-start" className="animate-spin" />
             ) : (
-              <UserPlus data-icon="inline-start" />
+              <FiUserPlus data-icon="inline-start" />
             )}
             {pending ? "Adding…" : "Add member"}
           </Button>
@@ -381,7 +381,7 @@ function RemoveMemberDialog({ group, directoryMembers }: { group: AzureGroup; di
             />
           }
         >
-          <UserMinus />
+          <FiUserMinus />
         </TooltipTrigger>
         <TooltipContent>Remove member</TooltipContent>
       </Tooltip>
@@ -430,9 +430,9 @@ function RemoveMemberDialog({ group, directoryMembers }: { group: AzureGroup; di
           />
           <Button variant="destructive" onClick={removeMember} disabled={!selectedMember || pending}>
             {pending ? (
-              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+              <FiLoader data-icon="inline-start" className="animate-spin" />
             ) : (
-              <UserMinus data-icon="inline-start" />
+              <FiUserMinus data-icon="inline-start" />
             )}
             {pending ? "Removing…" : "Remove member"}
           </Button>
