@@ -1,7 +1,7 @@
 "use client"
 
-import { Search, X } from "lucide-react"
 import { useState } from "react"
+import { FiSearch, FiX } from "react-icons/fi"
 import { toast } from "sonner"
 import { fmtUser } from "@/lib/utils/telegram"
 import { getUserInfo, searchUserInfo } from "@/server/actions/users"
@@ -98,11 +98,11 @@ export function UserSelect({ onUser, onReset }: Props) {
 
         {user ? (
           <Button size="icon" onClick={reset} type="button">
-            <X />
+            <FiX />
           </Button>
         ) : (
           <Button size="icon" onClick={search} type="button">
-            <Search />
+            <FiSearch />
           </Button>
         )}
       </form>

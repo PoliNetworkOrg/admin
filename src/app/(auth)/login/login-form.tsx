@@ -1,8 +1,8 @@
 "use client"
 
-import { Key, Loader2, Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiKey, FiLoader, FiMail } from "react-icons/fi"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { FieldSeparator } from "@/components/ui/field"
@@ -101,10 +101,10 @@ function EmailCard({
         </div>
         <Button type="submit" disabled={loading} className="basis-9 group">
           {loading ? (
-            <Loader2 size={16} className="animate-spin" />
+            <FiLoader size={16} className="animate-spin" />
           ) : (
             <>
-              <Mail size={16} />
+              <FiMail size={16} />
               Login with OTP
             </>
           )}
@@ -113,10 +113,10 @@ function EmailCard({
       <FieldSeparator>Or continue with</FieldSeparator>
       <Button onClick={passkeyLogin} disabled={passkeyLoading} className="basis-9 group" variant="secondary">
         {passkeyLoading ? (
-          <Loader2 size={16} className="animate-spin" />
+          <FiLoader size={16} className="animate-spin" />
         ) : (
           <>
-            <Key size={16} /> Login with Passkey
+            <FiKey size={16} /> Login with Passkey
           </>
         )}
       </Button>
@@ -189,7 +189,7 @@ function OTPCard({ email }: { email: string }) {
         </InputOTP>
       </div>
       <Button disabled={loading} className="self-stretch gap-2" onClick={verifyOtp}>
-        {loading ? <Loader2 size={16} className="animate-spin" /> : "Verify"}
+        {loading ? <FiLoader size={16} className="animate-spin" /> : "Verify"}
       </Button>
     </form>
   )

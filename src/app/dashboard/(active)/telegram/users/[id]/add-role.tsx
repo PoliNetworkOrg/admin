@@ -1,8 +1,8 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
-import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiPlus } from "react-icons/fi"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
@@ -89,7 +89,7 @@ export function AddRole({
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus size={20} /> Add Role
+            <FiPlus size={20} /> Add Role
           </Button>
         }
       />

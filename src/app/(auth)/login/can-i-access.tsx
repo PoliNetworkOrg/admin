@@ -1,5 +1,5 @@
-import { Award, Building, Gem, Lock, ShieldUser, Star } from "lucide-react"
 import Image from "next/image"
+import { FiAward, FiBriefcase, FiHexagon, FiLock, FiShield, FiStar } from "react-icons/fi"
 import loginSvg1 from "@/assets/svg/login-1.svg"
 import loginSvg2 from "@/assets/svg/login-2.svg"
 import loginSvg3 from "@/assets/svg/login-3.svg"
@@ -10,16 +10,16 @@ export function CanIAccess() {
   return (
     <div className="text-foreground w-full">
       <div className="text-primary flex items-center space-x-2 py-2 dark:text-white">
-        <Lock size={28} className="" />
+        <FiLock size={28} className="" />
         <h3 className="text-xl font-bold">How can I access?</h3>
       </div>
       <p>You can access this dashboard if you have at least one of this role:</p>
       <div className="xs:grid-cols-2 grid grid-cols-1 flex-wrap gap-4 py-2 md:grid-cols-3 lg:flex">
-        <FeatureBox icon={Star} feature="President or Vice President" />
-        <FeatureBox icon={Award} feature="Board member" />
-        <FeatureBox icon={Building} feature="Department member" />
-        <FeatureBox icon={ShieldUser} feature="Groups admin" />
-        <FeatureBox icon={Gem} feature="Special roles" />
+        <FeatureBox icon={FiStar} feature="President or Vice President" />
+        <FeatureBox icon={FiAward} feature="Board member" />
+        <FeatureBox icon={FiBriefcase} feature="Department member" />
+        <FeatureBox icon={FiShield} feature="Groups admin" />
+        <FeatureBox icon={FiHexagon} feature="Special roles" />
       </div>
       <br />
       <p>When you have checked that you are eligible, these are the steps to access:</p>

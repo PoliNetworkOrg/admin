@@ -1,7 +1,7 @@
 "use client"
 
-import { OctagonX, Trash } from "lucide-react"
 import { useState } from "react"
+import { FiAlertOctagon, FiTrash } from "react-icons/fi"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -52,14 +52,14 @@ export function DeleteGuide({
       <AlertDialogTrigger
         render={
           <Button type="button" variant="destructive" size="icon" aria-label={`Delete ${version}`}>
-            <Trash className="size-4" />
+            <FiTrash className="size-4" />
           </Button>
         }
       />
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <OctagonX />
+            <FiAlertOctagon />
           </AlertDialogMedia>
           <AlertDialogTitle>Delete Guide</AlertDialogTitle>
           <AlertDialogDescription>

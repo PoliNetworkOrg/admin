@@ -1,8 +1,8 @@
 "use client"
 
 import { format } from "date-fns"
-import { ChevronDownIcon, Plus, Upload } from "lucide-react"
 import { useState } from "react"
+import { FiChevronDown, FiPlus, FiUpload } from "react-icons/fi"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -84,7 +84,7 @@ export function CreateGuide({
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus size={20} /> Add Guide
+            <FiPlus size={20} /> Add Guide
           </Button>
         }
       />
@@ -116,7 +116,7 @@ export function CreateGuide({
                 render={
                   <Button variant="outline" id="date-picker" className="w-full justify-between font-normal">
                     {date ? format(date, "dd/MM/yyyy") : "Select date"}
-                    <ChevronDownIcon data-icon="inline-end" />
+                    <FiChevronDown data-icon="inline-end" />
                   </Button>
                 }
               />
@@ -142,7 +142,7 @@ export function CreateGuide({
               htmlFor="file"
               className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors hover:bg-accent/50"
             >
-              <Upload className="size-4 shrink-0 text-muted-foreground" />
+              <FiUpload className="size-4 shrink-0 text-muted-foreground" />
               <span className={file ? "truncate" : "truncate text-muted-foreground"}>
                 {file ? file.name : "Choose a PDF file..."}
               </span>

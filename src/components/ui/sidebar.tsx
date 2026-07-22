@@ -23,7 +23,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { PanelLeftIcon } from "lucide-react"
+import { FiSidebar } from "react-icons/fi"
 import { useCookieStorage } from "@/hooks/use-cookie-storage"
 import { COOKIES } from "@/constants"
 
@@ -275,7 +275,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      <FiSidebar />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

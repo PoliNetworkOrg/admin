@@ -1,7 +1,7 @@
 "use client"
 
-import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { FiArrowLeft } from "react-icons/fi"
 import { Button } from "./ui/button"
 
 export function NavigateBack() {
@@ -15,7 +15,7 @@ export function NavigateBack() {
         router.back()
       }}
     >
-      <ArrowLeft />
+      <FiArrowLeft />
     </Button>
   )
 }

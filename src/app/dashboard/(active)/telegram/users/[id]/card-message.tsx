@@ -1,4 +1,4 @@
-import { ExternalLinkIcon } from "lucide-react"
+import { FiExternalLink } from "react-icons/fi"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { stripChatId } from "@/lib/utils/telegram"
@@ -30,7 +30,7 @@ export function MessageCard({ message: m }: { message: Message }) {
         {m.group?.inviteLink && (
           <a href={m.group.inviteLink} rel="noopener noreferral" target="_blank" aria-label="Join group">
             <Button variant="outline">
-              <ExternalLinkIcon size={20} /> Join Chat
+              <FiExternalLink size={20} /> Join Chat
             </Button>
           </a>
         )}
@@ -41,7 +41,7 @@ export function MessageCard({ message: m }: { message: Message }) {
           aria-label="Open message in chat"
         >
           <Button variant="outline">
-            <ExternalLinkIcon size={20} /> Open
+            <FiExternalLink size={20} /> Open
           </Button>
         </a>
       </CardFooter>

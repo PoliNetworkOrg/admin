@@ -1,8 +1,8 @@
 "use client"
 
-import { RefreshCcw, Search } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+import { FiRefreshCcw, FiSearch } from "react-icons/fi"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -35,11 +35,11 @@ export function SearchInput({ disabled }: { disabled?: boolean }) {
         placeholder="Search..."
       />
       <Button onClick={handleSearch} disabled={disabled}>
-        <Search />
+        <FiSearch />
         Search
       </Button>
       <Button onClick={() => router.refresh()} variant="outline" disabled={disabled}>
-        <RefreshCcw />
+        <FiRefreshCcw />
         Refresh
       </Button>
     </div>

@@ -1,9 +1,9 @@
 "use client"
 
 import type { User } from "better-auth"
-import { Pencil, Upload, UserIcon, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { forwardRef, useRef } from "react"
+import { FiEdit2, FiUpload, FiUser, FiX } from "react-icons/fi"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -42,15 +42,15 @@ export function ProfilePic({ user }: Props) {
         <DropdownMenu>
           <DropdownMenuTrigger>
             <div className="absolute top-0 left-0 w-full h-full group-hover:opacity-100 opacity-0 bg-background/70 backdrop-blur-[1px] transition-all cursor-pointer z-10 grid place-content-center duration-100">
-              <Pencil size={32} />
+              <FiEdit2 size={32} />
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => uploadRef.current?.click()}>
-              <Upload /> Upload
+              <FiUpload /> Upload
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleRemove} variant="destructive" disabled={!user.image}>
-              <X /> Remove
+              <FiX /> Remove
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -59,7 +59,7 @@ export function ProfilePic({ user }: Props) {
 
         <AvatarImage src={user.image || undefined} alt={`propic of ${user.name}`} />
         <AvatarFallback className="rounded-full text-3xl text-foreground">
-          {user.name ? getInitials(user.name) : <UserIcon size={48} />}
+          {user.name ? getInitials(user.name) : <FiUser size={48} />}
         </AvatarFallback>
       </Avatar>
       <p className="peer-hover:opacity-100 opacity-0 text-xs">Max 1MB</p>

@@ -1,8 +1,8 @@
 "use client"
 import { USER_ROLE } from "@polinetwork/backend"
-import { Minus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { FiMinus } from "react-icons/fi"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
@@ -93,7 +93,7 @@ export function RemoveRole({
       <DialogTrigger
         render={
           <Button variant="destructive">
-            <Minus size={20} /> Remove Role
+            <FiMinus size={20} /> Remove Role
           </Button>
         }
       />
