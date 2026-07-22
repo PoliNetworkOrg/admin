@@ -3,7 +3,15 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { addFAQ, addFAQCategory, deleteFAQ, deleteFAQCategory, editFAQ, listFAQs } from "@/server/actions/faqs"
+import {
+  addFAQ,
+  addFAQCategory,
+  deleteFAQ,
+  deleteFAQCategory,
+  editFAQ,
+  editFAQCategory,
+  listFAQs,
+} from "@/server/actions/faqs"
 import type { FAQItem, FAQs } from "@/server/trpc/types"
 import { AddCategoryDialog } from "./components/add-category-dialog"
 import { CategorySwitcher } from "./components/category-switcher"
@@ -14,13 +22,18 @@ export default function WebFaqsIndex() {
   const [faqs, setFaqs] = useState<FAQs>([])
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editQuestion, setEditQuestion] = useState("")
-  const [editAnswer, setEditAnswer] = useState("")
+
+  const [editQuestionIt, setEditQuestionIt] = useState("")
+  const [editQuestionEn, setEditQuestionEn] = useState("")
+  const [editAnswerIt, setEditAnswerIt] = useState("")
+  const [editAnswerEn, setEditAnswerEn] = useState("")
+
   const [openItems, setOpenItems] = useState<number[]>([])
   const [unsavedIds, setUnsavedIds] = useState<number[]>([])
 
-  // State for Add Category Dialog
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
+  const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<FAQs[number] | null>(null)
 
   useEffect(() => {
     listFAQs()
@@ -59,6 +72,30 @@ export default function WebFaqsIndex() {
     }
   }
 
+  const handleUpdateCategory = async (catId: number, titleIt: string, titleEn: string) => {
+    try {
+      const res = await editFAQCategory({
+        id: catId,
+        titleIt,
+        titleEn: titleEn || titleIt,
+      })
+
+      if ("error" in res) {
+        toast.error(`Errore: ${res.error}`)
+        return
+      }
+
+      setFaqs((prev) =>
+        prev.map((c) => (c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn } : c))
+      )
+      toast.success("Categoria aggiornata con successo!")
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      toast.error(`Errore durante la modifica della categoria: ${errorMessage}`)
+      throw e
+    }
+  }
+
   const handleDeleteCategory = async (catId: number) => {
     try {
       await deleteFAQCategory({ id: catId })
@@ -88,10 +125,10 @@ export default function WebFaqsIndex() {
     const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqs.map((item) => item.faqId))) + 1
     const newItem: FAQItem = {
       faqId: newId,
-      titleIt: editQuestion,
-      titleEn: editQuestion,
-      descriptionIt: editAnswer,
-      descriptionEn: editAnswer,
+      titleIt: editQuestionIt,
+      titleEn: editQuestionEn || editQuestionIt,
+      descriptionIt: editAnswerIt,
+      descriptionEn: editAnswerEn || editAnswerIt,
     }
 
     setFaqs((prev) =>
@@ -108,8 +145,10 @@ export default function WebFaqsIndex() {
 
     setUnsavedIds((prev) => [...prev, newId])
     setEditingId(newId)
-    setEditQuestion("")
-    setEditAnswer("")
+    setEditQuestionIt("")
+    setEditQuestionEn("")
+    setEditAnswerIt("")
+    setEditAnswerEn("")
     setOpenItems((prev) => [...prev, newId])
   }
 
@@ -119,22 +158,27 @@ export default function WebFaqsIndex() {
       saveCurrentIfValid()
     }
     setEditingId(item.faqId)
-    setEditQuestion(item.titleIt)
-    setEditAnswer(item.descriptionIt)
+    setEditQuestionIt(item.titleIt)
+    setEditQuestionEn(item.titleEn ?? "")
+    setEditAnswerIt(item.descriptionIt)
+    setEditAnswerEn(item.descriptionEn ?? "")
     setOpenItems((prev) => (prev.includes(item.faqId) ? prev : [...prev, item.faqId]))
   }
 
   const handleSave = (id: number) => {
     if (!categoryId) return
-    const q = editQuestion.trim()
-    const a = editAnswer.trim()
-    if (!q) return toast.error("Question cannot be empty.")
-    if (!a) return toast.error("Answer cannot be empty.")
+    const qIt = editQuestionIt.trim()
+    const qEn = editQuestionEn.trim() || qIt
+    const aIt = editAnswerIt.trim()
+    const aEn = editAnswerEn.trim() || aIt
+
+    if (!qIt) return toast.error("Domanda (Italiano) obbligatoria.")
+    if (!aIt) return toast.error("Risposta (Italiano) obbligatoria.")
 
     const isNew = unsavedIds.includes(id)
     const savePromise = isNew
-      ? addFAQ({ question: q, answer: a, categoryId })
-      : editFAQ({ id, question: q, answer: a, categoryId })
+      ? addFAQ({ questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
+      : editFAQ({ id, questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
 
     savePromise
       .then(() => {
@@ -148,10 +192,10 @@ export default function WebFaqsIndex() {
                     return {
                       ...item,
                       faqId: id,
-                      titleIt: q,
-                      titleEn: q,
-                      descriptionIt: a,
-                      descriptionEn: a,
+                      titleIt: qIt,
+                      titleEn: qEn,
+                      descriptionIt: aIt,
+                      descriptionEn: aEn,
                     }
                   }
                   return item
@@ -163,11 +207,13 @@ export default function WebFaqsIndex() {
         )
         setUnsavedIds((prev) => prev.filter((x) => x !== id))
         setEditingId(null)
-        setEditQuestion("")
-        setEditAnswer("")
-        toast.success("FAQ saved successfully.")
+        setEditQuestionIt("")
+        setEditQuestionEn("")
+        setEditAnswerIt("")
+        setEditAnswerEn("")
+        toast.success("FAQ salvata con successo.")
       })
-      .catch((e: string) => toast.error(`Failed to save FAQ: ${e}`))
+      .catch((e: string) => toast.error(`Impossibile salvare la FAQ: ${e}`))
   }
 
   const handleDelete = (e: React.MouseEvent, id: number) => {
@@ -194,12 +240,14 @@ export default function WebFaqsIndex() {
         setOpenItems((prev) => prev.filter((v) => v !== id))
         if (editingId === id) {
           setEditingId(null)
-          setEditQuestion("")
-          setEditAnswer("")
+          setEditQuestionIt("")
+          setEditQuestionEn("")
+          setEditAnswerIt("")
+          setEditAnswerEn("")
         }
-        toast.success("FAQ deleted successfully.")
+        toast.success("FAQ eliminata con successo.")
       })
-      .catch((e: string) => toast.error(`Failed to delete FAQ: ${e}`))
+      .catch((e: string) => toast.error(`Impossibile eliminare la FAQ: ${e}`))
   }
 
   const handleCancel = (id: number) => {
@@ -219,21 +267,25 @@ export default function WebFaqsIndex() {
       setUnsavedIds((prev) => prev.filter((x) => x !== id))
     }
     setEditingId(null)
-    setEditQuestion("")
-    setEditAnswer("")
+    setEditQuestionIt("")
+    setEditQuestionEn("")
+    setEditAnswerIt("")
+    setEditAnswerEn("")
   }
 
   const saveCurrentIfValid = () => {
     if (!editingId || !categoryId) return
-    const q = editQuestion.trim()
-    const a = editAnswer.trim()
+    const qIt = editQuestionIt.trim()
+    const qEn = editQuestionEn.trim() || qIt
+    const aIt = editAnswerIt.trim()
+    const aEn = editAnswerEn.trim() || aIt
 
-    if (q && a) {
+    if (qIt && aIt) {
       const currentId = editingId
       const isNew = unsavedIds.includes(currentId)
       const savePromise = isNew
-        ? addFAQ({ question: q, answer: a, categoryId })
-        : editFAQ({ id: currentId, question: q, answer: a, categoryId })
+        ? addFAQ({ questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
+        : editFAQ({ id: currentId, questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
 
       savePromise
         .then(() => {
@@ -247,10 +299,10 @@ export default function WebFaqsIndex() {
                       return {
                         ...item,
                         faqId: currentId,
-                        titleIt: q,
-                        titleEn: q,
-                        descriptionIt: a,
-                        descriptionEn: a,
+                        titleIt: qIt,
+                        titleEn: qEn,
+                        descriptionIt: aIt,
+                        descriptionEn: aEn,
                       }
                     }
                     return item
@@ -261,9 +313,9 @@ export default function WebFaqsIndex() {
             })
           )
           setUnsavedIds((prev) => prev.filter((x) => x !== currentId))
-          toast.success("Previous FAQ saved successfully.")
+          toast.success("FAQ precedente salvata con successo.")
         })
-        .catch((e: string) => toast.error(`Failed to auto-save previous FAQ: ${e}`))
+        .catch((e: string) => toast.error(`Impossibile salvare la FAQ precedente: ${e}`))
     } else {
       handleCancel(editingId)
     }
@@ -273,7 +325,7 @@ export default function WebFaqsIndex() {
   const currentCategoryFaqs = activeCategory?.faqs ?? []
 
   return (
-    <div className="mx-auto max-w-4xl py-10">
+    <div className="mx-auto max-w-sm md:max-w-full py-10">
       <div className="space-y-6 w-full">
         <FaqPageHeader
           onOpenAddCategory={() => setIsAddCategoryOpen(true)}
@@ -289,6 +341,10 @@ export default function WebFaqsIndex() {
             setCategoryId(id)
           }}
           onDeleteCategory={handleDeleteCategory}
+          onEditCategory={(cat) => {
+            setEditingCategory(cat)
+            setIsEditCategoryOpen(true)
+          }}
         />
 
         <FaqAccordionList
@@ -296,10 +352,14 @@ export default function WebFaqsIndex() {
           editingId={editingId}
           openItems={openItems}
           setOpenItems={setOpenItems}
-          editQuestion={editQuestion}
-          editAnswer={editAnswer}
-          setEditQuestion={setEditQuestion}
-          setEditAnswer={setEditAnswer}
+          editQuestionIt={editQuestionIt}
+          editQuestionEn={editQuestionEn}
+          editAnswerIt={editAnswerIt}
+          editAnswerEn={editAnswerEn}
+          setEditQuestionIt={setEditQuestionIt}
+          setEditQuestionEn={setEditQuestionEn}
+          setEditAnswerIt={setEditAnswerIt}
+          setEditAnswerEn={setEditAnswerEn}
           handleSave={handleSave}
           handleCancel={handleCancel}
           handleEdit={handleEdit}
@@ -313,6 +373,19 @@ export default function WebFaqsIndex() {
           onOpenChange={setIsAddCategoryOpen}
           onAddCategory={handleAddCategory}
         />
+
+        {editingCategory && (
+          <AddCategoryDialog
+            open={isEditCategoryOpen}
+            onOpenChange={setIsEditCategoryOpen}
+            mode="edit"
+            initialTitleIt={editingCategory.titleIt}
+            initialTitleEn={editingCategory.titleEn ?? ""}
+            onAddCategory={async (titleIt, titleEn) => {
+              await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn)
+            }}
+          />
+        )}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { Trash } from "lucide-react"
+import { LucidePencil, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -9,6 +9,7 @@ export interface CategorySwitcherProps {
   activeCategoryId: number | null
   onSelectCategory: (id: number) => void
   onDeleteCategory: (id: number) => void
+  onEditCategory?: (category: FAQs[number]) => void
 }
 
 export function CategorySwitcher({
@@ -16,11 +17,12 @@ export function CategorySwitcher({
   activeCategoryId,
   onSelectCategory,
   onDeleteCategory,
+  onEditCategory,
 }: CategorySwitcherProps) {
   const activeCategory = categories.find((c) => c.categoryId === activeCategoryId)
   const categoryOptions = categories.map((c) => ({
     value: String(c.categoryId),
-    label: c.titleIt,
+    label: `🇮🇹 ${c.titleIt}`,
   }))
 
   return (
@@ -35,15 +37,18 @@ export function CategorySwitcher({
               if (val) onSelectCategory(Number(val))
             }}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-fit">
               <SelectValue placeholder="Seleziona categoria" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="w-fit">
               <SelectGroup>
                 {categories.map((cat) => (
-                  <SelectItem key={cat.categoryId} value={String(cat.categoryId)}>
-                    <span className="font-medium">{cat.titleIt}</span>
-                    <span className="ml-1.5 text-xs text-muted-foreground">({cat.faqs.length})</span>
+                  <SelectItem key={cat.categoryId} value={String(cat.categoryId)} className="py-2 leading-none">
+                    <span className="font-medium">🇮🇹 {cat.titleIt}</span>
+                    {cat.titleEn && cat.titleEn !== cat.titleIt && (
+                      <span className="text-xs text-muted-foreground">/ 🇬🇧 {cat.titleEn}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">({cat.faqs.length})</span>
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -57,6 +62,17 @@ export function CategorySwitcher({
       {activeCategory && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{activeCategory.faqs.length} FAQ in questa categoria</span>
+          {onEditCategory && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+              title="Modifica categoria"
+              onClick={() => onEditCategory(activeCategory)}
+            >
+              <LucidePencil className="size-3.5" />
+            </Button>
+          )}
           <Popover>
             <PopoverTrigger
               render={

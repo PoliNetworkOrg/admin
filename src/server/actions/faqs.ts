@@ -7,34 +7,57 @@ export async function listFAQs(): Promise<FAQs> {
   return await trpc.web.faqs.getAllFaqs.query()
 }
 
-export async function addFAQ(input: { question: string; answer: string; categoryId?: number }) {
+export async function addFAQ(input: {
+  questionIt: string
+  questionEn?: string
+  answerIt: string
+  answerEn?: string
+  categoryId?: number
+}) {
   const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president", "admin", "creator", "hr"])
   if (!allowed) {
     throw new Error("UNAUTHORIZED")
   }
 
+  const qIt = input.questionIt
+  const qEn = input.questionEn?.trim() || qIt
+  const aIt = input.answerIt
+  const aEn = input.answerEn?.trim() || aIt
+
   return trpc.web.faqs.addFaqs.mutate({
-    titleIt: input.question,
-    titleEn: input.question,
-    descriptionIt: input.answer,
-    descriptionEn: input.answer,
+    titleIt: qIt,
+    titleEn: qEn,
+    descriptionIt: aIt,
+    descriptionEn: aEn,
     categoryId: input.categoryId ?? 1,
     createdBy: telegramId,
   })
 }
 
-export async function editFAQ(input: { id: number; question: string; answer: string; categoryId?: number }) {
+export async function editFAQ(input: {
+  id: number
+  questionIt: string
+  questionEn?: string
+  answerIt: string
+  answerEn?: string
+  categoryId?: number
+}) {
   const { allowed, telegramId } = await requireRole(["owner", "direttivo", "president", "admin", "creator", "hr"])
   if (!allowed) {
     throw new Error("UNAUTHORIZED")
   }
 
+  const qIt = input.questionIt
+  const qEn = input.questionEn?.trim() || qIt
+  const aIt = input.answerIt
+  const aEn = input.answerEn?.trim() || aIt
+
   return trpc.web.faqs.editFaqs.mutate({
     id: input.id,
-    titleIt: input.question,
-    titleEn: input.question,
-    descriptionIt: input.answer,
-    descriptionEn: input.answer,
+    titleIt: qIt,
+    titleEn: qEn,
+    descriptionIt: aIt,
+    descriptionEn: aEn,
     categoryId: input.categoryId ?? 1,
     modifiedBy: telegramId,
   })

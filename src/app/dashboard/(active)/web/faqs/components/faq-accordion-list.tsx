@@ -10,10 +10,14 @@ export interface FaqAccordionListProps {
   editingId: number | null
   openItems: number[]
   setOpenItems: React.Dispatch<React.SetStateAction<number[]>>
-  editQuestion: string
-  editAnswer: string
-  setEditQuestion: (val: string) => void
-  setEditAnswer: (val: string) => void
+  editQuestionIt: string
+  editQuestionEn: string
+  editAnswerIt: string
+  editAnswerEn: string
+  setEditQuestionIt: (val: string) => void
+  setEditQuestionEn: (val: string) => void
+  setEditAnswerIt: (val: string) => void
+  setEditAnswerEn: (val: string) => void
   handleSave: (id: number) => void
   handleCancel: (id: number) => void
   handleEdit: (e: React.MouseEvent, item: FAQItem) => void
@@ -27,10 +31,14 @@ export function FaqAccordionList({
   editingId,
   openItems,
   setOpenItems,
-  editQuestion,
-  editAnswer,
-  setEditQuestion,
-  setEditAnswer,
+  editQuestionIt,
+  editQuestionEn,
+  editAnswerIt,
+  editAnswerEn,
+  setEditQuestionIt,
+  setEditQuestionEn,
+  setEditAnswerIt,
+  setEditAnswerEn,
   handleSave,
   handleCancel,
   handleEdit,
@@ -62,10 +70,14 @@ export function FaqAccordionList({
           key={`${item.faqId}-${index}`}
           item={item}
           isEditing={editingId === item.faqId}
-          editQuestion={editQuestion}
-          editAnswer={editAnswer}
-          setEditQuestion={setEditQuestion}
-          setEditAnswer={setEditAnswer}
+          editQuestionIt={editQuestionIt}
+          editQuestionEn={editQuestionEn}
+          editAnswerIt={editAnswerIt}
+          editAnswerEn={editAnswerEn}
+          setEditQuestionIt={setEditQuestionIt}
+          setEditQuestionEn={setEditQuestionEn}
+          setEditAnswerIt={setEditAnswerIt}
+          setEditAnswerEn={setEditAnswerEn}
           handleSave={handleSave}
           handleCancel={handleCancel}
           handleEdit={handleEdit}
