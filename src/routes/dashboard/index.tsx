@@ -26,6 +26,13 @@ const areas = [
     service: "Telegram",
   },
   {
+    title: "Microsoft 365 groups",
+    description: "Review directory groups and manage their Microsoft 365 memberships.",
+    to: "/dashboard/azure/groups",
+    icon: Database,
+    service: "Azure",
+  },
+  {
     title: "Azure members",
     description: "Manage association numbers and Microsoft 365 license information.",
     to: "/dashboard/azure/members",

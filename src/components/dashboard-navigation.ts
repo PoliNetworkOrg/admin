@@ -45,7 +45,10 @@ export const dashboardNavigation = [
     title: "Azure",
     icon: UsersRound,
     iconSrc: azureIcon,
-    items: [{ title: "Members", url: "/dashboard/azure/members", icon: UsersRound }],
+    items: [
+      { title: "Groups", url: "/dashboard/azure/groups", icon: Database },
+      { title: "Members", url: "/dashboard/azure/members", icon: UsersRound },
+    ],
   },
   {
     title: "Web",

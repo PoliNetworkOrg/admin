@@ -77,6 +77,8 @@ export const getScheduledGrants = createServerFn().handler(() => safely(() => tr
 
 export const getAzureMembers = createServerFn().handler(() => safely(() => trpc.azure.members.getAll.query()))
 
+export const getAzureGroups = createServerFn().handler(() => safely(() => trpc.azure.groups.getAll.query()))
+
 export const getGuides = createServerFn().handler(() => safely(() => trpc.web.guides_matricole.getAllGuides.query()))
 
 export const getTelegramUserDetails = createServerFn()
@@ -144,6 +146,33 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
     if (result.error) throw new Error(result.error)
     return result
   })
+
+const azureGroupMembershipInput = z.object({ groupId: z.string().min(1), userId: z.string().min(1) })
+
+async function updateAzureGroupMembership(
+  operation: () => Promise<boolean>
+): Promise<{ error: "UNAUTHORIZED" | "INTERNAL_SERVER_ERROR" | null }> {
+  try {
+    await requireAdminRole()
+    return { error: (await operation()) ? null : "INTERNAL_SERVER_ERROR" }
+  } catch (error) {
+    console.error(error)
+    return {
+      error:
+        error instanceof Error && ["UNAUTHORIZED", "TELEGRAM_NOT_LINKED"].includes(error.message)
+          ? "UNAUTHORIZED"
+          : "INTERNAL_SERVER_ERROR",
+    }
+  }
+}
+
+export const addAzureGroupMember = createServerFn({ method: "POST" })
+  .validator(azureGroupMembershipInput)
+  .handler(({ data }) => updateAzureGroupMembership(() => trpc.azure.groups.addMember.mutate(data)))
+
+export const removeAzureGroupMember = createServerFn({ method: "POST" })
+  .validator(azureGroupMembershipInput)
+  .handler(({ data }) => updateAzureGroupMembership(() => trpc.azure.groups.removeMember.mutate(data)))
 
 export const createGuide = createServerFn({ method: "POST", strict: false })
   .validator((data: FormData) => data)

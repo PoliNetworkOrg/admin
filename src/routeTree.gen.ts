@@ -19,6 +19,7 @@ import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/g
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
+import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
@@ -73,6 +74,11 @@ const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
   path: '/azure/members',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
+  id: '/azure/groups',
+  path: '/azure/groups',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/link': typeof OnboardingLinkRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/onboarding/link': typeof OnboardingLinkRoute
   '/dashboard': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/onboarding/link': typeof OnboardingLinkRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/onboarding/link'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/onboarding/link'
     | '/dashboard'
     | '/api/auth/$'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/onboarding/link'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
@@ -263,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureMembersRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/azure/groups': {
+      id: '/dashboard/azure/groups'
+      path: '/azure/groups'
+      fullPath: '/dashboard/azure/groups'
+      preLoaderRoute: typeof DashboardAzureGroupsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -290,6 +309,7 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
@@ -301,6 +321,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
