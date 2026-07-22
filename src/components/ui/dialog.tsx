@@ -64,8 +64,8 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+                className="absolute top-2 right-2"
+                size="icon-sm"
               />
             }
           >
