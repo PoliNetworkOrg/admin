@@ -4,7 +4,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { env } from "@/env"
 import { trpc } from "@/lib/api"
-import type { TgUserRole } from "@/lib/api/types"
+import type { TgUser, TgUserRole } from "@/lib/api/types"
 import { auth } from "@/lib/auth"
 
 export type BackendState<T> = { data: T; connected: boolean; message?: string }
@@ -120,6 +120,38 @@ export const getCurrentTelegramRoles = createServerFn().handler(
 
 export const getTelegramUsers = createServerFn().handler(() => safely(() => trpc.tg.users.getAll.query()))
 
+export const findTelegramUser = createServerFn()
+  .validator(
+    z.discriminatedUnion("by", [
+      z.object({ by: z.literal("username"), username: z.string().trim().min(1).max(32) }),
+      z.object({ by: z.literal("id"), userId: z.number().int().positive() }),
+    ])
+  )
+  .handler(
+    async ({ data }): Promise<{ user: TgUser | null; status: "found" | "not-found" | "error"; message?: string }> => {
+      try {
+        await requireSession()
+        const response =
+          data.by === "username"
+            ? await trpc.tg.users.getByUsername.query({ username: data.username.replace(/^@/, "") })
+            : await trpc.tg.users.get.query({ userId: data.userId })
+
+        if (response.error === "NOT_FOUND" || !response.user) return { user: null, status: "not-found" }
+        if (response.error) return { user: null, status: "error", message: "Telegram user lookup failed." }
+        return { user: response.user, status: "found" }
+      } catch (error) {
+        return {
+          user: null,
+          status: "error",
+          message:
+            error instanceof Error && error.message === "UNAUTHORIZED"
+              ? "Your session is no longer valid."
+              : "The PoliNetwork backend is currently unavailable.",
+        }
+      }
+    }
+  )
+
 export const getTelegramGroups = createServerFn().handler(() => safely(() => trpc.tg.groups.getAll.query()))
 
 export const getOngoingGrants = createServerFn().handler(() => safely(() => trpc.tg.grants.getOngoing.query()))
@@ -140,14 +172,17 @@ export const getTelegramUserDetails = createServerFn()
       const { user } = await api.tg.users.get.query({ userId: data.userId })
       if (!user) return null
 
-      const [permissions, messages, audits, grant, scheduledGrants] = await Promise.all([
+      const [permissions, messages, audits, ongoingGrant, scheduledGrants] = await Promise.all([
         api.tg.permissions.getRoles.query({ userId: user.id }),
         api.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 }),
         api.tg.auditLog.getById.query({ targetId: user.id }),
         api.tg.grants.checkUser.query({ userId: user.id }),
         api.tg.grants.getScheduled.query(),
       ])
-      const scheduledGrant = scheduledGrants.grants.find((record) => record.grant.userId === user.id)?.grant ?? null
+      const userScheduledGrants = scheduledGrants.grants
+        .filter((record) => record.grant.userId === user.id)
+        .map((record) => record.grant)
+        .sort((left, right) => new Date(left.validSince).getTime() - new Date(right.validSince).getTime())
 
       return {
         user,
@@ -157,8 +192,8 @@ export const getTelegramUserDetails = createServerFn()
         groups: await api.tg.groups.getAll.query(),
         messages: messages.messages ?? [],
         audits,
-        grant: grant.grant ?? scheduledGrant,
-        grantStatus: grant.grant ? ("active" as const) : scheduledGrant ? ("scheduled" as const) : null,
+        ongoingGrant: ongoingGrant.grant ?? null,
+        scheduledGrants: userScheduledGrants,
       }
     })
   })

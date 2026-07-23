@@ -19,8 +19,8 @@ const areas = [
     service: "Telegram",
   },
   {
-    title: "Access grants",
-    description: "Review active and scheduled temporary access for Telegram members.",
+    title: "Grants",
+    description: "Review active and scheduled Telegram grants authorized by the association board.",
     to: "/dashboard/telegram/grants",
     icon: ShieldCheck,
     service: "Telegram",

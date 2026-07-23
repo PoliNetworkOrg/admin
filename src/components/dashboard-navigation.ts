@@ -38,7 +38,7 @@ export const dashboardNavigation = [
     items: [
       { title: "Users", url: "/dashboard/telegram/users", icon: UsersRound },
       { title: "Groups", url: "/dashboard/telegram/groups", icon: Database },
-      { title: "Access grants", url: "/dashboard/telegram/grants", icon: ShieldCheck },
+      { title: "Grants", url: "/dashboard/telegram/grants", icon: ShieldCheck },
     ],
   },
   {

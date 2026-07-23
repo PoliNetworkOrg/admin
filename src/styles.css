@@ -218,6 +218,16 @@
     color: color-mix(in srgb, currentColor 72%, transparent);
   }
 
+  [data-sonner-toast].grant-discard-toast {
+    animation: grant-toast-shake 420ms ease-in-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-sonner-toast].grant-discard-toast {
+      animation: none;
+    }
+  }
+
   button,
   input,
   select,
@@ -238,6 +248,21 @@
   h3,
   p {
     @apply m-0;
+  }
+}
+
+@keyframes grant-toast-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
   }
 }
 

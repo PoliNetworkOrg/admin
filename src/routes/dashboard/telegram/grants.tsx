@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
+import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { Badge } from "@/components/ui/badge"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -95,7 +96,7 @@ function Grants() {
         }),
         grantColumnHelper.display({
           id: "grantor",
-          header: "Granted by",
+          header: "Authorized by",
           cell: ({ row }) => (
             <Link
               to="/dashboard/telegram/users/$userId"
@@ -161,11 +162,12 @@ function Grants() {
     <div className="animate-appear">
       <DataToolbar
         eyebrow="Telegram"
-        title="Access grants"
-        description="See who has temporary access, when it begins, and when it expires."
+        title="Grants"
+        description="Review board-authorized periods when approved people may send promotional messages and links without automatic moderation."
         count={filteredCount}
         total={grants.length}
-        searchPlaceholder="Search users, grantors, or reasons…"
+        searchPlaceholder="Search users, authorizers, or reasons…"
+        action={<CreateGrantDialog />}
         onSearch={(value) => {
           table.setGlobalFilter(value)
           table.setPageIndex(0)
@@ -240,7 +242,7 @@ function Grants() {
             title={hasSearch ? "No grants match this search" : "No grants in this view"}
             text={
               hasSearch
-                ? "Clear the search or try a different user, grantor, or reason."
+                ? "Clear the search or try a different user, authorizer, or reason."
                 : "There are no grants for the selected status."
             }
           />
