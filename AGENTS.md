@@ -25,3 +25,9 @@ always verify that normal behavior still works with `AGENT_MODE=false`.
 > [!IMPORTANT]
 > Do not run destructive actions across multiple rows, unless specific prompt indication or
 > ask for user confirmation ALWAYS.
+
+## Git
+
+Always do commits with conventional commits.
+Set description when a commit includes lot of changes that cannot
+be divided into multiple commits, to specify the most important changes of the commit.

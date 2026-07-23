@@ -2,7 +2,6 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import {
   ArrowLeft,
   CalendarClock,
-  CalendarPlus,
   ExternalLink,
   History,
   LoaderCircle,
@@ -19,6 +18,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { LiveStatus } from "@/components/live-status"
 import { DetailPageSkeleton } from "@/components/loading-skeleton"
+import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +34,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Combobox,
   ComboboxContent,
@@ -53,13 +53,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import type { TgUserRole } from "@/lib/api/types"
 import {
   addTelegramGroupAdmin,
   addTelegramUserRole,
-  createTelegramGrant,
   getTelegramUserDetails,
   interruptTelegramGrant,
   removeTelegramUserRole,
@@ -111,7 +108,7 @@ function UserProfile() {
     )
   }
 
-  const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, grant, grantStatus } = data
+  const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, ongoingGrant, scheduledGrants } = data
   const administeredGroups = groupAdmin.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
 
@@ -175,27 +172,36 @@ function UserProfile() {
         </SummaryCard>
         <SummaryCard
           icon={CalendarClock}
-          label="ACCESS GRANT"
+          label="GRANTS"
           actions={
-            grant ? (
-              <InterruptGrantDialog userId={user.id} displayName={displayName} status={grantStatus} />
-            ) : (
-              <CreateGrantDialog userId={user.id} displayName={displayName} />
-            )
+            <>
+              <CreateGrantDialog user={user} />
+              {ongoingGrant && <InterruptGrantDialog userId={user.id} displayName={displayName} />}
+            </>
           }
         >
-          {grant ? (
-            <dl className="grid gap-2 text-xs">
-              <Definition label="Status">
-                <Badge variant={grantStatus === "scheduled" ? "secondary" : "default"}>
-                  {grantStatus === "scheduled" ? "Scheduled" : "Active"}
-                </Badge>
-              </Definition>
-              <Definition label="Valid from">{formatDate(grant.validSince)}</Definition>
-              <Definition label="Valid until">{formatDate(grant.validUntil)}</Definition>
-            </dl>
+          {ongoingGrant || scheduledGrants.length ? (
+            <div className="grid gap-4">
+              {ongoingGrant && (
+                <GrantDetails
+                  label="Ongoing"
+                  status="Active"
+                  validSince={ongoingGrant.validSince}
+                  validUntil={ongoingGrant.validUntil}
+                />
+              )}
+              {scheduledGrants.map((scheduledGrant, index) => (
+                <GrantDetails
+                  key={scheduledGrant.id}
+                  label={`Scheduled ${index + 1}`}
+                  status="Scheduled"
+                  validSince={scheduledGrant.validSince}
+                  validUntil={scheduledGrant.validUntil}
+                />
+              ))}
+            </div>
           ) : (
-            <span className="text-[11px] italic text-muted-foreground">No active or scheduled grant</span>
+            <span className="text-[11px] italic text-muted-foreground">No active or scheduled grants</span>
           )}
         </SummaryCard>
       </section>
@@ -330,16 +336,16 @@ function SummaryCard({
 }) {
   return (
     <Card size="sm">
-      <CardHeader className="gap-3 p-5 pb-3">
+      <CardHeader className="flex items-center gap-2 px-5 py-3">
         <Icon className="size-5 text-primary" />
-        <CardTitle className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
+        <CardTitle className="font-mono leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
           {label}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex grow flex-col px-5 pb-5 pt-0">
         <div className="grow">{children}</div>
-        {actions && <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">{actions}</div>}
       </CardContent>
+      {actions && <CardFooter className="gap-2 justify-end">{actions}</CardFooter>}
     </Card>
   )
 }
@@ -352,6 +358,29 @@ function Definition({ label, children }: { label: string; children: React.ReactN
     </div>
   )
 }
+
+function GrantDetails({
+  label,
+  status,
+  validSince,
+  validUntil,
+}: {
+  label: string
+  status: "Active" | "Scheduled"
+  validSince: Date | string
+  validUntil: Date | string
+}) {
+  return (
+    <dl className="grid gap-2 border-b border-border pb-4 text-xs last:border-b-0 last:pb-0">
+      <Definition label={label}>
+        <Badge variant={status === "Scheduled" ? "secondary" : "default"}>{status}</Badge>
+      </Definition>
+      <Definition label="Valid from">{formatDate(validSince)}</Definition>
+      <Definition label="Valid until">{formatDate(validUntil)}</Definition>
+    </dl>
+  )
+}
+
 function SectionEmpty({ text }: { text: string }) {
   return (
     <p className="rounded-xl border border-dashed border-border bg-card px-5 py-8 text-center text-xs text-muted-foreground">
@@ -459,7 +488,7 @@ function RoleDialog({
         render={
           <Button
             variant={adding ? "outline" : "destructive"}
-            size="xs"
+            size="sm"
             disabled={!choices.length}
             aria-label={
               choices.length ? actionLabel : adding ? "All configured roles are assigned" : "No roles to remove"
@@ -536,151 +565,7 @@ function roleMutationError(error: string, adding: boolean) {
   return "The role update could not be completed."
 }
 
-function toDateTimeInput(date: Date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
-}
-
-function CreateGrantDialog({ userId, displayName }: { userId: number; displayName: string }) {
-  const [open, setOpen] = useState(false)
-  const [validSince, setValidSince] = useState("")
-  const [validUntil, setValidUntil] = useState("")
-  const [reason, setReason] = useState("")
-  const [pending, setPending] = useState(false)
-  const router = useRouter()
-
-  function handleOpenChange(nextOpen: boolean) {
-    if (pending) return
-    setOpen(nextOpen)
-    if (nextOpen) {
-      const since = new Date()
-      since.setSeconds(0, 0)
-      setValidSince(toDateTimeInput(since))
-      setValidUntil(toDateTimeInput(new Date(since.getTime() + 24 * 60 * 60 * 1000)))
-      setReason("")
-    }
-  }
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
-    const since = new Date(validSince)
-    const until = new Date(validUntil)
-    if (
-      !validSince ||
-      !validUntil ||
-      Number.isNaN(since.getTime()) ||
-      Number.isNaN(until.getTime()) ||
-      until <= since ||
-      until <= new Date() ||
-      pending
-    )
-      return
-    setPending(true)
-
-    try {
-      const result = await createTelegramGrant({
-        data: { userId, since, until, reason: reason.trim() || undefined },
-      })
-      if (result.error) {
-        toast.error(grantMutationError(result.error))
-        return
-      }
-
-      toast.success(`Access grant added for ${displayName}.`)
-      setOpen(false)
-      await router.invalidate({ sync: true })
-    } catch (error) {
-      console.error(error)
-      toast.error("The access grant could not be added. Check your permissions and try again.")
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const sinceTime = new Date(validSince).getTime()
-  const untilTime = new Date(validUntil).getTime()
-  const invalidEnd =
-    Boolean(validUntil) &&
-    (Number.isNaN(untilTime) || untilTime <= Date.now() || (Boolean(validSince) && untilTime <= sinceTime))
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="xs" />}>
-        <CalendarPlus /> Add grant
-      </DialogTrigger>
-      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
-          <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">ACCESS GRANT</p>
-          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">Add temporary access</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Choose when {displayName}&apos;s temporary access begins and ends. Active grants bypass automatic
-            moderation.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-4 px-6 py-5" onSubmit={(event) => void submit(event)}>
-          <Field>
-            <FieldLabel htmlFor="grant-valid-since" className="font-mono text-[10px] text-muted-foreground">
-              Valid from
-            </FieldLabel>
-            <Input
-              id="grant-valid-since"
-              type="datetime-local"
-              value={validSince}
-              onChange={(event) => setValidSince(event.target.value)}
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="grant-valid-until" className="font-mono text-[10px] text-muted-foreground">
-              Valid until
-            </FieldLabel>
-            <Input
-              id="grant-valid-until"
-              type="datetime-local"
-              min={validSince || toDateTimeInput(new Date())}
-              value={validUntil}
-              onChange={(event) => setValidUntil(event.target.value)}
-              aria-invalid={invalidEnd}
-              required
-            />
-            {invalidEnd && <p className="text-[10px] text-destructive">Choose a time in the future.</p>}
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="grant-reason" className="font-mono text-[10px] text-muted-foreground">
-              Reason <span className="font-sans normal-case">(optional)</span>
-            </FieldLabel>
-            <Textarea
-              id="grant-reason"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Why is this access needed?"
-              maxLength={500}
-            />
-          </Field>
-          <DialogFooter className="-mx-6 -mb-5 mt-1 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={!validSince || !validUntil || invalidEnd || pending}>
-              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-              Add grant
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function InterruptGrantDialog({
-  userId,
-  displayName,
-  status,
-}: {
-  userId: number
-  displayName: string
-  status: "active" | "scheduled" | null
-}) {
+function InterruptGrantDialog({ userId, displayName }: { userId: number; displayName: string }) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const router = useRouter()
@@ -695,12 +580,12 @@ function InterruptGrantDialog({
         return
       }
 
-      toast.success(`Access grant removed from ${displayName}.`)
+      toast.success(`Grant interrupted for ${displayName}.`)
       setOpen(false)
       await router.invalidate({ sync: true })
     } catch (error) {
       console.error(error)
-      toast.error("The access grant could not be removed. Check your permissions and try again.")
+      toast.error("The grant could not be ended. Check your permissions and try again.")
     } finally {
       setPending(false)
     }
@@ -708,26 +593,24 @@ function InterruptGrantDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(nextOpen) => !pending && setOpen(nextOpen)}>
-      <AlertDialogTrigger render={<Button variant="destructive" size="xs" />}>
-        <ShieldX /> Remove grant
+      <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
+        <ShieldX /> End grant
       </AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20">
             <ShieldX />
           </AlertDialogMedia>
-          <AlertDialogTitle>Remove access grant?</AlertDialogTitle>
+          <AlertDialogTitle>End grant?</AlertDialogTitle>
           <AlertDialogDescription>
-            {status === "scheduled"
-              ? `${displayName}'s scheduled access will be cancelled before it begins.`
-              : `${displayName} will immediately return to the normal automatic moderation rules.`}
+            {displayName} will immediately return to the normal automatic moderation rules.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction variant="destructive" disabled={pending} onClick={() => void interrupt()}>
             {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-            Remove grant
+            End grant
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -736,10 +619,10 @@ function InterruptGrantDialog({
 }
 
 function grantMutationError(error: string) {
-  if (error === "ALREADY_EXISTING") return "This user already has an active access grant."
+  if (error === "ALREADY_EXISTING") return "This user already has an active grant."
   if (error === "NOT_FOUND") return "This grant has already expired or been removed."
-  if (error === "UNAUTHORIZED") return "You do not have permission to manage access grants."
-  return "The access grant update could not be completed."
+  if (error === "UNAUTHORIZED") return "You do not have permission to manage grants."
+  return "The grant update could not be completed."
 }
 
 function AddGroupAdminDialog({
