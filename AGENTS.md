@@ -26,8 +26,14 @@ always verify that normal behavior still works with `AGENT_MODE=false`.
 > Do not run destructive actions across multiple rows, unless specific prompt indication or
 > ask for user confirmation ALWAYS.
 
-## Git
+## Git commits
 
-Always do commits with conventional commits.
-Set description when a commit includes lot of changes that cannot
-be divided into multiple commits, to specify the most important changes of the commit.
+Use Conventional Commits for every commit message:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+Choose an accurate type such as `feat`, `fix`, `docs`, `refactor`, `test`,
+`build`, `ci`, or `chore`. Add a body when the change needs context. Mark
+breaking changes with `!` or a `BREAKING CHANGE:` footer.
