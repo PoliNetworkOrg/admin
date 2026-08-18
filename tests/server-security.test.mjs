@@ -4,10 +4,11 @@ import test from "node:test"
 import { parseProfilePictureForm } from "../src/features/account/account.validation.ts"
 import {
   associationLinksInput,
+  associationSaveErrorMessage,
   parseCreateAssociationForm,
 } from "../src/features/associations/associations.validation.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
-import { parseProjectForm } from "../src/features/projects/projects.validation.ts"
+import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
@@ -212,6 +213,13 @@ test("association validation accepts bounded image uploads and strict public lin
   wrongType.set("logo", new File([new Uint8Array(8)], "logo.gif", { type: "image/gif" }))
   assert.throws(() => parseCreateAssociationForm(wrongType), /INVALID_LOGO_TYPE/)
 
+  const oversized = new FormData()
+  oversized.set("name", "Test association")
+  oversized.set("descriptionIt", "Descrizione")
+  oversized.set("descriptionEn", "Description")
+  oversized.set("logo", new File([new Uint8Array(1024 * 1024 + 1)], "logo.png", { type: "image/png" }))
+  assert.throws(() => parseCreateAssociationForm(oversized), /LOGO_TOO_LARGE/)
+
   const validLinks = {
     id: 1,
     links: {
@@ -232,4 +240,33 @@ test("association validation accepts bounded image uploads and strict public lin
     () => associationLinksInput.parse({ ...validLinks, links: { ...validLinks.links, website: "not a URL" } }),
     /Invalid URL/
   )
+})
+
+test("web content save errors explain actionable validation failures", () => {
+  assert.equal(projectSaveErrorMessage(new Error("INVALID_LINK")), "Enter a valid HTTP or HTTPS project URL.")
+  assert.equal(projectSaveErrorMessage(new Error("LOGO_TOO_LARGE")), "The logo must be no larger than 1 MB.")
+  assert.equal(
+    associationSaveErrorMessage(new Error("INVALID_DESCRIPTIONEN")),
+    "Enter an English description no longer than 20,000 characters."
+  )
+  assert.equal(
+    associationSaveErrorMessage(new Error("INVALID_LOGO_TYPE")),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
+})
+
+test("project and association mutations forward FormData to the backend", async () => {
+  const [projectsSource, associationsSource] = await Promise.all([
+    readFile(new URL("../src/features/projects/projects.functions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/associations/associations.functions.ts", import.meta.url), "utf8"),
+  ])
+
+  for (const source of [projectsSource, associationsSource]) {
+    assert.match(source, /new FormData\(\)/)
+    assert.doesNotMatch(source, /Buffer\.from/)
+  }
+  assert.match(projectsSource, /addProject\.mutate\(formData/)
+  assert.match(projectsSource, /editProject\.mutate\(formData/)
+  assert.match(associationsSource, /addAssociation\.mutate\(formData/)
+  assert.match(associationsSource, /editAssociation\.mutate\(formData/)
 })

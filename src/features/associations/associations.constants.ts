@@ -1,6 +1,9 @@
 import { AtSign, Globe, Instagram, Linkedin, LinkIcon, Mail, Music2, Send, Youtube } from "lucide-react"
 import type { AssociationLink, AssociationLinks } from "./types"
 
+export const ASSOCIATION_LOGO_MAX_SIZE = 1024 * 1024
+export const ASSOCIATION_LOGO_TYPES = ["image/jpeg", "image/png", "image/svg+xml"] as const
+
 export const EMPTY_ASSOCIATION_LINKS: AssociationLinks = {
   email: null,
   website: null,

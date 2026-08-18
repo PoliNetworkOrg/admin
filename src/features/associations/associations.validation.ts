@@ -1,7 +1,7 @@
 import { z } from "zod"
+import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES } from "./associations.constants.ts"
 
-const MAX_LOGO_SIZE = 2 * 1024 * 1024
-const ALLOWED_LOGO_TYPES = new Set(["image/jpeg", "image/png", "image/svg+xml"])
+const ALLOWED_LOGO_TYPES = new Set<string>(ASSOCIATION_LOGO_TYPES)
 
 function requiredText(data: FormData, key: string, maximum: number) {
   const value = data.get(key)
@@ -19,7 +19,7 @@ function optionalLogo(data: FormData) {
     return logo
   }
   if (!(logo instanceof File) || !ALLOWED_LOGO_TYPES.has(logo.type)) throw new Error("INVALID_LOGO_TYPE")
-  if (logo.size > MAX_LOGO_SIZE) throw new Error("LOGO_TOO_LARGE")
+  if (logo.size > ASSOCIATION_LOGO_MAX_SIZE) throw new Error("LOGO_TOO_LARGE")
   return logo
 }
 
@@ -62,3 +62,21 @@ export const associationLinksInput = z.object({
 })
 
 export const associationIdInput = z.object({ id: z.number().int().positive() })
+
+export function associationSaveErrorMessage(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : ""
+
+  if (message.includes("NOT_FOUND")) return "This association no longer exists."
+  if (message.includes("INVALID_NAME")) return "Enter an association name no longer than 200 characters."
+  if (message.includes("INVALID_DESCRIPTIONIT")) {
+    return "Enter an Italian description no longer than 20,000 characters."
+  }
+  if (message.includes("INVALID_DESCRIPTIONEN")) {
+    return "Enter an English description no longer than 20,000 characters."
+  }
+  if (message.includes("LOGO") || message.includes("file")) {
+    return "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  }
+
+  return "The association could not be saved. Check your permissions and try again."
+}

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { ProjectCard } from "./project-card"
 import { DEFAULT_PROJECT, getProjectCategoryLabel, PROJECT_CATEGORIES } from "./projects.constants"
 import { createProject, deleteProject, editProject, reorderProjects } from "./projects.functions"
+import { projectSaveErrorMessage } from "./projects.validation"
 import type { Project, ProjectCategory, ProjectFormValues, ProjectReorder } from "./types"
 
 function formDataForProject(values: ProjectFormValues, id?: number) {
@@ -195,14 +196,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       }
       return true
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : ""
-      toast.error(
-        message.includes("LOGO_TOO_LARGE")
-          ? "The logo must be no larger than 1 MB."
-          : message.includes("INVALID_LOGO_TYPE")
-            ? "Choose an SVG, PNG, or JPEG logo."
-            : "The project could not be saved. Check the fields and try again."
-      )
+      toast.error(projectSaveErrorMessage(cause))
       return false
     }
   }

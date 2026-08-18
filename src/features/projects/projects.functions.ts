@@ -16,10 +16,15 @@ function projectFields(project: Project) {
   }
 }
 
-async function resolveLogo(currentLogo: string | null, logoFile: File | null) {
-  if (!logoFile) return currentLogo
-  const content = Buffer.from(await logoFile.arrayBuffer()).toString("base64")
-  return `data:${logoFile.type};base64,${content}`
+function projectFormData(data: ReturnType<typeof parseProjectForm>) {
+  const formData = new FormData()
+  formData.set("title", data.title)
+  formData.set("descriptionIt", data.descriptionIt)
+  formData.set("descriptionEn", data.descriptionEn)
+  formData.set("link", data.link ?? "")
+  formData.set("category", data.category)
+  if (data.logoFile) formData.set("logo", data.logoFile)
+  return formData
 }
 
 export const getProjects = createServerFn()
@@ -33,12 +38,9 @@ export const createProject = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .validator(parseProjectForm)
   .handler(async ({ data, context }) => {
-    const { logoFile, ...fields } = data
-    const project = await context.backend.web.projects.addProject.mutate({
-      ...fields,
-      logo: await resolveLogo(fields.logo, logoFile),
-      createdBy: context.telegramId,
-    })
+    const formData = projectFormData(data)
+    formData.set("createdBy", String(context.telegramId))
+    const project = await context.backend.web.projects.addProject.mutate(formData)
     return projectFields(project)
   })
 
@@ -50,12 +52,10 @@ export const editProject = createServerFn({ method: "POST" })
     return { id, ...parseProjectForm(data) }
   })
   .handler(async ({ data, context }) => {
-    const { logoFile, ...fields } = data
-    const result = await context.backend.web.projects.editProject.mutate({
-      ...fields,
-      logo: await resolveLogo(fields.logo, logoFile),
-      modifiedBy: context.telegramId,
-    })
+    const formData = projectFormData(data)
+    formData.set("id", String(data.id))
+    formData.set("modifiedBy", String(context.telegramId))
+    const result = await context.backend.web.projects.editProject.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return projectFields(result)
   })
