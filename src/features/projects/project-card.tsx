@@ -185,7 +185,7 @@ export function ProjectCard({
                   <Input
                     id={logoInputId}
                     type="file"
-                    accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                    accept="image/svg+xml,image/png,image/jpeg"
                     className="sr-only"
                     onChange={selectLogo}
                   />

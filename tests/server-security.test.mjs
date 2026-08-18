@@ -170,7 +170,7 @@ test("project validation accepts safe fields and supported logos", () => {
     data.set("descriptionEn", "Description")
     data.set("link", "https://example.com/project")
     data.set("category", "general")
-    data.set("logoFile", new File([new Uint8Array(8)], "logo.webp", { type: "image/webp" }))
+    data.set("logoFile", new File([new Uint8Array(8)], "logo.png", { type: "image/png" }))
     return data
   }
 
@@ -186,6 +186,6 @@ test("project validation accepts safe fields and supported logos", () => {
   assert.throws(() => parseProjectForm(wrongType), /INVALID_LOGO_TYPE/)
 
   const oversized = validProjectForm()
-  oversized.set("logoFile", new File([new Uint8Array(2 * 1024 * 1024 + 1)], "logo.png", { type: "image/png" }))
+  oversized.set("logoFile", new File([new Uint8Array(1024 * 1024 + 1)], "logo.png", { type: "image/png" }))
   assert.throws(() => parseProjectForm(oversized), /LOGO_TOO_LARGE/)
 })

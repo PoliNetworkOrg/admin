@@ -168,9 +168,9 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       const message = cause instanceof Error ? cause.message : ""
       toast.error(
         message.includes("LOGO_TOO_LARGE")
-          ? "The logo must be no larger than 2 MB."
+          ? "The logo must be no larger than 1 MB."
           : message.includes("INVALID_LOGO_TYPE")
-            ? "Choose an SVG, PNG, JPEG, or WebP logo."
+            ? "Choose an SVG, PNG, or JPEG logo."
             : "The project could not be saved. Check the fields and try again."
       )
       return false

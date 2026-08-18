@@ -1,6 +1,6 @@
 const PROJECT_CATEGORIES = new Set(["news", "general", "deprecated"])
-const IMAGE_TYPES = new Set(["image/svg+xml", "image/png", "image/jpeg", "image/webp"])
-const MAX_LOGO_SIZE = 2 * 1024 * 1024
+const IMAGE_TYPES = new Set(["image/svg+xml", "image/png", "image/jpeg"])
+const MAX_LOGO_SIZE = 1024 * 1024
 
 function requiredText(data: FormData, key: string, maxLength: number) {
   const value = data.get(key)
