@@ -7,6 +7,7 @@ import {
   type LucideIcon,
   Settings,
   ShieldCheck,
+  Users,
   UsersRound,
 } from "lucide-react"
 import azureIcon from "@/assets/svg/azure.svg"
@@ -57,6 +58,7 @@ export const dashboardNavigation = [
     iconSrc: undefined,
     items: [
       { title: "Projects", url: "/dashboard/web/projects", icon: FolderKanban },
+      { title: "Associations", url: "/dashboard/web/associations", icon: Users },
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
     ],
   },
