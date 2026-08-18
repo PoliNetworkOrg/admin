@@ -74,7 +74,8 @@ export function CreateGuideDialog({
 
       onCreated(await createGuideFn({ data: formData }))
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : ""
+      console.error(cause)
+      const message = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : "UNKNOWN_ERROR"
 
       setError(
         message.includes("DUPLICATE_VERSION")
