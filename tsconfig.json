@@ -1,44 +1,23 @@
 {
   "compilerOptions": {
-    /* Base Options: */
-    "esModuleInterop": true,
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
     "skipLibCheck": true,
-    "target": "es2022",
-    "allowJs": true,
-    "resolveJsonModule": true,
-    "moduleDetection": "force",
-    "isolatedModules": true,
-    /* Strictness */
     "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "checkJs": true,
-    /* Bundled projects */
-    "lib": ["dom", "dom.iterable", "ES2022"],
-    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "preserve",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "incremental": true,
-    /* Path Aliases */
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "ignoreDeprecations": "6.0",
+    "types": ["vite/client"],
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": [
-    ".eslintrc.cjs",
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.cjs",
-    "**/*.js",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "vite.config.ts", "tailwind.config.ts"]
 }

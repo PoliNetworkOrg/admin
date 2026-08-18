@@ -1,43 +1,27 @@
-import { createEnv } from "@t3-oss/env-nextjs"
+import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
+import { resolveBackendUrl } from "@/server/runtime-env"
 
 export const env = createEnv({
-  /**
-   * Specify your server-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars.
-   */
   server: {
-    BACKEND_URL: z.string().default("http://localhost:3000"),
-    ADMIN_ORG_EMAIL: z.string().describe("Email address of admin Azure account."),
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    AGENT_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    BACKEND_URL: z.url(),
   },
 
-  /**
-   * Specify your client-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars. To expose them to the client, prefix them with
-   * `NEXT_PUBLIC_`.
-   */
-  client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
-  },
+  clientPrefix: "VITE_",
 
-  /**
-   * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
-   * middlewares) or client-side so we need to destruct manually.
-   */
+  client: {},
+
+  shared: {},
+
   runtimeEnv: {
-    ADMIN_ORG_EMAIL: process.env.ADMIN_ORG_EMAIL,
-    BACKEND_URL: process.env.BACKEND_URL,
-    NODE_ENV: process.env.NODE_ENV,
+    ...process.env,
+    BACKEND_URL: resolveBackendUrl(process.env.BACKEND_URL, process.env.NODE_ENV, process.env.npm_lifecycle_event),
   },
-  /**
-   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
-   * useful for Docker builds.
-   */
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-  /**
-   * Makes it so that empty strings are treated as undefined. `SOME_VAR: z.string()` and
-   * `SOME_VAR=''` will throw an error.
-   */
+
   emptyStringAsUndefined: true,
 })

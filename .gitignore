@@ -13,12 +13,11 @@
 /prisma/db.sqlite-journal
 db.sqlite
 
-# next.js
-/.next/
-/out/
-
 # production
 /build
+/dist
+/.output
+/.tanstack
 
 # misc
 .DS_Store
@@ -31,7 +30,6 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
-# do not commit any .env files to git, except for the .env.example file. https://create.t3.gg/en/usage/env-variables#using-environment-variables
 .env
 .env*.local
 
