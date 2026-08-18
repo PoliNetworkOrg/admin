@@ -1,0 +1,315 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --ink: #172033;
+  --paper: #f6f8fb;
+  --mist: #eef3f8;
+  --line: #dce4ee;
+  --muted-blue: #637187;
+  --cobalt: #1559a7;
+  --mint: #e9f2fc;
+  --white: #ffffff;
+  --toast-success: #18794e;
+  --toast-success-soft: #e4f7ed;
+  --toast-info: #1559a7;
+  --toast-info-soft: #e8f1fc;
+  --toast-warning: #9a5900;
+  --toast-warning-soft: #fff1d9;
+  --toast-error: #b7472f;
+  --toast-error-soft: #fce8e4;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--white);
+  --card-foreground: var(--ink);
+  --popover: var(--white);
+  --popover-foreground: var(--ink);
+  --primary: var(--cobalt);
+  --primary-foreground: #ffffff;
+  --secondary: var(--mist);
+  --secondary-foreground: var(--ink);
+  --muted: var(--mist);
+  --muted-foreground: var(--muted-blue);
+  --accent: var(--mint);
+  --accent-foreground: #10477f;
+  --destructive: #b7472f;
+  --success: oklch(0.792 0.209 151.711);
+  --success-foreground: oklch(0.627 0.194 149.214);
+  --border: var(--line);
+  --input: #c8d4e2;
+  --ring: #3b78bd;
+  --chart-1: #1559a7;
+  --chart-2: #087f5b;
+  --chart-3: #b04476;
+  --chart-4: #a96700;
+  --chart-5: #327b98;
+  --radius: 0.625rem;
+  --sidebar: #0d2543;
+  --sidebar-foreground: #eaf2fb;
+  --sidebar-primary: #72adf2;
+  --sidebar-primary-foreground: #071a31;
+  --sidebar-accent: #173657;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(186 211 241 / 16%);
+  --sidebar-ring: #9bc7ff;
+}
+
+.dark {
+  color-scheme: dark;
+  --ink: #eaf1f8;
+  --paper: #0a111b;
+  --mist: #162230;
+  --line: #27374a;
+  --muted-blue: #9baabd;
+  --cobalt: #79b2f5;
+  --mint: #142c47;
+  --white: #111b28;
+  --toast-success: #73d9a0;
+  --toast-success-soft: #112a24;
+  --toast-info: #9bc7ff;
+  --toast-info-soft: #13263b;
+  --toast-warning: #f3b66e;
+  --toast-warning-soft: #332516;
+  --toast-error: #ff9b86;
+  --toast-error-soft: #351d1d;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--white);
+  --card-foreground: var(--ink);
+  --popover: #142131;
+  --popover-foreground: var(--ink);
+  --primary: var(--cobalt);
+  --primary-foreground: #07182b;
+  --secondary: #172536;
+  --secondary-foreground: #e4edf7;
+  --muted: #152231;
+  --muted-foreground: var(--muted-blue);
+  --accent: var(--mint);
+  --accent-foreground: #bddcff;
+  --destructive: #f74040;
+  --success: oklch(0.792 0.209 151.711);
+  --success-foreground: oklch(0.723 0.219 149.579);
+  --border: var(--line);
+  --input: #33465d;
+  --ring: #88baf7;
+  --chart-1: #79b2f5;
+  --chart-2: #4bc497;
+  --chart-3: #e77da7;
+  --chart-4: #e1aa45;
+  --chart-5: #66b2cf;
+  --sidebar: #081b33;
+  --sidebar-foreground: #edf5ff;
+  --sidebar-primary: #86bdfa;
+  --sidebar-primary-foreground: #071a31;
+  --sidebar-accent: #143151;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(155 199 255 / 17%);
+  --sidebar-ring: #9bc7ff;
+}
+
+@theme inline {
+  --font-sans: "DM Sans", sans-serif;
+  --font-serif: "DM Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+  --font-heading: "DM Sans", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-xs: calc(var(--radius) - 0.25rem);
+  --radius-sm: calc(var(--radius) - 0.125rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.125rem);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.5rem);
+  --radius-4xl: 999px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-w-80 bg-background font-sans text-foreground antialiased;
+    font-synthesis: none;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+
+  [data-sonner-toaster] {
+    --normal-bg: var(--card);
+    --normal-text: var(--foreground);
+    --normal-border: var(--line);
+  }
+
+  [data-sonner-toast].sonner-toast {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 14px 36px rgb(0 0 0 / 18%);
+    font-family: "DM Sans", sans-serif;
+  }
+
+  [data-sonner-toast][data-type="success"] {
+    background: var(--toast-success-soft);
+    border-color: color-mix(in srgb, var(--toast-success) 28%, var(--card));
+    color: var(--toast-success);
+  }
+
+  [data-sonner-toast][data-type="info"] {
+    background: var(--toast-info-soft);
+    border-color: color-mix(in srgb, var(--toast-info) 28%, var(--card));
+    color: var(--toast-info);
+  }
+
+  [data-sonner-toast][data-type="warning"] {
+    background: var(--toast-warning-soft);
+    border-color: color-mix(in srgb, var(--toast-warning) 28%, var(--card));
+    color: var(--toast-warning);
+  }
+
+  [data-sonner-toast][data-type="error"] {
+    background: var(--toast-error-soft);
+    border-color: color-mix(in srgb, var(--toast-error) 28%, var(--card));
+    color: var(--toast-error);
+  }
+
+  [data-sonner-toast] [data-content] {
+    color: inherit;
+  }
+
+  [data-sonner-toast] [data-description] {
+    color: color-mix(in srgb, currentColor 72%, transparent);
+  }
+
+  [data-sonner-toast].grant-discard-toast {
+    animation: grant-toast-shake 420ms ease-in-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-sonner-toast].grant-discard-toast {
+      animation: none;
+    }
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    @apply cursor-pointer;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    @apply m-0;
+  }
+}
+
+@keyframes grant-toast-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override component animations. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override component animations. */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override component transitions. */
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-appear,
+  .animate-spin-slow {
+    animation: none;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility animate-appear {
+  animation: appear 0.35s ease both;
+}
+
+@utility animate-spin-slow {
+  animation: spin 1s linear infinite;
+}
