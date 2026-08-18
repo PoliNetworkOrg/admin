@@ -1,6 +1,7 @@
+import { PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants.ts"
+
 const PROJECT_CATEGORIES = new Set(["news", "general", "deprecated"])
-const IMAGE_TYPES = new Set(["image/svg+xml", "image/png", "image/jpeg"])
-const MAX_LOGO_SIZE = 1024 * 1024
+const IMAGE_TYPES = new Set<string>(PROJECT_LOGO_TYPES)
 
 function requiredText(data: FormData, key: string, maxLength: number) {
   const value = data.get(key)
@@ -36,8 +37,8 @@ export function parseProjectForm(data: FormData) {
 
   const logoValue = data.get("logoFile")
   const logoFile = logoValue instanceof File && logoValue.size > 0 ? logoValue : null
-  if (logoFile && (!IMAGE_TYPES.has(logoFile.type) || logoFile.size > MAX_LOGO_SIZE)) {
-    throw new Error(logoFile.size > MAX_LOGO_SIZE ? "LOGO_TOO_LARGE" : "INVALID_LOGO_TYPE")
+  if (logoFile && (!IMAGE_TYPES.has(logoFile.type) || logoFile.size > PROJECT_LOGO_MAX_SIZE)) {
+    throw new Error(logoFile.size > PROJECT_LOGO_MAX_SIZE ? "LOGO_TOO_LARGE" : "INVALID_LOGO_TYPE")
   }
 
   return {

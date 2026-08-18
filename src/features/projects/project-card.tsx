@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { type ChangeEvent, useEffect, useId, useState } from "react"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +38,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { PROJECT_CATEGORIES } from "./projects.constants"
+import { PROJECT_CATEGORIES, PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants"
 import type { Project, ProjectCategory, ProjectFormValues } from "./types"
 
 type ProjectCardProps = {
@@ -87,6 +88,7 @@ export function ProjectCard({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const canSave = Boolean(title.trim() && descriptionIt.trim() && descriptionEn.trim())
 
   useEffect(() => {
     return () => {
@@ -115,12 +117,22 @@ export function ProjectCard({
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
+    if (!PROJECT_LOGO_TYPES.some((type) => type === file.type)) {
+      toast.error("Choose an SVG, PNG, or JPEG logo.")
+      event.target.value = ""
+      return
+    }
+    if (file.size > PROJECT_LOGO_MAX_SIZE) {
+      toast.error("The logo must be no larger than 1 MB.")
+      event.target.value = ""
+      return
+    }
     setLogoFile(file)
     setLogoPreview(URL.createObjectURL(file))
   }
 
   async function save() {
-    if (saving || !title.trim() || !descriptionIt.trim() || !descriptionEn.trim()) return
+    if (saving || !canSave) return
     setSaving(true)
     try {
       const saved = await onSave({
@@ -185,6 +197,7 @@ export function ProjectCard({
                   <Input
                     id={logoInputId}
                     type="file"
+                    aria-label="Project logo"
                     accept="image/svg+xml,image/png,image/jpeg"
                     className="sr-only"
                     onChange={selectLogo}
@@ -201,8 +214,8 @@ export function ProjectCard({
               </>
             ) : (
               <>
-                <ProjectLogo logo={logo} title={title} />
-                <span className="truncate">{title}</span>
+                <ProjectLogo logo={project.logo} title={project.title} />
+                <span className="truncate">{project.title}</span>
               </>
             )}
           </CardTitle>
@@ -213,7 +226,7 @@ export function ProjectCard({
                   type="button"
                   size="icon-sm"
                   onClick={() => void save()}
-                  disabled={saving}
+                  disabled={saving || !canSave}
                   aria-label={`Save ${title}`}
                 >
                   {saving ? <LoaderCircle className="animate-spin-slow" /> : <Save />}
@@ -236,8 +249,11 @@ export function ProjectCard({
                   type="button"
                   variant="outline"
                   size="icon-sm"
-                  onClick={() => setEditing(true)}
-                  aria-label={`Edit ${title}`}
+                  onClick={() => {
+                    resetFields()
+                    setEditing(true)
+                  }}
+                  aria-label={`Edit ${project.title}`}
                 >
                   <Pencil />
                 </Button>
@@ -246,7 +262,7 @@ export function ProjectCard({
                   variant="destructive"
                   size="icon-sm"
                   onClick={() => setDeleteOpen(true)}
-                  aria-label={`Delete ${title}`}
+                  aria-label={`Delete ${project.title}`}
                 >
                   <Trash2 />
                 </Button>
@@ -260,6 +276,7 @@ export function ProjectCard({
             {editing ? (
               <Input
                 type="url"
+                aria-label="Project link"
                 value={link}
                 onChange={(event) => setLink(event.target.value)}
                 maxLength={2048}
@@ -283,6 +300,7 @@ export function ProjectCard({
           <ProjectField label="Italian" icon={<Languages />}>
             {editing ? (
               <Textarea
+                aria-label="Italian project description"
                 value={descriptionIt}
                 onChange={(event) => setDescriptionIt(event.target.value)}
                 className="min-h-28"
@@ -298,6 +316,7 @@ export function ProjectCard({
           <ProjectField label="English" icon={<Languages />}>
             {editing ? (
               <Textarea
+                aria-label="English project description"
                 value={descriptionEn}
                 onChange={(event) => setDescriptionEn(event.target.value)}
                 className="min-h-28"

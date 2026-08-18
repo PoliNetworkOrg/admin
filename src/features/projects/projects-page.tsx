@@ -9,7 +9,7 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
 import { ProjectCard } from "./project-card"
-import { DEFAULT_PROJECT, PROJECT_CATEGORIES } from "./projects.constants"
+import { DEFAULT_PROJECT, getProjectCategoryLabel, PROJECT_CATEGORIES } from "./projects.constants"
 import { createProject, deleteProject, editProject, reorderProjects } from "./projects.functions"
 import type { Project, ProjectCategory, ProjectFormValues, ProjectReorder } from "./types"
 
@@ -62,9 +62,17 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   const [activeCategory, setActiveCategory] = useState<ProjectCategory>(DEFAULT_PROJECT.category)
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
   const [draftProjectIds, setDraftProjectIds] = useState<Set<number>>(new Set())
+  const draftProjectIdsRef = useRef(draftProjectIds)
   const reorderRequestId = useRef(0)
+  const reorderQueue = useRef<Promise<void>>(Promise.resolve())
+  draftProjectIdsRef.current = draftProjectIds
 
-  useEffect(() => setProjects(loadedProjects), [loadedProjects])
+  useEffect(() => {
+    setProjects((current) => {
+      const drafts = current.filter((project) => draftProjectIdsRef.current.has(project.id))
+      return drafts.length ? [...drafts, ...loadedProjects] : loadedProjects
+    })
+  }, [loadedProjects])
 
   const visibleProjects = projects.filter((project) => project.category === activeCategory)
 
@@ -76,16 +84,26 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
     }
   }
 
-  function persistedIds(items: Project[], category: ProjectCategory) {
+  function persistedIds(items: Project[], category: ProjectCategory, draftIds = draftProjectIdsRef.current) {
     return items
-      .filter((project) => project.category === category && !draftProjectIds.has(project.id))
+      .filter((project) => project.category === category && !draftIds.has(project.id))
       .map((project) => project.id)
   }
 
-  async function persistOrder(projectIds: number[], rollback: Project[], requestId: number) {
-    if (projectIds.length < 2) return true
+  async function persistOrders(projectIdGroups: number[][], rollback: Project[], requestId: number) {
+    const groups = projectIdGroups.filter((projectIds) => projectIds.length > 1)
+    if (!groups.length) {
+      if (reorderRequestId.current === requestId) void refresh()
+      return true
+    }
+
+    const operation = reorderQueue.current.then(async () => {
+      for (const projectIds of groups) await reorderProjectsFn({ data: { projectIds } })
+    })
+    reorderQueue.current = operation.catch(() => undefined)
+
     try {
-      await reorderProjectsFn({ data: { projectIds } })
+      await operation
       if (reorderRequestId.current === requestId) void refresh()
       return true
     } catch {
@@ -118,13 +136,17 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
 
     flushSync(() => setProjects(change.nextProjects))
     const ids = change.orderedIds.filter((id) => !draftProjectIds.has(id))
-    void persistOrder(ids, change.previousProjects, requestId)
+    void persistOrders([ids], change.previousProjects, requestId)
   }
 
   function addProject() {
     const draft: Project = { ...DEFAULT_PROJECT, id: -Date.now(), category: activeCategory }
     setProjects((current) => [draft, ...current])
-    setDraftProjectIds((current) => new Set(current).add(draft.id))
+    setDraftProjectIds((current) => {
+      const next = new Set(current).add(draft.id)
+      draftProjectIdsRef.current = next
+      return next
+    })
     setEditingProjectId(draft.id)
   }
 
@@ -133,33 +155,41 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
     setDraftProjectIds((current) => {
       const next = new Set(current)
       next.delete(id)
+      draftProjectIdsRef.current = next
       return next
     })
     setEditingProjectId((current) => (current === id ? null : current))
   }
 
   async function saveProject(id: number, values: ProjectFormValues) {
-    const draft = draftProjectIds.has(id)
+    const draft = draftProjectIdsRef.current.has(id)
     try {
       const saved = draft
         ? await createProjectFn({ data: formDataForProject(values) })
         : await editProjectFn({ data: formDataForProject(values, id) })
-      const nextProjects = projects.map((project) => (project.id === id ? saved : project))
-      const nextDraftIds = new Set(draftProjectIds)
-      nextDraftIds.delete(id)
 
-      setProjects(nextProjects)
-      setDraftProjectIds(nextDraftIds)
+      let nextProjects: Project[] = []
+      let nextDraftIds = new Set<number>()
+      flushSync(() => {
+        setProjects((current) => {
+          nextProjects = current.map((project) => (project.id === id ? saved : project))
+          return nextProjects
+        })
+        setDraftProjectIds((current) => {
+          nextDraftIds = new Set(current)
+          nextDraftIds.delete(id)
+          draftProjectIdsRef.current = nextDraftIds
+          return nextDraftIds
+        })
+      })
       setEditingProjectId((current) => (current === id ? null : current))
       toast.success(`Project ${draft ? "created" : "updated"}.`)
 
       if (draft) {
         const requestId = reorderRequestId.current + 1
         reorderRequestId.current = requestId
-        const ids = nextProjects
-          .filter((project) => project.category === saved.category && !nextDraftIds.has(project.id))
-          .map((project) => project.id)
-        await persistOrder(ids, nextProjects, requestId)
+        const ids = persistedIds(nextProjects, saved.category, nextDraftIds)
+        await persistOrders([ids], nextProjects, requestId)
       } else {
         void refresh()
       }
@@ -178,59 +208,87 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   }
 
   async function removeProject(id: number) {
-    if (draftProjectIds.has(id)) {
+    if (draftProjectIdsRef.current.has(id)) {
       cancelDraft(id)
       return true
     }
 
-    const previousProjects = projects
-    const project = projects.find((item) => item.id === id)
+    let previousProjects: Project[] = []
+    let nextProjects: Project[] = []
+    let project: Project | undefined
+    flushSync(() => {
+      setProjects((current) => {
+        previousProjects = current
+        project = current.find((item) => item.id === id)
+        nextProjects = current.filter((item) => item.id !== id)
+        return project ? nextProjects : current
+      })
+    })
     if (!project) return false
-    const nextProjects = projects.filter((item) => item.id !== id)
+    const removedProject = project
     const requestId = reorderRequestId.current + 1
     reorderRequestId.current = requestId
-    setProjects(nextProjects)
 
     try {
       await deleteProjectFn({ data: { id } })
       toast.success("Project deleted.")
-      const ids = persistedIds(nextProjects, project.category)
-      if (ids.length > 1) await persistOrder(ids, nextProjects, requestId)
-      else void refresh()
+      const ids = persistedIds(nextProjects, removedProject.category)
+      await persistOrders([ids], nextProjects, requestId)
       return true
     } catch {
-      if (reorderRequestId.current === requestId) setProjects(previousProjects)
+      if (reorderRequestId.current === requestId) {
+        setProjects((current) => {
+          if (current.some((item) => item.id === id)) return current
+          const restored = [...current]
+          const previousIndex = previousProjects.findIndex((item) => item.id === id)
+          restored.splice(Math.min(Math.max(previousIndex, 0), restored.length), 0, removedProject)
+          return restored
+        })
+      }
       toast.error("The project could not be deleted. Check your permissions and try again.")
       return false
     }
   }
 
   async function changeCategory(id: number, category: ProjectCategory) {
-    const project = projects.find((item) => item.id === id)
+    let project: Project | undefined
+    flushSync(() => {
+      setProjects((current) => {
+        const foundProject = current.find((item) => item.id === id)
+        project = foundProject
+        if (!foundProject || foundProject.category === category) return current
+        return current.map((item) => (item.id === id ? { ...foundProject, category } : item))
+      })
+    })
     if (!project || project.category === category) return
 
-    const previousProjects = projects
-    const movedProject = { ...project, category }
-    const nextProjects = projects.map((item) => (item.id === id ? movedProject : item))
+    const originalProject = project
+    const movedProject = { ...originalProject, category }
     const requestId = reorderRequestId.current + 1
     reorderRequestId.current = requestId
-    setProjects(nextProjects)
     setActiveCategory(category)
 
-    if (draftProjectIds.has(id)) return
+    if (draftProjectIdsRef.current.has(id)) return
 
     try {
       const saved = await editProjectFn({ data: formDataForProject(movedProject, id) })
-      const savedProjects = nextProjects.map((item) => (item.id === id ? saved : item))
-      setProjects(savedProjects)
+      let savedProjects: Project[] = []
+      flushSync(() => {
+        setProjects((current) => {
+          savedProjects = current.map((item) => (item.id === id ? saved : item))
+          return savedProjects
+        })
+      })
       toast.success("Project moved.")
-      const ids = persistedIds(savedProjects, category)
-      if (ids.length > 1) await persistOrder(ids, savedProjects, requestId)
-      else void refresh()
+      const sourceIds = persistedIds(savedProjects, originalProject.category)
+      const destinationIds = persistedIds(savedProjects, category)
+      await persistOrders([sourceIds, destinationIds], savedProjects, requestId)
     } catch {
       if (reorderRequestId.current === requestId) {
-        setProjects(previousProjects)
-        setActiveCategory(project.category)
+        setProjects((current) =>
+          current.map((item) => (item.id === id && item.category === category ? originalProject : item))
+        )
+        setActiveCategory((current) => (current === category ? originalProject.category : current))
       }
       toast.error("The project could not be moved.")
     }
@@ -250,15 +308,15 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
           </Button>
         }
       >
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Project categories">
+        <fieldset className="flex flex-wrap gap-1.5">
+          <legend className="sr-only">Project categories</legend>
           {PROJECT_CATEGORIES.map((category) => (
             <Button
               key={category.value}
               type="button"
               size="sm"
               variant={activeCategory === category.value ? "secondary" : "ghost"}
-              role="tab"
-              aria-selected={activeCategory === category.value}
+              aria-pressed={activeCategory === category.value}
               onClick={() => setActiveCategory(category.value)}
             >
               {category.label}
@@ -267,7 +325,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
               </span>
             </Button>
           ))}
-        </div>
+        </fieldset>
       </DataToolbar>
 
       {visibleProjects.length ? (
@@ -291,7 +349,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       ) : (
         <EmptyState
           icon={FolderKanban}
-          title={`No ${activeCategory} projects yet`}
+          title={`No ${getProjectCategoryLabel(activeCategory)} projects yet`}
           text="Add the first project in this category, or choose another category above."
           action={<Button onClick={addProject}>Add project</Button>}
         />
