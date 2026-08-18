@@ -26,7 +26,6 @@ export const createAssociation = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const formData = associationFormData(data)
     formData.set("createdBy", String(context.telegramId))
-    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
     return context.backend.web.associations.addAssociation.mutate(formData)
   })
 
@@ -37,7 +36,6 @@ export const editAssociation = createServerFn({ method: "POST" })
     const formData = associationFormData(data)
     formData.set("id", String(data.id))
     formData.set("modifiedBy", String(context.telegramId))
-    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
     const result = await context.backend.web.associations.editAssociation.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return result

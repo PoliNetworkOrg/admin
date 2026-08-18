@@ -40,7 +40,6 @@ export const createProject = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const formData = projectFormData(data)
     formData.set("createdBy", String(context.telegramId))
-    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
     const project = await context.backend.web.projects.addProject.mutate(formData)
     return projectFields(project)
   })
@@ -56,7 +55,6 @@ export const editProject = createServerFn({ method: "POST" })
     const formData = projectFormData(data)
     formData.set("id", String(data.id))
     formData.set("modifiedBy", String(context.telegramId))
-    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
     const result = await context.backend.web.projects.editProject.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return projectFields(result)
