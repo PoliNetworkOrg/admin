@@ -11,37 +11,34 @@ export const getAssociations = createServerFn()
   .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.web.associations.getAllAssociations.query())
 
-async function serializeLogo(logo: string | File | null) {
-  if (!(logo instanceof File)) return logo
-  const contents = Buffer.from(await logo.arrayBuffer()).toString("base64")
-  return `data:${logo.type};base64,${contents}`
+function associationFormData(data: ReturnType<typeof parseCreateAssociationForm>) {
+  const formData = new FormData()
+  formData.set("name", data.name)
+  formData.set("descriptionIt", data.descriptionIt)
+  formData.set("descriptionEn", data.descriptionEn)
+  if (data.logo instanceof File) formData.set("logo", data.logo)
+  return formData
 }
 
 export const createAssociation = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .validator(parseCreateAssociationForm)
-  .handler(async ({ data, context }) =>
-    context.backend.web.associations.addAssociation.mutate({
-      name: data.name,
-      descriptionIt: data.descriptionIt,
-      descriptionEn: data.descriptionEn,
-      logo: await serializeLogo(data.logo),
-      createdBy: context.telegramId,
-    })
-  )
+  .handler(async ({ data, context }) => {
+    const formData = associationFormData(data)
+    formData.set("createdBy", String(context.telegramId))
+    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
+    return context.backend.web.associations.addAssociation.mutate(formData)
+  })
 
 export const editAssociation = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .validator(parseEditAssociationForm)
   .handler(async ({ data, context }) => {
-    const result = await context.backend.web.associations.editAssociation.mutate({
-      id: data.id,
-      name: data.name,
-      descriptionIt: data.descriptionIt,
-      descriptionEn: data.descriptionEn,
-      logo: await serializeLogo(data.logo),
-      modifiedBy: context.telegramId,
-    })
+    const formData = associationFormData(data)
+    formData.set("id", String(data.id))
+    formData.set("modifiedBy", String(context.telegramId))
+    // @ts-expect-error The published 0.17.0 declarations still describe the former JSON input.
+    const result = await context.backend.web.associations.editAssociation.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return result
   })

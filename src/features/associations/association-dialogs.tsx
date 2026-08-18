@@ -25,8 +25,9 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getAssociationInitials } from "./associations.constants"
+import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES, getAssociationInitials } from "./associations.constants"
 import { createAssociation, deleteAssociation, editAssociation } from "./associations.functions"
+import { associationSaveErrorMessage } from "./associations.validation"
 import type { Association } from "./types"
 
 export type AssociationDialogState = { mode: "create" } | { mode: "edit"; association: Association }
@@ -72,9 +73,9 @@ export function AssociationDialog({
     if (pending) return
     if (
       logoFile &&
-      (!["image/jpeg", "image/png", "image/svg+xml"].includes(logoFile.type) || logoFile.size > 2 * 1024 * 1024)
+      (!ASSOCIATION_LOGO_TYPES.some((type) => type === logoFile.type) || logoFile.size > ASSOCIATION_LOGO_MAX_SIZE)
     ) {
-      setError("Choose a JPG, PNG, or SVG logo no larger than 2 MB.")
+      setError("Choose a JPG, PNG, or SVG logo no larger than 1 MB.")
       return
     }
 
@@ -92,14 +93,7 @@ export function AssociationDialog({
       const saved = editing ? await editAssociationFn({ data }) : await createAssociationFn({ data })
       onSaved(saved, dialog.mode)
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : ""
-      setError(
-        message.includes("NOT_FOUND")
-          ? "This association no longer exists."
-          : message.includes("LOGO")
-            ? "Choose a JPG, PNG, or SVG logo no larger than 2 MB."
-            : "The association could not be saved. Check the fields and your permissions."
-      )
+      setError(associationSaveErrorMessage(cause))
     } finally {
       setPending(false)
     }
@@ -146,7 +140,7 @@ export function AssociationDialog({
                 <Button type="button" variant="outline" onClick={() => logoInput.current?.click()}>
                   <Upload data-icon="inline-start" /> {logoFile ? "Change selected logo" : "Choose logo"}
                 </Button>
-                <FieldDescription>Optional JPG, PNG, or SVG, up to 2 MB.</FieldDescription>
+                <FieldDescription>Optional JPG, PNG, or SVG, up to 1 MB.</FieldDescription>
               </Field>
             </div>
             <Field>

@@ -51,3 +51,21 @@ export function parseProjectForm(data: FormData) {
     category: category as "news" | "general" | "deprecated",
   }
 }
+
+export function projectSaveErrorMessage(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : ""
+
+  if (message.includes("INVALID_LINK")) return "Enter a valid HTTP or HTTPS project URL."
+  if (message.includes("INVALID_TITLE")) return "Enter a project title no longer than 160 characters."
+  if (message.includes("INVALID_DESCRIPTIONIT")) {
+    return "Enter an Italian description no longer than 5,000 characters."
+  }
+  if (message.includes("INVALID_DESCRIPTIONEN")) {
+    return "Enter an English description no longer than 5,000 characters."
+  }
+  if (message.includes("INVALID_CATEGORY")) return "Choose a valid project category."
+  if (message.includes("LOGO_TOO_LARGE")) return "The logo must be no larger than 1 MB."
+  if (message.includes("INVALID_LOGO_TYPE")) return "Choose an SVG, PNG, or JPEG logo."
+
+  return "The project could not be saved. Check your permissions and try again."
+}
