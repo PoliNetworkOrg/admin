@@ -7,6 +7,7 @@ import {
   parseCreateAssociationForm,
 } from "../src/features/associations/associations.validation.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
+import { parseProjectForm } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
@@ -80,6 +81,7 @@ test("admin server functions attach the authorization middleware", async () => {
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
+    "src/features/projects/projects.functions.ts",
     "src/features/telegram/grants.functions.ts",
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
@@ -110,6 +112,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/azure/group-membership.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember", "setAzureMemberNumber"],
     "src/features/guides/guide-dialogs.tsx": ["createGuide", "deleteGuide"],
+    "src/features/projects/projects-page.tsx": ["createProject", "deleteProject", "editProject", "reorderProjects"],
     "src/features/telegram/groups-page.tsx": ["setGroupVisibility"],
     "src/features/telegram/leave-group-dialog.tsx": ["leaveTelegramGroup"],
     "src/features/telegram/user-detail/grant-dialogs.tsx": ["interruptTelegramGrant"],
@@ -164,6 +167,34 @@ test("guide validation accepts only strict dated PDF uploads", () => {
   wrongType.set("date", "2026-08-18T00:00:00.000Z")
   wrongType.set("file", new File([new Uint8Array(8)], "guide.txt", { type: "text/plain" }))
   assert.throws(() => parseGuideForm(wrongType), /INVALID_FILE_TYPE/)
+})
+
+test("project validation accepts safe fields and supported logos", () => {
+  function validProjectForm() {
+    const data = new FormData()
+    data.set("title", " Project Atlas ")
+    data.set("descriptionIt", "Descrizione")
+    data.set("descriptionEn", "Description")
+    data.set("link", "https://example.com/project")
+    data.set("category", "general")
+    data.set("logoFile", new File([new Uint8Array(8)], "logo.png", { type: "image/png" }))
+    return data
+  }
+
+  const valid = validProjectForm()
+  assert.equal(parseProjectForm(valid).title, "Project Atlas")
+
+  const invalidLink = validProjectForm()
+  invalidLink.set("link", "javascript:alert(1)")
+  assert.throws(() => parseProjectForm(invalidLink), /INVALID_LINK/)
+
+  const wrongType = validProjectForm()
+  wrongType.set("logoFile", new File([new Uint8Array(8)], "logo.gif", { type: "image/gif" }))
+  assert.throws(() => parseProjectForm(wrongType), /INVALID_LOGO_TYPE/)
+
+  const oversized = validProjectForm()
+  oversized.set("logoFile", new File([new Uint8Array(1024 * 1024 + 1)], "logo.png", { type: "image/png" }))
+  assert.throws(() => parseProjectForm(oversized), /LOGO_TOO_LARGE/)
 })
 
 test("association validation accepts bounded image uploads and strict public links", () => {

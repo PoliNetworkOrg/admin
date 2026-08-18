@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Database,
+  FolderKanban,
   Globe,
   LayoutDashboard,
   type LucideIcon,
@@ -56,6 +57,7 @@ export const dashboardNavigation = [
     icon: Globe,
     iconSrc: undefined,
     items: [
+      { title: "Projects", url: "/dashboard/web/projects", icon: FolderKanban },
       { title: "Associations", url: "/dashboard/web/associations", icon: Users },
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
     ],
