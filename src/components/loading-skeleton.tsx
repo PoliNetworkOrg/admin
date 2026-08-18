@@ -10,7 +10,8 @@ export function DataPageSkeleton({
   withTabs?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-5" aria-busy="true">
+    <div className="flex flex-col gap-5" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading page data…</span>
       <div className="flex flex-col gap-2.5">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-9 w-52 max-w-full" />
@@ -54,7 +55,8 @@ export function DataPageSkeleton({
 
 export function DetailPageSkeleton() {
   return (
-    <div className="flex flex-col gap-5" aria-busy="true">
+    <div className="flex flex-col gap-5" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading user details…</span>
       <Skeleton className="h-4 w-24" />
       <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-6">
         <Skeleton className="size-14 shrink-0 rounded-full" />

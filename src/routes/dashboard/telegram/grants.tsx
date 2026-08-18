@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
-import { CalendarClock } from "lucide-react"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
+import type { Column } from "@tanstack/react-table"
+import { ArrowDown, ArrowUp, CalendarClock, ChevronsUpDown } from "lucide-react"
 import { useMemo, useState } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
@@ -8,9 +9,10 @@ import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { Pagination } from "@/components/pagination"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { createAppColumnHelper, useAppTable } from "@/lib/table"
+import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { getOngoingGrants, getScheduledGrants } from "@/server/api.functions"
 
 type GrantRecord = {
@@ -47,11 +49,12 @@ function formatDate(value: Date | string) {
 
 function Grants() {
   const { ongoing, scheduled } = Route.useLoaderData()
+  const router = useRouter()
   const [tab, setTab] = useState<"all" | "ongoing" | "scheduled">("all")
-  const ongoingGrants = ((ongoing.data as { grants?: GrantRecord[] }).grants ?? []).map(
+  const ongoingGrants = ((ongoing.data as { grants?: GrantRecord[] } | null)?.grants ?? []).map(
     (record): GrantRow => ({ ...record, status: "active" })
   )
-  const scheduledGrants = ((scheduled.data as { grants?: GrantRecord[] }).grants ?? []).map(
+  const scheduledGrants = ((scheduled.data as { grants?: GrantRecord[] } | null)?.grants ?? []).map(
     (record): GrantRow => ({ ...record, status: "scheduled" })
   )
   const grants = useMemo(
@@ -65,69 +68,86 @@ function Grants() {
   )
   const connected = ongoing.connected && scheduled.connected
 
-  const columns = useMemo(
-    () =>
-      grantColumnHelper.columns([
-        grantColumnHelper.display({
-          id: "user",
-          header: "User",
-          cell: ({ row }) => {
-            const { user, grant } = row.original
-            const name = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : `User ${grant.userId}`
-            return (
-              <Link
-                to="/dashboard/telegram/users/$userId"
-                params={{ userId: String(grant.userId) }}
-                className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-              >
-                <span className="block font-medium">{name}</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {user?.username ? `@${user.username}` : `Telegram ID ${grant.userId}`}
-                </span>
-              </Link>
-            )
-          },
-        }),
-        grantColumnHelper.display({
-          id: "reason",
-          header: "Reason",
-          cell: ({ row }) =>
-            row.original.grant.reason || <span className="italic text-muted-foreground">Not provided</span>,
-        }),
-        grantColumnHelper.display({
-          id: "grantor",
-          header: "Authorized by",
-          cell: ({ row }) => (
+  const columns = useMemo(() => {
+    const header = (
+      label: string,
+      column: Pick<Column<typeof dashboardFeatures, GrantRow>, "getIsSorted" | "getToggleSortingHandler">
+    ) => {
+      const sorted = column.getIsSorted()
+      const Icon = !sorted ? ChevronsUpDown : sorted === "asc" ? ArrowUp : ArrowDown
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={column.getToggleSortingHandler()}
+          aria-label={`${label}, ${sorted ? `sorted ${sorted === "asc" ? "ascending" : "descending"}` : "not sorted"}`}
+        >
+          {label}
+          <Icon data-icon="inline-end" />
+        </Button>
+      )
+    }
+    return grantColumnHelper.columns([
+      grantColumnHelper.display({
+        id: "user",
+        header: "User",
+        cell: ({ row }) => {
+          const { user, grant } = row.original
+          const name = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : `User ${grant.userId}`
+          return (
             <Link
               to="/dashboard/telegram/users/$userId"
-              params={{ userId: String(row.original.grant.grantedBy) }}
-              className="font-mono text-xs text-primary hover:underline"
+              params={{ userId: String(grant.userId) }}
+              className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
             >
-              {row.original.grant.grantedBy}
+              <span className="block font-medium">{name}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {user?.username ? `@${user.username}` : `Telegram ID ${grant.userId}`}
+              </span>
             </Link>
-          ),
-        }),
-        grantColumnHelper.accessor((row) => new Date(row.grant.validSince).getTime(), {
-          id: "validSince",
-          header: "Starts",
-          cell: ({ row }) => <time className="text-xs">{formatDate(row.original.grant.validSince)}</time>,
-        }),
-        grantColumnHelper.accessor((row) => new Date(row.grant.validUntil).getTime(), {
-          id: "validUntil",
-          header: "Expires",
-          cell: ({ row }) => <time className="text-xs">{formatDate(row.original.grant.validUntil)}</time>,
-        }),
-        grantColumnHelper.accessor("status", {
-          header: "Status",
-          cell: ({ getValue }) => (
-            <Badge variant={getValue() === "scheduled" ? "secondary" : "default"}>
-              {getValue() === "scheduled" ? "Scheduled" : "Active"}
-            </Badge>
-          ),
-        }),
-      ]),
-    []
-  )
+          )
+        },
+      }),
+      grantColumnHelper.display({
+        id: "reason",
+        header: "Reason",
+        cell: ({ row }) =>
+          row.original.grant.reason || <span className="italic text-muted-foreground">Not provided</span>,
+      }),
+      grantColumnHelper.display({
+        id: "grantor",
+        header: "Authorized by",
+        cell: ({ row }) => (
+          <Link
+            to="/dashboard/telegram/users/$userId"
+            params={{ userId: String(row.original.grant.grantedBy) }}
+            className="font-mono text-xs text-primary hover:underline"
+          >
+            {row.original.grant.grantedBy}
+          </Link>
+        ),
+      }),
+      grantColumnHelper.accessor((row) => new Date(row.grant.validSince).getTime(), {
+        id: "validSince",
+        header: ({ column }) => header("Starts", column),
+        cell: ({ row }) => <time className="text-xs">{formatDate(row.original.grant.validSince)}</time>,
+      }),
+      grantColumnHelper.accessor((row) => new Date(row.grant.validUntil).getTime(), {
+        id: "validUntil",
+        header: ({ column }) => header("Expires", column),
+        cell: ({ row }) => <time className="text-xs">{formatDate(row.original.grant.validUntil)}</time>,
+      }),
+      grantColumnHelper.accessor("status", {
+        header: ({ column }) => header("Status", column),
+        cell: ({ getValue }) => (
+          <Badge variant={getValue() === "scheduled" ? "secondary" : "default"}>
+            {getValue() === "scheduled" ? "Scheduled" : "Active"}
+          </Badge>
+        ),
+      }),
+    ])
+  }, [])
   const table = useAppTable({
     key: "telegram-grants",
     columns,
@@ -173,7 +193,11 @@ function Grants() {
           table.setPageIndex(0)
         }}
       />
-      <LiveStatus connected={connected} message={ongoing.message ?? scheduled.message} />
+      <LiveStatus
+        connected={connected}
+        message={ongoing.message ?? scheduled.message}
+        onRetry={() => router.invalidate({ sync: true })}
+      />
       <ToggleGroup
         variant="outline"
         size="sm"
@@ -199,7 +223,7 @@ function Grants() {
           Scheduled <b className="ml-1 text-xs">{scheduledGrants.length}</b>
         </ToggleGroupItem>
       </ToggleGroup>
-      {connected &&
+      {(connected || grants.length > 0) &&
         (filteredCount ? (
           <>
             <TableSurface>
@@ -208,7 +232,16 @@ function Grants() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id} className="border-0 hover:bg-transparent">
                       {headerGroup.headers.map((header) => (
-                        <DataTableHead key={header.id}>
+                        <DataTableHead
+                          key={header.id}
+                          aria-sort={
+                            header.column.getIsSorted() === "asc"
+                              ? "ascending"
+                              : header.column.getIsSorted() === "desc"
+                                ? "descending"
+                                : undefined
+                          }
+                        >
                           {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                         </DataTableHead>
                       ))}
@@ -232,6 +265,7 @@ function Grants() {
               page={table.state.pagination.pageIndex + 1}
               pageCount={table.getPageCount()}
               pageSize={table.state.pagination.pageSize}
+              total={filteredCount}
               onPageChange={(page) => table.setPageIndex(page - 1)}
               onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
             />

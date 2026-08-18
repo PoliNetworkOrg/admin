@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, LoaderCircle, Plus, UsersRound } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
@@ -45,7 +46,7 @@ function AzureMembers() {
   const response = Route.useLoaderData()
   const router = useRouter()
   const [dialog, setDialog] = useState<{ mode: "create" } | { mode: "edit"; member: AzureMember } | null>(null)
-  const loadedMembers = response.data as AzureMember[]
+  const loadedMembers = (response.data as AzureMember[] | null) ?? []
   const [members, setMembers] = useState(loadedMembers)
 
   useEffect(() => setMembers(loadedMembers), [loadedMembers])
@@ -195,8 +196,12 @@ function AzureMembers() {
           {membersOnly && <Check data-icon="inline-start" />} Members only
         </Button>
       </DataToolbar>
-      <LiveStatus connected={response.connected} message={response.message} />
-      {response.connected && (
+      <LiveStatus
+        connected={response.connected}
+        message={response.message}
+        onRetry={() => router.invalidate({ sync: true })}
+      />
+      {(response.connected || members.length > 0) && (
         <section className="mb-4 flex flex-wrap gap-6 rounded-xl border border-border bg-card px-4 py-3.5 text-xs text-muted-foreground shadow-[0_1px_2px_rgb(15_23_42/4%)] max-[600px]:grid max-[600px]:gap-2 dark:shadow-none">
           <div className="flex items-center gap-2">
             <Building2 className="size-6 text-primary" />
@@ -215,7 +220,7 @@ function AzureMembers() {
           </div>
         </section>
       )}
-      {response.connected &&
+      {(response.connected || members.length > 0) &&
         (table.getFilteredRowModel().rows.length ? (
           <TableSurface>
             <Table className="min-w-[800px] text-left">
@@ -268,6 +273,7 @@ function AzureMembers() {
           page={table.state.pagination.pageIndex + 1}
           pageCount={table.getPageCount()}
           pageSize={table.state.pagination.pageSize}
+          total={table.getFilteredRowModel().rows.length}
           onPageChange={(page) => table.setPageIndex(page - 1)}
           onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
         />
@@ -285,7 +291,14 @@ function AzureMembers() {
           }}
           onSaved={async (mode) => {
             setDialog(null)
-            if (mode === "create") await router.invalidate({ sync: true })
+            toast.success(mode === "create" ? "Member created." : "Member ID updated.")
+            if (mode === "create") {
+              try {
+                await router.invalidate({ sync: true })
+              } catch {
+                toast.warning("The member was created, but the latest directory data could not be refreshed.")
+              }
+            }
           }}
         />
       )}
@@ -346,7 +359,7 @@ function MemberDialog({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] leading-[1.3] font-medium tracking-[0.13em] text-muted-foreground">
             AZURE MEMBERS

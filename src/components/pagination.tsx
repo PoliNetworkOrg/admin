@@ -7,6 +7,7 @@ export function Pagination({
   pageCount,
   onPageChange,
   pageSize,
+  total,
   pageSizeOptions = [10, 20, 25, 50, 100],
   onPageSizeChange,
 }: {
@@ -14,30 +15,40 @@ export function Pagination({
   pageCount: number
   onPageChange: (page: number) => void
   pageSize: number
+  total?: number
   pageSizeOptions?: number[]
   onPageSizeChange: (pageSize: number) => void
 }) {
   const pages = [...new Set([1, page - 1, page, page + 1, pageCount])]
     .filter((value) => value >= 1 && value <= pageCount)
     .sort((a, b) => a - b)
+  const rangeStart = total ? (page - 1) * pageSize + 1 : 0
+  const rangeEnd = total ? Math.min(page * pageSize, total) : 0
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        Rows per page
-        <select
-          aria-label="Rows per page"
-          value={pageSize}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-9 rounded-lg border border-input bg-card px-2 text-xs text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
-        >
-          {pageSizeOptions.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <label className="flex items-center gap-2">
+          Rows per page
+          <select
+            aria-label="Rows per page"
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="h-11 rounded-lg border border-input bg-card px-2 text-xs text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
+          >
+            {pageSizeOptions.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+        {total !== undefined && (
+          <p aria-live="polite">
+            Showing {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of {total.toLocaleString()}
+          </p>
+        )}
+      </div>
       {pageCount > 1 && (
         <nav aria-label="Pagination">
           <ul className="flex items-center gap-1">
@@ -67,7 +78,9 @@ export function Pagination({
                     size="icon-sm"
                     aria-label={`Go to page ${value}`}
                     aria-current={value === page ? "page" : undefined}
-                    className={value === page ? "border-primary bg-accent text-primary" : "text-muted-foreground"}
+                    className={
+                      value === page ? "size-11 border-primary bg-accent text-primary" : "size-11 text-muted-foreground"
+                    }
                     onClick={() => onPageChange(value)}
                   >
                     {value}
@@ -109,7 +122,7 @@ function PageButton({
       size="icon-sm"
       aria-label={label}
       disabled={disabled}
-      className="text-muted-foreground hover:text-primary"
+      className="size-11 text-muted-foreground hover:text-primary"
       onClick={onClick}
     >
       {children}

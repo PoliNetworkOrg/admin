@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { ArrowRight, MessageCircle } from "lucide-react"
 import { useMemo } from "react"
 import { DataToolbar } from "@/components/data-toolbar"
@@ -24,6 +24,7 @@ function TelegramUsers() {
   const response = Route.useLoaderData()
   const users = response.data?.users ?? []
   const navigate = useNavigate()
+  const router = useRouter()
 
   const columns = useMemo(
     () =>
@@ -105,8 +106,12 @@ function TelegramUsers() {
           table.setPageIndex(0)
         }}
       />
-      <LiveStatus connected={response.connected} message={response.message} />
-      {response.connected &&
+      <LiveStatus
+        connected={response.connected}
+        message={response.message}
+        onRetry={() => router.invalidate({ sync: true })}
+      />
+      {(response.connected || users.length > 0) &&
         (filteredCount ? (
           <>
             <TableSurface>
@@ -160,6 +165,7 @@ function TelegramUsers() {
               page={table.state.pagination.pageIndex + 1}
               pageCount={table.getPageCount()}
               pageSize={table.state.pagination.pageSize}
+              total={filteredCount}
               onPageChange={(page) => table.setPageIndex(page - 1)}
               onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
             />

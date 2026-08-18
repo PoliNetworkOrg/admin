@@ -48,6 +48,7 @@ export const Route = createFileRoute("/dashboard/azure/groups")({
 
 function AzureGroupsPage() {
   const response = Route.useLoaderData()
+  const router = useRouter()
   const groups = (response.groups.data ?? []) as AzureGroup[]
   const directoryMembers = (response.members.data ?? []) as AzureMember[]
   const connected = response.groups.connected && response.members.connected
@@ -58,8 +59,9 @@ function AzureGroupsPage() {
       <LiveStatus
         connected={connected}
         message={!response.groups.connected ? response.groups.message : response.members.message}
+        onRetry={() => router.invalidate({ sync: true })}
       />
-      {connected &&
+      {(connected || groups.length > 0) &&
         (groups.length ? (
           <GroupsList groups={groups} directoryMembers={directoryMembers} />
         ) : (
@@ -247,6 +249,7 @@ function MembershipDialog({
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [selectedMember, setSelectedMember] = useState<MemberChoice | null>(null)
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
   const router = useRouter()
   const adding = mode === "add"
   const Icon = adding ? UserPlus : UserMinus
@@ -270,7 +273,10 @@ function MembershipDialog({
   function handleOpenChange(nextOpen: boolean) {
     if (pending) return
     setOpen(nextOpen)
-    if (!nextOpen) setSelectedMember(null)
+    if (!nextOpen) {
+      setSelectedMember(null)
+      setConfirmRemoval(false)
+    }
   }
 
   async function updateMembership() {
@@ -288,7 +294,11 @@ function MembershipDialog({
       )
       setOpen(false)
       setSelectedMember(null)
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch {
+        toast.warning("The membership was updated, but the latest group data could not be refreshed.")
+      }
     } catch (error) {
       console.error(error)
       toast.error(`There was an unexpected error while ${adding ? "adding" : "removing"} the member.`)
@@ -341,7 +351,10 @@ function MembershipDialog({
                   key={member.id}
                   value={`${member.displayName ?? "Unnamed user"} ${member.mail ?? ""}`}
                   data-checked={selectedMember?.id === member.id}
-                  onSelect={() => setSelectedMember(member)}
+                  onSelect={() => {
+                    setSelectedMember(member)
+                    setConfirmRemoval(false)
+                  }}
                 >
                   <Avatar size="sm">
                     <AvatarFallback>{initials(member.displayName)}</AvatarFallback>
@@ -356,11 +369,32 @@ function MembershipDialog({
           </CommandList>
         </Command>
 
+        {confirmRemoval && selectedMember && (
+          <Alert variant="destructive">
+            <AlertTitle>Remove {selectedMember.displayName ?? "this member"}?</AlertTitle>
+            <AlertDescription>
+              They will lose access to this Microsoft 365 group. Their account will not be deleted.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" disabled={pending} />}>Cancel</DialogClose>
+          {confirmRemoval ? (
+            <Button variant="outline" disabled={pending} onClick={() => setConfirmRemoval(false)}>
+              Keep member
+            </Button>
+          ) : (
+            <DialogClose render={<Button variant="outline" disabled={pending} />}>Cancel</DialogClose>
+          )}
           <Button
             variant={adding ? "default" : "destructive"}
-            onClick={() => void updateMembership()}
+            onClick={() => {
+              if (!adding && !confirmRemoval) {
+                setConfirmRemoval(true)
+                return
+              }
+              void updateMembership()
+            }}
             disabled={!selectedMember || pending}
           >
             {pending ? (
@@ -368,7 +402,7 @@ function MembershipDialog({
             ) : (
               <Icon data-icon="inline-start" />
             )}
-            {pending ? (adding ? "Adding…" : "Removing…") : actionLabel}
+            {pending ? (adding ? "Adding…" : "Removing…") : confirmRemoval ? "Remove member" : actionLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -378,7 +412,8 @@ function MembershipDialog({
 
 function AzureGroupsSkeleton() {
   return (
-    <div className="flex flex-col gap-5" aria-busy="true">
+    <div className="flex flex-col gap-5" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading Microsoft 365 groups</span>
       <div className="flex items-start justify-between gap-8 max-[640px]:flex-col">
         <div className="flex flex-col gap-2.5">
           <Skeleton className="h-3 w-24" />

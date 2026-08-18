@@ -17,6 +17,7 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { LiveStatus } from "@/components/live-status"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,11 +61,12 @@ function displayDate(value: string) {
 function WebGuides() {
   const response = Route.useLoaderData()
   const router = useRouter()
-  const loadedGuides = response.data as Guide[]
+  const loadedGuides = (response.data as Guide[] | null) ?? []
   const [guides, setGuides] = useState(loadedGuides)
   const [query, setQuery] = useState("")
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<Guide | null>(null)
+  const [refreshError, setRefreshError] = useState("")
 
   useEffect(() => setGuides(loadedGuides), [loadedGuides])
 
@@ -74,7 +76,12 @@ function WebGuides() {
   }, [guides, query])
 
   async function refresh() {
-    await router.invalidate({ sync: true })
+    try {
+      await router.invalidate({ sync: true })
+      setRefreshError("")
+    } catch {
+      setRefreshError("Your change was saved, but the latest guide list could not be refreshed.")
+    }
   }
 
   return (
@@ -93,8 +100,13 @@ function WebGuides() {
           </Button>
         }
       />
-      <LiveStatus connected={response.connected} message={response.message} />
-      {response.connected &&
+      <LiveStatus connected={response.connected} message={response.message} onRetry={refresh} />
+      {refreshError && (
+        <Alert className="mb-4">
+          <AlertDescription>{refreshError}</AlertDescription>
+        </Alert>
+      )}
+      {(response.connected || guides.length > 0) &&
         (filteredGuides.length ? (
           <TableSurface>
             <Table className="min-w-[640px] text-left">
@@ -205,6 +217,7 @@ function CreateGuideDialog({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
   const fileInput = useRef<HTMLInputElement>(null)
+  const initialDate = useRef(date)
   const trimmedVersion = version.trim()
   const duplicate = Boolean(trimmedVersion && existingVersions.includes(trimmedVersion))
 
@@ -212,7 +225,7 @@ function CreateGuideDialog({
     event.preventDefault()
     if (!file || duplicate) return
     if (file.type !== "application/pdf" || file.size > 2 * 1024 * 1024) {
-      toast.error("Choose a PDF file no larger than 2 MB.")
+      setError("Choose a PDF file no larger than 2 MB.")
       return
     }
 
@@ -228,16 +241,29 @@ function CreateGuideDialog({
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : ""
 
-      if (message.includes("DUPLICATE_VERSION")) setError("This version already exists.")
-      toast.error("The guide could not be published. Check the file and your permissions.")
+      setError(
+        message.includes("DUPLICATE_VERSION")
+          ? "This version already exists."
+          : message.includes("UNAUTHORIZED")
+            ? "You do not have permission to publish guides."
+            : "The guide could not be published. Check the file and try again."
+      )
     } finally {
       setPending(false)
     }
   }
 
+  const dirty = Boolean(version.trim() || file || date.getTime() !== initialDate.current.getTime())
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const requestClose = () => {
+    if (pending) return
+    if (dirty) setConfirmDiscard(true)
+    else onClose()
+  }
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="min-w-lg overflow-hidden border-border p-0">
+    <Dialog open onOpenChange={(open) => !open && requestClose()}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">WEB · GUIDES</p>
           <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">Publish a new edition</DialogTitle>
@@ -307,11 +333,28 @@ function CreateGuideDialog({
             </Field>
             {error && <FieldError>{error}</FieldError>}
           </FieldGroup>
+          {confirmDiscard && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertTitle>Discard guide changes?</AlertTitle>
+              <AlertDescription>Your unsaved edition details and selected file will be lost.</AlertDescription>
+              <AlertAction className="mt-3 flex gap-2 sm:mt-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>
+                  Keep editing
+                </Button>
+                <Button type="button" variant="destructive" size="sm" onClick={onClose}>
+                  Discard changes
+                </Button>
+              </AlertAction>
+            </Alert>
+          )}
           <DialogFooter className="-mx-6 -mb-5 mt-5 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={requestClose} disabled={confirmDiscard}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending || duplicate || !trimmedVersion || !date || !file}>
+            <Button
+              type="submit"
+              disabled={confirmDiscard || pending || duplicate || !trimmedVersion || !date || !file}
+            >
               {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Publish guide
             </Button>
           </DialogFooter>

@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   LogOut,
   MonitorSmartphone,
+  RefreshCw,
   Shield,
   ShieldCheck,
   Trash2,
@@ -13,7 +14,17 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PageHeader } from "@/components/page-header"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertAction, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,6 +44,7 @@ type ActiveSession = {
   ipAddress?: string | null
   createdAt?: Date | string
 }
+type SecurityConfirmation = { type: "image" } | { type: "passkey"; id: string; name: string } | { type: "sessions" }
 
 export const Route = createFileRoute("/dashboard/account")({
   loader: () => getCurrentTelegramRoles(),
@@ -60,20 +72,32 @@ function Account() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [sessions, setSessions] = useState<ActiveSession[]>([])
   const [securityLoading, setSecurityLoading] = useState(true)
+  const [securityRefreshing, setSecurityRefreshing] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [confirmation, setConfirmation] = useState<SecurityConfirmation | null>(null)
+  const [securityError, setSecurityError] = useState("")
 
   const sortedSessions = useMemo(() => sessions.toSorted((a) => (a.id === session.session.id ? -1 : 0)), [sessions])
 
-  const refreshSecurityData = useCallback(async () => {
+  const refreshSecurityData = useCallback(async (isRetry = false) => {
+    if (isRetry) setSecurityRefreshing(true)
     try {
       const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
+      if (passkeyResult.error || sessionResult.error) {
+        setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
+        return false
+      }
       setPasskeys((passkeyResult.data ?? []) as Passkey[])
       setSessions((sessionResult.data ?? []) as ActiveSession[])
+      setSecurityError("")
+      return true
     } catch {
-      setNotice({ type: "error", text: "Could not load passkeys and active sessions." })
+      setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
+      return false
     } finally {
       setSecurityLoading(false)
+      if (isRetry) setSecurityRefreshing(false)
     }
   }, [])
 
@@ -144,8 +168,11 @@ function Account() {
       const result = await auth.passkey.addPasskey({ name: `Passkey ${passkeys.length + 1}` })
       if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
       else {
-        await refreshSecurityData()
-        setNotice({ type: "success", text: "Passkey created." })
+        const refreshed = await refreshSecurityData()
+        setNotice({
+          type: "success",
+          text: refreshed ? "Passkey created." : "Passkey created. Refresh security data to see the updated list.",
+        })
       }
     } catch {
       setNotice({ type: "error", text: "Could not create the passkey." })
@@ -161,8 +188,11 @@ function Account() {
       const result = await auth.passkey.deletePasskey({ id })
       if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
       else {
-        await refreshSecurityData()
-        setNotice({ type: "success", text: "Passkey deleted." })
+        const refreshed = await refreshSecurityData()
+        setNotice({
+          type: "success",
+          text: refreshed ? "Passkey deleted." : "Passkey deleted. Refresh security data to see the updated list.",
+        })
       }
     } catch {
       setNotice({ type: "error", text: "Could not delete the passkey." })
@@ -178,8 +208,13 @@ function Account() {
       const result = await auth.revokeOtherSessions()
       if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
       else {
-        await refreshSecurityData()
-        setNotice({ type: "success", text: "Other sessions signed out." })
+        const refreshed = await refreshSecurityData()
+        setNotice({
+          type: "success",
+          text: refreshed
+            ? "Other sessions signed out."
+            : "Sessions were signed out. Refresh security data to see the updated list.",
+        })
       }
     } catch {
       setNotice({ type: "error", text: "Could not revoke other sessions." })
@@ -212,6 +247,26 @@ function Account() {
       {notice && (
         <Alert variant={notice.type === "error" ? "destructive" : "default"} className="mt-4">
           <AlertDescription>{notice.text}</AlertDescription>
+        </Alert>
+      )}
+      {securityError && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{securityError}</AlertDescription>
+          <AlertAction className="mt-2 sm:mt-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshSecurityData(true)}
+              disabled={securityRefreshing}
+            >
+              {securityRefreshing ? (
+                <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />
+              ) : (
+                <RefreshCw data-icon="inline-start" />
+              )}
+              Retry security data
+            </Button>
+          </AlertAction>
         </Alert>
       )}
 
@@ -259,7 +314,7 @@ function Account() {
                 variant="outline"
                 size="sm"
                 className="text-[10px] text-destructive"
-                onClick={() => void removeImage()}
+                onClick={() => setConfirmation({ type: "image" })}
                 disabled={busy === "image"}
               >
                 Remove picture
@@ -349,7 +404,7 @@ function Account() {
                 <CardDescription className="mt-1">Phishing-resistant access from your trusted devices.</CardDescription>
               </span>
             </div>
-            <Button onClick={() => void addPasskey()} disabled={busy === "passkey"}>
+            <Button onClick={() => void addPasskey()} disabled={busy === "passkey" || securityLoading}>
               <KeyRound data-icon="inline-start" /> Add passkey
             </Button>
           </CardHeader>
@@ -375,7 +430,9 @@ function Account() {
                         variant="ghost"
                         size="icon-sm"
                         className="text-destructive"
-                        onClick={() => void deletePasskey(passkey.id)}
+                        onClick={() =>
+                          setConfirmation({ type: "passkey", id: passkey.id, name: passkey.name || "this passkey" })
+                        }
                         disabled={busy === passkey.id}
                         aria-label="Delete passkey"
                       >
@@ -405,7 +462,7 @@ function Account() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void revokeOtherSessions()}
+                onClick={() => setConfirmation({ type: "sessions" })}
                 disabled={busy === "sessions"}
               >
                 Sign out other sessions
@@ -453,6 +510,46 @@ function Account() {
           </CardFooter>
         </Card>
       </div>
+      <AlertDialog open={Boolean(confirmation)} onOpenChange={(open) => !open && !busy && setConfirmation(null)}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmation?.type === "image"
+                ? "Remove profile picture?"
+                : confirmation?.type === "passkey"
+                  ? "Delete passkey?"
+                  : "Sign out other sessions?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmation?.type === "image"
+                ? "Your profile will use its initials until you upload another picture."
+                : confirmation?.type === "passkey"
+                  ? `You will no longer be able to sign in with ${confirmation.name}.`
+                  : "Every other device will be signed out. This device will remain active."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(busy)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                const current = confirmation
+                setConfirmation(null)
+                if (current?.type === "image") void removeImage()
+                if (current?.type === "passkey") void deletePasskey(current.id)
+                if (current?.type === "sessions") void revokeOtherSessions()
+              }}
+            >
+              {confirmation?.type === "image"
+                ? "Remove picture"
+                : confirmation?.type === "passkey"
+                  ? "Delete passkey"
+                  : "Sign out sessions"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -463,7 +560,8 @@ function SecurityList({ children }: { children: React.ReactNode }) {
 
 function SecurityLoading({ rows }: { rows: number }) {
   return (
-    <div className="grid" aria-busy="true">
+    <div className="grid" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading security information</span>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-3 border-b border-border px-5 py-4 last:border-0">
           <Skeleton className="size-7" />

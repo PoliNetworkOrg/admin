@@ -54,7 +54,7 @@ function DialogContent({
         className={cn(
           "fixed z-50 grid bg-popover text-sm text-popover-foreground shadow-2xl ring-1 ring-foreground/10 duration-150 outline-none",
           side === "center"
-            ? "top-1/2 left-1/2 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+            ? "top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl p-4 sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
             : "inset-y-0 left-0 h-dvh w-[min(320px,calc(100vw-1rem))] max-w-none gap-0 rounded-r-xl border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground data-open:animate-in data-open:slide-in-from-left data-closed:animate-out data-closed:slide-out-to-left",
           className
         )}

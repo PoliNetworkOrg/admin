@@ -267,7 +267,11 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
       }
       toast.success(`Grant created for ${displayName(selectedUser)}.`)
       closeAndReset()
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch {
+        toast.warning("The grant was created, but the latest grants could not be refreshed.")
+      }
     } catch (error) {
       console.error(error)
       toast.error("The grant could not be created. Check your permissions and try again.")
@@ -288,7 +292,7 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <CalendarPlus data-icon="inline-start" /> Add grant
       </DialogTrigger>
-      <DialogContent className="max-w-lg gap-0 overflow-hidden border-border p-0">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg gap-0 overflow-y-auto border-border p-0">
         <DialogHeader className="gap-5 border-b border-border py-5 pr-16 pl-6">
           <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">New Grant</DialogTitle>
         </DialogHeader>
@@ -297,6 +301,9 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
 
         {step === "user" ? (
           <form
+            id="stepper-panel-1"
+            role="tabpanel"
+            aria-labelledby="stepper-tab-1"
             className="flex flex-col gap-4 px-6 pb-5"
             onSubmit={(event) => {
               event.preventDefault()
@@ -377,7 +384,7 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
               </div>
             )}
             <DialogFooter className="-mx-6 -mb-5 mt-1 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-              <Button type="button" variant="outline" size="sm" onClick={closeAndReset}>
+              <Button type="button" variant="outline" size="sm" onClick={requestClose}>
                 Cancel
               </Button>
               <Button type="button" size="sm" disabled={!selectedUser} onClick={() => setStep("details")}>
@@ -386,7 +393,13 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
             </DialogFooter>
           </form>
         ) : (
-          <form className="flex flex-col gap-3 px-6 py-4" onSubmit={(event) => void submit(event)}>
+          <form
+            id="stepper-panel-2"
+            role="tabpanel"
+            aria-labelledby="stepper-tab-2"
+            className="flex flex-col gap-3 px-6 py-4"
+            onSubmit={(event) => void submit(event)}
+          >
             {!fixedUser && (
               <Button type="button" variant="ghost" size="xs" className="-ml-2 w-fit" onClick={() => setStep("user")}>
                 <ArrowLeft data-icon="inline-start" /> Change user
@@ -425,7 +438,7 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
               />
             </Field>
             <DialogFooter className="-mx-6 -mb-5 mt-1 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-              <Button type="button" variant="outline" size="sm" onClick={closeAndReset}>
+              <Button type="button" variant="outline" size="sm" onClick={requestClose}>
                 Cancel
               </Button>
               <Button

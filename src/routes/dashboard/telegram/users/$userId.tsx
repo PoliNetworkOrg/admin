@@ -96,14 +96,20 @@ function UserProfile() {
     return (
       <div className="animate-appear">
         <BackLink />
-        <LiveStatus connected={response.connected} message={"message" in response ? response.message : undefined} />
-        <Card className="mt-5 border-dashed text-center">
-          <CardContent className="px-5 py-10">
-            <UserRound className="mx-auto size-6 text-primary" />
-            <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">User not found</h2>
-            <p className="mt-2 text-xs text-muted-foreground">No Telegram user exists with ID {userId}.</p>
-          </CardContent>
-        </Card>
+        <LiveStatus
+          connected={response.connected}
+          message={"message" in response ? response.message : undefined}
+          onRetry={() => router.invalidate({ sync: true })}
+        />
+        {response.connected && (
+          <Card className="mt-5 border-dashed text-center">
+            <CardContent className="px-5 py-10">
+              <UserRound className="mx-auto size-6 text-primary" />
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">User not found</h2>
+              <p className="mt-2 text-xs text-muted-foreground">No Telegram user exists with ID {userId}.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     )
   }
@@ -115,7 +121,11 @@ function UserProfile() {
   return (
     <div className="animate-appear">
       <BackLink />
-      <LiveStatus connected={response.connected} message={"message" in response ? response.message : undefined} />
+      <LiveStatus
+        connected={response.connected}
+        message={"message" in response ? response.message : undefined}
+        onRetry={() => router.invalidate({ sync: true })}
+      />
       <Card className="mt-5 [--card-spacing:--spacing(5)]">
         <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
           <Avatar className="size-14">
@@ -240,7 +250,12 @@ function UserProfile() {
         onClose={() => setAdminDialogOpen(false)}
         onSaved={async () => {
           setAdminDialogOpen(false)
-          await router.invalidate({ sync: true })
+          toast.success("Group administrator added.")
+          try {
+            await router.invalidate({ sync: true })
+          } catch {
+            toast.warning("The administrator was added, but the latest user data could not be refreshed.")
+          }
         }}
       />
       <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
@@ -471,7 +486,11 @@ function RoleDialog({
       toast.success(`${roleLabel(selectedRole)} role ${adding ? "assigned" : "removed"}.`)
       setOpen(false)
       setSelectedRole(null)
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch {
+        toast.warning("The role was updated, but the latest user data could not be refreshed.")
+      }
     } catch (error) {
       console.error(error)
       toast.error(`The role could not be ${adding ? "assigned" : "removed"}. Check your permissions and try again.`)
@@ -498,7 +517,7 @@ function RoleDialog({
       >
         <Icon /> {actionLabel}
       </DialogTrigger>
-      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">USER ROLES</p>
           <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">{actionLabel}</DialogTitle>
@@ -582,7 +601,11 @@ function InterruptGrantDialog({ userId, displayName }: { userId: number; display
 
       toast.success(`Grant interrupted for ${displayName}.`)
       setOpen(false)
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch {
+        toast.warning("The grant was ended, but the latest user data could not be refreshed.")
+      }
     } catch (error) {
       console.error(error)
       toast.error("The grant could not be ended. Check your permissions and try again.")
@@ -668,7 +691,7 @@ function AddGroupAdminDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-w-lg overflow-hidden border-border p-0">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto border-border p-0">
         <DialogHeader className="border-b border-border px-6 py-5">
           <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">
             GROUP ADMINISTRATION
@@ -714,7 +737,7 @@ function AddGroupAdminDialog({
             <Button type="button" variant="outline" className="text-[11px]" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" className="text-[11px]" disabled={pending || !availableGroups.length}>
+            <Button type="submit" className="text-[11px]" disabled={pending || !availableGroups.length || !groupId}>
               {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
               Add administrator
             </Button>
