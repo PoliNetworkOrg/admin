@@ -56,7 +56,8 @@ export function DashboardSidebar({ user, loggingOut, onLogout, ...props }: Dashb
     try {
       const stored = window.localStorage.getItem(categoryStorageKey)
       if (stored) setCategoryState(JSON.parse(stored))
-    } catch {
+    } catch (error) {
+      console.error(error)
       // Ignore malformed or unavailable local storage and use route-based defaults.
     }
   }, [])
@@ -66,7 +67,8 @@ export function DashboardSidebar({ user, loggingOut, onLogout, ...props }: Dashb
       const next = { ...current, [title]: open }
       try {
         window.localStorage.setItem(categoryStorageKey, JSON.stringify(next))
-      } catch {
+      } catch (error) {
+        console.error(error)
         // The in-memory state still works when storage is unavailable.
       }
       return next

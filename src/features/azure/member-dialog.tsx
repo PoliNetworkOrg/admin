@@ -58,7 +58,8 @@ export function MemberDialog({
         await createMember({ data: { firstName, lastName, assocNumber, sendEmailTo: email } })
         await onSaved("create")
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       rollback?.()
       setError("The member could not be saved. Check the values and your permissions.")
       setPending(false)

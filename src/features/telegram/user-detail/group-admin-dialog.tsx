@@ -69,7 +69,8 @@ export function AddGroupAdminDialog({
     try {
       await addGroupAdmin({ data: { userId, groupId: Number(groupId) } })
       await onSaved()
-    } catch {
+    } catch (error) {
+      console.error(error)
       setError("The user could not be added as a group administrator.")
       setPending(false)
     }
@@ -156,12 +157,14 @@ export function RemoveGroupAdminDialog({
     try {
       const result = await removeGroupAdmin({ data: { userId, groupId } })
       if (result.error) {
+        console.error(result.error)
         setError(groupAdminMutationError(result.error))
         return
       }
       setOpen(false)
       await onSaved()
-    } catch {
+    } catch (error) {
+      console.error(error)
       setError("The group administrator assignment could not be removed.")
     } finally {
       setPending(false)

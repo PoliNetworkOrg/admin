@@ -28,6 +28,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { errorHasCode } from "@/lib/errors"
 import { createGuide, deleteGuide } from "./guides.functions"
 import type { Guide } from "./types"
 
@@ -75,12 +76,10 @@ export function CreateGuideDialog({
       onCreated(await createGuideFn({ data: formData }))
     } catch (cause) {
       console.error(cause)
-      const message = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : "UNKNOWN_ERROR"
-
       setError(
-        message.includes("DUPLICATE_VERSION")
+        errorHasCode(cause, "DUPLICATE_VERSION")
           ? "This version already exists."
-          : message.includes("UNAUTHORIZED")
+          : errorHasCode(cause, "UNAUTHORIZED")
             ? "You do not have permission to publish guides."
             : "The guide could not be published. Check the file and try again."
       )
@@ -217,7 +216,8 @@ export function DeleteGuideDialog({
     try {
       await deleteGuideFn({ data: { id: guide.id } })
       onDeleted(guide.id)
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.error("The guide could not be deleted. Check your permissions and try again.")
     } finally {
       setPending(false)

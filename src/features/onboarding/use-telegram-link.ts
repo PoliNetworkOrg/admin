@@ -31,7 +31,8 @@ export function useTelegramLink(initialSession: AdminSession) {
   const clearSavedLink = useCallback(() => {
     try {
       window.localStorage.removeItem(storageKey)
-    } catch {
+    } catch (error) {
+      console.error(error)
       // The in-memory flow can still be reset if storage is unavailable.
     }
     setSavedLink(null)
@@ -74,7 +75,8 @@ export function useTelegramLink(initialSession: AdminSession) {
           window.localStorage.removeItem(storageKey)
         }
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ kind: "error", text: "Saved Telegram link state could not be restored. Generate a new code." })
     } finally {
       setNow(Date.now())
@@ -112,6 +114,7 @@ export function useTelegramLink(initialSession: AdminSession) {
         const result = await auth.telegram.link.verify({ query: { code: savedLink.code } })
         if (stopped) return
         if (result.error) {
+          console.error(result.error)
           setNotice({ kind: "error", text: result.error.message || "Telegram verification could not be checked." })
         } else if (result.data.verified) {
           await completeLink()
@@ -122,7 +125,8 @@ export function useTelegramLink(initialSession: AdminSession) {
         } else {
           setNotice(null)
         }
-      } catch {
+      } catch (error) {
+        console.error(error)
         if (!stopped) {
           setNotice({
             kind: "error",
@@ -151,6 +155,7 @@ export function useTelegramLink(initialSession: AdminSession) {
     try {
       const result = await auth.telegram.link.start({ telegramUsername })
       if (result.error) {
+        console.error(result.error)
         setPhase("idle")
         setNotice({ kind: "error", text: result.error.message || "A Telegram link code could not be created." })
         return
@@ -159,14 +164,16 @@ export function useTelegramLink(initialSession: AdminSession) {
       const link = { username: telegramUsername, code: result.data.code, ttl: result.data.ttl, startTime: Date.now() }
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(link))
-      } catch {
+      } catch (error) {
+        console.error(error)
         setNotice({ kind: "error", text: "The code could not be saved in this browser, but it remains usable now." })
       }
       setUsername(telegramUsername)
       setSavedLink(link)
       setNow(Date.now())
       setPhase("polling")
-    } catch {
+    } catch (error) {
+      console.error(error)
       setPhase("idle")
       setNotice({ kind: "error", text: "The authentication service could not create a Telegram link code." })
     }
@@ -177,7 +184,8 @@ export function useTelegramLink(initialSession: AdminSession) {
     try {
       await navigator.clipboard.writeText(savedLink.code)
       setNotice({ kind: "success", text: "Code copied to the clipboard." })
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ kind: "error", text: "The code could not be copied. Select it and copy it manually." })
     }
   }
@@ -199,7 +207,8 @@ export function useTelegramLink(initialSession: AdminSession) {
       await refetchSession()
       await router.invalidate()
       await router.navigate({ to: "/login", replace: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ kind: "error", text: "Could not sign out. Please try again." })
       setLoggingOut(false)
     }

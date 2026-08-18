@@ -72,6 +72,7 @@ export function RoleDialog({
       const action = adding ? addUserRole : removeUserRole
       const result = await action({ data: { userId, role: selectedRole } })
       if (result.error) {
+        console.error(result.error)
         toast.error(roleMutationError(result.error, adding))
         return
       }
@@ -81,7 +82,8 @@ export function RoleDialog({
       setSelectedRole(null)
       try {
         await router.invalidate({ sync: true })
-      } catch {
+      } catch (refreshError) {
+        console.error(refreshError)
         toast.warning("The role was updated, but the latest user data could not be refreshed.")
       }
     } catch (error) {

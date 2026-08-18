@@ -31,7 +31,8 @@ export function GuidesPage({ loadedGuides }: { loadedGuides: Guide[] }) {
   async function refresh() {
     try {
       await router.invalidate({ sync: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.warning("Your change was saved, but the latest guide list could not be refreshed.")
     }
   }

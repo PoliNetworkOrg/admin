@@ -27,8 +27,12 @@ export function LoginPage() {
     try {
       const { data, error } = await auth.emailOtp.sendVerificationOtp({ type: "sign-in", email: email.trim() })
       if (data?.success) setSent(true)
-      else setNotice(error?.message ?? "We could not send a code. Check your email and try again.")
-    } catch {
+      else {
+        if (error) console.error(error)
+        setNotice(error?.message ?? "We could not send a code. Check your email and try again.")
+      }
+    } catch (error) {
+      console.error(error)
       setNotice("We could not reach the authentication service. Please try again.")
     } finally {
       setBusy(false)
@@ -41,8 +45,12 @@ export function LoginPage() {
     try {
       const { data, error } = await auth.signIn.emailOtp({ email: email.trim(), otp })
       if (data) await router.navigate({ to: "/dashboard" })
-      else setNotice(error?.message ?? "That code is not valid. Please try again.")
-    } catch {
+      else {
+        if (error) console.error(error)
+        setNotice(error?.message ?? "That code is not valid. Please try again.")
+      }
+    } catch (error) {
+      console.error(error)
       setNotice("We could not verify the code. Check your connection and try again.")
     } finally {
       setBusy(false)
@@ -55,8 +63,12 @@ export function LoginPage() {
     try {
       const { data, error } = await auth.signIn.passkey()
       if (data) await router.navigate({ to: "/dashboard" })
-      else setNotice(error?.message ?? "Passkey sign in was cancelled or unavailable.")
-    } catch {
+      else {
+        if (error) console.error(error)
+        setNotice(error?.message ?? "Passkey sign in was cancelled or unavailable.")
+      }
+    } catch (error) {
+      console.error(error)
       setNotice("Passkey sign in is unavailable right now. Please try again.")
     } finally {
       setBusy(false)

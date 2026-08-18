@@ -1,3 +1,4 @@
+import { errorHasCode } from "../../lib/errors.ts"
 import { PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants.ts"
 
 const PROJECT_CATEGORIES = new Set(["news", "general", "deprecated"])
@@ -25,7 +26,8 @@ function optionalLink(data: FormData) {
   try {
     const url = new URL(link)
     if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("INVALID_LINK")
-  } catch {
+  } catch (error) {
+    console.error(error)
     throw new Error("INVALID_LINK")
   }
   return link
@@ -53,19 +55,17 @@ export function parseProjectForm(data: FormData) {
 }
 
 export function projectSaveErrorMessage(cause: unknown) {
-  const message = cause instanceof Error ? cause.message : ""
-
-  if (message.includes("INVALID_LINK")) return "Enter a valid HTTP or HTTPS project URL."
-  if (message.includes("INVALID_TITLE")) return "Enter a project title no longer than 160 characters."
-  if (message.includes("INVALID_DESCRIPTIONIT")) {
+  if (errorHasCode(cause, "INVALID_LINK")) return "Enter a valid HTTP or HTTPS project URL."
+  if (errorHasCode(cause, "INVALID_TITLE")) return "Enter a project title no longer than 160 characters."
+  if (errorHasCode(cause, "INVALID_DESCRIPTIONIT")) {
     return "Enter an Italian description no longer than 5,000 characters."
   }
-  if (message.includes("INVALID_DESCRIPTIONEN")) {
+  if (errorHasCode(cause, "INVALID_DESCRIPTIONEN")) {
     return "Enter an English description no longer than 5,000 characters."
   }
-  if (message.includes("INVALID_CATEGORY")) return "Choose a valid project category."
-  if (message.includes("LOGO_TOO_LARGE")) return "The logo must be no larger than 1 MB."
-  if (message.includes("INVALID_LOGO_TYPE")) return "Choose an SVG, PNG, or JPEG logo."
+  if (errorHasCode(cause, "INVALID_CATEGORY")) return "Choose a valid project category."
+  if (errorHasCode(cause, "LOGO_TOO_LARGE")) return "The logo must be no larger than 1 MB."
+  if (errorHasCode(cause, "INVALID_LOGO_TYPE")) return "Choose an SVG, PNG, or JPEG logo."
 
   return "The project could not be saved. Check your permissions and try again."
 }

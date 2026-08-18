@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { errorHasCode } from "@/lib/errors"
 import { ASSOCIATION_LINK_FIELDS } from "./associations.constants"
 import { editAssociationLinks } from "./associations.functions"
 import type { Association, AssociationLinks } from "./types"
@@ -46,9 +47,9 @@ export function AssociationLinksDialog({
     try {
       onSaved(await editLinksFn({ data: { id: association.id, links: normalizeLinks(links) } }))
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : ""
+      console.error(cause)
       setError(
-        message.includes("NOT_FOUND")
+        errorHasCode(cause, "NOT_FOUND")
           ? "This association no longer exists."
           : "The links could not be saved. Check the values and your permissions."
       )

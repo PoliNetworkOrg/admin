@@ -30,6 +30,7 @@ export function InterruptGrantDialog({ userId, displayName }: { userId: number; 
     try {
       const result = await interruptGrant({ data: { userId } })
       if (result.error) {
+        console.error(result.error)
         toast.error(grantMutationError(result.error))
         return
       }
@@ -38,7 +39,8 @@ export function InterruptGrantDialog({ userId, displayName }: { userId: number; 
       setOpen(false)
       try {
         await router.invalidate({ sync: true })
-      } catch {
+      } catch (refreshError) {
+        console.error(refreshError)
         toast.warning("The grant was ended, but the latest user data could not be refreshed.")
       }
     } catch (error) {

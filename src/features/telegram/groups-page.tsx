@@ -58,10 +58,12 @@ export function TelegramGroupsPage({ loadedGroups }: { loadedGroups: TgGroup[] }
           const { [group.telegramId]: _removed, ...remaining } = current
           return remaining
         })
-      } catch {
+      } catch (error) {
+        console.error(error)
         setRefreshError("The visibility was updated, but the latest group data could not be refreshed.")
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setVisibilityOverrides((current) => {
         const { [group.telegramId]: _removed, ...remaining } = current
         return remaining

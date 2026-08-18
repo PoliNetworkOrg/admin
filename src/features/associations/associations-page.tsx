@@ -33,7 +33,8 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
   async function refresh() {
     try {
       await router.invalidate({ sync: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.warning("Your change was saved, but the association list could not be refreshed.")
     }
   }

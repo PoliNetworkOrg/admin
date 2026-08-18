@@ -15,7 +15,8 @@ export const testBackend = createServerFn()
     try {
       await context.backend.test.dbQuery.query({ dbName: "web" })
       return true
-    } catch {
+    } catch (error) {
+      console.error(error)
       return false
     }
   })

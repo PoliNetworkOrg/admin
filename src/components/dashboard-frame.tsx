@@ -33,7 +33,8 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
       if (result.error) throw new Error(result.error.message)
       await router.invalidate()
       await router.navigate({ to: "/login", replace: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.error("Could not sign out. Please try again.")
       setLoggingOut(false)
     }

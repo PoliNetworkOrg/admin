@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
 import test from "node:test"
+import ts from "typescript"
 import { parseProfilePictureForm } from "../src/features/account/account.validation.ts"
 import {
   associationLinksInput,
@@ -13,6 +14,18 @@ import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
+
+async function sourceFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true })
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const path = `${directory}/${entry.name}`
+      if (entry.isDirectory()) return sourceFiles(path)
+      return /\.[cm]?tsx?$/.test(entry.name) ? [path] : []
+    })
+  )
+  return files.flat()
+}
 
 test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", true), true)
@@ -244,6 +257,15 @@ test("association validation accepts bounded image uploads and strict public lin
 
 test("web content save errors explain actionable validation failures", () => {
   assert.equal(projectSaveErrorMessage(new Error("INVALID_LINK")), "Enter a valid HTTP or HTTPS project URL.")
+  assert.equal(projectSaveErrorMessage("INVALID_LINK"), "Enter a valid HTTP or HTTPS project URL.")
+  assert.equal(
+    projectSaveErrorMessage({ error: { message: "INVALID_LINK" } }),
+    "Enter a valid HTTP or HTTPS project URL."
+  )
+  assert.equal(
+    projectSaveErrorMessage(new Error("NOT_INVALID_LINKED")),
+    "The project could not be saved. Check your permissions and try again."
+  )
   assert.equal(projectSaveErrorMessage(new Error("LOGO_TOO_LARGE")), "The logo must be no larger than 1 MB.")
   assert.equal(
     associationSaveErrorMessage(new Error("INVALID_DESCRIPTIONEN")),
@@ -269,4 +291,51 @@ test("project and association mutations forward FormData to the backend", async 
   assert.match(projectsSource, /editProject\.mutate\(formData/)
   assert.match(associationsSource, /addAssociation\.mutate\(formData/)
   assert.match(associationsSource, /editAssociation\.mutate\(formData/)
+})
+
+test("every caught runtime error is written to the console", async () => {
+  const srcDirectory = new URL("../src", import.meta.url).pathname
+  const failures = []
+
+  for (const file of await sourceFiles(srcDirectory)) {
+    const source = await readFile(file, "utf8")
+    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+
+    function visit(node) {
+      if (ts.isCatchClause(node)) {
+        const errorName = node.variableDeclaration?.name.getText(sourceFile)
+        const body = node.block.getText(sourceFile)
+        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+
+        if (!logsCaughtError) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+          failures.push(`${file.replace(`${srcDirectory}/`, "src/")}:${line + 1}`)
+        }
+      }
+
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === "catch"
+      ) {
+        const handler = node.arguments[0]
+        const errorName =
+          handler && (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
+            ? handler.parameters[0]?.name.getText(sourceFile)
+            : undefined
+        const body = handler?.getText(sourceFile) ?? ""
+        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+
+        if (!logsCaughtError) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+          failures.push(`${file.replace(`${srcDirectory}/`, "src/")}:${line + 1}`)
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+
+    visit(sourceFile)
+  }
+
+  assert.deepEqual(failures, [], `Caught errors must be logged at: ${failures.join(", ")}`)
 })

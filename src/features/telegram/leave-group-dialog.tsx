@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { leaveTelegramGroup } from "@/features/telegram/groups.functions"
+import { errorMessage } from "@/lib/errors"
 
 export function LeaveGroupDialog({ chatId, title }: { chatId: number; title: string }) {
   const router = useRouter()
@@ -36,6 +37,7 @@ export function LeaveGroupDialog({ chatId, title }: { chatId: number; title: str
         )
       }
       if (result.error === "NOT_FOUND") {
+        console.error(result.error)
         toast.warning("The bot left the group, but its database record was already missing.")
       } else {
         toast.success(`Left ${title}.`)
@@ -43,7 +45,8 @@ export function LeaveGroupDialog({ chatId, title }: { chatId: number; title: str
       setOpen(false)
       await router.invalidate({ sync: true })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The group could not be left.")
+      console.error(error)
+      toast.error(errorMessage(error, "The group could not be left."))
     } finally {
       setPending(false)
     }

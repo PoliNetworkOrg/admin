@@ -270,7 +270,8 @@ export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMemb
             if (mode === "create") {
               try {
                 await router.invalidate({ sync: true })
-              } catch {
+              } catch (error) {
+                console.error(error)
                 toast.warning("The member was created, but the latest directory data could not be refreshed.")
               }
             }
