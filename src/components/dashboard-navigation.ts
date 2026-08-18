@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Settings,
   ShieldCheck,
+  Users,
   UsersRound,
 } from "lucide-react"
 import azureIcon from "@/assets/svg/azure.svg"
@@ -54,7 +55,10 @@ export const dashboardNavigation = [
     title: "Web",
     icon: Globe,
     iconSrc: undefined,
-    items: [{ title: "Guides", url: "/dashboard/web/guides", icon: BookOpen }],
+    items: [
+      { title: "Associations", url: "/dashboard/web/associations", icon: Users },
+      { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
+    ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]
 

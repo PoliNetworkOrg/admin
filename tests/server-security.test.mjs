@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { parseProfilePictureForm } from "../src/features/account/account.validation.ts"
+import {
+  associationLinksInput,
+  parseCreateAssociationForm,
+} from "../src/features/associations/associations.validation.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
@@ -73,6 +77,7 @@ test("the auth proxy preserves the request and exact upstream response", async (
 
 test("admin server functions attach the authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/telegram/grants.functions.ts",
@@ -100,6 +105,8 @@ test("event handlers integrate protected server-function redirects with the rout
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
     "src/features/account/use-account.ts": ["uploadProfilePicture"],
+    "src/features/associations/association-dialogs.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
+    "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/group-membership.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember", "setAzureMemberNumber"],
     "src/features/guides/guide-dialogs.tsx": ["createGuide", "deleteGuide"],
@@ -157,4 +164,41 @@ test("guide validation accepts only strict dated PDF uploads", () => {
   wrongType.set("date", "2026-08-18T00:00:00.000Z")
   wrongType.set("file", new File([new Uint8Array(8)], "guide.txt", { type: "text/plain" }))
   assert.throws(() => parseGuideForm(wrongType), /INVALID_FILE_TYPE/)
+})
+
+test("association validation accepts bounded image uploads and strict public links", () => {
+  const valid = new FormData()
+  valid.set("name", " Test association ")
+  valid.set("descriptionIt", "Descrizione")
+  valid.set("descriptionEn", "Description")
+  valid.set("logo", new File(["<svg />"], "logo.svg", { type: "image/svg+xml" }))
+  assert.equal(parseCreateAssociationForm(valid).name, "Test association")
+
+  const wrongType = new FormData()
+  wrongType.set("name", "Test association")
+  wrongType.set("descriptionIt", "Descrizione")
+  wrongType.set("descriptionEn", "Description")
+  wrongType.set("logo", new File([new Uint8Array(8)], "logo.gif", { type: "image/gif" }))
+  assert.throws(() => parseCreateAssociationForm(wrongType), /INVALID_LOGO_TYPE/)
+
+  const validLinks = {
+    id: 1,
+    links: {
+      email: "hello@example.org",
+      website: "https://example.org",
+      facebook: null,
+      instagram: null,
+      tiktok: null,
+      x: null,
+      youtube: null,
+      telegram: null,
+      linkedin: null,
+      spotify: null,
+    },
+  }
+  assert.equal(associationLinksInput.parse(validLinks).links.website, "https://example.org")
+  assert.throws(
+    () => associationLinksInput.parse({ ...validLinks, links: { ...validLinks.links, website: "not a URL" } }),
+    /Invalid URL/
+  )
 })
