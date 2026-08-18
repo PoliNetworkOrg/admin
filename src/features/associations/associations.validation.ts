@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { errorHasCode } from "../../lib/errors.ts"
 import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES } from "./associations.constants.ts"
 
 const ALLOWED_LOGO_TYPES = new Set<string>(ASSOCIATION_LOGO_TYPES)
@@ -64,17 +65,19 @@ export const associationLinksInput = z.object({
 export const associationIdInput = z.object({ id: z.number().int().positive() })
 
 export function associationSaveErrorMessage(cause: unknown) {
-  const message = cause instanceof Error ? cause.message : ""
-
-  if (message.includes("NOT_FOUND")) return "This association no longer exists."
-  if (message.includes("INVALID_NAME")) return "Enter an association name no longer than 200 characters."
-  if (message.includes("INVALID_DESCRIPTIONIT")) {
+  if (errorHasCode(cause, "NOT_FOUND")) return "This association no longer exists."
+  if (errorHasCode(cause, "INVALID_NAME")) return "Enter an association name no longer than 200 characters."
+  if (errorHasCode(cause, "INVALID_DESCRIPTIONIT")) {
     return "Enter an Italian description no longer than 20,000 characters."
   }
-  if (message.includes("INVALID_DESCRIPTIONEN")) {
+  if (errorHasCode(cause, "INVALID_DESCRIPTIONEN")) {
     return "Enter an English description no longer than 20,000 characters."
   }
-  if (message.includes("LOGO") || message.includes("file")) {
+  if (
+    errorHasCode(cause, "LOGO_TOO_LARGE") ||
+    errorHasCode(cause, "INVALID_LOGO_TYPE") ||
+    errorHasCode(cause, "INVALID_FILE_TYPE")
+  ) {
     return "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
   }
 

@@ -133,6 +133,7 @@ function MembershipDialog({
       const input = { data: { groupId: group.id, userId: selectedMember.id } }
       const result = adding ? await addGroupMember(input) : await removeGroupMember(input)
       if (result.error) {
+        console.error(result.error)
         toast.error(mutationErrorMessage(result.error))
         return
       }
@@ -145,7 +146,8 @@ function MembershipDialog({
       setConfirmRemoval(false)
       try {
         await router.invalidate({ sync: true })
-      } catch {
+      } catch (error) {
+        console.error(error)
         toast.warning("The membership was updated, but the latest group data could not be refreshed.")
       }
     } catch (error) {

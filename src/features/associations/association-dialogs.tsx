@@ -25,6 +25,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { errorHasCode } from "@/lib/errors"
 import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES, getAssociationInitials } from "./associations.constants"
 import { createAssociation, deleteAssociation, editAssociation } from "./associations.functions"
 import { associationSaveErrorMessage } from "./associations.validation"
@@ -93,6 +94,7 @@ export function AssociationDialog({
       const saved = editing ? await editAssociationFn({ data }) : await createAssociationFn({ data })
       onSaved(saved, dialog.mode)
     } catch (cause) {
+      console.error(cause)
       setError(associationSaveErrorMessage(cause))
     } finally {
       setPending(false)
@@ -213,8 +215,8 @@ export function DeleteAssociationDialog({
       await deleteAssociationFn({ data: { id: association.id } })
       onDeleted(association.id)
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : ""
-      if (message.includes("NOT_FOUND")) onDeleted(association.id)
+      console.error(cause)
+      if (errorHasCode(cause, "NOT_FOUND")) onDeleted(association.id)
       else toast.error("The association could not be deleted. Check your permissions and try again.")
     } finally {
       setPending(false)

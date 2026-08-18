@@ -30,6 +30,8 @@ export function useAccount(initialSession: AdminSession) {
     try {
       const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
       if (passkeyResult.error || sessionResult.error) {
+        if (passkeyResult.error) console.error(passkeyResult.error)
+        if (sessionResult.error) console.error(sessionResult.error)
         setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
         return false
       }
@@ -37,7 +39,8 @@ export function useAccount(initialSession: AdminSession) {
       setSessions(sessionResult.data ?? [])
       setSecurityError("")
       return true
-    } catch {
+    } catch (error) {
+      console.error(error)
       setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
       return false
     } finally {
@@ -58,12 +61,15 @@ export function useAccount(initialSession: AdminSession) {
     setNotice(null)
     try {
       const result = await auth.updateUser({ name: name.trim() })
-      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not update your name." })
-      else {
+      if (result.error) {
+        console.error(result.error)
+        setNotice({ type: "error", text: result.error.message ?? "Could not update your name." })
+      } else {
         await sessionQuery.refetch()
         setNotice({ type: "success", text: "Profile name updated." })
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not update your name." })
     } finally {
       setBusy(null)
@@ -85,7 +91,8 @@ export function useAccount(initialSession: AdminSession) {
       await uploadProfilePictureFn({ data: formData })
       await sessionQuery.refetch()
       setNotice({ type: "success", text: "Profile picture updated." })
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not update your profile picture." })
     }
     setBusy(null)
@@ -96,12 +103,15 @@ export function useAccount(initialSession: AdminSession) {
     setNotice(null)
     try {
       const result = await auth.updateUser({ image: null })
-      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not remove the picture." })
-      else {
+      if (result.error) {
+        console.error(result.error)
+        setNotice({ type: "error", text: result.error.message ?? "Could not remove the picture." })
+      } else {
         await sessionQuery.refetch()
         setNotice({ type: "success", text: "Profile picture removed." })
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not remove the picture." })
     } finally {
       setBusy(null)
@@ -113,15 +123,18 @@ export function useAccount(initialSession: AdminSession) {
     setNotice(null)
     try {
       const result = await auth.passkey.addPasskey({ name: `Passkey ${passkeys.length + 1}` })
-      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
-      else {
+      if (result.error) {
+        console.error(result.error)
+        setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
+      } else {
         const refreshed = await refreshSecurityData()
         setNotice({
           type: "success",
           text: refreshed ? "Passkey created." : "Passkey created. Refresh security data to see the updated list.",
         })
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not create the passkey." })
     } finally {
       setBusy(null)
@@ -133,15 +146,18 @@ export function useAccount(initialSession: AdminSession) {
     setNotice(null)
     try {
       const result = await auth.passkey.deletePasskey({ id })
-      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
-      else {
+      if (result.error) {
+        console.error(result.error)
+        setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
+      } else {
         const refreshed = await refreshSecurityData()
         setNotice({
           type: "success",
           text: refreshed ? "Passkey deleted." : "Passkey deleted. Refresh security data to see the updated list.",
         })
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not delete the passkey." })
     } finally {
       setBusy(null)
@@ -153,8 +169,10 @@ export function useAccount(initialSession: AdminSession) {
     setNotice(null)
     try {
       const result = await auth.revokeOtherSessions()
-      if (result.error) setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
-      else {
+      if (result.error) {
+        console.error(result.error)
+        setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
+      } else {
         const refreshed = await refreshSecurityData()
         setNotice({
           type: "success",
@@ -163,7 +181,8 @@ export function useAccount(initialSession: AdminSession) {
             : "Sessions were signed out. Refresh security data to see the updated list.",
         })
       }
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not revoke other sessions." })
     } finally {
       setBusy(null)
@@ -178,7 +197,8 @@ export function useAccount(initialSession: AdminSession) {
       if (result.error) throw new Error(result.error.message)
       await router.invalidate()
       await router.navigate({ to: "/login", replace: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       setNotice({ type: "error", text: "Could not sign out. Please try again." })
       setBusy(null)
     }

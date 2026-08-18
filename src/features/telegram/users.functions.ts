@@ -34,8 +34,12 @@ export const findTelegramUser = createServerFn()
           ? await context.backend.tg.users.getByUsername.query({ username: data.username.replace(/^@/, "") })
           : await context.backend.tg.users.get.query({ userId: data.userId })
 
-      if (response.error === "NOT_FOUND" || !response.user) return { user: null, status: "not-found" }
-      if (response.error) return { user: null, status: "error", message: "Telegram user lookup failed." }
+      if (response.error) {
+        console.error(response.error)
+        if (response.error === "NOT_FOUND") return { user: null, status: "not-found" }
+        return { user: null, status: "error", message: "Telegram user lookup failed." }
+      }
+      if (!response.user) return { user: null, status: "not-found" }
       return { user: response.user, status: "found" }
     } catch (error) {
       console.error(error)

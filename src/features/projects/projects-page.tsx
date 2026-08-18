@@ -80,7 +80,8 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   async function refresh() {
     try {
       await router.invalidate({ sync: true })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.warning("Your change was saved, but the latest project list could not be refreshed.")
     }
   }
@@ -101,13 +102,16 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
     const operation = reorderQueue.current.then(async () => {
       for (const projectIds of groups) await reorderProjectsFn({ data: { projectIds } })
     })
-    reorderQueue.current = operation.catch(() => undefined)
+    reorderQueue.current = operation.catch((error) => {
+      console.error(error)
+    })
 
     try {
       await operation
       if (reorderRequestId.current === requestId) void refresh()
       return true
-    } catch {
+    } catch (error) {
+      console.error(error)
       if (reorderRequestId.current === requestId) {
         setProjects(rollback)
         toast.error("The project order could not be saved.")
@@ -196,6 +200,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       }
       return true
     } catch (cause) {
+      console.error(cause)
       toast.error(projectSaveErrorMessage(cause))
       return false
     }
@@ -229,7 +234,8 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       const ids = persistedIds(nextProjects, removedProject.category)
       await persistOrders([ids], nextProjects, requestId)
       return true
-    } catch {
+    } catch (error) {
+      console.error(error)
       if (reorderRequestId.current === requestId) {
         setProjects((current) => {
           if (current.some((item) => item.id === id)) return current
@@ -277,7 +283,8 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       const sourceIds = persistedIds(savedProjects, originalProject.category)
       const destinationIds = persistedIds(savedProjects, category)
       await persistOrders([sourceIds, destinationIds], savedProjects, requestId)
-    } catch {
+    } catch (error) {
+      console.error(error)
       if (reorderRequestId.current === requestId) {
         setProjects((current) =>
           current.map((item) => (item.id === id && item.category === category ? originalProject : item))

@@ -185,7 +185,8 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
                       toast.success("Group administrator removed.")
                       try {
                         await router.invalidate({ sync: true })
-                      } catch {
+                      } catch (error) {
+                        console.error(error)
                         toast.warning("The assignment was removed, but the latest user data could not be refreshed.")
                       }
                     }}
@@ -208,7 +209,8 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
           toast.success("Group administrator added.")
           try {
             await router.invalidate({ sync: true })
-          } catch {
+          } catch (error) {
+            console.error(error)
             toast.warning("The administrator was added, but the latest user data could not be refreshed.")
           }
         }}

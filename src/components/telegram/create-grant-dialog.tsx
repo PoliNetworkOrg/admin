@@ -266,6 +266,7 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
         data: { userId: selectedUser.id, since, until, reason: reason.trim() || undefined },
       })
       if (result.error) {
+        console.error(result.error)
         toast.error(grantMutationError(result.error))
         return
       }
@@ -273,7 +274,8 @@ export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
       closeAndReset()
       try {
         await router.invalidate({ sync: true })
-      } catch {
+      } catch (error) {
+        console.error(error)
         toast.warning("The grant was created, but the latest grants could not be refreshed.")
       }
     } catch (error) {
