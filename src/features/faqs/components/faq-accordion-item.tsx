@@ -1,7 +1,7 @@
 import type React from "react"
-import { FiCheck, FiCornerDownLeft, FiEdit } from "react-icons/fi"
+import { Check, CornerDownLeft, Edit } from "lucide-react"
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import type { FAQItem } from "@/server/trpc/types"
+import type { FAQItem } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
 import { FaqButton } from "./faq-button"
 
@@ -151,8 +151,8 @@ function FaqEditHeader({
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0 pt-1">
-        <FaqButton icon={FiCheck} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
-        <FaqButton icon={FiCornerDownLeft} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
+        <FaqButton icon={Check} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
+        <FaqButton icon={CornerDownLeft} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
       </div>
     </div>
   )
@@ -170,7 +170,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
       className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary"
       actions={
         <div className="flex text-xs items-center gap-1.5">
-          <FaqButton icon={FiEdit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
+          <FaqButton icon={Edit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
           <DeletePopover
             title="Eliminare questa FAQ?"
             triggerAriaLabel="Delete FAQ"

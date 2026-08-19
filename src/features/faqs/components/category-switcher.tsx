@@ -1,6 +1,6 @@
-import { FiEdit } from "react-icons/fi"
+import { Edit } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { FAQs } from "@/server/trpc/types"
+import type { FAQs } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
 import { FaqButton } from "./faq-button"
 
@@ -64,7 +64,7 @@ export function CategorySwitcher({
           <span>{activeCategory.faqs.length} FAQ in questa categoria</span>
           {onEditCategory && (
             <FaqButton
-              icon={FiEdit}
+              icon={Edit}
               onClick={() => onEditCategory(activeCategory)}
               color="primary"
               ariaLabel="Modifica categoria"

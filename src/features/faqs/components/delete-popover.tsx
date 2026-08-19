@@ -1,5 +1,5 @@
 import type React from "react"
-import { FiTrash2 } from "react-icons/fi"
+import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import { FaqButton } from "./faq-button"
@@ -24,7 +24,7 @@ export function DeletePopover({
   return (
     <Popover>
       <PopoverTrigger
-        render={<FaqButton icon={FiTrash2} onClick={triggerOnClick} color="destructive" ariaLabel={triggerAriaLabel} />}
+        render={<FaqButton icon={Trash2} onClick={triggerOnClick} color="destructive" ariaLabel={triggerAriaLabel} />}
       />
       <PopoverContent className="w-72 p-4" align="end">
         <PopoverHeader>

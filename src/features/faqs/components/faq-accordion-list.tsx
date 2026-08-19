@@ -1,8 +1,8 @@
 import type React from "react"
-import { FiPlus } from "react-icons/fi"
+import { Plus } from "lucide-react"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import type { FAQItem } from "@/server/trpc/types"
+import type { FAQItem } from "@/lib/api/types"
 import { FaqAccordionItem } from "./faq-accordion-item"
 
 export interface FaqAccordionListProps {
@@ -56,7 +56,7 @@ export function FaqAccordionList({
         </p>
         {hasCategory && (
           <Button variant="outline" size="sm" onClick={handleAdd} className="mt-3">
-            <FiPlus className="size-4" /> Aggiungi FAQ
+            <Plus className="size-4" /> Aggiungi FAQ
           </Button>
         )}
       </div>

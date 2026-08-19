@@ -3,22 +3,22 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import {
-  addFAQ,
-  addFAQCategory,
-  deleteFAQ,
-  deleteFAQCategory,
-  editFAQ,
-  editFAQCategory,
-  listFAQs,
-} from "@/server/actions/faqs"
-import type { FAQItem, FAQs } from "@/server/trpc/types"
+import { listFAQs, addFAQ, addFAQCategory, editFAQ, editFAQCategory, deleteFAQ, deleteFAQCategory } from "./faqs.functions"
+import type { FAQItem, FAQs } from "@/lib/api/types.ts"
 import { AddCategoryDialog } from "./components/add-category-dialog"
 import { CategorySwitcher } from "./components/category-switcher"
 import { FaqAccordionList } from "./components/faq-accordion-list"
 import { FaqPageHeader } from "./components/faq-page-header"
+import { useServerFn } from "@tanstack/react-start"
 
-export default function WebFaqsIndex() {
+export default function FaqsPage() {
+  const addFAQFn = useServerFn(addFAQ)
+  const addFAQCategoryFn = useServerFn(addFAQCategory)
+  const editFAQFn = useServerFn(editFAQ)
+  const editFAQCategoryFn = useServerFn(editFAQCategory)
+  const deleteFAQFn = useServerFn(deleteFAQ)
+  const deleteFAQCategoryFn = useServerFn(deleteFAQCategory)
+
   const [faqs, setFaqs] = useState<FAQs>([])
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -41,7 +41,7 @@ export default function WebFaqsIndex() {
         setFaqs(f)
         if (f.length > 0 && f[0]) {
           const firstId = f[0].categoryId
-          setCategoryId((prev) => (prev && f.some((c) => c.categoryId === prev) ? prev : firstId))
+          setCategoryId((prev) => (prev && f.some((c: any) => c.categoryId === prev) ? prev : firstId))
         }
       })
       .catch((e: string) => toast.error(`Failed to fetch FAQs: ${e}`))
@@ -49,9 +49,11 @@ export default function WebFaqsIndex() {
 
   const handleAddCategory = async (titleIt: string, titleEn: string) => {
     try {
-      const res = await addFAQCategory({
-        titleIt,
-        titleEn: titleEn || titleIt,
+      const res = await addFAQCategoryFn({
+        data: {
+          titleIt,
+          titleEn
+        },
       })
 
       const newCat = {
@@ -74,16 +76,13 @@ export default function WebFaqsIndex() {
 
   const handleUpdateCategory = async (catId: number, titleIt: string, titleEn: string) => {
     try {
-      const res = await editFAQCategory({
-        id: catId,
-        titleIt,
-        titleEn: titleEn || titleIt,
+      const res = await editFAQCategoryFn({
+        data: {
+          id: catId,
+          titleIt,
+          titleEn
+        },
       })
-
-      if ("error" in res) {
-        toast.error(`Errore: ${res.error}`)
-        return
-      }
 
       setFaqs((prev) =>
         prev.map((c) => (c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn } : c))
@@ -98,7 +97,7 @@ export default function WebFaqsIndex() {
 
   const handleDeleteCategory = async (catId: number) => {
     try {
-      await deleteFAQCategory({ id: catId })
+      await deleteFAQCategoryFn({ data: { id: catId } })
       setFaqs((prev) => {
         const next = prev.filter((c) => c.categoryId !== catId)
         if (categoryId === catId) {
@@ -177,8 +176,8 @@ export default function WebFaqsIndex() {
 
     const isNew = unsavedIds.includes(id)
     const savePromise = isNew
-      ? addFAQ({ questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
-      : editFAQ({ id, questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
+      ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
+      : editFAQFn({ data: { id, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
 
     savePromise
       .then(() => {
@@ -220,7 +219,7 @@ export default function WebFaqsIndex() {
     e.stopPropagation()
 
     const isNew = unsavedIds.includes(id)
-    const deletePromise = isNew ? Promise.resolve() : deleteFAQ({ id })
+    const deletePromise = isNew ? Promise.resolve() : deleteFAQFn({ data: { id } })
 
     deletePromise
       .then(() => {
@@ -284,8 +283,8 @@ export default function WebFaqsIndex() {
       const currentId = editingId
       const isNew = unsavedIds.includes(currentId)
       const savePromise = isNew
-        ? addFAQ({ questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
-        : editFAQ({ id: currentId, questionIt: qIt, questionEn: qEn, answerIt: aIt, answerEn: aEn, categoryId })
+        ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
+        : editFAQFn({ data: { id: currentId, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
 
       savePromise
         .then(() => {
