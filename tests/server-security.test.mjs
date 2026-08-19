@@ -11,7 +11,7 @@ import {
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
-import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
+import { hasAdminRole, hasWriteAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
@@ -46,9 +46,19 @@ test("only dashboard administrator roles authorize access", () => {
   assert.equal(hasAdminRole(["owner"]), true)
   assert.equal(hasAdminRole(["direttivo"]), true)
   assert.equal(hasAdminRole(["president"]), true)
+  assert.equal(hasAdminRole(["hr"]), true)
   assert.equal(hasAdminRole(["creator"]), false)
   assert.equal(hasAdminRole(["creator", "owner"]), false)
   assert.equal(hasAdminRole([]), false)
+})
+
+test("HR dashboard access is read-only", () => {
+  assert.equal(hasWriteAdminRole(["owner"]), true)
+  assert.equal(hasWriteAdminRole(["direttivo"]), true)
+  assert.equal(hasWriteAdminRole(["president"]), true)
+  assert.equal(hasWriteAdminRole(["hr"]), false)
+  assert.equal(hasWriteAdminRole(["hr", "direttivo"]), true)
+  assert.equal(hasWriteAdminRole(["creator", "owner"]), false)
 })
 
 test("forwarded cookies are derived independently for every request", () => {
@@ -104,9 +114,28 @@ test("admin server functions attach the authorization middleware", async () => {
   for (const file of adminFunctionFiles) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
     const serverFunctionCount = source.match(/createServerFn\(/g)?.length ?? 0
-    const adminMiddlewareCount = source.match(/\.middleware\(\[adminMiddleware\]\)/g)?.length ?? 0
+    const middlewareCount = source.match(/\.middleware\(\[(?:adminMiddleware|writeAdminMiddleware)\]\)/g)?.length ?? 0
     assert.ok(serverFunctionCount > 0, `${file} must export server functions`)
-    assert.equal(adminMiddlewareCount, serverFunctionCount, `${file} must authorize every server function`)
+    assert.equal(middlewareCount, serverFunctionCount, `${file} must authorize every server function`)
+  }
+})
+
+test("dashboard mutations require a write-capable role", async () => {
+  const adminFunctionFiles = [
+    "src/features/associations/associations.functions.ts",
+    "src/features/azure/azure.functions.ts",
+    "src/features/guides/guides.functions.ts",
+    "src/features/projects/projects.functions.ts",
+    "src/features/telegram/grants.functions.ts",
+    "src/features/telegram/groups.functions.ts",
+    "src/features/telegram/users.functions.ts",
+  ]
+
+  for (const file of adminFunctionFiles) {
+    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
+    const mutationCount = source.match(/createServerFn\(\{ method: "POST" \}\)/g)?.length ?? 0
+    const writeMiddlewareCount = source.match(/\.middleware\(\[writeAdminMiddleware\]\)/g)?.length ?? 0
+    assert.equal(writeMiddlewareCount, mutationCount, `${file} must protect every mutation with write access`)
   }
 })
 
