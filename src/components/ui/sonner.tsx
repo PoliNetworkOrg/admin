@@ -1,44 +1,24 @@
-"use client"
-
-import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { FiCheckCircle, FiInfo, FiAlertTriangle, FiAlertOctagon, FiLoader } from "react-icons/fi"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const [theme, setTheme] = useState<"light" | "dark">("light")
+
+  useEffect(() => {
+    const syncTheme = () => setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light")
+    syncTheme()
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
-      icons={{
-        success: (
-          <FiCheckCircle className="size-4" />
-        ),
-        info: (
-          <FiInfo className="size-4" />
-        ),
-        warning: (
-          <FiAlertTriangle className="size-4" />
-        ),
-        error: (
-          <FiAlertOctagon className="size-4" />
-        ),
-        loading: (
-          <FiLoader className="size-4 animate-spin" />
-        ),
-      }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "sonner-toast",
         },
       }}
       {...props}
