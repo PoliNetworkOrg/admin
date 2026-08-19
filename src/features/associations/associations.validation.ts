@@ -76,6 +76,7 @@ export function associationSaveErrorMessage(cause: unknown) {
   if (
     errorHasCode(cause, "LOGO_TOO_LARGE") ||
     errorHasCode(cause, "INVALID_LOGO_TYPE") ||
+    errorHasCode(cause, "INVALID_FILE_TYPE") ||
     errorHasZodField(cause, "logo")
   ) {
     return "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
