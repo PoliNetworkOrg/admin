@@ -1,34 +1,49 @@
 import { useRouter } from "@tanstack/react-router"
+import { useServerFn } from "@tanstack/react-start"
 import { Plus, UsersRound } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
+import { errorHasCode } from "@/lib/errors"
 import { AssociationCard } from "./association-card"
-import { AssociationDialog, type AssociationDialogState, DeleteAssociationDialog } from "./association-dialogs"
 import { AssociationLinksDialog } from "./association-links-dialog"
-import type { Association } from "./types"
+import { EMPTY_ASSOCIATION_LINKS } from "./associations.constants"
+import { createAssociation, deleteAssociation, editAssociation } from "./associations.functions"
+import { associationSaveErrorMessage } from "./associations.validation"
+import type { Association, AssociationFormValues } from "./types"
 
 export function AssociationsPage({ loadedAssociations }: { loadedAssociations: Association[] }) {
   const router = useRouter()
+  const createAssociationFn = useServerFn(createAssociation)
+  const editAssociationFn = useServerFn(editAssociation)
+  const deleteAssociationFn = useServerFn(deleteAssociation)
   const [associations, setAssociations] = useState(loadedAssociations)
   const [query, setQuery] = useState("")
-  const [associationDialog, setAssociationDialog] = useState<AssociationDialogState | null>(null)
+  const [draftAssociationIds, setDraftAssociationIds] = useState<Set<number>>(new Set())
   const [linksDialog, setLinksDialog] = useState<Association | null>(null)
-  const [deleting, setDeleting] = useState<Association | null>(null)
+  const draftAssociationIdsRef = useRef(draftAssociationIds)
+  draftAssociationIdsRef.current = draftAssociationIds
 
-  useEffect(() => setAssociations(loadedAssociations), [loadedAssociations])
+  useEffect(() => {
+    setAssociations((current) => {
+      const drafts = current.filter((association) => draftAssociationIdsRef.current.has(association.id))
+      return drafts.length ? [...drafts, ...loadedAssociations] : loadedAssociations
+    })
+  }, [loadedAssociations])
 
   const filteredAssociations = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase()
     if (!normalized) return associations
-    return associations.filter((association) =>
-      [association.name, association.descriptionIt, association.descriptionEn].some((value) =>
-        value.toLocaleLowerCase().includes(normalized)
-      )
+    return associations.filter(
+      (association) =>
+        draftAssociationIds.has(association.id) ||
+        [association.name, association.descriptionIt, association.descriptionEn].some((value) =>
+          value.toLocaleLowerCase().includes(normalized)
+        )
     )
-  }, [associations, query])
+  }, [associations, draftAssociationIds, query])
 
   async function refresh() {
     try {
@@ -43,6 +58,89 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
     setAssociations((current) => current.map((item) => (item.id === association.id ? association : item)))
   }
 
+  function addAssociation() {
+    const draft: Association = {
+      id: -Date.now(),
+      name: "New association",
+      descriptionIt: "",
+      descriptionEn: "",
+      logo: null,
+      links: { ...EMPTY_ASSOCIATION_LINKS },
+    }
+    setAssociations((current) => [draft, ...current])
+    setDraftAssociationIds((current) => {
+      const next = new Set(current).add(draft.id)
+      draftAssociationIdsRef.current = next
+      return next
+    })
+  }
+
+  function cancelDraft(id: number) {
+    setAssociations((current) => current.filter((association) => association.id !== id))
+    setDraftAssociationIds((current) => {
+      const next = new Set(current)
+      next.delete(id)
+      draftAssociationIdsRef.current = next
+      return next
+    })
+  }
+
+  async function saveAssociation(id: number, values: AssociationFormValues) {
+    const draft = draftAssociationIdsRef.current.has(id)
+    const data = new FormData()
+    if (!draft) data.set("id", String(id))
+    data.set("name", values.name)
+    data.set("descriptionIt", values.descriptionIt)
+    data.set("descriptionEn", values.descriptionEn)
+    data.set("logo", values.logo ?? "")
+    if (values.logoFile) data.set("logo", values.logoFile)
+
+    try {
+      const saved = draft ? await createAssociationFn({ data }) : await editAssociationFn({ data })
+      setAssociations((current) => current.map((association) => (association.id === id ? saved : association)))
+      if (draft) {
+        setDraftAssociationIds((current) => {
+          const next = new Set(current)
+          next.delete(id)
+          draftAssociationIdsRef.current = next
+          return next
+        })
+      }
+      toast.success(`Association ${draft ? "created" : "updated"}`)
+      void refresh()
+      return true
+    } catch (cause) {
+      console.error(cause)
+      toast.error(associationSaveErrorMessage(cause))
+      return false
+    }
+  }
+
+  async function removeAssociation(id: number) {
+    if (draftAssociationIdsRef.current.has(id)) {
+      cancelDraft(id)
+      return true
+    }
+
+    try {
+      await deleteAssociationFn({ data: { id } })
+      setAssociations((current) => current.filter((association) => association.id !== id))
+      toast.success("Association deleted")
+      void refresh()
+      return true
+    } catch (cause) {
+      console.error(cause)
+      if (errorHasCode(cause, "NOT_FOUND")) {
+        setAssociations((current) => current.filter((association) => association.id !== id))
+        toast.success("Association deleted")
+        void refresh()
+        return true
+      }
+      toast.error("The association could not be deleted. Check your permissions and try again.")
+      return false
+    }
+  }
+
   return (
     <div className="animate-appear">
       <DataToolbar
@@ -54,7 +152,7 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
         searchPlaceholder="Search associations…"
         onSearch={setQuery}
         action={
-          <Button onClick={() => setAssociationDialog({ mode: "create" })}>
+          <Button onClick={addAssociation}>
             <Plus data-icon="inline-start" /> Add association
           </Button>
         }
@@ -66,9 +164,12 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
             <AssociationCard
               key={association.id}
               association={association}
-              onEdit={() => setAssociationDialog({ mode: "edit", association })}
+              draft={draftAssociationIds.has(association.id)}
+              initialEditActive={draftAssociationIds.has(association.id)}
+              onCancelDraft={() => cancelDraft(association.id)}
+              onDelete={() => removeAssociation(association.id)}
               onEditLinks={() => setLinksDialog(association)}
-              onDelete={() => setDeleting(association)}
+              onSave={(values) => saveAssociation(association.id, values)}
             />
           ))}
         </div>
@@ -81,28 +182,7 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
               ? "Try a different name or description."
               : "Add the first association shown on the public website."
           }
-          action={
-            !associations.length ? (
-              <Button onClick={() => setAssociationDialog({ mode: "create" })}>Add first association</Button>
-            ) : undefined
-          }
-        />
-      )}
-
-      {associationDialog && (
-        <AssociationDialog
-          dialog={associationDialog}
-          onClose={() => setAssociationDialog(null)}
-          onSaved={(association, mode) => {
-            setAssociations((current) =>
-              mode === "create"
-                ? [association, ...current]
-                : current.map((item) => (item.id === association.id ? association : item))
-            )
-            setAssociationDialog(null)
-            toast.success(mode === "create" ? "Association created" : "Association updated")
-            void refresh()
-          }}
+          action={!associations.length ? <Button onClick={addAssociation}>Add first association</Button> : undefined}
         />
       )}
 
@@ -114,19 +194,6 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
             replaceAssociation(association)
             setLinksDialog(null)
             toast.success("Association links updated")
-            void refresh()
-          }}
-        />
-      )}
-
-      {deleting && (
-        <DeleteAssociationDialog
-          association={deleting}
-          onClose={() => setDeleting(null)}
-          onDeleted={(id) => {
-            setAssociations((current) => current.filter((association) => association.id !== id))
-            setDeleting(null)
-            toast.success("Association deleted")
             void refresh()
           }}
         />
