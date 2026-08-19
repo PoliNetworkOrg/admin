@@ -69,6 +69,6 @@ export const writeAdminMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(async ({ next, context }) => {
     const { hasWriteAdminRole } = await import("@/server/authorization")
-    if (!hasWriteAdminRole(context.roles)) throw new Error("READ_ONLY_ROLE")
+    if (!hasWriteAdminRole(context.roles)) throw new Error("UNAUTHORIZED")
     return next()
   })
