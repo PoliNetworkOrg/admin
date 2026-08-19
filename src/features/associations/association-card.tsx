@@ -18,12 +18,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import {
-  ASSOCIATION_LINK_FIELDS,
-  ASSOCIATION_LOGO_MAX_SIZE,
-  ASSOCIATION_LOGO_TYPES,
-  getAssociationInitials,
-} from "./associations.constants"
+import { ASSOCIATION_LINK_FIELDS, getAssociationInitials, validateAssociationLogo } from "./associations.constants"
 import type { Association, AssociationFormValues } from "./types"
 
 type AssociationCardProps = {
@@ -83,13 +78,9 @@ export function AssociationCard({
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    if (!ASSOCIATION_LOGO_TYPES.some((type) => type === file.type)) {
-      toast.error("Choose a JPG, PNG, or SVG logo.")
-      event.target.value = ""
-      return
-    }
-    if (file.size > ASSOCIATION_LOGO_MAX_SIZE) {
-      toast.error("The logo must be no larger than 1 MB.")
+    const error = validateAssociationLogo(file)
+    if (error) {
+      toast.error(error)
       event.target.value = ""
       return
     }

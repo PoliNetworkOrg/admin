@@ -27,6 +27,44 @@ async function sourceFiles(directory) {
   return files.flat()
 }
 
+function referencesIdentifier(node, name) {
+  let found = false
+
+  function visit(current) {
+    if (ts.isIdentifier(current) && current.text === name) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(current, visit)
+  }
+
+  visit(node)
+  return found
+}
+
+function handlerLogsError(root, errorName) {
+  let found = false
+
+  function visit(node) {
+    if (node !== root && (ts.isFunctionLike(node) || ts.isCatchClause(node))) return
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "console" &&
+      node.expression.name.text === "error" &&
+      node.arguments.some((argument) => referencesIdentifier(argument, errorName))
+    ) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(node, visit)
+  }
+
+  visit(root)
+  return found
+}
+
 test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", true), true)
   assert.equal(isAgentModeEnabled("test", true), false)
@@ -275,6 +313,13 @@ test("web content save errors explain actionable validation failures", () => {
     associationSaveErrorMessage(new Error("INVALID_LOGO_TYPE")),
     "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
   )
+  assert.equal(
+    associationSaveErrorMessage({
+      message: "Input validation failed",
+      data: { zodError: { properties: { logo: { errors: ["Too big: expected value to be <= 1048576"] } } } },
+    }),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
 })
 
 test("project and association mutations forward FormData to the backend", async () => {
@@ -304,8 +349,7 @@ test("every caught runtime error is written to the console", async () => {
     function visit(node) {
       if (ts.isCatchClause(node)) {
         const errorName = node.variableDeclaration?.name.getText(sourceFile)
-        const body = node.block.getText(sourceFile)
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const logsCaughtError = errorName && handlerLogsError(node.block, errorName)
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
@@ -323,8 +367,10 @@ test("every caught runtime error is written to the console", async () => {
           handler && (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
             ? handler.parameters[0]?.name.getText(sourceFile)
             : undefined
-        const body = handler?.getText(sourceFile) ?? ""
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const logsCaughtError =
+          errorName && handler && (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
+            ? handlerLogsError(handler.body, errorName)
+            : false
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))

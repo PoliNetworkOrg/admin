@@ -102,9 +102,10 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
     const operation = reorderQueue.current.then(async () => {
       for (const projectIds of groups) await reorderProjectsFn({ data: { projectIds } })
     })
-    reorderQueue.current = operation.catch((error) => {
-      console.error(error)
-    })
+    reorderQueue.current = operation.then(
+      () => undefined,
+      () => undefined
+    )
 
     try {
       await operation
