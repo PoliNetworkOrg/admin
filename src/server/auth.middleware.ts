@@ -64,3 +64,11 @@ export const adminMiddleware = createMiddleware({ type: "function" })
     if (authorization === "forbidden") throw redirect({ to: "/onboarding/unauthorized" })
     return next({ context: authorization })
   })
+
+export const writeAdminMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(async ({ next, context }) => {
+    const { hasWriteAdminRole } = await import("@/server/authorization")
+    if (!hasWriteAdminRole(context.roles)) throw new Error("UNAUTHORIZED")
+    return next()
+  })

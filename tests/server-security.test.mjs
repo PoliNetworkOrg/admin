@@ -11,7 +11,7 @@ import {
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
-import { hasAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
+import { hasAdminRole, hasWriteAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
@@ -25,6 +25,60 @@ async function sourceFiles(directory) {
     })
   )
   return files.flat()
+}
+
+function exportedServerFunctions(source, file) {
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const serverFunctions = []
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue
+    const isExported = statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false
+
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue
+
+      const chain = []
+      let expression = declaration.initializer
+      while (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression)) {
+        chain.push({ name: expression.expression.name.text, arguments: expression.arguments })
+        expression = expression.expression.expression
+      }
+
+      if (
+        !ts.isCallExpression(expression) ||
+        !ts.isIdentifier(expression.expression) ||
+        expression.expression.text !== "createServerFn"
+      ) {
+        continue
+      }
+
+      const method = expression.arguments[0]
+      const isPost =
+        method &&
+        ts.isObjectLiteralExpression(method) &&
+        method.properties.some(
+          (property) =>
+            ts.isPropertyAssignment(property) &&
+            ts.isIdentifier(property.name) &&
+            property.name.text === "method" &&
+            ts.isStringLiteral(property.initializer) &&
+            property.initializer.text === "POST"
+        )
+      const middleware = chain
+        .filter((call) => call.name === "middleware")
+        .flatMap((call) => {
+          const argument = call.arguments[0]
+          return argument && ts.isArrayLiteralExpression(argument)
+            ? argument.elements.filter(ts.isIdentifier).map((element) => element.text)
+            : []
+        })
+
+      serverFunctions.push({ name: declaration.name.text, isExported, isPost, middleware })
+    }
+  }
+
+  return serverFunctions
 }
 
 test("agent mode is limited to development", () => {
@@ -46,9 +100,19 @@ test("only dashboard administrator roles authorize access", () => {
   assert.equal(hasAdminRole(["owner"]), true)
   assert.equal(hasAdminRole(["direttivo"]), true)
   assert.equal(hasAdminRole(["president"]), true)
+  assert.equal(hasAdminRole(["hr"]), true)
   assert.equal(hasAdminRole(["creator"]), false)
   assert.equal(hasAdminRole(["creator", "owner"]), false)
   assert.equal(hasAdminRole([]), false)
+})
+
+test("HR dashboard access is read-only", () => {
+  assert.equal(hasWriteAdminRole(["owner"]), true)
+  assert.equal(hasWriteAdminRole(["direttivo"]), true)
+  assert.equal(hasWriteAdminRole(["president"]), true)
+  assert.equal(hasWriteAdminRole(["hr"]), false)
+  assert.equal(hasWriteAdminRole(["hr", "direttivo"]), true)
+  assert.equal(hasWriteAdminRole(["creator", "owner"]), false)
 })
 
 test("forwarded cookies are derived independently for every request", () => {
@@ -103,10 +167,39 @@ test("admin server functions attach the authorization middleware", async () => {
 
   for (const file of adminFunctionFiles) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
-    const serverFunctionCount = source.match(/createServerFn\(/g)?.length ?? 0
-    const adminMiddlewareCount = source.match(/\.middleware\(\[adminMiddleware\]\)/g)?.length ?? 0
-    assert.ok(serverFunctionCount > 0, `${file} must export server functions`)
-    assert.equal(adminMiddlewareCount, serverFunctionCount, `${file} must authorize every server function`)
+    const serverFunctions = exportedServerFunctions(source, file)
+    assert.ok(serverFunctions.length > 0, `${file} must export server functions`)
+    for (const serverFunction of serverFunctions) {
+      assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
+      assert.ok(
+        serverFunction.middleware.includes("adminMiddleware") ||
+          serverFunction.middleware.includes("writeAdminMiddleware"),
+        `${file}:${serverFunction.name} must authorize access`
+      )
+    }
+  }
+})
+
+test("dashboard mutations require a write-capable role", async () => {
+  const adminFunctionFiles = [
+    "src/features/associations/associations.functions.ts",
+    "src/features/azure/azure.functions.ts",
+    "src/features/guides/guides.functions.ts",
+    "src/features/projects/projects.functions.ts",
+    "src/features/telegram/grants.functions.ts",
+    "src/features/telegram/groups.functions.ts",
+    "src/features/telegram/users.functions.ts",
+  ]
+
+  for (const file of adminFunctionFiles) {
+    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
+    const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
+    for (const mutation of mutations) {
+      assert.ok(
+        mutation.middleware.includes("writeAdminMiddleware"),
+        `${file}:${mutation.name} must protect mutations with write access`
+      )
+    }
   }
 })
 
@@ -114,7 +207,8 @@ test("session middleware marks identity-dependent responses private", async () =
   const source = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
   assert.match(source, /setResponseHeader\("Cache-Control", "private, no-store"\)/)
   assert.match(source, /setResponseHeader\("Vary", "Cookie"\)/)
-  assert.doesNotMatch(source, /new Error\("(?:UNAUTHORIZED|TELEGRAM_NOT_LINKED)"\)/)
+  assert.match(source, /if \(!hasWriteAdminRole\(context\.roles\)\) throw new Error\("UNAUTHORIZED"\)/)
+  assert.doesNotMatch(source, /new Error\("TELEGRAM_NOT_LINKED"\)/)
 })
 
 test("event handlers integrate protected server-function redirects with the router", async () => {

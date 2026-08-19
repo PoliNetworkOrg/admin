@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { adminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getTelegramGrants = createServerFn()
   .middleware([adminMiddleware])
@@ -22,7 +22,7 @@ const grantInput = z
   .refine(({ since, until }) => until > since, { message: "The grant end must be after its start.", path: ["until"] })
 
 export const createTelegramGrant = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(grantInput)
   .handler(({ data, context }) =>
     context.backend.tg.grants.create.mutate({
@@ -33,7 +33,7 @@ export const createTelegramGrant = createServerFn({ method: "POST" })
   )
 
 export const interruptTelegramGrant = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(z.object({ userId: z.number().int().positive() }))
   .handler(({ data, context }) =>
     context.backend.tg.grants.interrupt.mutate({

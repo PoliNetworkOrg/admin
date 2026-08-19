@@ -3,7 +3,7 @@ import { notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import type { TgUser, TgUserRole } from "@/lib/api/types"
-import { adminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getTelegramUsers = createServerFn()
   .middleware([adminMiddleware])
@@ -85,14 +85,14 @@ export const getTelegramUserDetails = createServerFn()
   })
 
 export const addTelegramGroupAdmin = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
   .handler(({ data, context }) =>
     context.backend.tg.permissions.addGroup.mutate({ ...data, adderId: context.telegramId })
   )
 
 export const removeTelegramGroupAdmin = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
   .handler(({ data, context }) =>
     context.backend.tg.permissions.removeGroup.mutate({ ...data, removerId: context.telegramId })
@@ -102,14 +102,14 @@ const telegramRoleValues = Object.values(USER_ROLE) as [TgUserRole, ...TgUserRol
 const telegramRoleInput = z.object({ userId: z.number().int().positive(), role: z.enum(telegramRoleValues) })
 
 export const addTelegramUserRole = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(telegramRoleInput)
   .handler(({ data, context }) =>
     context.backend.tg.permissions.addRole.mutate({ ...data, adderId: context.telegramId })
   )
 
 export const removeTelegramUserRole = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(telegramRoleInput)
   .handler(({ data, context }) =>
     context.backend.tg.permissions.removeRole.mutate({ ...data, removerId: context.telegramId })
