@@ -43,12 +43,13 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
     }
   }, [initFAQs])
 
-  const handleAddCategory = async (titleIt: string, titleEn: string) => {
+  const handleAddCategory = async (titleIt: string, titleEn: string, icon?: string) => {
     try {
       const res = await addFAQCategoryFn({
         data: {
           titleIt: titleIt,
           titleEn: titleEn,
+          icon: icon,
         },
       })
 
@@ -70,18 +71,21 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
     }
   }
 
-  const handleUpdateCategory = async (catId: number, titleIt: string, titleEn: string) => {
+  const handleUpdateCategory = async (catId: number, titleIt: string, titleEn: string, icon?: string | null) => {
     try {
       const res = await editFAQCategoryFn({
         data: {
           id: catId,
           titleIt: titleIt,
           titleEn: titleEn,
+          icon: icon ?? null,
         },
       })
 
       setFaqs((prev) =>
-        prev.map((c) => (c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn } : c))
+        prev.map((c) =>
+          c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn, icon: res.icon ?? null } : c
+        )
       )
       toast.success("Categoria aggiornata con successo!")
     } catch (e: unknown) {
@@ -332,7 +336,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
 
         <CategorySwitcher
           categories={faqs}
-          activeCategoryId={categoryId}
+          activeCategoryId={categoryId || null}
           onSelectCategory={(id: React.SetStateAction<number | null>) => {
             saveCurrentIfValid()
             setCategoryId(id)
@@ -378,8 +382,9 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
             mode="edit"
             initialTitleIt={editingCategory.titleIt}
             initialTitleEn={editingCategory.titleEn ?? ""}
-            onAddCategory={async (titleIt, titleEn) => {
-              await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn)
+            initialIcon={editingCategory.icon}
+            onAddCategory={async (titleIt, titleEn, icon) => {
+              await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn, icon)
             }}
           />
         )}

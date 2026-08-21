@@ -1,4 +1,5 @@
 import { Edit } from "lucide-react"
+import { DynamicIcon, type IconName } from "lucide-react/dynamic"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FAQs } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
@@ -22,7 +23,7 @@ export function CategorySwitcher({
   const activeCategory = categories.find((c) => c.categoryId === activeCategoryId)
   const categoryOptions = categories.map((c) => ({
     value: String(c.categoryId),
-    label: `🇮🇹 ${c.titleIt}`,
+    label: `${c.titleIt}`,
   }))
 
   return (
@@ -30,30 +31,36 @@ export function CategorySwitcher({
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-foreground">Categoria:</span>
         {categories.length > 0 ? (
-          <Select
-            items={categoryOptions}
-            value={activeCategoryId ? String(activeCategoryId) : undefined}
-            onValueChange={(val) => {
-              if (val) onSelectCategory(Number(val))
-            }}
-          >
-            <SelectTrigger className="w-fit">
-              <SelectValue placeholder="Seleziona categoria" />
-            </SelectTrigger>
-            <SelectContent className="w-fit">
-              <SelectGroup>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.categoryId} value={String(cat.categoryId)} className="py-2 leading-none">
-                    <span className="font-medium">🇮🇹 {cat.titleIt}</span>
-                    {cat.titleEn && cat.titleEn !== cat.titleIt && (
-                      <span className="text-xs text-muted-foreground">/ 🇬🇧 {cat.titleEn}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">({cat.faqs.length})</span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              items={categoryOptions}
+              value={activeCategoryId ? String(activeCategoryId) : undefined}
+              onValueChange={(val) => {
+                if (val) onSelectCategory(Number(val))
+              }}
+            >
+              <SelectTrigger className="w-fit">
+                {activeCategory?.icon && (
+                  <DynamicIcon name={activeCategory.icon as IconName} className="size-4.5 text-foreground shrink-0" />
+                )}
+                <SelectValue placeholder="Seleziona categoria" />
+              </SelectTrigger>
+              <SelectContent className="w-fit">
+                <SelectGroup>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.categoryId} value={String(cat.categoryId)} className="py-2 leading-none">
+                      {cat.icon && (
+                        <DynamicIcon name={cat.icon as IconName} className="size-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="font-medium">{cat.titleIt}</span>
+                      {cat.titleEn && <span className="text-xs text-muted-foreground">/ {cat.titleEn}</span>}
+                      <span className="text-xs text-muted-foreground">({cat.faqs.length})</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground italic">Nessuna categoria presente.</span>
         )}
@@ -61,7 +68,9 @@ export function CategorySwitcher({
 
       {activeCategory && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{activeCategory.faqs.length} FAQ in questa categoria</span>
+          <span>
+            {activeCategory.faqs.length} FAQ{activeCategory.faqs.length !== 1 ? "s" : ""} in questa categoria
+          </span>
           {onEditCategory && (
             <FaqButton
               icon={Edit}

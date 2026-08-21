@@ -4,6 +4,7 @@ import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/
 import type { FAQItem } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
 import { FaqButton } from "./faq-button"
+import { LanguageBadge } from "./language-badge"
 
 export interface FaqAccordionItemProps {
   item: FAQItem
@@ -72,20 +73,16 @@ export function FaqAccordionItem({
           <div className="space-y-3 pt-1">
             <div>
               <div className="flex items-center gap-1.5 mb-1">
-                <span role="img" aria-label="Italiano" className="text-sm leading-none">
-                  🇮🇹
-                </span>
+                <LanguageBadge lang="it" />
+                <p className="text-foreground/90">A: {item.descriptionIt}</p>
               </div>
-              <p className="text-foreground/90">A: {item.descriptionIt}</p>
             </div>
             {item.descriptionEn && (
               <div className="pt-2 border-t border-border/40">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span role="img" aria-label="English" className="text-sm leading-none">
-                    🇬🇧
-                  </span>
+                  <LanguageBadge lang="en" />
+                  <p className="text-foreground/90">A: {item.descriptionEn}</p>
                 </div>
-                <p className="text-foreground/90">A: {item.descriptionEn}</p>
               </div>
             )}
           </div>
@@ -118,9 +115,7 @@ function FaqEditHeader({
     <div className="flex w-full items-start gap-3 py-3">
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2">
-          <span role="img" aria-label="Italiano" className="text-base shrink-0 leading-none">
-            🇮🇹
-          </span>
+          <LanguageBadge lang="it" />
           <input
             type="text"
             value={questionIt}
@@ -134,9 +129,7 @@ function FaqEditHeader({
           />
         </div>
         <div className="flex items-center gap-2">
-          <span role="img" aria-label="English" className="text-base shrink-0 leading-none">
-            🇬🇧
-          </span>
+          <LanguageBadge lang="en" />
           <input
             type="text"
             value={questionEn}
@@ -182,16 +175,12 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
     >
       <div className="flex flex-col text-left">
         <span className="font-semibold flex items-center gap-2">
-          <span role="img" aria-label="Italiano" className="text-sm leading-none">
-            🇮🇹
-          </span>
+          <LanguageBadge lang="it" />
           Q: {item.titleIt}
         </span>
-        {item.titleEn && item.titleEn !== item.titleIt && (
+        {item.titleEn && (
           <span className="text-xs font-normal text-muted-foreground mt-0.5 flex items-center gap-2">
-            <span role="img" aria-label="English" className="text-xs leading-none">
-              🇬🇧
-            </span>
+            <LanguageBadge lang="en" />
             Q: {item.titleEn}
           </span>
         )}
@@ -215,9 +204,7 @@ function FaqEditContent({ id, answerIt, answerEn, setAnswerIt, setAnswerEn, onSa
     <div className="space-y-3 mt-2">
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
-          <span role="img" aria-label="Italiano" className="text-sm leading-none">
-            🇮🇹
-          </span>
+          <LanguageBadge lang="it" />
           <span className="text-xs font-medium text-muted-foreground">Risposta (Italiano)</span>
         </div>
         <textarea
@@ -239,9 +226,7 @@ function FaqEditContent({ id, answerIt, answerEn, setAnswerIt, setAnswerEn, onSa
 
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
-          <span role="img" aria-label="English" className="text-sm leading-none">
-            🇬🇧
-          </span>
+          <LanguageBadge lang="en" />
           <span className="text-xs font-medium text-muted-foreground">Answer (English)</span>
         </div>
         <textarea
