@@ -1,26 +1,15 @@
-import * as React from "react"
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion"
-
-import { cn } from "@/lib/utils"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import type * as React from "react"
+import { cn } from "@/lib/utils"
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
-  return (
-    <AccordionPrimitive.Root
-      data-slot="accordion"
-      className={cn("flex w-full flex-col", className)}
-      {...props}
-    />
-  )
+  return <AccordionPrimitive.Root data-slot="accordion" className={cn("flex w-full flex-col", className)} {...props} />
 }
 
 function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
   return (
-    <AccordionPrimitive.Item
-      data-slot="accordion-item"
-      className={cn("not-last:border-b", className)}
-      {...props}
-    />
+    <AccordionPrimitive.Item data-slot="accordion-item" className={cn("not-last:border-b", className)} {...props} />
   )
 }
 
@@ -28,12 +17,7 @@ interface AccordionTriggerProps extends AccordionPrimitive.Trigger.Props {
   actions?: React.ReactNode
 }
 
-function AccordionTrigger({
-  className,
-  children,
-  actions,
-  ...props
-}: AccordionTriggerProps) {
+function AccordionTrigger({ className, children, actions, ...props }: AccordionTriggerProps) {
   return (
     <AccordionPrimitive.Header className="flex w-full items-center gap-2">
       <AccordionPrimitive.Trigger
@@ -45,23 +29,21 @@ function AccordionTrigger({
         {...props}
       >
         {children}
-        <ChevronDown data-slot="accordion-trigger-icon" className="pointer-events-none shrink-0 ml-auto size-4 text-muted-foreground group-aria-expanded/accordion-trigger:hidden" />
-        <ChevronUp data-slot="accordion-trigger-icon" className="pointer-events-none hidden shrink-0 ml-auto size-4 text-muted-foreground group-aria-expanded/accordion-trigger:inline" />
+        <ChevronDown
+          data-slot="accordion-trigger-icon"
+          className="pointer-events-none shrink-0 ml-auto size-4 text-muted-foreground group-aria-expanded/accordion-trigger:hidden"
+        />
+        <ChevronUp
+          data-slot="accordion-trigger-icon"
+          className="pointer-events-none hidden shrink-0 ml-auto size-4 text-muted-foreground group-aria-expanded/accordion-trigger:inline"
+        />
       </AccordionPrimitive.Trigger>
-      {actions && (
-        <div className="flex items-center gap-1.5 shrink-0 z-10">
-          {actions}
-        </div>
-      )}
+      {actions && <div className="flex items-center gap-1.5 shrink-0 z-10">{actions}</div>}
     </AccordionPrimitive.Header>
   )
 }
 
-function AccordionContent({
-  className,
-  children,
-  ...props
-}: AccordionPrimitive.Panel.Props) {
+function AccordionContent({ className, children, ...props }: AccordionPrimitive.Panel.Props) {
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
@@ -82,4 +64,3 @@ function AccordionContent({
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 export type { AccordionTriggerProps }
-

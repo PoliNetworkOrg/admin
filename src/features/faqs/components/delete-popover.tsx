@@ -1,5 +1,5 @@
-import type React from "react"
 import { Trash2 } from "lucide-react"
+import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import { FaqButton } from "./faq-button"

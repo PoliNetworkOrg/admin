@@ -43,11 +43,12 @@ export function AddCategoryDialog({
 
   const handleSubmit = async () => {
     const trimmedIt = titleIt.trim()
-    if (!trimmedIt) return toast.error("Il titolo della categoria non può essere vuoto.")
+    const trimmedEn = titleEn.trim()
+    if (!trimmedIt || !trimmedEn) return toast.error("I titoli della categoria non possono essere vuoti.")
 
     setLoading(true)
     try {
-      await onAddCategory(trimmedIt, titleEn.trim())
+      await onAddCategory(trimmedIt, trimmedEn)
       setTitleIt("")
       setTitleEn("")
       onOpenChange(false)

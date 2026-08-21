@@ -1,17 +1,17 @@
 "use client"
 
+import { useServerFn } from "@tanstack/react-start"
 import type React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { listFAQs, addFAQ, addFAQCategory, editFAQ, editFAQCategory, deleteFAQ, deleteFAQCategory } from "./faqs.functions"
 import type { FAQItem, FAQs } from "@/lib/api/types.ts"
 import { AddCategoryDialog } from "./components/add-category-dialog"
 import { CategorySwitcher } from "./components/category-switcher"
 import { FaqAccordionList } from "./components/faq-accordion-list"
 import { FaqPageHeader } from "./components/faq-page-header"
-import { useServerFn } from "@tanstack/react-start"
+import { addFAQ, addFAQCategory, deleteFAQ, deleteFAQCategory, editFAQ, editFAQCategory } from "./faqs.functions"
 
-export default function FaqsPage() {
+export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   const addFAQFn = useServerFn(addFAQ)
   const addFAQCategoryFn = useServerFn(addFAQCategory)
   const editFAQFn = useServerFn(editFAQ)
@@ -36,23 +36,19 @@ export default function FaqsPage() {
   const [editingCategory, setEditingCategory] = useState<FAQs[number] | null>(null)
 
   useEffect(() => {
-    listFAQs()
-      .then((f) => {
-        setFaqs(f)
-        if (f.length > 0 && f[0]) {
-          const firstId = f[0].categoryId
-          setCategoryId((prev) => (prev && f.some((c: any) => c.categoryId === prev) ? prev : firstId))
-        }
-      })
-      .catch((e: string) => toast.error(`Failed to fetch FAQs: ${e}`))
-  }, [])
+    setFaqs(initFAQs)
+    if (initFAQs.length > 0 && initFAQs[0]) {
+      const firstId = initFAQs[0].categoryId
+      setCategoryId((prev) => (prev && initFAQs.some((c: FAQs[0]) => c.categoryId === prev) ? prev : firstId))
+    }
+  }, [initFAQs])
 
   const handleAddCategory = async (titleIt: string, titleEn: string) => {
     try {
       const res = await addFAQCategoryFn({
         data: {
-          titleIt,
-          titleEn
+          titleIt: titleIt,
+          titleEn: titleEn,
         },
       })
 
@@ -79,8 +75,8 @@ export default function FaqsPage() {
       const res = await editFAQCategoryFn({
         data: {
           id: catId,
-          titleIt,
-          titleEn
+          titleIt: titleIt,
+          titleEn: titleEn,
         },
       })
 
@@ -284,7 +280,9 @@ export default function FaqsPage() {
       const isNew = unsavedIds.includes(currentId)
       const savePromise = isNew
         ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
-        : editFAQFn({ data: { id: currentId, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
+        : editFAQFn({
+            data: { id: currentId, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId },
+          })
 
       savePromise
         .then(() => {

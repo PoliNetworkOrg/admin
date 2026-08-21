@@ -1,5 +1,5 @@
-import type React from "react"
 import { Plus } from "lucide-react"
+import type React from "react"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import type { FAQItem } from "@/lib/api/types"

@@ -1,6 +1,6 @@
+import { Link } from "@tanstack/react-router"
 import { ArrowLeft, FolderPlus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Link } from "@tanstack/react-router"
 
 export interface FaqPageHeaderProps {
   onOpenAddCategory: () => void

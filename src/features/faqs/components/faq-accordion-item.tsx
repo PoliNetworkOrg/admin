@@ -1,5 +1,5 @@
-import type React from "react"
 import { Check, CornerDownLeft, Edit } from "lucide-react"
+import type React from "react"
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import type { FAQItem } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
