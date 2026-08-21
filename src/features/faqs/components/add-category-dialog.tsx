@@ -1,4 +1,3 @@
-import { DynamicIcon, type IconName } from "lucide-react/dynamic"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -15,43 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LanguageBadge } from "./language-badge"
-
-export const UNIVERSITY_FAQ_ICONS: IconName[] = [
-  "help-circle",
-  "info",
-  "book-open",
-  "book",
-  "bookmark",
-  "award",
-  "graduation-cap",
-  "file-text",
-  "edit",
-  "calendar",
-  "clock",
-  "compass",
-  "map-pin",
-  "briefcase",
-  "credit-card",
-  "dollar-sign",
-  "users",
-  "user",
-  "globe",
-  "send",
-  "mail",
-  "phone",
-  "message-circle",
-  "message-square",
-  "wifi",
-  "cpu",
-  "laptop",
-  "shield",
-  "home",
-  "coffee",
-  "alert-circle",
-  "check-circle",
-]
-
-export const DEFAULT_FAQ_ICON: IconName = "help-circle"
+import { FaqCategoryIcon, DEFAULT_FAQ_ICON, UNIVERSITY_FAQ_ICONS } from "./faq-icon"
 
 export interface AddCategoryDialogProps {
   open: boolean
@@ -128,7 +91,7 @@ export function AddCategoryDialog({
             >
               <SelectTrigger id="catIcon">
                 <SelectValue placeholder="Seleziona un'icona">
-                  <DynamicIcon name={icon as IconName} className="size-4" />
+                  <FaqCategoryIcon name={icon} className="size-4" />
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="w-auto p-2" align="start">
@@ -140,7 +103,7 @@ export function AddCategoryDialog({
                       title={name}
                       className="flex size-9 p-0 pr-0 items-center justify-center rounded-md cursor-pointer hover:bg-accent focus:bg-accent data-[selected]:bg-accent data-[selected]:text-accent-foreground data-[selected]:ring-2 data-[selected]:ring-primary/60 [&_svg]:size-5 [&>span:last-child]:hidden"
                     >
-                      <DynamicIcon name={name} className="size-5 mx-auto" />
+                      <FaqCategoryIcon name={name} className="size-5 mx-auto" />
                     </SelectItem>
                   ))}
                 </SelectGroup>

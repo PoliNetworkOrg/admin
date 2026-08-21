@@ -1,9 +1,9 @@
 import { Edit } from "lucide-react"
-import { DynamicIcon, type IconName } from "lucide-react/dynamic"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FAQs } from "@/lib/api/types"
 import { DeletePopover } from "./delete-popover"
 import { FaqButton } from "./faq-button"
+import { FaqCategoryIcon } from "./faq-icon"
 
 export interface CategorySwitcherProps {
   categories: FAQs
@@ -41,7 +41,7 @@ export function CategorySwitcher({
             >
               <SelectTrigger className="w-fit">
                 {activeCategory?.icon && (
-                  <DynamicIcon name={activeCategory.icon as IconName} className="size-4.5 text-foreground shrink-0" />
+                  <FaqCategoryIcon name={activeCategory.icon} className="size-4.5 text-foreground shrink-0" />
                 )}
                 <SelectValue placeholder="Seleziona categoria" />
               </SelectTrigger>
@@ -50,7 +50,7 @@ export function CategorySwitcher({
                   {categories.map((cat) => (
                     <SelectItem key={cat.categoryId} value={String(cat.categoryId)} className="py-2 leading-none">
                       {cat.icon && (
-                        <DynamicIcon name={cat.icon as IconName} className="size-4 shrink-0 text-muted-foreground" />
+                        <FaqCategoryIcon name={cat.icon} className="size-4 shrink-0 text-muted-foreground" />
                       )}
                       <span className="font-medium">{cat.titleIt}</span>
                       {cat.titleEn && <span className="text-xs text-muted-foreground">/ {cat.titleEn}</span>}
