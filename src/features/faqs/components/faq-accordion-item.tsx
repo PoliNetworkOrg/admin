@@ -42,7 +42,7 @@ export function FaqAccordionItem({
   return (
     <AccordionItem
       value={item.faqId}
-      className="group rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm px-5 py-0.5 transition-all duration-300 hover:border-primary/20 hover:bg-card/90 hover:shadow-md hover:shadow-primary/2 data-[open]:border-primary/30 data-[open]:bg-card data-[open]:shadow-md data-[open]:shadow-primary/5"
+      className="group rounded-xl border border-border bg-card px-5 py-0.5 shadow-[0_1px_2px_rgb(15_23_42/4%)] transition-all duration-200 hover:border-primary/20 hover:bg-card/90 data-[open]:border-primary/30 data-[open]:bg-card dark:shadow-none"
     >
       {isEditing ? (
         <FaqEditHeader

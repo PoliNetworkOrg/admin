@@ -326,69 +326,67 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   const currentCategoryFaqs = activeCategory?.faqs ?? []
 
   return (
-    <div className="mx-auto max-w-sm md:max-w-full py-10">
-      <div className="space-y-6 w-full">
-        <FaqPageHeader
-          onOpenAddCategory={() => setIsAddCategoryOpen(true)}
-          onAddFaq={handleAdd}
-          hasCategory={!!categoryId}
-        />
+    <div className="animate-appear space-y-6">
+      <FaqPageHeader
+        onOpenAddCategory={() => setIsAddCategoryOpen(true)}
+        onAddFaq={handleAdd}
+        hasCategory={!!categoryId}
+      />
 
-        <CategorySwitcher
-          categories={faqs}
-          activeCategoryId={categoryId || null}
-          onSelectCategory={(id: React.SetStateAction<number | null>) => {
-            saveCurrentIfValid()
-            setCategoryId(id)
-          }}
-          onDeleteCategory={handleDeleteCategory}
-          onEditCategory={(cat) => {
-            setEditingCategory(cat)
-            setIsEditCategoryOpen(true)
-          }}
-        />
+      <CategorySwitcher
+        categories={faqs}
+        activeCategoryId={categoryId || null}
+        onSelectCategory={(id: React.SetStateAction<number | null>) => {
+          saveCurrentIfValid()
+          setCategoryId(id)
+        }}
+        onDeleteCategory={handleDeleteCategory}
+        onEditCategory={(cat) => {
+          setEditingCategory(cat)
+          setIsEditCategoryOpen(true)
+        }}
+      />
 
-        <FaqAccordionList
-          items={currentCategoryFaqs}
-          editingId={editingId}
-          openItems={openItems}
-          setOpenItems={setOpenItems}
-          editQuestionIt={editQuestionIt}
-          editQuestionEn={editQuestionEn}
-          editAnswerIt={editAnswerIt}
-          editAnswerEn={editAnswerEn}
-          setEditQuestionIt={setEditQuestionIt}
-          setEditQuestionEn={setEditQuestionEn}
-          setEditAnswerIt={setEditAnswerIt}
-          setEditAnswerEn={setEditAnswerEn}
-          handleSave={handleSave}
-          handleCancel={handleCancel}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-          handleAdd={handleAdd}
-          hasCategory={!!categoryId}
-        />
+      <FaqAccordionList
+        items={currentCategoryFaqs}
+        editingId={editingId}
+        openItems={openItems}
+        setOpenItems={setOpenItems}
+        editQuestionIt={editQuestionIt}
+        editQuestionEn={editQuestionEn}
+        editAnswerIt={editAnswerIt}
+        editAnswerEn={editAnswerEn}
+        setEditQuestionIt={setEditQuestionIt}
+        setEditQuestionEn={setEditQuestionEn}
+        setEditAnswerIt={setEditAnswerIt}
+        setEditAnswerEn={setEditAnswerEn}
+        handleSave={handleSave}
+        handleCancel={handleCancel}
+        handleEdit={handleEdit}
+        handleDelete={handleDelete}
+        handleAdd={handleAdd}
+        hasCategory={!!categoryId}
+      />
 
+      <AddCategoryDialog
+        open={isAddCategoryOpen}
+        onOpenChange={setIsAddCategoryOpen}
+        onAddCategory={handleAddCategory}
+      />
+
+      {editingCategory && (
         <AddCategoryDialog
-          open={isAddCategoryOpen}
-          onOpenChange={setIsAddCategoryOpen}
-          onAddCategory={handleAddCategory}
+          open={isEditCategoryOpen}
+          onOpenChange={setIsEditCategoryOpen}
+          mode="edit"
+          initialTitleIt={editingCategory.titleIt}
+          initialTitleEn={editingCategory.titleEn ?? ""}
+          initialIcon={editingCategory.icon}
+          onAddCategory={async (titleIt, titleEn, icon) => {
+            await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn, icon)
+          }}
         />
-
-        {editingCategory && (
-          <AddCategoryDialog
-            open={isEditCategoryOpen}
-            onOpenChange={setIsEditCategoryOpen}
-            mode="edit"
-            initialTitleIt={editingCategory.titleIt}
-            initialTitleEn={editingCategory.titleEn ?? ""}
-            initialIcon={editingCategory.icon}
-            onAddCategory={async (titleIt, titleEn, icon) => {
-              await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn, icon)
-            }}
-          />
-        )}
-      </div>
+      )}
     </div>
   )
 }

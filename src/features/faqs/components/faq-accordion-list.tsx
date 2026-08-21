@@ -1,5 +1,6 @@
-import { Plus } from "lucide-react"
+import { HelpCircle, Plus } from "lucide-react"
 import type React from "react"
+import { EmptyState } from "@/components/empty-state"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import type { FAQItem } from "@/lib/api/types"
@@ -48,18 +49,22 @@ export function FaqAccordionList({
 }: FaqAccordionListProps) {
   if (items.length === 0) {
     return (
-      <div className="py-12 text-center rounded-xl border border-dashed border-border bg-card/30">
-        <p className="text-muted-foreground text-sm">
-          {hasCategory
-            ? "Nessuna FAQ in questa categoria."
-            : "Nessuna categoria selezionata. Crea o seleziona una categoria per visualizzare le FAQ."}
-        </p>
-        {hasCategory && (
-          <Button variant="outline" size="sm" onClick={handleAdd} className="mt-3">
-            <Plus className="size-4" /> Aggiungi FAQ
-          </Button>
-        )}
-      </div>
+      <EmptyState
+        icon={HelpCircle}
+        title={hasCategory ? "No FAQs in this category" : "No category selected"}
+        text={
+          hasCategory
+            ? "Add the first question and answer to this category."
+            : "Select an existing category or create a new one to view and manage its FAQs."
+        }
+        action={
+          hasCategory ? (
+            <Button onClick={handleAdd}>
+              <Plus data-icon="inline-start" /> Add first FAQ
+            </Button>
+          ) : undefined
+        }
+      />
     )
   }
 

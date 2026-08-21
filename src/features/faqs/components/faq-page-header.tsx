@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router"
-import { ArrowLeft, FolderPlus, Plus } from "lucide-react"
+import { FolderPlus, Plus } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 
 export interface FaqPageHeaderProps {
@@ -10,34 +10,21 @@ export interface FaqPageHeaderProps {
 
 export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqPageHeaderProps) {
   return (
-    <div>
-      <Link
-        to={"/dashboard"}
-        className="inline-flex gap-1 items-center text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors group"
-      >
-        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" /> Back
-      </Link>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/75 bg-clip-text text-transparent">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">
-            Manage and view FAQs displayed on the web platform by category.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageHeader
+      eyebrow="Web"
+      title="Frequently asked questions"
+      description="Manage the categories and FAQs displayed across the public web platform."
+      action={
+        <div className="flex items-center gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
           <Button variant="outline" onClick={onOpenAddCategory}>
-            <FolderPlus className="size-4" />
-            Nuova Categoria
+            <FolderPlus data-icon="inline-start" /> Add category
           </Button>
 
           <Button onClick={onAddFaq} disabled={!hasCategory}>
-            <Plus className="size-4" />
-            Add FAQ
+            <Plus data-icon="inline-start" /> Add FAQ
           </Button>
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }

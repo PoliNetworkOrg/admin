@@ -27,7 +27,7 @@ export function CategorySwitcher({
   }))
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-card/40 backdrop-blur-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(15_23_42/4%)] dark:shadow-none">
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-foreground">Categoria:</span>
         {categories.length > 0 ? (
