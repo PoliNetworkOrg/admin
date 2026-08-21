@@ -29,7 +29,7 @@ export function CategorySwitcher({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(15_23_42/4%)] dark:shadow-none">
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-foreground">Categoria:</span>
+        <span className="text-sm font-medium text-foreground">Category:</span>
         {categories.length > 0 ? (
           <div className="flex items-center gap-2">
             <Select
@@ -43,7 +43,7 @@ export function CategorySwitcher({
                 {activeCategory?.icon && (
                   <FaqCategoryIcon name={activeCategory.icon} className="size-4.5 text-foreground shrink-0" />
                 )}
-                <SelectValue placeholder="Seleziona categoria" />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent className="w-fit">
                 <SelectGroup>
@@ -62,27 +62,27 @@ export function CategorySwitcher({
             </Select>
           </div>
         ) : (
-          <span className="text-sm text-muted-foreground italic">Nessuna categoria presente.</span>
+          <span className="text-sm text-muted-foreground italic">No categories available.</span>
         )}
       </div>
 
       {activeCategory && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>
-            {activeCategory.faqs.length} FAQ{activeCategory.faqs.length !== 1 ? "s" : ""} in questa categoria
+            {activeCategory.faqs.length} FAQ{activeCategory.faqs.length !== 1 ? "s" : ""} in this category
           </span>
           {onEditCategory && (
             <FaqButton
               icon={Edit}
               onClick={() => onEditCategory(activeCategory)}
               color="primary"
-              ariaLabel="Modifica categoria"
+              ariaLabel="Edit category"
             />
           )}
           <DeletePopover
-            title={`Eliminare "${activeCategory.titleIt}"?`}
-            description="Questa azione eliminerà la categoria e tutte le FAQ associate ad essa."
-            triggerAriaLabel="Elimina categoria"
+            title={`Delete "${activeCategory.titleIt}"?`}
+            description="This action will delete the category and all FAQs associated with it."
+            triggerAriaLabel="Delete category"
             onConfirm={() => onDeleteCategory(activeCategory.categoryId)}
           />
         </div>

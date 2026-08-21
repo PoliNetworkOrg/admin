@@ -121,7 +121,7 @@ function FaqEditHeader({
             value={questionIt}
             onChange={(e) => setQuestionIt(e.target.value)}
             className="flex-1 bg-transparent border-b border-border/80 focus:border-primary focus:outline-none py-1 text-sm font-medium text-foreground w-full transition-colors placeholder:text-muted-foreground/50"
-            placeholder="Domanda (Italiano)..."
+            placeholder="Question (Italian)..."
             onKeyDown={(e) => {
               if (e.key === "Enter") onSave(id)
               else if (e.key === "Escape") onCancel(id)
@@ -165,7 +165,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
         <div className="flex text-xs items-center gap-1.5">
           <FaqButton icon={Edit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
           <DeletePopover
-            title="Eliminare questa FAQ?"
+            title="Delete this FAQ?"
             triggerAriaLabel="Delete FAQ"
             triggerOnClick={(e) => e.stopPropagation()}
             onConfirm={(e) => onDelete(e, item.faqId)}
@@ -205,13 +205,13 @@ function FaqEditContent({ id, answerIt, answerEn, setAnswerIt, setAnswerEn, onSa
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
           <LanguageBadge lang="it" />
-          <span className="text-xs font-medium text-muted-foreground">Risposta (Italiano)</span>
+          <span className="text-xs font-medium text-muted-foreground">Answer (Italian)</span>
         </div>
         <textarea
           value={answerIt}
           onChange={(e) => setAnswerIt(e.target.value)}
           className="w-full min-h-[80px] rounded-lg border border-border/80 bg-background/30 p-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 resize-y transition-all placeholder:text-muted-foreground/50"
-          placeholder="Risposta in italiano..."
+          placeholder="Answer in Italian..."
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               onSave(id)

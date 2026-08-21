@@ -13,7 +13,7 @@ export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqP
     <PageHeader
       eyebrow="Web"
       title="Frequently asked questions"
-      description="Manage the categories and FAQs displayed across the public web platform."
+      description="Manage the categories and FAQs displayed across the website."
       action={
         <div className="flex items-center gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
           <Button variant="outline" onClick={onOpenAddCategory}>

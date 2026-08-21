@@ -13,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DEFAULT_FAQ_ICON, FaqCategoryIcon, UNIVERSITY_FAQ_ICONS } from "./faq-icon"
 import { LanguageBadge } from "./language-badge"
-import { FaqCategoryIcon, DEFAULT_FAQ_ICON, UNIVERSITY_FAQ_ICONS } from "./faq-icon"
 
 export interface AddCategoryDialogProps {
   open: boolean
@@ -52,7 +52,7 @@ export function AddCategoryDialog({
   const handleSubmit = async () => {
     const trimmedIt = titleIt.trim()
     const trimmedEn = titleEn.trim()
-    if (!trimmedIt || !trimmedEn) return toast.error("I titoli della categoria non possono essere vuoti.")
+    if (!trimmedIt || !trimmedEn) return toast.error("Category titles cannot be empty.")
 
     setLoading(true)
     try {
@@ -72,16 +72,16 @@ export function AddCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Modifica Categoria" : "Aggiungi Categoria"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Category" : "Add Category"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Modifica i titoli in italiano e inglese per questa categoria."
-              : "Crea una nuova categoria per organizzare le FAQ."}
+              ? "Edit the Italian and English titles for this category."
+              : "Create a new category to organize FAQs."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5 flex gap-2">
-            <Label htmlFor="catIcon">Icona</Label>
+            <Label htmlFor="catIcon">Icon:</Label>
 
             <Select
               value={icon}
@@ -90,7 +90,7 @@ export function AddCategoryDialog({
               }}
             >
               <SelectTrigger id="catIcon">
-                <SelectValue placeholder="Seleziona un'icona">
+                <SelectValue placeholder="Select an icon">
                   <FaqCategoryIcon name={icon} className="size-4" />
                 </SelectValue>
               </SelectTrigger>
@@ -111,13 +111,10 @@ export function AddCategoryDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="catTitleIt" className="flex items-center gap-1.5">
-              <LanguageBadge lang="it" />
-              Titolo
-            </Label>
+            <LanguageBadge lang="it" />
             <Input
               id="catTitleIt"
-              placeholder="es. Generali, Iscrizioni, Corsi..."
+              placeholder="e.g. Generali, Iscrizioni, Corsi..."
               value={titleIt}
               onChange={(e) => setTitleIt(e.target.value)}
               onKeyDown={(e) => {
@@ -126,13 +123,10 @@ export function AddCategoryDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="catTitleEn" className="flex items-center gap-1.5">
-              <LanguageBadge lang="en" />
-              Title
-            </Label>
+            <LanguageBadge lang="en" />
             <Input
               id="catTitleEn"
-              placeholder="es. General, Enrollment..."
+              placeholder="e.g. General, Enrollment..."
               value={titleEn}
               onChange={(e) => setTitleEn(e.target.value)}
               onKeyDown={(e) => {
@@ -142,9 +136,9 @@ export function AddCategoryDialog({
           </div>
         </div>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline">Annulla</Button>} />
+          <DialogClose render={<Button variant="outline">Cancel</Button>} />
           <Button onClick={handleSubmit} disabled={loading || !titleIt.trim()}>
-            {loading ? "Salvataggio..." : isEdit ? "Salva Modifiche" : "Crea Categoria"}
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Create Category"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -19,7 +19,7 @@ export function DeletePopover({
   onConfirm,
   triggerAriaLabel,
   triggerOnClick,
-  confirmText = "Conferma Eliminazione",
+  confirmText = "Confirm Delete",
 }: DeletePopoverProps) {
   return (
     <Popover>

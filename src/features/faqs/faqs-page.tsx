@@ -63,10 +63,10 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
 
       setFaqs((prev) => [...prev, newCat])
       setCategoryId(res.id)
-      toast.success("Categoria creata con successo!")
+      toast.success("Category created successfully!")
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Errore durante la creazione della categoria: ${errorMessage}`)
+      toast.error(`Failed to create category: ${errorMessage}`)
       throw e
     }
   }
@@ -87,10 +87,10 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
           c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn, icon: res.icon ?? null } : c
         )
       )
-      toast.success("Categoria aggiornata con successo!")
+      toast.success("Category updated successfully!")
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Errore durante la modifica della categoria: ${errorMessage}`)
+      toast.error(`Failed to update category: ${errorMessage}`)
       throw e
     }
   }
@@ -105,16 +105,16 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         }
         return next
       })
-      toast.success("Categoria eliminata con successo.")
+      toast.success("Category deleted successfully.")
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Errore durante l'eliminazione della categoria: ${errorMessage}`)
+      toast.error(`Failed to delete category: ${errorMessage}`)
     }
   }
 
   const handleAdd = () => {
     if (!categoryId) {
-      toast.error("Seleziona o crea prima una categoria.")
+      toast.error("Please select or create a category first.")
       setIsAddCategoryOpen(true)
       return
     }
@@ -171,8 +171,8 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
     const aIt = editAnswerIt.trim()
     const aEn = editAnswerEn.trim() || aIt
 
-    if (!qIt) return toast.error("Domanda (Italiano) obbligatoria.")
-    if (!aIt) return toast.error("Risposta (Italiano) obbligatoria.")
+    if (!qIt) return toast.error("Question (Italian) is required.")
+    if (!aIt) return toast.error("Answer (Italian) is required.")
 
     const isNew = unsavedIds.includes(id)
     const savePromise = isNew
@@ -210,9 +210,9 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         setEditQuestionEn("")
         setEditAnswerIt("")
         setEditAnswerEn("")
-        toast.success("FAQ salvata con successo.")
+        toast.success("FAQ saved successfully.")
       })
-      .catch((e: string) => toast.error(`Impossibile salvare la FAQ: ${e}`))
+      .catch((e: string) => toast.error(`Failed to save FAQ: ${e}`))
   }
 
   const handleDelete = (e: React.MouseEvent, id: number) => {
@@ -244,9 +244,9 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
           setEditAnswerIt("")
           setEditAnswerEn("")
         }
-        toast.success("FAQ eliminata con successo.")
+        toast.success("FAQ deleted successfully.")
       })
-      .catch((e: string) => toast.error(`Impossibile eliminare la FAQ: ${e}`))
+      .catch((e: string) => toast.error(`Failed to delete FAQ: ${e}`))
   }
 
   const handleCancel = (id: number) => {
@@ -314,9 +314,9 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
             })
           )
           setUnsavedIds((prev) => prev.filter((x) => x !== currentId))
-          toast.success("FAQ precedente salvata con successo.")
+          toast.success("Previous FAQ saved successfully.")
         })
-        .catch((e: string) => toast.error(`Impossibile salvare la FAQ precedente: ${e}`))
+        .catch((e: string) => toast.error(`Failed to save previous FAQ: ${e}`))
     } else {
       handleCancel(editingId)
     }
