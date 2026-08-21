@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  CircleQuestionMark,
   Database,
   FolderKanban,
   Globe,
@@ -60,6 +61,7 @@ export const dashboardNavigation = [
       { title: "Projects", url: "/dashboard/web/projects", icon: FolderKanban },
       { title: "Associations", url: "/dashboard/web/associations", icon: Users },
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
+      { title: "Faqs", url: "/dashboard/web/faqs", icon: CircleQuestionMark },
     ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]
