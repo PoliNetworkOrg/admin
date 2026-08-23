@@ -1,6 +1,7 @@
 import { AUTH_PATH } from "@polinetwork/backend"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { createAuthClient } from "better-auth/client"
+
 import { env } from "@/env"
 import type { AdminSession } from "@/lib/auth"
 import { createAuthPlugins } from "@/lib/auth-plugins"
@@ -43,6 +44,7 @@ export function getAgentSession() {
   return agentSession
 }
 
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- Better Auth infers this session through its plugin phantom type.
 async function readSession(requestHeaders: Headers): Promise<AdminSession | null> {
   if (isAgentMode()) return agentSession
 

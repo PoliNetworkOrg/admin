@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
+
 import { DataPageSkeleton } from "@/components/loading-skeleton"
-import { getTelegramGroups } from "@/features/telegram/groups.functions"
 import { TelegramGroupsPage } from "@/features/telegram/groups-page"
+import { getTelegramGroups } from "@/features/telegram/groups.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/groups")({
   loader: () => getTelegramGroups(),

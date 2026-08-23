@@ -1,8 +1,10 @@
 import { Calendar, KeyRound, LogOut, MonitorSmartphone, Shield, Trash2 } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+
 import { ConfirmationDialog } from "./confirmation-dialog"
 import type { ActiveSession, Passkey } from "./types"
 

@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
+
 import { authenticatedMiddleware } from "@/server/auth.middleware"
+
 import { parseProfilePictureForm } from "./account.validation"
 
 export const uploadProfilePicture = createServerFn({ method: "POST" })

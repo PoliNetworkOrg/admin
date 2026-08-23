@@ -1,4 +1,5 @@
 import { ArrowRight, CheckCircle2, Clock3, Copy, LoaderCircle, LogOut, MessageCircle, RotateCcw } from "lucide-react"
+
 import { AppMark } from "@/components/app-mark"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import type { AdminSession } from "@/lib/auth"
+
 import { useTelegramLink } from "./use-telegram-link"
 
 const botUsername = import.meta.env.PROD ? "pn_ts_dev_bot" : "pn_ts_devlocal_bot"

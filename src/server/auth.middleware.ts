@@ -1,5 +1,6 @@
 import { redirect } from "@tanstack/react-router"
 import { createMiddleware } from "@tanstack/react-start"
+
 import type { AdminSession } from "@/lib/auth"
 
 type DashboardAccess =
@@ -63,4 +64,12 @@ export const adminMiddleware = createMiddleware({ type: "function" })
     if (authorization === "telegram-unlinked") throw redirect({ to: "/onboarding/link" })
     if (authorization === "forbidden") throw redirect({ to: "/onboarding/unauthorized" })
     return next({ context: authorization })
+  })
+
+export const writeAdminMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(async ({ next, context }) => {
+    const { hasWriteAdminRole } = await import("@/server/authorization")
+    if (!hasWriteAdminRole(context.roles)) throw new Error("UNAUTHORIZED")
+    return next()
   })

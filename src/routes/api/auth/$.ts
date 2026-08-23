@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+
 import { proxyAuthRequest } from "@/server/auth-proxy.server"
 
 export const Route = createFileRoute("/api/auth/$")({

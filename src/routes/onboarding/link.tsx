@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
+
 import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { TelegramLinkPage } from "@/features/onboarding/telegram-link-page"
 

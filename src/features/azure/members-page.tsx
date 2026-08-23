@@ -3,6 +3,8 @@ import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, Plus, UsersRound } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { z } from "zod"
+
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Pagination } from "@/components/pagination"
@@ -12,18 +14,17 @@ import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, Tabl
 import type { AzureMember } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
+
 import { MemberDialog, type MemberDialogState } from "./member-dialog"
 
 const memberColumnHelper = createAppColumnHelper<AzureMember>()
 
 type MemberFilter = { query: string; membersOnly: boolean }
+const memberFilterSchema = z.object({ query: z.string(), membersOnly: z.boolean() })
 
-function memberFilterFrom(value: unknown): MemberFilter {
-  if (!value || typeof value !== "object") return { query: "", membersOnly: false }
-  return {
-    query: "query" in value && typeof value.query === "string" ? value.query : "",
-    membersOnly: "membersOnly" in value && value.membersOnly === true,
-  }
+function memberFilterFrom<Value>(value: Value): MemberFilter {
+  const result = memberFilterSchema.safeParse(value)
+  return result.success ? result.data : { query: "", membersOnly: false }
 }
 
 export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMember[] }) {

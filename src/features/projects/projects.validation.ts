@@ -1,21 +1,21 @@
+import { z } from "zod"
+
 import { errorHasCode } from "../../lib/errors.ts"
 import { PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants.ts"
 
-const PROJECT_CATEGORIES = new Set(["news", "general", "deprecated"])
+const projectCategorySchema = z.enum(["news", "general", "deprecated"])
 const IMAGE_TYPES = new Set<string>(PROJECT_LOGO_TYPES)
 
 function requiredText(data: FormData, key: string, maxLength: number) {
-  const value = data.get(key)
-  if (typeof value !== "string" || !value.trim() || value.trim().length > maxLength) {
-    throw new Error(`INVALID_${key.toUpperCase()}`)
-  }
-  return value.trim()
+  const result = z.string().trim().min(1).max(maxLength).safeParse(data.get(key))
+  if (!result.success) throw new Error(`INVALID_${key.toUpperCase()}`)
+  return result.data
 }
 
 function optionalText(data: FormData, key: string, maxLength: number) {
-  const value = data.get(key)
-  if (typeof value !== "string") return null
-  const trimmed = value.trim()
+  const result = z.string().safeParse(data.get(key))
+  if (!result.success) return null
+  const trimmed = result.data.trim()
   if (trimmed.length > maxLength) throw new Error(`INVALID_${key.toUpperCase()}`)
   return trimmed || null
 }
@@ -34,8 +34,8 @@ function optionalLink(data: FormData) {
 }
 
 export function parseProjectForm(data: FormData) {
-  const category = data.get("category")
-  if (typeof category !== "string" || !PROJECT_CATEGORIES.has(category)) throw new Error("INVALID_CATEGORY")
+  const category = projectCategorySchema.safeParse(data.get("category"))
+  if (!category.success) throw new Error("INVALID_CATEGORY")
 
   const logoValue = data.get("logoFile")
   const logoFile = logoValue instanceof File && logoValue.size > 0 ? logoValue : null
@@ -50,7 +50,7 @@ export function parseProjectForm(data: FormData) {
     link: optionalLink(data),
     logo: optionalText(data, "logo", 4 * 1024 * 1024),
     logoFile,
-    category: category as "news" | "general" | "deprecated",
+    category: category.data,
   }
 }
 

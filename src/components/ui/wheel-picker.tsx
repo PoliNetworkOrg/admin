@@ -9,7 +9,6 @@ import {
   useTransform,
 } from "motion/react"
 import {
-  type CSSProperties,
   createContext,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -23,7 +22,7 @@ import {
   useState,
 } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn, cssVariables } from "@/lib/utils"
 
 const HIDE_ANGLE = Math.PI / 2 - 0.04
 const MAX_ANGLE = Math.PI / 2
@@ -78,6 +77,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function normalizeOption(option: WheelPickerOption): NormalizedOption {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- WheelPickerOption is an already-validated string-or-object union.
   if (typeof option === "string") {
     return { value: option, label: option, disabled: false }
   }
@@ -633,7 +633,7 @@ export function WheelPickerColumn({
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-1 top-1/2 h-[var(--wheel-item-height)] -translate-y-1/2 rounded-xl bg-foreground/5"
-          style={{ "--wheel-item-height": `${itemHeight}px` } as CSSProperties}
+          style={cssVariables({ "--wheel-item-height": `${itemHeight}px` })}
         />
       ) : null}
       <motion.div className="absolute inset-0" style={{ perspective: itemHeight * 21, transformStyle: "preserve-3d" }}>
@@ -669,7 +669,6 @@ export function WheelPicker({
 
   return (
     <WheelPickerContext.Provider value={context}>
-      {/* biome-ignore lint/a11y/useSemanticElements: fieldset chrome would fight the barrel layout; a grouped div matches the listbox columns. */}
       <div aria-label={ariaLabel} className={cn("flex w-full min-w-0 items-stretch", className)} role="group">
         {children}
       </div>

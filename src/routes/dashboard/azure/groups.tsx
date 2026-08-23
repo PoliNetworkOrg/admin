@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+
 import { getAzureDirectory } from "@/features/azure/azure.functions"
 import { AzureGroupsPage, AzureGroupsSkeleton } from "@/features/azure/groups-page"
 

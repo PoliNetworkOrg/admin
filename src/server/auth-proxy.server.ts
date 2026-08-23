@@ -1,7 +1,8 @@
 import { AUTH_PATH } from "@polinetwork/backend"
+
 import { env } from "@/env"
-import { getAgentSession, isAgentMode } from "@/server/auth.server"
 import { forwardAuthRequest } from "@/server/auth-proxy-core"
+import { getAgentSession, isAgentMode } from "@/server/auth.server"
 
 export function proxyAuthRequest(request: Request) {
   const incomingUrl = new URL(request.url)

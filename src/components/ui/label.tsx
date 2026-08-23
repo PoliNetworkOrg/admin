@@ -6,7 +6,6 @@ type LabelProps = Omit<React.ComponentProps<"label">, "htmlFor"> & { htmlFor: st
 
 function Label({ className, htmlFor, ...props }: LabelProps) {
   return (
-    // biome-ignore lint/a11y/noLabelWithoutControl: Label associates its control through the required htmlFor prop.
     <label
       htmlFor={htmlFor}
       data-slot="label"

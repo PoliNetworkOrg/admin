@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
+
 import { DashboardFrame } from "@/components/dashboard-frame"
 import { RouteError } from "@/components/route-error"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
