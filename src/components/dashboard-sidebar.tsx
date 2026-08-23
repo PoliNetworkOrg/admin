@@ -1,8 +1,12 @@
+/* oxlint-disable anti-slop/no-shape-in-symbol-names -- React's standard SVG shapeRendering attribute is not a user-named symbol. */
+
 import { Link, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
+
 import type { AdminSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+
 import { AppMark } from "./app-mark"
 import { accountNavigation, dashboardNavigation, overviewNavigation } from "./dashboard-navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -40,6 +44,7 @@ const selectedPageClass =
   "data-active:bg-sidebar-primary/15 data-active:font-medium data-active:text-sidebar-accent-foreground data-active:hover:bg-sidebar-primary/20"
 
 type DashboardSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- Better Auth infers this user through its plugin phantom type.
   user: AdminSession["user"] | undefined
   loggingOut: boolean
   onLogout: () => void

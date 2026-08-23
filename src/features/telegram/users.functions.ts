@@ -2,7 +2,8 @@ import { USER_ROLE } from "@polinetwork/backend"
 import { notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import type { TgUser, TgUserRole } from "@/lib/api/types"
+
+import type { TgUser } from "@/lib/api/types"
 import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getTelegramUsers = createServerFn()
@@ -98,8 +99,7 @@ export const removeTelegramGroupAdmin = createServerFn({ method: "POST" })
     context.backend.tg.permissions.removeGroup.mutate({ ...data, removerId: context.telegramId })
   )
 
-const telegramRoleValues = Object.values(USER_ROLE) as [TgUserRole, ...TgUserRole[]]
-const telegramRoleInput = z.object({ userId: z.number().int().positive(), role: z.enum(telegramRoleValues) })
+const telegramRoleInput = z.object({ userId: z.number().int().positive(), role: z.enum(USER_ROLE) })
 
 export const addTelegramUserRole = createServerFn({ method: "POST" })
   .middleware([writeAdminMiddleware])

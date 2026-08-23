@@ -1,6 +1,6 @@
 # PoliNetwork Admin
 
-The PoliNetwork operations console, rebuilt with TanStack Start, React 19, Vite, Nitro, Tailwind CSS v4, and shadcn/ui.
+The PoliNetwork operations console, rebuilt with TanStack Start, React 19, Vite+, Nitro, Tailwind CSS v4, and shadcn/ui.
 
 ## Development
 

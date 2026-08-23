@@ -1,5 +1,6 @@
 import { ChevronDown, Info, Mail, UsersRound } from "lucide-react"
 import { useMemo } from "react"
+
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -10,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
+
 import { GroupMembership } from "./group-membership"
 
 export function AzureGroupsPage({

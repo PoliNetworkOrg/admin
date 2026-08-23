@@ -1,5 +1,6 @@
 import { AUTH_PATH } from "@polinetwork/backend"
 import { createAuthClient } from "better-auth/react"
+
 import { createAuthPlugins } from "@/lib/auth-plugins"
 
 export const auth = createAuthClient({

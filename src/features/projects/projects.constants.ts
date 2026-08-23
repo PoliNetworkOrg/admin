@@ -5,6 +5,7 @@ export const PROJECT_CATEGORIES = [
   { value: "general", label: "General" },
   { value: "deprecated", label: "Deprecated" },
 ] as const satisfies readonly { value: ProjectCategory; label: string }[]
+const projectCategoryValues = new Set<string>(PROJECT_CATEGORIES.map(({ value }) => value))
 
 export const PROJECT_LOGO_TYPES = ["image/svg+xml", "image/png", "image/jpeg"] as const
 export const PROJECT_LOGO_MAX_SIZE = 1024 * 1024
@@ -20,4 +21,8 @@ export const DEFAULT_PROJECT: Omit<Project, "id"> = {
 
 export function getProjectCategoryLabel(category: ProjectCategory) {
   return PROJECT_CATEGORIES.find((item) => item.value === category)?.label ?? category
+}
+
+export function isProjectCategory(value: string): value is ProjectCategory {
+  return projectCategoryValues.has(value)
 }

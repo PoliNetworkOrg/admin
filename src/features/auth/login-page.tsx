@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router"
 import { ArrowRight, KeyRound, LoaderCircle, Mail, ShieldCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+
 import { AppMark } from "@/components/app-mark"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -11,6 +12,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { auth } from "@/lib/auth"
+
 import { testBackend } from "./auth.functions"
 
 export function LoginPage() {

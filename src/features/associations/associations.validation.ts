@@ -1,23 +1,23 @@
 import { z } from "zod"
+
 import { errorHasCode } from "../../lib/errors.ts"
 import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES } from "./associations.constants.ts"
 
 const ALLOWED_LOGO_TYPES = new Set<string>(ASSOCIATION_LOGO_TYPES)
 
 function requiredText(data: FormData, key: string, maximum: number) {
-  const value = data.get(key)
-  if (typeof value !== "string" || !value.trim() || value.trim().length > maximum) {
-    throw new Error(`INVALID_${key.toUpperCase()}`)
-  }
-  return value.trim()
+  const result = z.string().trim().min(1).max(maximum).safeParse(data.get(key))
+  if (!result.success) throw new Error(`INVALID_${key.toUpperCase()}`)
+  return result.data
 }
 
 function optionalLogo(data: FormData) {
   const logo = data.get("logo")
-  if (logo === null || (typeof logo === "string" && logo === "")) return null
-  if (typeof logo === "string") {
-    if (logo.length > 3_000_000) throw new Error("LOGO_TOO_LARGE")
-    return logo
+  if (logo === null || logo === "") return null
+  const stringLogo = z.string().safeParse(logo)
+  if (stringLogo.success) {
+    if (stringLogo.data.length > 3_000_000) throw new Error("LOGO_TOO_LARGE")
+    return stringLogo.data
   }
   if (!(logo instanceof File) || !ALLOWED_LOGO_TYPES.has(logo.type)) throw new Error("INVALID_LOGO_TYPE")
   if (logo.size > ASSOCIATION_LOGO_MAX_SIZE) throw new Error("LOGO_TOO_LARGE")

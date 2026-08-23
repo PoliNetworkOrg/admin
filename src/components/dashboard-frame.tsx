@@ -1,11 +1,14 @@
 import { Outlet, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import type { AdminSession } from "@/lib/auth"
 import { auth, useSession } from "@/lib/auth"
+import { cssVariables } from "@/lib/utils"
+
 import { ThemeToggle } from "./theme-toggle"
 
 export function DashboardFrame({ initialSession }: { initialSession: AdminSession }) {
@@ -44,7 +47,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
     <SidebarProvider
       open={sidebarOpen}
       onOpenChange={setSidebarOpen}
-      style={{ "--sidebar-width": "16.25rem" } as React.CSSProperties}
+      style={cssVariables({ "--sidebar-width": "16.25rem" })}
     >
       <DashboardSidebar user={user} loggingOut={loggingOut} onLogout={() => void logout()} />
       <SidebarInset className="min-w-0">

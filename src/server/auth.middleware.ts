@@ -1,5 +1,6 @@
 import { redirect } from "@tanstack/react-router"
 import { createMiddleware } from "@tanstack/react-start"
+
 import type { AdminSession } from "@/lib/auth"
 
 type DashboardAccess =
