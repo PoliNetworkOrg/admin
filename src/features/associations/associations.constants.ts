@@ -5,6 +5,15 @@ import type { AssociationLink, AssociationLinks } from "./types"
 export const ASSOCIATION_LOGO_MAX_SIZE = 1024 * 1024
 export const ASSOCIATION_LOGO_TYPES = ["image/jpeg", "image/png", "image/svg+xml"] as const
 
+export function validateAssociationLogo(file: File) {
+  if (!ASSOCIATION_LOGO_TYPES.some((type) => type === file.type)) return "Choose a JPG, PNG, or SVG logo."
+  if (file.size > ASSOCIATION_LOGO_MAX_SIZE) {
+    const maximumMegabytes = ASSOCIATION_LOGO_MAX_SIZE / (1024 * 1024)
+    return `The logo must be no larger than ${maximumMegabytes} MB.`
+  }
+  return null
+}
+
 export const EMPTY_ASSOCIATION_LINKS: AssociationLinks = {
   email: null,
   website: null,
