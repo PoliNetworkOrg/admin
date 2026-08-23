@@ -3,10 +3,12 @@ import { useServerFn } from "@tanstack/react-start"
 import { Plus, UsersRound } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
 import { errorHasCode } from "@/lib/errors"
+
 import { AssociationCard } from "./association-card"
 import { AssociationLinksDialog } from "./association-links-dialog"
 import { EMPTY_ASSOCIATION_LINKS } from "./associations.constants"
@@ -24,7 +26,6 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
   const [draftAssociationIds, setDraftAssociationIds] = useState<Set<number>>(new Set())
   const [linksDialog, setLinksDialog] = useState<Association | null>(null)
   const draftAssociationIdsRef = useRef(draftAssociationIds)
-  draftAssociationIdsRef.current = draftAssociationIds
 
   useEffect(() => {
     setAssociations((current) => {
@@ -58,6 +59,13 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
     setAssociations((current) => current.map((item) => (item.id === association.id ? association : item)))
   }
 
+  function removeDraftAssociationId(id: number) {
+    const nextDraftIds = new Set(draftAssociationIdsRef.current)
+    nextDraftIds.delete(id)
+    draftAssociationIdsRef.current = nextDraftIds
+    setDraftAssociationIds(nextDraftIds)
+  }
+
   function addAssociation() {
     const draft: Association = {
       id: -Date.now(),
@@ -68,21 +76,14 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
       links: { ...EMPTY_ASSOCIATION_LINKS },
     }
     setAssociations((current) => [draft, ...current])
-    setDraftAssociationIds((current) => {
-      const next = new Set(current).add(draft.id)
-      draftAssociationIdsRef.current = next
-      return next
-    })
+    const nextDraftIds = new Set(draftAssociationIdsRef.current).add(draft.id)
+    draftAssociationIdsRef.current = nextDraftIds
+    setDraftAssociationIds(nextDraftIds)
   }
 
   function cancelDraft(id: number) {
     setAssociations((current) => current.filter((association) => association.id !== id))
-    setDraftAssociationIds((current) => {
-      const next = new Set(current)
-      next.delete(id)
-      draftAssociationIdsRef.current = next
-      return next
-    })
+    removeDraftAssociationId(id)
   }
 
   async function saveAssociation(id: number, values: AssociationFormValues) {
@@ -98,14 +99,7 @@ export function AssociationsPage({ loadedAssociations }: { loadedAssociations: A
     try {
       const saved = draft ? await createAssociationFn({ data }) : await editAssociationFn({ data })
       setAssociations((current) => current.map((association) => (association.id === id ? saved : association)))
-      if (draft) {
-        setDraftAssociationIds((current) => {
-          const next = new Set(current)
-          next.delete(id)
-          draftAssociationIdsRef.current = next
-          return next
-        })
-      }
+      if (draft) removeDraftAssociationId(id)
       toast.success(`Association ${draft ? "created" : "updated"}`)
       void refresh()
       return true

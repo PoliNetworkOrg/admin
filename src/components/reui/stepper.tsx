@@ -5,7 +5,6 @@ import {
   createContext,
   type HTMLAttributes,
   isValidElement,
-  type ReactElement,
   useCallback,
   useContext,
   useEffect,
@@ -121,10 +120,8 @@ function Stepper({
     () => ({
       activeStep: currentStep,
       setActiveStep: handleSetActiveStep,
-      stepsCount: Children.toArray(children).filter(
-        (child): child is ReactElement =>
-          isValidElement(child) && (child.type as { displayName?: string }).displayName === "StepperItem"
-      ).length,
+      stepsCount: Children.toArray(children).filter((child) => isValidElement(child) && child.type === StepperItem)
+        .length,
       orientation,
       registerTrigger,
       unregisterTrigger,
@@ -260,7 +257,7 @@ function StepperTrigger({ className, children, tabIndex, render, ...props }: Ste
     id,
     "aria-selected": isSelected,
     "aria-controls": panelId,
-    tabIndex: typeof tabIndex === "number" ? tabIndex : isSelected ? 0 : -1,
+    tabIndex: tabIndex ?? (isSelected ? 0 : -1),
     "data-slot": "stepper-trigger",
     "data-state": state,
     "data-loading": isLoading,

@@ -1,5 +1,6 @@
 import { AUTH_PATH } from "@polinetwork/backend"
 import { createAuthClient } from "better-auth/react"
+
 import { createAuthPlugins } from "@/lib/auth-plugins"
 
 export const auth = createAuthClient({
@@ -9,4 +10,4 @@ export const auth = createAuthClient({
 
 export const { signIn, signOut, useSession } = auth
 
-export type AdminSession = NonNullable<Awaited<ReturnType<typeof auth.getSession>>["data"]>
+export type AdminSession = typeof auth.$Infer.Session

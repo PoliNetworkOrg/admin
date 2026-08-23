@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { LoaderCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +44,12 @@ export function LeaveGroupDialog({ chatId, title }: { chatId: number; title: str
         toast.success(`Left ${title}.`)
       }
       setOpen(false)
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch (refreshError) {
+        console.error(refreshError)
+        toast.warning("The group was left, but the group list could not be refreshed.")
+      }
     } catch (error) {
       console.error(error)
       toast.error(errorMessage(error, "The group could not be left."))

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { type ChangeEvent, useEffect, useId, useState } from "react"
 import { toast } from "sonner"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { PROJECT_CATEGORIES, PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants"
+
+import { isProjectCategory, PROJECT_CATEGORIES, PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants"
 import type { Project, ProjectCategory, ProjectFormValues } from "./types"
 
 type ProjectCardProps = {
@@ -407,7 +409,9 @@ function ProjectCategoryMenu({
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuRadioGroup
           value={category}
-          onValueChange={(value) => void onCategoryChange(value as ProjectCategory)}
+          onValueChange={(value) => {
+            if (isProjectCategory(value)) void onCategoryChange(value)
+          }}
         >
           {PROJECT_CATEGORIES.map((item) => (
             <DropdownMenuRadioItem key={item.value} value={item.value}>

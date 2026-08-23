@@ -1,8 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
+
 import type { AdminSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+
 import { AppMark } from "./app-mark"
 import { accountNavigation, dashboardNavigation, overviewNavigation } from "./dashboard-navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -150,11 +152,10 @@ export function DashboardSidebar({ user, loggingOut, onLogout, ...props }: Dashb
                         <svg
                           aria-hidden="true"
                           viewBox={`0 0 10 ${connectorHeight}`}
-                          className="pointer-events-none absolute top-0 left-0 h-full w-2.5 overflow-visible text-sidebar-border"
+                          className="pointer-events-none absolute top-0 left-0 h-full w-2.5 overflow-visible text-sidebar-border [shape-rendering:crispEdges]"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="1"
-                          shapeRendering="crispEdges"
                         >
                           <path d={railPath} vectorEffect="non-scaling-stroke" />
                           {itemCenters.map((center, index) =>

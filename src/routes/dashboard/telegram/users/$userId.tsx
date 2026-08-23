@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
+
 import { DetailPageSkeleton } from "@/components/loading-skeleton"
 import { TelegramUserProfile } from "@/features/telegram/user-detail/profile"
 import { UserDetailBackLink } from "@/features/telegram/user-detail/sections"

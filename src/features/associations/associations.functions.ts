@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
-import { adminMiddleware } from "@/server/auth.middleware"
+
+import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+
 import {
   associationIdInput,
   associationLinksInput,
@@ -21,7 +23,7 @@ function associationFormData(data: ReturnType<typeof parseCreateAssociationForm>
 }
 
 export const createAssociation = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(parseCreateAssociationForm)
   .handler(async ({ data, context }) => {
     const formData = associationFormData(data)
@@ -30,7 +32,7 @@ export const createAssociation = createServerFn({ method: "POST" })
   })
 
 export const editAssociation = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(parseEditAssociationForm)
   .handler(async ({ data, context }) => {
     const formData = associationFormData(data)
@@ -42,7 +44,7 @@ export const editAssociation = createServerFn({ method: "POST" })
   })
 
 export const editAssociationLinks = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(associationLinksInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.associations.editAssociationLinks.mutate({
@@ -54,7 +56,7 @@ export const editAssociationLinks = createServerFn({ method: "POST" })
   })
 
 export const deleteAssociation = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(associationIdInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.associations.deleteAssociation.mutate(data)

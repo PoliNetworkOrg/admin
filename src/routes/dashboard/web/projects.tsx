@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
+
 import { DataPageSkeleton } from "@/components/loading-skeleton"
-import { getProjects } from "@/features/projects/projects.functions"
 import { ProjectsPage } from "@/features/projects/projects-page"
+import { getProjects } from "@/features/projects/projects.functions"
 
 export const Route = createFileRoute("/dashboard/web/projects")({
   loader: () => getProjects(),

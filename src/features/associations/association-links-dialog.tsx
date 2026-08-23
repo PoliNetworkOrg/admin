@@ -1,6 +1,7 @@
 import { useServerFn } from "@tanstack/react-start"
 import { LoaderCircle } from "lucide-react"
 import { useState } from "react"
+
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,17 +14,15 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { errorHasCode } from "@/lib/errors"
+
 import { ASSOCIATION_LINK_FIELDS } from "./associations.constants"
 import { editAssociationLinks } from "./associations.functions"
 import type { Association, AssociationLinks } from "./types"
 
 function normalizeLinks(links: AssociationLinks): AssociationLinks {
-  return Object.fromEntries(
-    ASSOCIATION_LINK_FIELDS.map(({ key }) => {
-      const value = links[key]?.trim()
-      return [key, value || null]
-    })
-  ) as AssociationLinks
+  const normalized = { ...links }
+  for (const { key } of ASSOCIATION_LINK_FIELDS) normalized[key] = links[key]?.trim() || null
+  return normalized
 }
 
 export function AssociationLinksDialog({

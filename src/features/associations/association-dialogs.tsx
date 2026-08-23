@@ -2,6 +2,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { LoaderCircle, OctagonX, Upload } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +27,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { errorHasCode } from "@/lib/errors"
-import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES, getAssociationInitials } from "./associations.constants"
+
+import { getAssociationInitials, validateAssociationLogo } from "./associations.constants"
 import { createAssociation, deleteAssociation, editAssociation } from "./associations.functions"
 import { associationSaveErrorMessage } from "./associations.validation"
 import type { Association } from "./types"
@@ -72,11 +74,9 @@ export function AssociationDialog({
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (pending) return
-    if (
-      logoFile &&
-      (!ASSOCIATION_LOGO_TYPES.some((type) => type === logoFile.type) || logoFile.size > ASSOCIATION_LOGO_MAX_SIZE)
-    ) {
-      setError("Choose a JPG, PNG, or SVG logo no larger than 1 MB.")
+    const logoError = logoFile ? validateAssociationLogo(logoFile) : null
+    if (logoError) {
+      setError(logoError)
       return
     }
 

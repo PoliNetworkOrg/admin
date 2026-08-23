@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { adminMiddleware } from "@/server/auth.middleware"
+
+import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getAzureMembers = createServerFn()
   .middleware([adminMiddleware])
@@ -17,7 +18,7 @@ export const getAzureDirectory = createServerFn()
   })
 
 export const createAzureMember = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(
     z.object({
       firstName: z.string().trim().min(1),
@@ -33,7 +34,7 @@ export const createAzureMember = createServerFn({ method: "POST" })
   })
 
 export const setAzureMemberNumber = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(z.object({ userId: z.string().min(1), assocNumber: z.number().int().positive() }))
   .handler(async ({ data, context }) => {
     const result = await context.backend.azure.members.setAssocNumber.mutate(data)
@@ -44,14 +45,14 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
 const azureGroupMembershipInput = z.object({ groupId: z.string().min(1), userId: z.string().min(1) })
 
 export const addAzureGroupMember = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(azureGroupMembershipInput)
   .handler(async ({ data, context }) => ({
     error: (await context.backend.azure.groups.addMember.mutate(data)) ? null : ("INTERNAL_SERVER_ERROR" as const),
   }))
 
 export const removeAzureGroupMember = createServerFn({ method: "POST" })
-  .middleware([adminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(azureGroupMembershipInput)
   .handler(async ({ data, context }) => ({
     error: (await context.backend.azure.groups.removeMember.mutate(data)) ? null : ("INTERNAL_SERVER_ERROR" as const),

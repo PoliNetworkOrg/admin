@@ -11,6 +11,7 @@ import {
   Users,
   UsersRound,
 } from "lucide-react"
+
 import azureIcon from "@/assets/svg/azure.svg"
 import telegramIcon from "@/assets/svg/telegram.svg"
 
@@ -86,7 +87,8 @@ for (const category of dashboardNavigation) {
 }
 
 export const DASHBOARD_NAV_MAP = new Map<DashboardPath, string>(navigationEntries)
+const dashboardPaths = new Set<string>(DASHBOARD_NAV_MAP.keys())
 
 export function isDashboardPath(path: string): path is DashboardPath {
-  return DASHBOARD_NAV_MAP.has(path as DashboardPath)
+  return dashboardPaths.has(path)
 }

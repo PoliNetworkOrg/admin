@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router"
 import { ArrowRight, MessageCircle } from "lucide-react"
 import { useMemo } from "react"
+
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Pagination } from "@/components/pagination"

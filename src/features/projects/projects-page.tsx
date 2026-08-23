@@ -5,14 +5,19 @@ import { FolderKanban, Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
+import { z } from "zod"
+
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
+
 import { ProjectCard } from "./project-card"
 import { DEFAULT_PROJECT, getProjectCategoryLabel, PROJECT_CATEGORIES } from "./projects.constants"
 import { createProject, deleteProject, editProject, reorderProjects } from "./projects.functions"
 import { projectSaveErrorMessage } from "./projects.validation"
 import type { Project, ProjectCategory, ProjectFormValues, ProjectReorder } from "./types"
+
+const dragIndicesSchema = z.object({ initialIndex: z.number().int(), index: z.number().int() })
 
 function formDataForProject(values: ProjectFormValues, id?: number) {
   const data = new FormData()
@@ -102,9 +107,10 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
     const operation = reorderQueue.current.then(async () => {
       for (const projectIds of groups) await reorderProjectsFn({ data: { projectIds } })
     })
-    reorderQueue.current = operation.catch((error) => {
-      console.error(error)
-    })
+    reorderQueue.current = operation.then(
+      () => undefined,
+      () => undefined
+    )
 
     try {
       await operation
@@ -123,17 +129,10 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   function handleDragEnd(event: DragEndEvent) {
     if (event.canceled) return
     const source = event.operation.source
-    if (
-      !source ||
-      !("initialIndex" in source) ||
-      !("index" in source) ||
-      typeof source.initialIndex !== "number" ||
-      typeof source.index !== "number"
-    ) {
-      return
-    }
+    const indices = dragIndicesSchema.safeParse(source)
+    if (!indices.success) return
 
-    const reordered = moveProjectInCategory(projects, activeCategory, source.initialIndex, source.index)
+    const reordered = moveProjectInCategory(projects, activeCategory, indices.data.initialIndex, indices.data.index)
     if (!reordered) return
     const change: ProjectReorder = { ...reordered, previousProjects: projects }
     const requestId = reorderRequestId.current + 1

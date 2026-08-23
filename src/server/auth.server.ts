@@ -1,6 +1,7 @@
 import { AUTH_PATH } from "@polinetwork/backend"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { createAuthClient } from "better-auth/client"
+
 import { env } from "@/env"
 import type { AdminSession } from "@/lib/auth"
 import { createAuthPlugins } from "@/lib/auth-plugins"

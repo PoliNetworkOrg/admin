@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import { LogOut, ShieldX } from "lucide-react"
 import { useState } from "react"
+
 import { AppMark } from "@/components/app-mark"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
