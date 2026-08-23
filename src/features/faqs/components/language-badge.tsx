@@ -1,8 +1,9 @@
 import type React from "react"
+
 import { cn } from "@/lib/utils"
 
 export interface LanguageBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  lang: "it" | "en" | "IT" | "EN" | string
+  lang: "it" | "en"
 }
 
 export function LanguageBadge({ lang, className, ...props }: LanguageBadgeProps) {

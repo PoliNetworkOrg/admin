@@ -4,11 +4,13 @@ import { useServerFn } from "@tanstack/react-start"
 import type React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+
 import type { FAQItem, FAQs } from "@/lib/api/types.ts"
+
 import { AddCategoryDialog } from "./components/add-category-dialog"
 import { CategorySwitcher } from "./components/category-switcher"
-import { FaqAccordionList } from "./components/faq-accordion-list"
-import { FaqPageHeader } from "./components/faq-page-header"
+import { FAQAccordionList } from "./components/faq-accordion-list"
+import { FAQPageHeader } from "./components/faq-page-header"
 import { addFAQ, addFAQCategory, deleteFAQ, deleteFAQCategory, editFAQ, editFAQCategory } from "./faqs.functions"
 
 export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
@@ -19,7 +21,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   const deleteFAQFn = useServerFn(deleteFAQ)
   const deleteFAQCategoryFn = useServerFn(deleteFAQCategory)
 
-  const [faqs, setFaqs] = useState<FAQs>([])
+  const [faqs, setFAQs] = useState<FAQs>([])
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
 
@@ -36,7 +38,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   const [editingCategory, setEditingCategory] = useState<FAQs[number] | null>(null)
 
   useEffect(() => {
-    setFaqs(initFAQs)
+    setFAQs(initFAQs)
     if (initFAQs.length > 0 && initFAQs[0]) {
       const firstId = initFAQs[0].categoryId
       setCategoryId((prev) => (prev && initFAQs.some((c: FAQs[0]) => c.categoryId === prev) ? prev : firstId))
@@ -61,7 +63,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         faqs: [],
       }
 
-      setFaqs((prev) => [...prev, newCat])
+      setFAQs((prev) => [...prev, newCat])
       setCategoryId(res.id)
       toast.success("Category created successfully!")
     } catch (e: unknown) {
@@ -82,7 +84,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         },
       })
 
-      setFaqs((prev) =>
+      setFAQs((prev) =>
         prev.map((c) =>
           c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn, icon: res.icon ?? null } : c
         )
@@ -98,7 +100,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   const handleDeleteCategory = async (catId: number) => {
     try {
       await deleteFAQCategoryFn({ data: { id: catId } })
-      setFaqs((prev) => {
+      setFAQs((prev) => {
         const next = prev.filter((c) => c.categoryId !== catId)
         if (categoryId === catId) {
           setCategoryId(next[0]?.categoryId ?? null)
@@ -132,7 +134,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       descriptionEn: "",
     }
 
-    setFaqs((prev) =>
+    setFAQs((prev) =>
       prev.map((faq) => {
         if (faq.categoryId === categoryId) {
           return {
@@ -187,7 +189,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       const res = await savePromise
       const savedId = isNew ? res.id : id
 
-      setFaqs((prev) =>
+      setFAQs((prev) =>
         prev.map((faq) => {
           if (faq.categoryId === categoryId) {
             return {
@@ -235,7 +237,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
 
     deletePromise
       .then(() => {
-        setFaqs((prev) =>
+        setFAQs((prev) =>
           prev.map((faq) => {
             if (faq.categoryId === categoryId) {
               return {
@@ -263,7 +265,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
 
   const handleCancel = (id: number) => {
     if (unsavedIds.includes(id)) {
-      setFaqs((prev) =>
+      setFAQs((prev) =>
         prev.map((faq) => {
           if (faq.categoryId === categoryId) {
             return {
@@ -285,13 +287,13 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   }
 
   const activeCategory = faqs.find((c) => c.categoryId === categoryId)
-  const currentCategoryFaqs = activeCategory?.faqs ?? []
+  const currentCategoryFAQs = activeCategory?.faqs ?? []
 
   return (
     <div className="animate-appear space-y-6">
-      <FaqPageHeader
+      <FAQPageHeader
         onOpenAddCategory={() => setIsAddCategoryOpen(true)}
-        onAddFaq={handleAdd}
+        onAddFAQ={handleAdd}
         hasCategory={!!categoryId}
       />
 
@@ -311,8 +313,8 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         }}
       />
 
-      <FaqAccordionList
-        items={currentCategoryFaqs}
+      <FAQAccordionList
+        items={currentCategoryFAQs}
         editingId={editingId}
         openItems={openItems}
         setOpenItems={setOpenItems}

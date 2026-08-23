@@ -1,9 +1,11 @@
 import { Edit } from "lucide-react"
+
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FAQs } from "@/lib/api/types"
+
 import { DeletePopover } from "./delete-popover"
-import { FaqButton } from "./faq-button"
-import { FaqCategoryIcon } from "./faq-icon"
+import { FAQButton } from "./faq-button"
+import { FAQCategoryIcon } from "./faq-icon"
 
 export interface CategorySwitcherProps {
   categories: FAQs
@@ -41,7 +43,7 @@ export function CategorySwitcher({
             >
               <SelectTrigger className="w-fit">
                 {activeCategory?.icon && (
-                  <FaqCategoryIcon name={activeCategory.icon} className="size-4.5 text-foreground shrink-0" />
+                  <FAQCategoryIcon name={activeCategory.icon} className="size-4.5 text-foreground shrink-0" />
                 )}
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -50,7 +52,7 @@ export function CategorySwitcher({
                   {categories.map((cat) => (
                     <SelectItem key={cat.categoryId} value={String(cat.categoryId)} className="py-2 leading-none">
                       {cat.icon && (
-                        <FaqCategoryIcon name={cat.icon} className="size-4 shrink-0 text-muted-foreground" />
+                        <FAQCategoryIcon name={cat.icon} className="size-4 shrink-0 text-muted-foreground" />
                       )}
                       <span className="font-medium">{cat.titleIt}</span>
                       {cat.titleEn && <span className="text-xs text-muted-foreground">/ {cat.titleEn}</span>}
@@ -72,7 +74,7 @@ export function CategorySwitcher({
             {activeCategory.faqs.length} FAQ{activeCategory.faqs.length !== 1 ? "s" : ""} in this category
           </span>
           {onEditCategory && (
-            <FaqButton
+            <FAQButton
               icon={Edit}
               onClick={() => onEditCategory(activeCategory)}
               color="primary"

@@ -1,12 +1,14 @@
 import { Check, CornerDownLeft, Edit } from "lucide-react"
 import type React from "react"
+
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import type { FAQItem } from "@/lib/api/types"
+
 import { DeletePopover } from "./delete-popover"
-import { FaqButton } from "./faq-button"
+import { FAQButton } from "./faq-button"
 import { LanguageBadge } from "./language-badge"
 
-export interface FaqAccordionItemProps {
+export interface FAQAccordionItemProps {
   item: FAQItem
   isEditing: boolean
   editQuestionIt: string
@@ -23,7 +25,7 @@ export interface FaqAccordionItemProps {
   handleDelete: (e: React.MouseEvent, id: number) => void
 }
 
-export function FaqAccordionItem({
+export function FAQAccordionItem({
   item,
   isEditing,
   editQuestionIt,
@@ -38,14 +40,14 @@ export function FaqAccordionItem({
   handleCancel,
   handleEdit,
   handleDelete,
-}: FaqAccordionItemProps) {
+}: FAQAccordionItemProps) {
   return (
     <AccordionItem
       value={item.faqId}
       className="group rounded-xl border border-border bg-card px-5 py-0.5 shadow-[0_1px_2px_rgb(15_23_42/4%)] transition-all duration-200 hover:border-primary/20 hover:bg-card/90 data-[open]:border-primary/30 data-[open]:bg-card dark:shadow-none"
     >
       {isEditing ? (
-        <FaqEditHeader
+        <FAQEditHeader
           id={item.faqId}
           questionIt={editQuestionIt}
           questionEn={editQuestionEn}
@@ -55,12 +57,12 @@ export function FaqAccordionItem({
           onCancel={handleCancel}
         />
       ) : (
-        <FaqDisplayHeader item={item} onEdit={handleEdit} onDelete={handleDelete} />
+        <FAQDisplayHeader item={item} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
       <AccordionContent className="text-muted-foreground pb-4 leading-relaxed">
         {isEditing ? (
-          <FaqEditContent
+          <FAQEditContent
             id={item.faqId}
             answerIt={editAnswerIt}
             answerEn={editAnswerEn}
@@ -92,7 +94,7 @@ export function FaqAccordionItem({
   )
 }
 
-interface FaqEditHeaderProps {
+interface FAQEditHeaderProps {
   id: number
   questionIt: string
   questionEn: string
@@ -102,7 +104,7 @@ interface FaqEditHeaderProps {
   onCancel: (id: number) => void
 }
 
-function FaqEditHeader({
+function FAQEditHeader({
   id,
   questionIt,
   questionEn,
@@ -110,7 +112,7 @@ function FaqEditHeader({
   setQuestionEn,
   onSave,
   onCancel,
-}: FaqEditHeaderProps) {
+}: FAQEditHeaderProps) {
   return (
     <div className="flex w-full items-start gap-3 py-3">
       <div className="flex-1 space-y-2">
@@ -144,26 +146,26 @@ function FaqEditHeader({
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0 pt-1">
-        <FaqButton icon={Check} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
-        <FaqButton icon={CornerDownLeft} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
+        <FAQButton icon={Check} onClick={() => onSave(id)} color="emerald" ariaLabel="Save FAQ" />
+        <FAQButton icon={CornerDownLeft} onClick={() => onCancel(id)} color="destructive" ariaLabel="Cancel edit" />
       </div>
     </div>
   )
 }
 
-interface FaqDisplayHeaderProps {
+interface FAQDisplayHeaderProps {
   item: FAQItem
   onEdit: (e: React.MouseEvent, item: FAQItem) => void
   onDelete: (e: React.MouseEvent, id: number) => void
 }
 
-function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
+function FAQDisplayHeader({ item, onEdit, onDelete }: FAQDisplayHeaderProps) {
   return (
     <AccordionTrigger
       className="font-medium text-foreground/90 transition-colors py-4 hover:no-underline group-hover:text-primary"
       actions={
         <div className="flex text-xs items-center gap-1.5">
-          <FaqButton icon={Edit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
+          <FAQButton icon={Edit} onClick={(e) => onEdit(e, item)} color="primary" ariaLabel="Edit FAQ" />
           <DeletePopover
             title="Delete this FAQ?"
             triggerAriaLabel="Delete FAQ"
@@ -189,7 +191,7 @@ function FaqDisplayHeader({ item, onEdit, onDelete }: FaqDisplayHeaderProps) {
   )
 }
 
-interface FaqEditContentProps {
+interface FAQEditContentProps {
   id: number
   answerIt: string
   answerEn: string
@@ -199,7 +201,7 @@ interface FaqEditContentProps {
   onCancel: (id: number) => void
 }
 
-function FaqEditContent({ id, answerIt, answerEn, setAnswerIt, setAnswerEn, onSave, onCancel }: FaqEditContentProps) {
+function FAQEditContent({ id, answerIt, answerEn, setAnswerIt, setAnswerEn, onSave, onCancel }: FAQEditContentProps) {
   return (
     <div className="space-y-3 mt-2">
       <div className="space-y-1">

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DEFAULT_FAQ_ICON, FaqCategoryIcon, UNIVERSITY_FAQ_ICONS } from "./faq-icon"
+
+import { DEFAULT_FAQ_ICON, FAQCategoryIcon, UNIVERSITY_FAQ_ICONS } from "./faq-icon"
 import { LanguageBadge } from "./language-badge"
 
 export interface AddCategoryDialogProps {
@@ -78,7 +80,7 @@ export function AddCategoryDialog({
             >
               <SelectTrigger id="catIcon">
                 <SelectValue placeholder="Select an icon">
-                  <FaqCategoryIcon name={icon} className="size-4" />
+                  <FAQCategoryIcon name={icon} className="size-4" />
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="w-auto p-2" align="start">
@@ -90,7 +92,7 @@ export function AddCategoryDialog({
                       title={name}
                       className="flex size-9 p-0 pr-0 items-center justify-center rounded-md cursor-pointer hover:bg-accent focus:bg-accent data-[selected]:bg-accent data-[selected]:text-accent-foreground data-[selected]:ring-2 data-[selected]:ring-primary/60 [&_svg]:size-5 [&>span:last-child]:hidden"
                     >
-                      <FaqCategoryIcon name={name} className="size-5 mx-auto" />
+                      <FAQCategoryIcon name={name} className="size-5 mx-auto" />
                     </SelectItem>
                   ))}
                 </SelectGroup>

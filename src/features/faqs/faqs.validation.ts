@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const addFaqInput = z.object({
+export const addFAQInput = z.object({
   titleIt: z.string().min(1),
   titleEn: z.string().min(1),
   descriptionIt: z.string().min(1),
@@ -8,24 +8,24 @@ export const addFaqInput = z.object({
   categoryId: z.number().int().positive(),
 })
 
-export const editFaqInput = addFaqInput.extend({
+export const editFAQInput = addFAQInput.extend({
   id: z.number().int().positive(),
 })
 
-export const deleteFaqInput = z.object({
+export const deleteFAQInput = z.object({
   id: z.number().int().positive(),
 })
 
-export const addFaqCategoryInput = z.object({
+export const addFAQCategoryInput = z.object({
   titleIt: z.string().min(1),
   titleEn: z.string().min(1),
   icon: z.string().nullable().optional(),
 })
 
-export const editFaqCategoryInput = addFaqCategoryInput.extend({
+export const editFAQCategoryInput = addFAQCategoryInput.extend({
   id: z.number().int().positive(),
 })
 
-export const deleteFaqCategoryInput = z.object({
+export const deleteFAQCategoryInput = z.object({
   id: z.number().int().positive(),
 })

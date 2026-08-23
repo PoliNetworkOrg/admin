@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start"
+
 import { adminMiddleware } from "@/server/auth.middleware"
+
 import {
-  addFaqCategoryInput,
-  addFaqInput,
-  deleteFaqCategoryInput,
-  deleteFaqInput,
-  editFaqCategoryInput,
-  editFaqInput,
+  addFAQCategoryInput,
+  addFAQInput,
+  deleteFAQCategoryInput,
+  deleteFAQInput,
+  editFAQCategoryInput,
+  editFAQInput,
 } from "./faqs.validation"
 
 export const listFAQs = createServerFn()
@@ -15,7 +17,7 @@ export const listFAQs = createServerFn()
 
 export const addFAQ = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(addFaqInput)
+  .validator(addFAQInput)
   .handler(async ({ data, context }) => {
     return context.backend.web.faqs.addFaqs.mutate({
       ...data,
@@ -25,7 +27,7 @@ export const addFAQ = createServerFn({ method: "POST" })
 
 export const editFAQ = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(editFaqInput)
+  .validator(editFAQInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.faqs.editFaqs.mutate({
       ...data,
@@ -37,7 +39,7 @@ export const editFAQ = createServerFn({ method: "POST" })
 
 export const deleteFAQ = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(deleteFaqInput)
+  .validator(deleteFAQInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.faqs.deleteFaqs.mutate(data)
     if (result.error) throw new Error(result.error)
@@ -46,7 +48,7 @@ export const deleteFAQ = createServerFn({ method: "POST" })
 
 export const addFAQCategory = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(addFaqCategoryInput)
+  .validator(addFAQCategoryInput)
   .handler(async ({ data, context }) => {
     return context.backend.web.faqs.addFaqsCategory.mutate({
       ...data,
@@ -57,7 +59,7 @@ export const addFAQCategory = createServerFn({ method: "POST" })
 
 export const editFAQCategory = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(editFaqCategoryInput)
+  .validator(editFAQCategoryInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.faqs.editFaqsCategory.mutate({
       ...data,
@@ -70,7 +72,7 @@ export const editFAQCategory = createServerFn({ method: "POST" })
 
 export const deleteFAQCategory = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .validator(deleteFaqCategoryInput)
+  .validator(deleteFAQCategoryInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.faqs.deleteFaqsCategory.mutate(data)
     if (result.error) throw new Error(result.error)

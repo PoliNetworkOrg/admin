@@ -1,8 +1,10 @@
 import { Trash2 } from "lucide-react"
 import type React from "react"
+
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
-import { FaqButton } from "./faq-button"
+
+import { FAQButton } from "./faq-button"
 
 export interface DeletePopoverProps {
   title: string
@@ -24,7 +26,7 @@ export function DeletePopover({
   return (
     <Popover>
       <PopoverTrigger
-        render={<FaqButton icon={Trash2} onClick={triggerOnClick} color="destructive" ariaLabel={triggerAriaLabel} />}
+        render={<FAQButton icon={Trash2} onClick={triggerOnClick} color="destructive" ariaLabel={triggerAriaLabel} />}
       />
       <PopoverContent className="w-72 p-4" align="end">
         <PopoverHeader>

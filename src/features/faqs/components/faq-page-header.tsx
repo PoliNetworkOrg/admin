@@ -1,14 +1,15 @@
 import { FolderPlus, Plus } from "lucide-react"
+
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 
-export interface FaqPageHeaderProps {
+export interface FAQPageHeaderProps {
   onOpenAddCategory: () => void
-  onAddFaq: () => void
+  onAddFAQ: () => void
   hasCategory: boolean
 }
 
-export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqPageHeaderProps) {
+export function FAQPageHeader({ onOpenAddCategory, onAddFAQ, hasCategory }: FAQPageHeaderProps) {
   return (
     <PageHeader
       eyebrow="Web"
@@ -20,7 +21,7 @@ export function FaqPageHeader({ onOpenAddCategory, onAddFaq, hasCategory }: FaqP
             <FolderPlus data-icon="inline-start" /> Add category
           </Button>
 
-          <Button onClick={onAddFaq} disabled={!hasCategory}>
+          <Button onClick={onAddFAQ} disabled={!hasCategory}>
             <Plus data-icon="inline-start" /> Add FAQ
           </Button>
         </div>

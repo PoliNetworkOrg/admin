@@ -1,12 +1,14 @@
 import { HelpCircle, Plus } from "lucide-react"
 import type React from "react"
+
 import { EmptyState } from "@/components/empty-state"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import type { FAQItem } from "@/lib/api/types"
-import { FaqAccordionItem } from "./faq-accordion-item"
 
-export interface FaqAccordionListProps {
+import { FAQAccordionItem } from "./faq-accordion-item"
+
+export interface FAQAccordionListProps {
   items: FAQItem[]
   editingId: number | null
   openItems: number[]
@@ -27,7 +29,7 @@ export interface FaqAccordionListProps {
   hasCategory: boolean
 }
 
-export function FaqAccordionList({
+export function FAQAccordionList({
   items,
   editingId,
   openItems,
@@ -46,7 +48,7 @@ export function FaqAccordionList({
   handleDelete,
   handleAdd,
   hasCategory,
-}: FaqAccordionListProps) {
+}: FAQAccordionListProps) {
   if (items.length === 0) {
     return (
       <EmptyState
@@ -71,7 +73,7 @@ export function FaqAccordionList({
   return (
     <Accordion className="gap-3.5" value={openItems} onValueChange={setOpenItems} multiple>
       {items.map((item, index) => (
-        <FaqAccordionItem
+        <FAQAccordionItem
           key={`${item.faqId}-${index}`}
           item={item}
           isEditing={editingId === item.faqId}
