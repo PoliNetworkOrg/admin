@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { errorHasCode } from "../../lib/errors.ts"
+import { errorHasCode, errorHasZodField } from "../../lib/errors.ts"
 import { ASSOCIATION_LOGO_MAX_SIZE, ASSOCIATION_LOGO_TYPES } from "./associations.constants.ts"
 
 const ALLOWED_LOGO_TYPES = new Set<string>(ASSOCIATION_LOGO_TYPES)
@@ -76,7 +76,8 @@ export function associationSaveErrorMessage(cause: unknown) {
   if (
     errorHasCode(cause, "LOGO_TOO_LARGE") ||
     errorHasCode(cause, "INVALID_LOGO_TYPE") ||
-    errorHasCode(cause, "INVALID_FILE_TYPE")
+    errorHasCode(cause, "INVALID_FILE_TYPE") ||
+    errorHasZodField(cause, "logo")
   ) {
     return "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
   }

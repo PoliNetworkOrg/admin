@@ -27,6 +27,47 @@ async function sourceFiles(directory) {
   return files.flat()
 }
 
+function referencesSymbol(node, symbol, checker) {
+  let found = false
+
+  function visit(current) {
+    if (ts.isIdentifier(current) && checker.getSymbolAtLocation(current) === symbol) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(current, visit)
+  }
+
+  visit(node)
+  return found
+}
+
+function handlerLogsError(root, errorParameter, checker) {
+  const errorSymbol = checker.getSymbolAtLocation(errorParameter)
+  if (!errorSymbol) return false
+
+  let found = false
+
+  function visit(node) {
+    if (node !== root && (ts.isFunctionLike(node) || ts.isCatchClause(node))) return
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "console" &&
+      node.expression.name.text === "error" &&
+      node.arguments.some((argument) => referencesSymbol(argument, errorSymbol, checker))
+    ) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(node, visit)
+  }
+
+  visit(root)
+  return found
+}
+
 test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", true), true)
   assert.equal(isAgentModeEnabled("test", true), false)
@@ -275,6 +316,17 @@ test("web content save errors explain actionable validation failures", () => {
     associationSaveErrorMessage(new Error("INVALID_LOGO_TYPE")),
     "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
   )
+  assert.equal(
+    associationSaveErrorMessage(new Error("INVALID_FILE_TYPE")),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
+  assert.equal(
+    associationSaveErrorMessage({
+      message: "Input validation failed",
+      data: { zodError: { properties: { logo: { errors: ["Too big: expected value to be <= 1048576"] } } } },
+    }),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
 })
 
 test("project and association mutations forward FormData to the backend", async () => {
@@ -296,16 +348,28 @@ test("project and association mutations forward FormData to the backend", async 
 test("every caught runtime error is written to the console", async () => {
   const srcDirectory = new URL("../src", import.meta.url).pathname
   const failures = []
+  const files = await sourceFiles(srcDirectory)
+  const program = ts.createProgram(files, {
+    allowJs: true,
+    jsx: ts.JsxEmit.Preserve,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    noEmit: true,
+    target: ts.ScriptTarget.Latest,
+  })
+  const checker = program.getTypeChecker()
 
-  for (const file of await sourceFiles(srcDirectory)) {
-    const source = await readFile(file, "utf8")
-    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  for (const file of files) {
+    const sourceFile = program.getSourceFile(file)
+    assert.ok(sourceFile, `TypeScript must load ${file}`)
 
     function visit(node) {
       if (ts.isCatchClause(node)) {
-        const errorName = node.variableDeclaration?.name.getText(sourceFile)
-        const body = node.block.getText(sourceFile)
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const errorParameter = node.variableDeclaration?.name
+        const logsCaughtError =
+          errorParameter && ts.isIdentifier(errorParameter)
+            ? handlerLogsError(node.block, errorParameter, checker)
+            : false
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
@@ -319,12 +383,17 @@ test("every caught runtime error is written to the console", async () => {
         node.expression.name.text === "catch"
       ) {
         const handler = node.arguments[0]
-        const errorName =
+        const errorParameter =
           handler && (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
-            ? handler.parameters[0]?.name.getText(sourceFile)
+            ? handler.parameters[0]?.name
             : undefined
-        const body = handler?.getText(sourceFile) ?? ""
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const logsCaughtError =
+          errorParameter &&
+          ts.isIdentifier(errorParameter) &&
+          handler &&
+          (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
+            ? handlerLogsError(handler.body, errorParameter, checker)
+            : false
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
