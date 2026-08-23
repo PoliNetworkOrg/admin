@@ -119,15 +119,17 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       return
     }
 
-    saveCurrentIfValid()
+    if (editingId) {
+      handleCancel(editingId)
+    }
 
     const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqs.map((item) => item.faqId))) + 1
     const newItem: FAQItem = {
       faqId: newId,
-      titleIt: editQuestionIt,
-      titleEn: editQuestionEn || editQuestionIt,
-      descriptionIt: editAnswerIt,
-      descriptionEn: editAnswerEn || editAnswerIt,
+      titleIt: "",
+      titleEn: "",
+      descriptionIt: "",
+      descriptionEn: "",
     }
 
     setFaqs((prev) =>
@@ -153,8 +155,8 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
 
   const handleEdit = (e: React.MouseEvent, item: FAQItem) => {
     e.stopPropagation()
-    if (editingId !== item.faqId) {
-      saveCurrentIfValid()
+    if (editingId && editingId !== item.faqId) {
+      handleCancel(editingId)
     }
     setEditingId(item.faqId)
     setEditQuestionIt(item.titleIt)
@@ -164,55 +166,65 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
     setOpenItems((prev) => (prev.includes(item.faqId) ? prev : [...prev, item.faqId]))
   }
 
-  const handleSave = (id: number) => {
+  const handleSave = async (id: number) => {
     if (!categoryId) return
     const qIt = editQuestionIt.trim()
-    const qEn = editQuestionEn.trim() || qIt
+    const qEn = editQuestionEn.trim()
     const aIt = editAnswerIt.trim()
-    const aEn = editAnswerEn.trim() || aIt
+    const aEn = editAnswerEn.trim()
 
     if (!qIt) return toast.error("Question (Italian) is required.")
     if (!aIt) return toast.error("Answer (Italian) is required.")
+    if (!qEn) return toast.error("Question (English) is required.")
+    if (!aEn) return toast.error("Answer (English) is required.")
 
     const isNew = unsavedIds.includes(id)
     const savePromise = isNew
       ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
       : editFAQFn({ data: { id, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
 
-    savePromise
-      .then(() => {
-        setFaqs((prev) =>
-          prev.map((faq) => {
-            if (faq.categoryId === categoryId) {
-              return {
-                ...faq,
-                faqs: faq.faqs.map((item) => {
-                  if (item.faqId === id) {
-                    return {
-                      ...item,
-                      faqId: id,
-                      titleIt: qIt,
-                      titleEn: qEn,
-                      descriptionIt: aIt,
-                      descriptionEn: aEn,
-                    }
+    try {
+      const res = await savePromise
+      const savedId = isNew ? res.id : id
+
+      setFaqs((prev) =>
+        prev.map((faq) => {
+          if (faq.categoryId === categoryId) {
+            return {
+              ...faq,
+              faqs: faq.faqs.map((item) => {
+                if (item.faqId === id) {
+                  return {
+                    ...item,
+                    faqId: savedId,
+                    titleIt: qIt,
+                    titleEn: qEn,
+                    descriptionIt: aIt,
+                    descriptionEn: aEn,
                   }
-                  return item
-                }),
-              }
+                }
+                return item
+              }),
             }
-            return faq
-          })
-        )
-        setUnsavedIds((prev) => prev.filter((x) => x !== id))
-        setEditingId(null)
-        setEditQuestionIt("")
-        setEditQuestionEn("")
-        setEditAnswerIt("")
-        setEditAnswerEn("")
-        toast.success("FAQ saved successfully.")
-      })
-      .catch((e: string) => toast.error(`Failed to save FAQ: ${e}`))
+          }
+          return faq
+        })
+      )
+
+      setUnsavedIds((prev) => prev.filter((x) => x !== id))
+      if (isNew) {
+        setOpenItems((prev) => prev.map((item) => (item === id ? savedId : item)))
+      }
+      setEditingId(null)
+      setEditQuestionIt("")
+      setEditQuestionEn("")
+      setEditAnswerIt("")
+      setEditAnswerEn("")
+      toast.success("FAQ saved successfully.")
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      toast.error(`Failed to save FAQ: ${errorMessage}`)
+    }
   }
 
   const handleDelete = (e: React.MouseEvent, id: number) => {
@@ -250,8 +262,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
   }
 
   const handleCancel = (id: number) => {
-    const item = faqs?.flatMap((f) => f.faqs).find((f) => f.faqId === id)
-    if (item && !item.titleIt.trim() && !item.descriptionIt.trim()) {
+    if (unsavedIds.includes(id)) {
       setFaqs((prev) =>
         prev.map((faq) => {
           if (faq.categoryId === categoryId) {
@@ -264,62 +275,13 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         })
       )
       setUnsavedIds((prev) => prev.filter((x) => x !== id))
+      setOpenItems((prev) => prev.filter((v) => v !== id))
     }
     setEditingId(null)
     setEditQuestionIt("")
     setEditQuestionEn("")
     setEditAnswerIt("")
     setEditAnswerEn("")
-  }
-
-  const saveCurrentIfValid = () => {
-    if (!editingId || !categoryId) return
-    const qIt = editQuestionIt.trim()
-    const qEn = editQuestionEn.trim() || qIt
-    const aIt = editAnswerIt.trim()
-    const aEn = editAnswerEn.trim() || aIt
-
-    if (qIt && aIt) {
-      const currentId = editingId
-      const isNew = unsavedIds.includes(currentId)
-      const savePromise = isNew
-        ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
-        : editFAQFn({
-            data: { id: currentId, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId },
-          })
-
-      savePromise
-        .then(() => {
-          setFaqs((prev) =>
-            prev.map((faq) => {
-              if (faq.categoryId === categoryId) {
-                return {
-                  ...faq,
-                  faqs: faq.faqs.map((item) => {
-                    if (item.faqId === currentId) {
-                      return {
-                        ...item,
-                        faqId: currentId,
-                        titleIt: qIt,
-                        titleEn: qEn,
-                        descriptionIt: aIt,
-                        descriptionEn: aEn,
-                      }
-                    }
-                    return item
-                  }),
-                }
-              }
-              return faq
-            })
-          )
-          setUnsavedIds((prev) => prev.filter((x) => x !== currentId))
-          toast.success("Previous FAQ saved successfully.")
-        })
-        .catch((e: string) => toast.error(`Failed to save previous FAQ: ${e}`))
-    } else {
-      handleCancel(editingId)
-    }
   }
 
   const activeCategory = faqs.find((c) => c.categoryId === categoryId)
@@ -337,7 +299,9 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         categories={faqs}
         activeCategoryId={categoryId || null}
         onSelectCategory={(id: React.SetStateAction<number | null>) => {
-          saveCurrentIfValid()
+          if (editingId) {
+            handleCancel(editingId)
+          }
           setCategoryId(id)
         }}
         onDeleteCategory={handleDeleteCategory}

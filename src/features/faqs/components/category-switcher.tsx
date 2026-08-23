@@ -23,7 +23,7 @@ export function CategorySwitcher({
   const activeCategory = categories.find((c) => c.categoryId === activeCategoryId)
   const categoryOptions = categories.map((c) => ({
     value: String(c.categoryId),
-    label: `${c.titleIt}`,
+    label: `${c.titleIt} / ${c.titleEn}`,
   }))
 
   return (
