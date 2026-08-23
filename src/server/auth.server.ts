@@ -44,7 +44,6 @@ export function getAgentSession() {
   return agentSession
 }
 
-// oxlint-disable-next-line typescript/no-redundant-type-constituents -- Better Auth infers this session through its plugin phantom type.
 async function readSession(requestHeaders: Headers): Promise<AdminSession | null> {
   if (isAgentMode()) return agentSession
 

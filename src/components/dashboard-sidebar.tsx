@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-shape-in-symbol-names -- React's standard SVG shapeRendering attribute is not a user-named symbol. */
-
 import { Link, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -44,7 +42,6 @@ const selectedPageClass =
   "data-active:bg-sidebar-primary/15 data-active:font-medium data-active:text-sidebar-accent-foreground data-active:hover:bg-sidebar-primary/20"
 
 type DashboardSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- Better Auth infers this user through its plugin phantom type.
   user: AdminSession["user"] | undefined
   loggingOut: boolean
   onLogout: () => void
@@ -155,11 +152,10 @@ export function DashboardSidebar({ user, loggingOut, onLogout, ...props }: Dashb
                         <svg
                           aria-hidden="true"
                           viewBox={`0 0 10 ${connectorHeight}`}
-                          className="pointer-events-none absolute top-0 left-0 h-full w-2.5 overflow-visible text-sidebar-border"
+                          className="pointer-events-none absolute top-0 left-0 h-full w-2.5 overflow-visible text-sidebar-border [shape-rendering:crispEdges]"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="1"
-                          shapeRendering="crispEdges"
                         >
                           <path d={railPath} vectorEffect="non-scaling-stroke" />
                           {itemCenters.map((center, index) =>

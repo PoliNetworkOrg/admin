@@ -29,7 +29,7 @@ const MAX_ANGLE = Math.PI / 2
 const RUBBER_BAND = 0.32
 const FLICK_POWER = 0.22
 
-export type WheelPickerOption = string | { value: string; label?: ReactNode; disabled?: boolean }
+export type WheelPickerOption = { value: string; label?: ReactNode; disabled?: boolean }
 
 type NormalizedOption = {
   value: string
@@ -77,11 +77,6 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function normalizeOption(option: WheelPickerOption): NormalizedOption {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- WheelPickerOption is an already-validated string-or-object union.
-  if (typeof option === "string") {
-    return { value: option, label: option, disabled: false }
-  }
-
   return {
     value: option.value,
     label: option.label ?? option.value,

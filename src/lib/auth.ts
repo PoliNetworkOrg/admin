@@ -10,4 +10,4 @@ export const auth = createAuthClient({
 
 export const { signIn, signOut, useSession } = auth
 
-export type AdminSession = NonNullable<Awaited<ReturnType<typeof auth.getSession>>["data"]>
+export type AdminSession = typeof auth.$Infer.Session

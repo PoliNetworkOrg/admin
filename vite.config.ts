@@ -6,14 +6,14 @@ import { defineConfig, lazyPlugins } from "vite-plus"
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [".output/**", ".tanstack/**", "build/**", "dist/**", "src/routeTree.gen.ts"],
+    ignorePatterns: [".output/**", ".tanstack/**", "src/routeTree.gen.ts"],
     printWidth: 120,
     semi: false,
     sortImports: true,
     trailingComma: "es5",
   },
   lint: {
-    ignorePatterns: [".output/**", ".tanstack/**", "build/**", "dist/**", "src/routeTree.gen.ts"],
+    ignorePatterns: [".output/**", ".tanstack/**", "src/routeTree.gen.ts"],
     jsPlugins: [
       { name: "anti-slop", specifier: "@zap-studio/oxlint/anti-slop" },
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
