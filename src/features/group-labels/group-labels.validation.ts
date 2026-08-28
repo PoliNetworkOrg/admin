@@ -1,24 +1,23 @@
 import { z } from "zod"
 
-import { errorHasCode } from "@/lib/errors"
+import { errorHasZodField, errorMessage } from "@/lib/errors"
 
-import { GROUP_LABEL_COLOR_NAMES, GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX } from "./group-labels.constants"
+import { GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX } from "./group-labels.constants"
 
-const groupLabelFieldsInput = z.object({
-  label: z.string().trim().min(1).max(GROUP_LABEL_MAX),
-  color: z.enum(GROUP_LABEL_COLOR_NAMES),
-  description: z.string().trim().max(GROUP_LABEL_DESCRIPTION_MAX),
-})
+const label = z.string().trim().min(1).max(GROUP_LABEL_MAX)
+const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/)
+const description = z.string().trim().max(GROUP_LABEL_DESCRIPTION_MAX)
 
-export const createGroupLabelInput = groupLabelFieldsInput
-export const editGroupLabelInput = groupLabelFieldsInput.extend({ id: z.number().int().positive() })
-export const groupLabelIdInput = z.object({ id: z.number().int().positive() })
+export const createGroupLabelInput = z.object({ label, color, description })
+export const editGroupLabelInput = z.object({ label, color, description })
+export const groupLabelIdentifierInput = z.object({ label })
 
 export function groupLabelSaveErrorMessage(cause: unknown) {
-  if (errorHasCode(cause, "NOT_FOUND")) return "This label no longer exists."
-  if (errorHasCode(cause, "INVALID_LABEL")) return `Enter a label no longer than ${GROUP_LABEL_MAX} characters.`
-  if (errorHasCode(cause, "INVALID_DESCRIPTION")) {
+  if (errorHasZodField(cause, "label")) return `Enter a label between 1 and ${GROUP_LABEL_MAX} characters.`
+  if (errorHasZodField(cause, "color")) return "Choose a valid color."
+  if (errorHasZodField(cause, "description")) {
     return `Enter a description no longer than ${GROUP_LABEL_DESCRIPTION_MAX} characters.`
   }
+  if (/duplicate|unique/i.test(errorMessage(cause, ""))) return "A label with this name already exists."
   return "The label could not be saved. Check your permissions and try again."
 }

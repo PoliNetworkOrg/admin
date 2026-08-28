@@ -1,10 +1,9 @@
-import type { GroupLabelColorName } from "./group-labels.constants"
+import type { TgGroupLabel } from "@/lib/api/types"
 
-export type GroupLabel = {
-  id: number
+export type GroupLabel = TgGroupLabel
+
+export type GroupLabelFormValues = {
   label: string
-  color: GroupLabelColorName
+  color: string
   description: string
 }
-
-export type GroupLabelFormValues = Pick<GroupLabel, "label" | "color" | "description">

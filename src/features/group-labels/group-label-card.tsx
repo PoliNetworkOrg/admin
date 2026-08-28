@@ -43,7 +43,7 @@ export function GroupLabelCard({
   const [label, setLabel] = useState(groupLabel.label)
   const [editing, setEditing] = useState(initialEditActive)
   const [color, setColor] = useState(groupLabel.color)
-  const [description, setDescription] = useState(groupLabel.description)
+  const [description, setDescription] = useState(groupLabel.description ?? "")
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -52,7 +52,7 @@ export function GroupLabelCard({
   function resetFields() {
     setLabel(groupLabel.label)
     setColor(groupLabel.color)
-    setDescription(groupLabel.description)
+    setDescription(groupLabel.description ?? "")
   }
 
   function cancelEdit() {
@@ -108,19 +108,27 @@ export function GroupLabelCard({
                 )}
                 <div className="flex items-center gap-2">
                   <GroupLabelColorPicker value={color} onChange={setColor} />
-                  <Input
-                    aria-label="Label"
-                    value={label}
-                    onChange={(event) => setLabel(event.target.value)}
-                    className="bg-background text-base font-medium"
-                    maxLength={GROUP_LABEL_MAX}
-                    required
-                    autoFocus={draft}
-                  />
+                  {draft ? (
+                    <Input
+                      aria-label="Label"
+                      value={label}
+                      onChange={(event) => setLabel(event.target.value)}
+                      className="bg-background text-base font-medium"
+                      maxLength={GROUP_LABEL_MAX}
+                      required
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-base font-medium" title="The label name can't be changed after creation.">
+                      {label}
+                    </span>
+                  )}
                 </div>
               </div>
             ) : (
-              <Badge className={cn("h-auto py-1 text-sm", swatch.badge)}>{groupLabel.label}</Badge>
+              <Badge className={cn("h-auto py-1 text-sm", swatch.badgeClassName)} style={swatch.badgeStyle}>
+                {groupLabel.label}
+              </Badge>
             )}
           </CardTitle>
           <CardAction className="flex items-center gap-1.5">
