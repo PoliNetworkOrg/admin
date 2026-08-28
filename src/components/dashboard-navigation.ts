@@ -8,6 +8,7 @@ import {
   type LucideIcon,
   Settings,
   ShieldCheck,
+  Tags,
   Users,
   UsersRound,
 } from "lucide-react"
@@ -63,6 +64,7 @@ export const dashboardNavigation = [
       { title: "Associations", url: "/dashboard/web/associations", icon: Users },
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
       { title: "FAQs", url: "/dashboard/web/faqs", icon: CircleQuestionMark },
+      { title: "Group labels", url: "/dashboard/web/group-labels", icon: Tags },
     ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]

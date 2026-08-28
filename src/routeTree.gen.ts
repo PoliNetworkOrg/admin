@@ -18,6 +18,7 @@ import { Route as OnboardingLinkRouteImport } from './routes/onboarding/link'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
+import { Route as DashboardWebGroupLabelsRouteImport } from './routes/dashboard/web/group-labels'
 import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faqs'
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
@@ -71,6 +72,11 @@ const DashboardWebProjectsRoute = DashboardWebProjectsRouteImport.update({
 const DashboardWebGuidesRoute = DashboardWebGuidesRouteImport.update({
   id: '/web/guides',
   path: '/web/guides',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWebGroupLabelsRoute = DashboardWebGroupLabelsRouteImport.update({
+  id: '/web/group-labels',
+  path: '/web/group-labels',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardWebFaqsRoute = DashboardWebFaqsRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
     | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
     | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
     | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
@@ -318,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebGuidesRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/web/group-labels': {
+      id: '/dashboard/web/group-labels'
+      path: '/web/group-labels'
+      fullPath: '/dashboard/web/group-labels'
+      preLoaderRoute: typeof DashboardWebGroupLabelsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/web/faqs': {
       id: '/dashboard/web/faqs'
       path: '/web/faqs'
@@ -393,6 +412,7 @@ interface DashboardRouteChildren {
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
   DashboardWebFaqsRoute: typeof DashboardWebFaqsRoute
+  DashboardWebGroupLabelsRoute: typeof DashboardWebGroupLabelsRoute
   DashboardWebGuidesRoute: typeof DashboardWebGuidesRoute
   DashboardWebProjectsRoute: typeof DashboardWebProjectsRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
@@ -408,6 +428,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
   DashboardWebFaqsRoute: DashboardWebFaqsRoute,
+  DashboardWebGroupLabelsRoute: DashboardWebGroupLabelsRoute,
   DashboardWebGuidesRoute: DashboardWebGuidesRoute,
   DashboardWebProjectsRoute: DashboardWebProjectsRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
