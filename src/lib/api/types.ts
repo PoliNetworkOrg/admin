@@ -12,4 +12,7 @@ export type TgUserRole = NonNullable<ApiInput["tg"]["permissions"]["addRole"]["r
 
 export type AzureMember = ApiOutput["azure"]["members"]["getAll"][number]
 export type AzureGroup = ApiOutput["azure"]["groups"]["getAll"][number]
+
+export type FAQs = ApiOutput["web"]["faqs"]["getAllFaqs"]
+export type FAQItem = FAQs[number]["faqs"][number]
 export type WebProject = ApiOutput["web"]["projects"]["getAllProjects"][number]
