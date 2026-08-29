@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,8 @@ import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import type { TgGroupLabel, WaGroup } from "@/lib/api/types"
 
 /**
- * TODO: this only updates in-memory state for the current page load. There's no `wa_group_label_relations`
- * table (or platform-aware version of the tg one) yet, so nothing is persisted to the backend.
+ * TODO: `onSave` writes to an in-memory placeholder store (see groups.functions.ts), not a real
+ * `wa_group_label_relations` table — it resets if the server restarts.
  */
 export function WhatsappGroupLabelsDialog({
   group,
@@ -27,9 +28,10 @@ export function WhatsappGroupLabelsDialog({
   allLabels: TgGroupLabel[]
   currentLabels: TgGroupLabel[]
   onClose: () => void
-  onSave: (labels: TgGroupLabel[]) => void
+  onSave: (labels: TgGroupLabel[]) => Promise<void>
 }) {
   const [selected, setSelected] = useState<TgGroupLabel[]>(currentLabels)
+  const [pending, setPending] = useState(false)
   const open = group !== null
 
   useEffect(() => {
@@ -47,19 +49,25 @@ export function WhatsappGroupLabelsDialog({
     })
   }
 
-  function save() {
-    onSave(selected)
-    onClose()
+  async function save() {
+    if (pending) return
+    setPending(true)
+    try {
+      await onSave(selected)
+      onClose()
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !pending && !nextOpen && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit labels</DialogTitle>
           <DialogDescription>
-            {group ? `Choose the labels that apply to ${group.title}.` : null} Not saved to the backend yet — this is a
-            placeholder until WhatsApp groups get real label storage.
+            {group ? `Choose the labels that apply to ${group.title}.` : null} Stored in memory only for now — it resets
+            if the server restarts.
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -71,10 +79,11 @@ export function WhatsappGroupLabelsDialog({
           )}
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" onClick={save}>
+          <Button type="button" disabled={pending} onClick={() => void save()}>
+            {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
             Save labels
           </Button>
         </DialogFooter>

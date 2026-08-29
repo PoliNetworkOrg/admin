@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, webWriteAdminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getWhatsappGroups = createServerFn()
   .middleware([adminMiddleware])
@@ -14,7 +14,7 @@ const whatsappGroupFields = z.object({
 })
 
 export const createWhatsappGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(whatsappGroupFields)
   .handler(async ({ data, context }) => {
     const [created] = await context.backend.wa.groups.create.mutate(data)
@@ -37,5 +37,29 @@ export const deleteWhatsappGroup = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data, context }) => {
     await context.backend.wa.groups.delete.mutate({ id: data.id })
+    waGroupLabelRelations = waGroupLabelRelations.filter((relation) => relation.groupId !== data.id)
     return { error: null }
+  })
+
+export type WaGroupLabelRelation = { groupId: number; label: string }
+
+/**
+ * TODO: placeholder in-memory store (resets on server restart). Replace with a real `wa_group_label_relations`
+ * table (mirroring the tg one) once WhatsApp groups get backend-persisted labels.
+ */
+let waGroupLabelRelations: WaGroupLabelRelation[] = []
+
+export const getWhatsappGroupLabelRelations = createServerFn()
+  .middleware([adminMiddleware])
+  .handler(() => waGroupLabelRelations)
+
+export const setWhatsappGroupLabels = createServerFn({ method: "POST" })
+  .middleware([webWriteAdminMiddleware])
+  .validator(z.object({ groupId: z.number(), labels: z.array(z.string()) }))
+  .handler(({ data }) => {
+    waGroupLabelRelations = [
+      ...waGroupLabelRelations.filter((relation) => relation.groupId !== data.groupId),
+      ...data.labels.map((label) => ({ groupId: data.groupId, label })),
+    ]
+    return waGroupLabelRelations
   })

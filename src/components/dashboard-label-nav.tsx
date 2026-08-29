@@ -1,11 +1,25 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, MoreVertical, Pencil, Plus } from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
-import { buildLabelTree, labelPathToUrlSegments, type LabelTreeNode } from "@/features/group-labels/label-tree"
+import {
+  buildLabelTree,
+  collectSubtreeLabels,
+  labelPathToUrlSegments,
+  type LabelTreeNode,
+} from "@/features/group-labels/label-tree"
+import { RenameLabelDialog } from "@/features/group-labels/rename-label-dialog"
+import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import type { TgGroupLabel } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
@@ -27,10 +41,12 @@ function LabelNavNode({
   const isActive = pathname === url
   // Starts collapsed, except when the current page is this node or nested under it, so the active trail stays visible.
   const [open, setOpen] = useState(isActive || pathname.startsWith(`${url}/`))
+  const [addChildOpen, setAddChildOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
 
   return (
     <SidebarMenuSubItem>
-      <div className="flex items-center gap-0.5">
+      <div className="group/nav-item flex items-center gap-0.5">
         <SidebarMenuSubButton
           isActive={isActive}
           render={<Link to={url} onClick={onNavigate} />}
@@ -41,6 +57,30 @@ function LabelNavNode({
         >
           <span className="truncate">{node.segment}</span>
         </SidebarMenuSubButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="shrink-0 text-sidebar-foreground/50 opacity-0 hover:bg-sidebar-accent/60 focus-visible:opacity-100 group-hover/nav-item:opacity-100 data-open:opacity-100"
+              />
+            }
+          >
+            <MoreVertical />
+            <span className="sr-only">More actions for {node.segment}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="right">
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => setRenameOpen(true)}>
+                <Pencil /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAddChildOpen(true)}>
+                <Plus /> Add sub-category
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {hasChildren && (
           <Button
             type="button"
@@ -65,6 +105,14 @@ function LabelNavNode({
           </CollapsibleContent>
         </Collapsible>
       )}
+      <AddChildLabelDialog path={node.path} open={addChildOpen} onOpenChange={setAddChildOpen} />
+      <RenameLabelDialog
+        path={node.path}
+        segment={node.segment}
+        affectedLabels={collectSubtreeLabels(node)}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+      />
     </SidebarMenuSubItem>
   )
 }

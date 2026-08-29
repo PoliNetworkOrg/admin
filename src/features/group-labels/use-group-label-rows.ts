@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { DEFAULT_GROUP_LABEL_COLOR } from "./group-labels.constants"
-import { createGroupLabel, deleteGroupLabel, editGroupLabel } from "./group-labels.functions"
+import { createGroupLabel, deleteGroupLabel, editGroupLabel, renameGroupLabel } from "./group-labels.functions"
 import { groupLabelSaveErrorMessage } from "./group-labels.validation"
 import type { GroupLabel, GroupLabelFormValues } from "./types"
 
@@ -18,6 +18,7 @@ export function useGroupLabelRows(loadedGroupLabels: GroupLabel[]) {
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
   const editGroupLabelFn = useServerFn(editGroupLabel)
+  const renameGroupLabelFn = useServerFn(renameGroupLabel)
   const deleteGroupLabelFn = useServerFn(deleteGroupLabel)
   const [rows, setRows] = useState<GroupLabelRow[]>(() => toRows(loadedGroupLabels))
 
@@ -62,18 +63,28 @@ export function useGroupLabelRows(loadedGroupLabels: GroupLabel[]) {
   }
 
   async function saveGroupLabel(row: GroupLabelRow, values: GroupLabelFormValues) {
+    const renamed = !row.draft && values.label !== row.groupLabel.label
     try {
       const saved = row.draft
         ? await createGroupLabelFn({ data: values })
-        : await editGroupLabelFn({
-            data: { label: row.groupLabel.label, color: values.color, description: values.description },
-          })
+        : renamed
+          ? await renameGroupLabelFn({
+              data: {
+                label: row.groupLabel.label,
+                newLabel: values.label,
+                color: values.color,
+                description: values.description,
+              },
+            })
+          : await editGroupLabelFn({
+              data: { label: row.groupLabel.label, color: values.color, description: values.description },
+            })
       setRows((current) =>
         current.map((current_) =>
           current_.key === row.key ? { key: saved.label, groupLabel: saved, draft: false } : current_
         )
       )
-      toast.success(`Label ${row.draft ? "created" : "updated"}`)
+      toast.success(`Label ${row.draft ? "created" : renamed ? "renamed" : "updated"}`)
       void refresh()
       return true
     } catch (cause) {

@@ -2,17 +2,20 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
-import { GroupsByLabelPage } from "@/features/telegram/groups-by-label-page"
+import { GroupsByLabelPage } from "@/features/groups-by-label/groups-by-label-page"
 import { getGroupLabelRelations, getGroupLabels, getTelegramGroups } from "@/features/telegram/groups.functions"
+import { getWhatsappGroupLabelRelations, getWhatsappGroups } from "@/features/whatsapp/groups.functions"
 
 export const Route = createFileRoute("/dashboard/web/groups-by-label/$")({
   loader: async () => {
-    const [groups, groupLabels, groupLabelRelations] = await Promise.all([
+    const [tgGroups, groupLabels, tgGroupLabelRelations, waGroups, waGroupLabelRelations] = await Promise.all([
       getTelegramGroups(),
       getGroupLabels(),
       getGroupLabelRelations(),
+      getWhatsappGroups(),
+      getWhatsappGroupLabelRelations(),
     ])
-    return { groups, groupLabels, groupLabelRelations }
+    return { tgGroups, groupLabels, tgGroupLabelRelations, waGroups, waGroupLabelRelations }
   },
   pendingComponent: () => <DataPageSkeleton columns={5} />,
   component: GroupsByLabelRoute,
@@ -20,15 +23,17 @@ export const Route = createFileRoute("/dashboard/web/groups-by-label/$")({
 
 function GroupsByLabelRoute() {
   const { _splat } = Route.useParams()
-  const { groups, groupLabels, groupLabelRelations } = Route.useLoaderData()
+  const { tgGroups, groupLabels, tgGroupLabelRelations, waGroups, waGroupLabelRelations } = Route.useLoaderData()
   const path = urlSegmentsToLabelPath((_splat ?? "").split("/"))
 
   return (
     <GroupsByLabelPage
       path={path}
-      loadedGroups={groups}
+      loadedTgGroups={tgGroups}
       loadedGroupLabels={groupLabels}
-      loadedGroupLabelRelations={groupLabelRelations}
+      loadedTgGroupLabelRelations={tgGroupLabelRelations}
+      loadedWaGroups={waGroups}
+      loadedWaGroupLabelRelations={waGroupLabelRelations}
     />
   )
 }

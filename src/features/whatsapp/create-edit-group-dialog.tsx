@@ -1,7 +1,7 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { LoaderCircle, Pencil, Plus } from "lucide-react"
-import { useId, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -14,29 +14,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { createWhatsappGroup, editWhatsappGroup } from "@/features/whatsapp/groups.functions"
+import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
+import { createGroupLabel } from "@/features/group-labels/group-labels.functions"
+import { createWhatsappGroup, editWhatsappGroup, setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
+import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
 import type { WaGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 
-const LINK_PATTERN = /^https:\/\/chat\.whatsapp\.com\//
-
-export function CreateEditGroupDialog({ group }: { group?: WaGroup }) {
+export function CreateEditGroupDialog({
+  group,
+  autoAssignLabel,
+  autoAssignLabelExists = false,
+}: {
+  group?: WaGroup
+  /** When set (e.g. from a "groups by label" branch page), the new group is tagged with this label after creation. */
+  autoAssignLabel?: string
+  /** Whether `autoAssignLabel` already exists as a real label; if not, it's created first. */
+  autoAssignLabelExists?: boolean
+}) {
   const router = useRouter()
   const createGroupFn = useServerFn(createWhatsappGroup)
   const editGroupFn = useServerFn(editWhatsappGroup)
+  const createGroupLabelFn = useServerFn(createGroupLabel)
+  const setGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(group?.title ?? "")
   const [tag, setTag] = useState(group?.tag ?? "")
   const [link, setLink] = useState(group?.link ?? "")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
-  const titleId = useId()
-  const tagId = useId()
-  const linkId = useId()
 
-  const canSave = Boolean(title.trim()) && LINK_PATTERN.test(link.trim())
+  const canSave = Boolean(title.trim()) && WHATSAPP_LINK_PATTERN.test(link.trim())
 
   function reset() {
     setTitle(group?.title ?? "")
@@ -56,8 +64,25 @@ export function CreateEditGroupDialog({ group }: { group?: WaGroup }) {
         await editGroupFn({ data: { id: group.id, ...values } })
         toast.success(`${values.title} updated.`)
       } else {
-        await createGroupFn({ data: values })
-        toast.success(`${values.title} added.`)
+        const created = await createGroupFn({ data: values })
+        if (autoAssignLabel) {
+          try {
+            if (!autoAssignLabelExists) {
+              await createGroupLabelFn({
+                data: { label: autoAssignLabel, color: DEFAULT_GROUP_LABEL_COLOR, description: "" },
+              })
+            }
+            await setGroupLabelsFn({ data: { groupId: created.id, labels: [autoAssignLabel] } })
+            toast.success(`${values.title} added and labeled "${autoAssignLabel}".`)
+          } catch (tagCause) {
+            console.error(tagCause)
+            toast.warning(
+              `${values.title} was added, but could not be labeled "${autoAssignLabel}". Assign it manually.`
+            )
+          }
+        } else {
+          toast.success(`${values.title} added.`)
+        }
       }
       setOpen(false)
       if (!group) reset()
@@ -95,39 +120,30 @@ export function CreateEditGroupDialog({ group }: { group?: WaGroup }) {
         <DialogHeader>
           <DialogTitle>{group ? "Edit WhatsApp group" : "Add WhatsApp group"}</DialogTitle>
           <DialogDescription>
-            {group
-              ? "Update this group's details."
-              : "Register a WhatsApp group. There's no bot managing WhatsApp groups yet, so this is just a manual record."}
+            {group ? (
+              "Update this group's details."
+            ) : (
+              <>
+                Register a WhatsApp group. There's no bot managing WhatsApp groups yet, so this is just a manual record.
+                {autoAssignLabel && (
+                  <>
+                    {" "}
+                    It will be labeled <strong className="text-foreground">{autoAssignLabel}</strong>.
+                  </>
+                )}
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-          <Field>
-            <FieldLabel htmlFor={titleId}>Title</FieldLabel>
-            <Input
-              id={titleId}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Gruppo Informatica 1"
-              maxLength={200}
-              required
-              autoFocus
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor={tagId}>Tag (optional)</FieldLabel>
-            <Input id={tagId} value={tag} onChange={(event) => setTag(event.target.value)} placeholder="informatica" />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor={linkId}>Invite link</FieldLabel>
-            <Input
-              id={linkId}
-              value={link}
-              onChange={(event) => setLink(event.target.value)}
-              placeholder="https://chat.whatsapp.com/…"
-              type="url"
-              required
-            />
-          </Field>
+          <WhatsappGroupFields
+            title={title}
+            onTitleChange={setTitle}
+            tag={tag}
+            onTagChange={setTag}
+            link={link}
+            onLinkChange={setLink}
+          />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>

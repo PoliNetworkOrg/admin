@@ -1,6 +1,9 @@
+import { useRouter } from "@tanstack/react-router"
+import { useServerFn } from "@tanstack/react-start"
 import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown, ExternalLink, MessageCircleMore, Tag } from "lucide-react"
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
@@ -17,9 +20,11 @@ import {
 } from "@/components/ui/popover"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
 import { getGroupLabelColor, isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { buildLabelsByGroupId } from "@/features/group-labels/label-tree"
 import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
+import { setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
 import { WhatsappGroupLabelsDialog } from "@/features/whatsapp/whatsapp-group-labels-dialog"
 import type { TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
@@ -38,16 +43,23 @@ const groupColumnHelper = createAppColumnHelper<WaGroup>()
 export function WhatsappGroupsPage({
   loadedGroups,
   loadedGroupLabels,
+  loadedGroupLabelRelations,
 }: {
   loadedGroups: WaGroup[]
   loadedGroupLabels: TgGroupLabel[]
+  loadedGroupLabelRelations: { groupId: number; label: string }[]
 }) {
+  const router = useRouter()
+  const setWhatsappGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
   const [query, setQuery] = useState("")
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
-  // Placeholder in-memory assignment: no backend storage for WhatsApp group labels yet (see WhatsappGroupLabelsDialog).
-  const [labelsByGroupId, setLabelsByGroupId] = useState<Map<number, TgGroupLabel[]>>(new Map())
   const [editingLabelsGroup, setEditingLabelsGroup] = useState<WaGroup | null>(null)
+
+  const labelsByGroupId = useMemo(
+    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupLabelRelations),
+    [loadedGroupLabels, loadedGroupLabelRelations]
+  )
 
   const visibleGroups = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
@@ -325,13 +337,17 @@ export function WhatsappGroupsPage({
         allLabels={loadedGroupLabels}
         currentLabels={editingLabelsGroup ? (labelsByGroupId.get(editingLabelsGroup.id) ?? []) : []}
         onClose={() => setEditingLabelsGroup(null)}
-        onSave={(labels) => {
+        onSave={async (labels) => {
           if (!editingLabelsGroup) return
-          setLabelsByGroupId((current) => {
-            const next = new Map(current)
-            next.set(editingLabelsGroup.id, labels)
-            return next
-          })
+          try {
+            await setWhatsappGroupLabelsFn({
+              data: { groupId: editingLabelsGroup.id, labels: labels.map((label) => label.label) },
+            })
+            await router.invalidate({ sync: true })
+          } catch (cause) {
+            console.error(cause)
+            toast.error("The labels could not be saved. Try again.")
+          }
         }}
       />
     </div>

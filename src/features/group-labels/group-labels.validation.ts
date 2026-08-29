@@ -10,6 +10,7 @@ const description = z.string().trim().max(GROUP_LABEL_DESCRIPTION_MAX)
 
 export const createGroupLabelInput = z.object({ label, color, description })
 export const editGroupLabelInput = z.object({ label, color, description })
+export const renameGroupLabelInput = z.object({ label, newLabel: label, color, description })
 export const groupLabelIdentifierInput = z.object({ label })
 
 export function groupLabelSaveErrorMessage(cause: unknown) {

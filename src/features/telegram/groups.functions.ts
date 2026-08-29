@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, webWriteAdminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getTelegramGroups = createServerFn()
   .middleware([adminMiddleware])
@@ -31,30 +31,14 @@ export const leaveTelegramGroup = createServerFn({ method: "POST" })
     context.backend.tg.groups.leaveChat.mutate({ chatId: data.chatId, performerId: context.telegramId })
   )
 
-const createGroupInput = z.object({
-  title: z.string().trim().min(1),
-  telegramId: z.number().int(),
-  tag: z.string().trim().optional(),
-  link: z.url({ hostname: /^t\.me$/ }),
-})
-
-export const createTelegramGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
-  .validator(createGroupInput)
-  .handler(async ({ data, context }) => {
-    const [telegramId] = await context.backend.tg.groups.create.mutate([data])
-    if (telegramId === undefined) throw new Error("GROUP_NOT_CREATED")
-    return { telegramId }
-  })
-
 const groupLabelTagInput = z.object({ groupId: z.number().int(), label: z.string().min(1).max(128) })
 
 export const tagTelegramGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(groupLabelTagInput)
   .handler(({ data, context }) => context.backend.tg.groupLabels.tagGroup.mutate(data))
 
 export const untagTelegramGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(groupLabelTagInput)
   .handler(({ data, context }) => context.backend.tg.groupLabels.untagGroup.mutate(data))

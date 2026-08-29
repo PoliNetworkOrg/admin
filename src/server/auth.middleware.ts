@@ -73,3 +73,12 @@ export const writeAdminMiddleware = createMiddleware({ type: "function" })
     if (!hasWriteAdminRole(context.roles)) throw new Error("UNAUTHORIZED")
     return next()
   })
+
+/** For mutations scoped to the /dashboard/web section: full write roles, plus the "web" role. */
+export const webWriteAdminMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(async ({ next, context }) => {
+    const { hasWebWriteRole } = await import("@/server/authorization")
+    if (!hasWebWriteRole(context.roles)) throw new Error("UNAUTHORIZED")
+    return next()
+  })

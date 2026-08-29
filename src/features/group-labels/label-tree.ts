@@ -56,6 +56,23 @@ export function matchesLabelBranch(groupLabels: GroupLabel[], path: string): boo
   return groupLabels.some((label) => label.label === path || label.label.startsWith(`${path}.`))
 }
 
+/** Joins a flat relations list (groupId, label) against the label definitions to get each group's full label objects. */
+export function buildLabelsByGroupId(
+  labels: GroupLabel[],
+  relations: { groupId: number; label: string }[]
+): Map<number, GroupLabel[]> {
+  const labelsByName = new Map(labels.map((label) => [label.label, label]))
+  const map = new Map<number, GroupLabel[]>()
+  for (const relation of relations) {
+    const label = labelsByName.get(relation.label)
+    if (!label) continue
+    const existing = map.get(relation.groupId)
+    if (existing) existing.push(label)
+    else map.set(relation.groupId, [label])
+  }
+  return map
+}
+
 /** Every real label in a node's own subtree (itself, if it has one, plus all of its descendants). */
 export function collectSubtreeLabels(node: LabelTreeNode): GroupLabel[] {
   const labels: GroupLabel[] = []

@@ -108,21 +108,15 @@ export function GroupLabelCard({
                 )}
                 <div className="flex items-center gap-2">
                   <GroupLabelColorPicker value={color} onChange={setColor} />
-                  {draft ? (
-                    <Input
-                      aria-label="Label"
-                      value={label}
-                      onChange={(event) => setLabel(event.target.value)}
-                      className="bg-background text-base font-medium"
-                      maxLength={GROUP_LABEL_MAX}
-                      required
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="text-base font-medium" title="The label name can't be changed after creation.">
-                      {label}
-                    </span>
-                  )}
+                  <Input
+                    aria-label="Label"
+                    value={label}
+                    onChange={(event) => setLabel(event.target.value)}
+                    className="bg-background text-base font-medium"
+                    maxLength={GROUP_LABEL_MAX}
+                    required
+                    autoFocus={draft}
+                  />
                 </div>
               </div>
             ) : (
