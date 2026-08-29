@@ -27,6 +27,7 @@ import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/az
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
+import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
 
 const LoginRoute = LoginRouteImport.update({
@@ -121,6 +122,12 @@ const DashboardTelegramUsersIndexRoute =
     path: '/telegram/users/',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardWebGroupsByLabelSplatRoute =
+  DashboardWebGroupsByLabelSplatRouteImport.update({
+    id: '/web/groups-by-label/$',
+    path: '/web/groups-by-label/$',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardTelegramUsersUserIdRoute =
   DashboardTelegramUsersUserIdRouteImport.update({
     id: '/telegram/users/$userId',
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -167,6 +175,7 @@ export interface FileRoutesByTo {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/telegram/users': typeof DashboardTelegramUsersIndexRoute
 }
 export interface FileRoutesById {
@@ -189,6 +198,7 @@ export interface FileRoutesById {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
 }
 export interface FileRouteTypes {
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
     | '/dashboard/telegram/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
     | '/dashboard/telegram/users'
   id:
     | '__root__'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
     | '/dashboard/telegram/users/'
   fileRoutesById: FileRoutesById
 }
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/web/groups-by-label/$': {
+      id: '/dashboard/web/groups-by-label/$'
+      path: '/web/groups-by-label/$'
+      fullPath: '/dashboard/web/groups-by-label/$'
+      preLoaderRoute: typeof DashboardWebGroupsByLabelSplatRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/telegram/users/$userId': {
       id: '/dashboard/telegram/users/$userId'
       path: '/telegram/users/$userId'
@@ -416,6 +436,7 @@ interface DashboardRouteChildren {
   DashboardWebGuidesRoute: typeof DashboardWebGuidesRoute
   DashboardWebProjectsRoute: typeof DashboardWebProjectsRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
+  DashboardWebGroupsByLabelSplatRoute: typeof DashboardWebGroupsByLabelSplatRoute
   DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
 }
 
@@ -432,6 +453,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWebGuidesRoute: DashboardWebGuidesRoute,
   DashboardWebProjectsRoute: DashboardWebProjectsRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
+  DashboardWebGroupsByLabelSplatRoute: DashboardWebGroupsByLabelSplatRoute,
   DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
 }
 

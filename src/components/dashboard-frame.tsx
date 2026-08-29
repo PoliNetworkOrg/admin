@@ -5,13 +5,20 @@ import { toast } from "sonner"
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import type { TgGroupLabel } from "@/lib/api/types"
 import type { AdminSession } from "@/lib/auth"
 import { auth, useSession } from "@/lib/auth"
 import { cssVariables } from "@/lib/utils"
 
 import { ThemeToggle } from "./theme-toggle"
 
-export function DashboardFrame({ initialSession }: { initialSession: AdminSession }) {
+export function DashboardFrame({
+  initialSession,
+  groupLabels,
+}: {
+  initialSession: AdminSession
+  groupLabels: TgGroupLabel[]
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [loggingOut, setLoggingOut] = useState(false)
   const router = useRouter()
@@ -49,7 +56,7 @@ export function DashboardFrame({ initialSession }: { initialSession: AdminSessio
       onOpenChange={setSidebarOpen}
       style={cssVariables({ "--sidebar-width": "16.25rem" })}
     >
-      <DashboardSidebar user={user} loggingOut={loggingOut} onLogout={() => void logout()} />
+      <DashboardSidebar user={user} loggingOut={loggingOut} onLogout={() => void logout()} groupLabels={groupLabels} />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/92 px-7 backdrop-blur-xl max-[640px]:px-4">
           <SidebarTrigger className="-ml-1" />
