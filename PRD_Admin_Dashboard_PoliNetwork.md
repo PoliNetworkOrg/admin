@@ -8,7 +8,7 @@
 
 ## 0. Scopo e metodo di questo documento
 
-Questo documento è un **nuovo PRD**, distinto da [`PRD_Admin_Dashboard_Associazione.md`](PRD_Admin_Dashboard_Associazione.md) (v0.2, non modificato). Il vecchio documento resta un riferimento sui bisogni di business espressi dall'associazione, ma **non è usato come fonte di verità tecnica**: ogni funzionalità qui descritta è stata verificata direttamente su:
+Questo documento è un **nuovo PRD**, che sostituisce il precedente `PRD_Admin_Dashboard_Associazione.md` (v0.2, rimosso da questa repository perché superato). Il vecchio documento restava un riferimento sui bisogni di business espressi dall'associazione, ma **non era usato come fonte di verità tecnica**: ogni funzionalità qui descritta è stata verificata direttamente su:
 
 - il codice del frontend/BFF in `src/` (route, feature, server functions, middleware di autorizzazione);
 - il contratto tipizzato del backend reale, `node_modules/@polinetwork/backend/dist/index.d.ts` (unica sorgente di verità su cosa il backend espone oggi via tRPC: router `tg`, `azure`, `web`, `auth`, `test`);
