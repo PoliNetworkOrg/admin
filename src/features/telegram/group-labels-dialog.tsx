@@ -5,19 +5,6 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChipRemove,
-  ComboboxChips,
-  ComboboxChipsGroup,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-} from "@/components/ui/combobox"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
-import { LabelDot } from "@/features/group-labels/label-dot"
+import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { tagTelegramGroup, untagTelegramGroup } from "@/features/telegram/groups.functions"
 import type { TgGroup, TgGroupLabel } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
@@ -64,6 +51,16 @@ export function GroupLabelsDialog({
   const removed = currentLabels.filter((label) => !selected.some((next) => isSameGroupLabel(next, label)))
   const dirty = added.length > 0 || removed.length > 0
 
+  function toggleManyLabels(labels: TgGroupLabel[], select: boolean) {
+    setSelected((current) => {
+      if (select) {
+        const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
+        return [...current, ...toAdd]
+      }
+      return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
+    })
+  }
+
   async function save() {
     if (!group || !dirty || pending) return
     setPending(true)
@@ -94,42 +91,7 @@ export function GroupLabelsDialog({
         <div>
           <p className="mb-1.5 text-xs font-medium text-muted-foreground">Labels</p>
           {allLabels.length ? (
-            <Combobox
-              items={allLabels}
-              multiple
-              value={selected}
-              onValueChange={setSelected}
-              itemToStringLabel={(label) => label.label}
-              isItemEqualToValue={isSameGroupLabel}
-            >
-              <ComboboxChipsGroup>
-                <ComboboxChips>
-                  <ComboboxValue>
-                    {(value: TgGroupLabel[]) =>
-                      value.map((label) => (
-                        <ComboboxChip key={label.label}>
-                          <LabelDot color={label.color} />
-                          {label.label}
-                          <ComboboxChipRemove aria-label={`Remove ${label.label}`} />
-                        </ComboboxChip>
-                      ))
-                    }
-                  </ComboboxValue>
-                  <ComboboxChipsInput placeholder={selected.length ? "" : "Search labels…"} />
-                </ComboboxChips>
-              </ComboboxChipsGroup>
-              <ComboboxContent>
-                <ComboboxEmpty>No matching labels</ComboboxEmpty>
-                <ComboboxList>
-                  {(label: TgGroupLabel) => (
-                    <ComboboxItem key={label.label} value={label} className="gap-2">
-                      <LabelDot color={label.color} />
-                      {label.label}
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <LabelTreeSelector allLabels={allLabels} selected={selected} onToggleMany={toggleManyLabels} />
           ) : (
             <p className="text-sm text-muted-foreground">No labels have been created yet.</p>
           )}

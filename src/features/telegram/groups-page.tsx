@@ -5,19 +5,6 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChipRemove,
-  ComboboxChips,
-  ComboboxChipsGroup,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-} from "@/components/ui/combobox"
-import {
   Popover,
   PopoverContent,
   PopoverDescription,
@@ -26,9 +13,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
-import { LabelDot } from "@/features/group-labels/label-dot"
+import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { GroupsTable } from "@/features/telegram/groups-table"
 import type { TgGroup, TgGroupLabel, TgGroupLabelRelation } from "@/lib/api/types"
+
+function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], select: boolean): TgGroupLabel[] {
+  if (select) {
+    const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
+    return [...current, ...toAdd]
+  }
+  return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
+}
 
 export function TelegramGroupsPage({
   loadedGroups,
@@ -112,91 +107,27 @@ export function TelegramGroupsPage({
               <>
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground">Must have</p>
-                  <Combobox
-                    items={loadedGroupLabels.filter(
+                  <LabelTreeSelector
+                    allLabels={loadedGroupLabels.filter(
                       (label) => !excludedLabels.some((excluded) => isSameGroupLabel(excluded, label))
                     )}
-                    multiple
-                    value={requiredLabels}
-                    onValueChange={setRequiredLabels}
-                    itemToStringLabel={(label) => label.label}
-                    isItemEqualToValue={isSameGroupLabel}
-                  >
-                    <ComboboxChipsGroup>
-                      <ComboboxChips>
-                        <ComboboxValue>
-                          {(value: TgGroupLabel[]) =>
-                            value.map((label) => (
-                              <ComboboxChip key={label.label}>
-                                <LabelDot color={label.color} />
-                                {label.label}
-                                <ComboboxChipRemove aria-label={`Remove ${label.label}`} />
-                              </ComboboxChip>
-                            ))
-                          }
-                        </ComboboxValue>
-                        <ComboboxChipsInput
-                          aria-label="Required labels"
-                          placeholder={requiredLabels.length ? "" : "Search labels…"}
-                        />
-                      </ComboboxChips>
-                    </ComboboxChipsGroup>
-                    <ComboboxContent>
-                      <ComboboxEmpty>No matching labels</ComboboxEmpty>
-                      <ComboboxList>
-                        {(label: TgGroupLabel) => (
-                          <ComboboxItem key={label.label} value={label} className="gap-2">
-                            <LabelDot color={label.color} />
-                            {label.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                    selected={requiredLabels}
+                    onToggleMany={(labels, select) =>
+                      setRequiredLabels((current) => setManyGroupLabels(current, labels, select))
+                    }
+                  />
                 </div>
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground">Must not have</p>
-                  <Combobox
-                    items={loadedGroupLabels.filter(
+                  <LabelTreeSelector
+                    allLabels={loadedGroupLabels.filter(
                       (label) => !requiredLabels.some((required) => isSameGroupLabel(required, label))
                     )}
-                    multiple
-                    value={excludedLabels}
-                    onValueChange={setExcludedLabels}
-                    itemToStringLabel={(label) => label.label}
-                    isItemEqualToValue={isSameGroupLabel}
-                  >
-                    <ComboboxChipsGroup>
-                      <ComboboxChips>
-                        <ComboboxValue>
-                          {(value: TgGroupLabel[]) =>
-                            value.map((label) => (
-                              <ComboboxChip key={label.label}>
-                                <LabelDot color={label.color} />
-                                {label.label}
-                                <ComboboxChipRemove aria-label={`Remove ${label.label}`} />
-                              </ComboboxChip>
-                            ))
-                          }
-                        </ComboboxValue>
-                        <ComboboxChipsInput
-                          aria-label="Excluded labels"
-                          placeholder={excludedLabels.length ? "" : "Search labels…"}
-                        />
-                      </ComboboxChips>
-                    </ComboboxChipsGroup>
-                    <ComboboxContent>
-                      <ComboboxEmpty>No matching labels</ComboboxEmpty>
-                      <ComboboxList>
-                        {(label: TgGroupLabel) => (
-                          <ComboboxItem key={label.label} value={label} className="gap-2">
-                            <LabelDot color={label.color} />
-                            {label.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                    selected={excludedLabels}
+                    onToggleMany={(labels, select) =>
+                      setExcludedLabels((current) => setManyGroupLabels(current, labels, select))
+                    }
+                  />
                 </div>
                 {activeLabelFilterCount > 0 && (
                   <Button

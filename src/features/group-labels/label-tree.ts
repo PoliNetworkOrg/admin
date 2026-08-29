@@ -55,3 +55,34 @@ export function urlSegmentsToLabelPath(segments: string[]): string {
 export function matchesLabelBranch(groupLabels: GroupLabel[], path: string): boolean {
   return groupLabels.some((label) => label.label === path || label.label.startsWith(`${path}.`))
 }
+
+/** Every real label in a node's own subtree (itself, if it has one, plus all of its descendants). */
+export function collectSubtreeLabels(node: LabelTreeNode): GroupLabel[] {
+  const labels: GroupLabel[] = []
+  if (node.label) labels.push(node.label)
+  for (const child of node.children) labels.push(...collectSubtreeLabels(child))
+  return labels
+}
+
+function nodeSelfMatches(node: LabelTreeNode, normalizedQuery: string): boolean {
+  if (node.segment.toLocaleLowerCase().includes(normalizedQuery)) return true
+  if (!node.label) return false
+  return [node.label.label, node.label.description ?? ""].some((value) =>
+    value.toLocaleLowerCase().includes(normalizedQuery)
+  )
+}
+
+/** Keeps a node when it matches, or when any descendant does, so a matching leaf stays reachable through its ancestors. */
+export function filterLabelTree(nodes: LabelTreeNode[], query: string): LabelTreeNode[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (!normalizedQuery) return nodes
+
+  const result: LabelTreeNode[] = []
+  for (const node of nodes) {
+    const filteredChildren = filterLabelTree(node.children, query)
+    if (nodeSelfMatches(node, normalizedQuery) || filteredChildren.length) {
+      result.push({ ...node, children: filteredChildren })
+    }
+  }
+  return result
+}

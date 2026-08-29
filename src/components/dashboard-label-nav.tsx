@@ -25,7 +25,8 @@ function LabelNavNode({
   const hasChildren = node.children.length > 0
   const url = labelNodeUrl(node.path)
   const isActive = pathname === url
-  const [open, setOpen] = useState(true)
+  // Starts collapsed, except when the current page is this node or nested under it, so the active trail stays visible.
+  const [open, setOpen] = useState(isActive || pathname.startsWith(`${url}/`))
 
   return (
     <SidebarMenuSubItem>
