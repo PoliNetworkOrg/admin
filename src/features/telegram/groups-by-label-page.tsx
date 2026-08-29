@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 
 import { DataToolbar } from "@/components/data-toolbar"
 import { matchesLabelBranch } from "@/features/group-labels/label-tree"
+import { CreateGroupDialog } from "@/features/telegram/create-group-dialog"
 import { GroupsTable } from "@/features/telegram/groups-table"
 import type { TgGroup, TgGroupLabel, TgGroupLabelRelation } from "@/lib/api/types"
 
@@ -49,6 +50,7 @@ export function GroupsByLabelPage({
   }, [branchGroups, query])
 
   const hasSearch = Boolean(query.trim())
+  const labelExists = loadedGroupLabels.some((label) => label.label === path)
 
   return (
     <div className="animate-appear">
@@ -60,6 +62,7 @@ export function GroupsByLabelPage({
         total={branchGroups.length}
         searchPlaceholder="Search by group name or tag…"
         onSearch={setQuery}
+        action={<CreateGroupDialog autoAssignLabel={path} autoAssignLabelExists={labelExists} />}
       />
       <GroupsTable
         groups={visibleGroups}

@@ -18,3 +18,5 @@ export type AzureGroup = ApiOutput["azure"]["groups"]["getAll"][number]
 export type FAQs = ApiOutput["web"]["faqs"]["getAllFaqs"]
 export type FAQItem = FAQs[number]["faqs"][number]
 export type WebProject = ApiOutput["web"]["projects"]["getAllProjects"][number]
+
+export type WaGroup = ApiOutput["wa"]["groups"]["getAll"][number]

@@ -15,6 +15,7 @@ import {
 
 import azureIcon from "@/assets/svg/azure.svg"
 import telegramIcon from "@/assets/svg/telegram.svg"
+import whatsappIcon from "@/assets/svg/whatsapp.svg"
 
 export type DashboardNavigationItem = {
   title: string
@@ -45,6 +46,12 @@ export const dashboardNavigation = [
       { title: "Groups", url: "/dashboard/telegram/groups", icon: Database },
       { title: "Grants", url: "/dashboard/telegram/grants", icon: ShieldCheck },
     ],
+  },
+  {
+    title: "Whatsapp",
+    icon: UsersRound,
+    iconSrc: whatsappIcon,
+    items: [{ title: "Groups", url: "/dashboard/whatsapp/groups", icon: Database }],
   },
   {
     title: "Azure",
