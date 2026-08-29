@@ -23,9 +23,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
-import { createGroupLabel } from "@/features/group-labels/group-labels.functions"
-import { tagTelegramGroup } from "@/features/telegram/groups.functions"
-import { createWhatsappGroup, setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
+import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
+import { createWhatsappGroup } from "@/features/whatsapp/groups.functions"
 import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
@@ -52,8 +51,7 @@ export function AddGroupToLabelDialog({
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
   const createWhatsappGroupFn = useServerFn(createWhatsappGroup)
-  const setWhatsappGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
-  const tagTelegramGroupFn = useServerFn(tagTelegramGroup)
+  const tagGroupFn = useServerFn(tagGroup)
 
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>("choose")
@@ -61,7 +59,6 @@ export function AddGroupToLabelDialog({
   const [selectedTgGroup, setSelectedTgGroup] = useState<TgGroup | null>(null)
   const [selectedWaGroup, setSelectedWaGroup] = useState<WaGroup | null>(null)
   const [title, setTitle] = useState("")
-  const [tag, setTag] = useState("")
   const [link, setLink] = useState("")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
@@ -77,7 +74,6 @@ export function AddGroupToLabelDialog({
     setSelectedTgGroup(null)
     setSelectedWaGroup(null)
     setTitle("")
-    setTag("")
     setLink("")
     setError("")
   }
@@ -95,10 +91,8 @@ export function AddGroupToLabelDialog({
     setError("")
     try {
       await ensureLabelExists()
-      const created = await createWhatsappGroupFn({
-        data: { title: title.trim(), tag: tag.trim() || undefined, link: link.trim() },
-      })
-      await setWhatsappGroupLabelsFn({ data: { groupId: created.id, labels: [path] } })
+      const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
+      await tagGroupFn({ data: { groupId: created.id, label: path } })
       toast.success(`${title.trim()} added and labeled "${path}".`)
       setOpen(false)
       await router.invalidate({ sync: true })
@@ -117,13 +111,10 @@ export function AddGroupToLabelDialog({
     try {
       await ensureLabelExists()
       if (platform === "telegram" && selectedTgGroup) {
-        await tagTelegramGroupFn({ data: { groupId: selectedTgGroup.telegramId, label: path } })
+        await tagGroupFn({ data: { groupId: selectedTgGroup.telegramId, label: path } })
         toast.success(`${selectedTgGroup.title} labeled "${path}".`)
       } else if (platform === "whatsapp" && selectedWaGroup) {
-        const currentLabels = waLabelsByGroupId.get(selectedWaGroup.id) ?? []
-        await setWhatsappGroupLabelsFn({
-          data: { groupId: selectedWaGroup.id, labels: [...currentLabels.map((l) => l.label), path] },
-        })
+        await tagGroupFn({ data: { groupId: selectedWaGroup.id, label: path } })
         toast.success(`${selectedWaGroup.title} labeled "${path}".`)
       } else {
         return
@@ -196,14 +187,7 @@ export function AddGroupToLabelDialog({
             >
               <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
             </Button>
-            <WhatsappGroupFields
-              title={title}
-              onTitleChange={setTitle}
-              tag={tag}
-              onTagChange={setTag}
-              link={link}
-              onLinkChange={setLink}
-            />
+            <WhatsappGroupFields title={title} onTitleChange={setTitle} link={link} onLinkChange={setLink} />
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>

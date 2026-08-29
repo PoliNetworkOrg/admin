@@ -13,9 +13,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { buildLabelsByGroupId } from "@/features/group-labels/label-tree"
 import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { GroupsTable } from "@/features/telegram/groups-table"
-import type { TgGroup, TgGroupLabel, TgGroupLabelRelation } from "@/lib/api/types"
+import type { GroupWithLabels, TgGroup, TgGroupLabel } from "@/lib/api/types"
 
 function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], select: boolean): TgGroupLabel[] {
   if (select) {
@@ -28,32 +29,20 @@ function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], sel
 export function TelegramGroupsPage({
   loadedGroups,
   loadedGroupLabels,
-  loadedGroupLabelRelations,
+  loadedGroupsWithLabels,
 }: {
   loadedGroups: TgGroup[]
   loadedGroupLabels: TgGroupLabel[]
-  loadedGroupLabelRelations: TgGroupLabelRelation[]
+  loadedGroupsWithLabels: GroupWithLabels[]
 }) {
   const [query, setQuery] = useState("")
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
 
-  const groupLabelsByName = useMemo(
-    () => new Map(loadedGroupLabels.map((label) => [label.label, label])),
-    [loadedGroupLabels]
+  const labelsByGroupId = useMemo(
+    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "tg"),
+    [loadedGroupLabels, loadedGroupsWithLabels]
   )
-
-  const labelsByGroupId = useMemo(() => {
-    const map = new Map<number, TgGroupLabel[]>()
-    for (const relation of loadedGroupLabelRelations) {
-      const label = groupLabelsByName.get(relation.label)
-      if (!label) continue
-      const existing = map.get(relation.groupId)
-      if (existing) existing.push(label)
-      else map.set(relation.groupId, [label])
-    }
-    return map
-  }, [loadedGroupLabelRelations, groupLabelsByName])
 
   const visibleGroups = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase().replace(/^@/, "")

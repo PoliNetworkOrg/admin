@@ -1,5 +1,4 @@
 import { useRouter } from "@tanstack/react-router"
-import { useServerFn } from "@tanstack/react-start"
 import type { Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown, ExternalLink, MessageCircleMore, Tag } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -19,14 +18,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { getGroupLabelColor, isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
 import { buildLabelsByGroupId } from "@/features/group-labels/label-tree"
 import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
-import { setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
-import { WhatsappGroupLabelsDialog } from "@/features/whatsapp/whatsapp-group-labels-dialog"
-import type { TgGroupLabel, WaGroup } from "@/lib/api/types"
+import type { GroupWithLabels, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
 
@@ -43,30 +41,27 @@ const groupColumnHelper = createAppColumnHelper<WaGroup>()
 export function WhatsappGroupsPage({
   loadedGroups,
   loadedGroupLabels,
-  loadedGroupLabelRelations,
+  loadedGroupsWithLabels,
 }: {
   loadedGroups: WaGroup[]
   loadedGroupLabels: TgGroupLabel[]
-  loadedGroupLabelRelations: { groupId: number; label: string }[]
+  loadedGroupsWithLabels: GroupWithLabels[]
 }) {
   const router = useRouter()
-  const setWhatsappGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
   const [query, setQuery] = useState("")
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
   const [editingLabelsGroup, setEditingLabelsGroup] = useState<WaGroup | null>(null)
 
   const labelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupLabelRelations),
-    [loadedGroupLabels, loadedGroupLabelRelations]
+    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "wa"),
+    [loadedGroupLabels, loadedGroupsWithLabels]
   )
 
   const visibleGroups = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
     return loadedGroups.filter((group) => {
-      const matchesText =
-        !normalizedQuery ||
-        [group.title, group.tag].filter(Boolean).join(" ").toLocaleLowerCase().includes(normalizedQuery)
+      const matchesText = !normalizedQuery || group.title.toLocaleLowerCase().includes(normalizedQuery)
       if (!matchesText) return false
 
       const groupLabels = labelsByGroupId.get(group.id) ?? []
@@ -111,17 +106,6 @@ export function WhatsappGroupsPage({
             <b>{row.original.title}</b>
           </div>
         ),
-      }),
-      groupColumnHelper.accessor("tag", {
-        header: ({ column }) => sortableHeader("Tag", column),
-        cell: ({ getValue }) =>
-          getValue() ? (
-            <Badge variant="secondary" className="font-mono text-[10px] text-primary">
-              @{getValue()}
-            </Badge>
-          ) : (
-            <span className="text-xs italic text-muted-foreground">Not set</span>
-          ),
       }),
       groupColumnHelper.display({
         id: "labels",
@@ -196,7 +180,7 @@ export function WhatsappGroupsPage({
         description="Maintain the community groups shared on WhatsApp."
         count={visibleGroups.length}
         total={loadedGroups.length}
-        searchPlaceholder="Search by group name or tag…"
+        searchPlaceholder="Search by group name…"
         onSearch={setQuery}
         action={<CreateEditGroupDialog />}
       >
@@ -332,21 +316,17 @@ export function WhatsappGroupsPage({
           }
         />
       )}
-      <WhatsappGroupLabelsDialog
-        group={editingLabelsGroup}
+      <GroupLabelsDialog
+        group={editingLabelsGroup ? { id: editingLabelsGroup.id, title: editingLabelsGroup.title } : null}
         allLabels={loadedGroupLabels}
         currentLabels={editingLabelsGroup ? (labelsByGroupId.get(editingLabelsGroup.id) ?? []) : []}
         onClose={() => setEditingLabelsGroup(null)}
-        onSave={async (labels) => {
-          if (!editingLabelsGroup) return
+        onSaved={async () => {
           try {
-            await setWhatsappGroupLabelsFn({
-              data: { groupId: editingLabelsGroup.id, labels: labels.map((label) => label.label) },
-            })
             await router.invalidate({ sync: true })
-          } catch (cause) {
-            console.error(cause)
-            toast.error("The labels could not be saved. Try again.")
+          } catch (error) {
+            console.error(error)
+            toast.warning("The labels were saved, but the group list could not be refreshed.")
           }
         }}
       />

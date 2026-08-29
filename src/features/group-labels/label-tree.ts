@@ -56,19 +56,22 @@ export function matchesLabelBranch(groupLabels: GroupLabel[], path: string): boo
   return groupLabels.some((label) => label.label === path || label.label.startsWith(`${path}.`))
 }
 
-/** Joins a flat relations list (groupId, label) against the label definitions to get each group's full label objects. */
+/**
+ * Resolves each group's label strings (from the cross-platform `groups.search.getAll` result) to full label
+ * objects, for groups of the given platform only — Telegram and WhatsApp group ids are independent sequences
+ * that could otherwise collide.
+ */
 export function buildLabelsByGroupId(
   labels: GroupLabel[],
-  relations: { groupId: number; label: string }[]
+  groupsWithLabels: { id: number; type: "tg" | "wa"; labels: string[] }[],
+  type: "tg" | "wa"
 ): Map<number, GroupLabel[]> {
   const labelsByName = new Map(labels.map((label) => [label.label, label]))
   const map = new Map<number, GroupLabel[]>()
-  for (const relation of relations) {
-    const label = labelsByName.get(relation.label)
-    if (!label) continue
-    const existing = map.get(relation.groupId)
-    if (existing) existing.push(label)
-    else map.set(relation.groupId, [label])
+  for (const group of groupsWithLabels) {
+    if (group.type !== type) continue
+    const resolved = group.labels.map((name) => labelsByName.get(name)).filter((label) => label != null)
+    if (resolved.length) map.set(group.id, resolved)
   }
   return map
 }

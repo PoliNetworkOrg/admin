@@ -15,8 +15,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
-import { createGroupLabel } from "@/features/group-labels/group-labels.functions"
-import { createWhatsappGroup, editWhatsappGroup, setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
+import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
+import { createWhatsappGroup, editWhatsappGroup } from "@/features/whatsapp/groups.functions"
 import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
 import type { WaGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
@@ -36,10 +36,9 @@ export function CreateEditGroupDialog({
   const createGroupFn = useServerFn(createWhatsappGroup)
   const editGroupFn = useServerFn(editWhatsappGroup)
   const createGroupLabelFn = useServerFn(createGroupLabel)
-  const setGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
+  const tagGroupFn = useServerFn(tagGroup)
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(group?.title ?? "")
-  const [tag, setTag] = useState(group?.tag ?? "")
   const [link, setLink] = useState(group?.link ?? "")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
@@ -48,7 +47,6 @@ export function CreateEditGroupDialog({
 
   function reset() {
     setTitle(group?.title ?? "")
-    setTag(group?.tag ?? "")
     setLink(group?.link ?? "")
     setError("")
   }
@@ -59,7 +57,7 @@ export function CreateEditGroupDialog({
     setPending(true)
     setError("")
     try {
-      const values = { title: title.trim(), tag: tag.trim() || undefined, link: link.trim() }
+      const values = { title: title.trim(), link: link.trim() }
       if (group) {
         await editGroupFn({ data: { id: group.id, ...values } })
         toast.success(`${values.title} updated.`)
@@ -72,7 +70,7 @@ export function CreateEditGroupDialog({
                 data: { label: autoAssignLabel, color: DEFAULT_GROUP_LABEL_COLOR, description: "" },
               })
             }
-            await setGroupLabelsFn({ data: { groupId: created.id, labels: [autoAssignLabel] } })
+            await tagGroupFn({ data: { groupId: created.id, label: autoAssignLabel } })
             toast.success(`${values.title} added and labeled "${autoAssignLabel}".`)
           } catch (tagCause) {
             console.error(tagCause)
@@ -136,14 +134,7 @@ export function CreateEditGroupDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-          <WhatsappGroupFields
-            title={title}
-            onTitleChange={setTitle}
-            tag={tag}
-            onTagChange={setTag}
-            link={link}
-            onLinkChange={setLink}
-          />
+          <WhatsappGroupFields title={title} onTitleChange={setTitle} link={link} onLinkChange={setLink} />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>

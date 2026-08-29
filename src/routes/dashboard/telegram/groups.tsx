@@ -1,29 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { listGroupLabels, listGroupsWithLabels } from "@/features/group-labels/group-labels.functions"
 import { TelegramGroupsPage } from "@/features/telegram/groups-page"
-import { getGroupLabelRelations, getGroupLabels, getTelegramGroups } from "@/features/telegram/groups.functions"
+import { getTelegramGroups } from "@/features/telegram/groups.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/groups")({
   loader: async () => {
-    const [groups, groupLabels, groupLabelRelations] = await Promise.all([
+    const [groups, groupLabels, groupsWithLabels] = await Promise.all([
       getTelegramGroups(),
-      getGroupLabels(),
-      getGroupLabelRelations(),
+      listGroupLabels(),
+      listGroupsWithLabels(),
     ])
-    return { groups, groupLabels, groupLabelRelations }
+    return { groups, groupLabels, groupsWithLabels }
   },
   pendingComponent: () => <DataPageSkeleton columns={5} />,
   component: TelegramGroupsRoute,
 })
 
 function TelegramGroupsRoute() {
-  const { groups, groupLabels, groupLabelRelations } = Route.useLoaderData()
+  const { groups, groupLabels, groupsWithLabels } = Route.useLoaderData()
   return (
     <TelegramGroupsPage
       loadedGroups={groups}
       loadedGroupLabels={groupLabels}
-      loadedGroupLabelRelations={groupLabelRelations}
+      loadedGroupsWithLabels={groupsWithLabels}
     />
   )
 }

@@ -5,34 +5,32 @@ import { buildLabelsByGroupId, labelPathToUrlSegments, matchesLabelBranch } from
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { AddGroupToLabelDialog } from "@/features/groups-by-label/add-group-to-label-dialog"
 import { CombinedGroupsTable, type CombinedGroupRow } from "@/features/groups-by-label/combined-groups-table"
-import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
+import type { GroupWithLabels, TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 
 export function GroupsByLabelPage({
   path,
   loadedTgGroups,
   loadedGroupLabels,
-  loadedTgGroupLabelRelations,
+  loadedGroupsWithLabels,
   loadedWaGroups,
-  loadedWaGroupLabelRelations,
 }: {
   path: string
   loadedTgGroups: TgGroup[]
   loadedGroupLabels: TgGroupLabel[]
-  loadedTgGroupLabelRelations: { groupId: number; label: string }[]
+  loadedGroupsWithLabels: GroupWithLabels[]
   loadedWaGroups: WaGroup[]
-  loadedWaGroupLabelRelations: { groupId: number; label: string }[]
 }) {
   const [query, setQuery] = useState("")
 
   // Kept as two separate maps (not merged into one) since Telegram and WhatsApp group ids are independent
   // sequences that could otherwise collide.
   const tgLabelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedTgGroupLabelRelations),
-    [loadedGroupLabels, loadedTgGroupLabelRelations]
+    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "tg"),
+    [loadedGroupLabels, loadedGroupsWithLabels]
   )
   const waLabelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedWaGroupLabelRelations),
-    [loadedGroupLabels, loadedWaGroupLabelRelations]
+    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "wa"),
+    [loadedGroupLabels, loadedGroupsWithLabels]
   )
 
   const branchRows = useMemo(() => {
@@ -54,7 +52,7 @@ export function GroupsByLabelPage({
         key: `whatsapp-${group.id}`,
         platform: "whatsapp",
         title: group.title,
-        tag: group.tag,
+        tag: null,
         link: group.link,
         labels: waLabelsByGroupId.get(group.id) ?? [],
         group,

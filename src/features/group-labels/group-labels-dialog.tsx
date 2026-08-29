@@ -13,11 +13,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { tagGroup, untagGroup } from "@/features/group-labels/group-labels.functions"
 import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
-import { tagTelegramGroup, untagTelegramGroup } from "@/features/telegram/groups.functions"
-import type { TgGroup, TgGroupLabel } from "@/lib/api/types"
+import type { TgGroupLabel } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 
+/** Works for both Telegram and WhatsApp groups — labels are a shared, platform-agnostic system. */
 export function GroupLabelsDialog({
   group,
   allLabels,
@@ -25,14 +26,14 @@ export function GroupLabelsDialog({
   onClose,
   onSaved,
 }: {
-  group: TgGroup | null
+  group: { id: number; title: string } | null
   allLabels: TgGroupLabel[]
   currentLabels: TgGroupLabel[]
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
-  const tagTelegramGroupFn = useServerFn(tagTelegramGroup)
-  const untagTelegramGroupFn = useServerFn(untagTelegramGroup)
+  const tagGroupFn = useServerFn(tagGroup)
+  const untagGroupFn = useServerFn(untagGroup)
   const [selected, setSelected] = useState<TgGroupLabel[]>(currentLabels)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
@@ -67,8 +68,8 @@ export function GroupLabelsDialog({
     setError("")
     try {
       await Promise.all([
-        ...added.map((label) => tagTelegramGroupFn({ data: { groupId: group.telegramId, label: label.label } })),
-        ...removed.map((label) => untagTelegramGroupFn({ data: { groupId: group.telegramId, label: label.label } })),
+        ...added.map((label) => tagGroupFn({ data: { groupId: group.id, label: label.label } })),
+        ...removed.map((label) => untagGroupFn({ data: { groupId: group.id, label: label.label } })),
       ])
       toast.success(`Labels updated for ${group.title}.`)
       onClose()

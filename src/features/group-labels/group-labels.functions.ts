@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { z } from "zod"
 
 import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
@@ -12,6 +13,23 @@ import {
 export const listGroupLabels = createServerFn()
   .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.tg.groupLabels.getAll.query())
+
+/** All groups (Telegram + WhatsApp) with their labels already resolved. */
+export const listGroupsWithLabels = createServerFn()
+  .middleware([adminMiddleware])
+  .handler(({ context }) => context.backend.groups.search.getAll.query())
+
+const groupLabelTagInput = z.object({ groupId: z.number().int(), label: z.string().min(1).max(128) })
+
+export const tagGroup = createServerFn({ method: "POST" })
+  .middleware([webWriteAdminMiddleware])
+  .validator(groupLabelTagInput)
+  .handler(({ data, context }) => context.backend.groups.labels.tagGroup.mutate(data))
+
+export const untagGroup = createServerFn({ method: "POST" })
+  .middleware([webWriteAdminMiddleware])
+  .validator(groupLabelTagInput)
+  .handler(({ data, context }) => context.backend.groups.labels.untagGroup.mutate(data))
 
 export const createGroupLabel = createServerFn({ method: "POST" })
   .middleware([webWriteAdminMiddleware])

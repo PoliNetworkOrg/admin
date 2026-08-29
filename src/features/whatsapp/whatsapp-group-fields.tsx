@@ -8,20 +8,15 @@ export const WHATSAPP_LINK_PATTERN = /^https:\/\/chat\.whatsapp\.com\//
 export function WhatsappGroupFields({
   title,
   onTitleChange,
-  tag,
-  onTagChange,
   link,
   onLinkChange,
 }: {
   title: string
   onTitleChange: (value: string) => void
-  tag: string
-  onTagChange: (value: string) => void
   link: string
   onLinkChange: (value: string) => void
 }) {
   const titleId = useId()
-  const tagId = useId()
   const linkId = useId()
 
   return (
@@ -37,10 +32,6 @@ export function WhatsappGroupFields({
           required
           autoFocus
         />
-      </Field>
-      <Field>
-        <FieldLabel htmlFor={tagId}>Tag (optional)</FieldLabel>
-        <Input id={tagId} value={tag} onChange={(event) => onTagChange(event.target.value)} placeholder="informatica" />
       </Field>
       <Field>
         <FieldLabel htmlFor={linkId}>Invite link</FieldLabel>

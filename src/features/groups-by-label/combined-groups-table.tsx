@@ -20,14 +20,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { getGroupLabelColor } from "@/features/group-labels/group-labels.constants"
-import { GroupLabelsDialog } from "@/features/telegram/group-labels-dialog"
 import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
-import { setWhatsappGroupLabels } from "@/features/whatsapp/groups.functions"
-import { WhatsappGroupLabelsDialog } from "@/features/whatsapp/whatsapp-group-labels-dialog"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
@@ -59,7 +57,6 @@ export function CombinedGroupsTable({
 }) {
   const router = useRouter()
   const setGroupVisibilityFn = useServerFn(setGroupVisibility)
-  const setWhatsappGroupLabelsFn = useServerFn(setWhatsappGroupLabels)
   const [visibilityOverrides, setVisibilityOverrides] = useState<Record<number, boolean>>({})
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState("")
@@ -245,8 +242,12 @@ export function CombinedGroupsTable({
     initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
   })
 
-  const editingTgGroup = editingRow?.platform === "telegram" ? editingRow.group : null
-  const editingWaGroup = editingRow?.platform === "whatsapp" ? editingRow.group : null
+  const editingGroupRef =
+    editingRow?.platform === "telegram"
+      ? { id: editingRow.group.telegramId, title: editingRow.title }
+      : editingRow?.platform === "whatsapp"
+        ? { id: editingRow.group.id, title: editingRow.title }
+        : null
   const editingCurrentLabels = editingRow?.labels ?? []
 
   return (
@@ -323,9 +324,9 @@ export function CombinedGroupsTable({
         <EmptyState icon={MessageCircleMore} title={emptyTitle} text={emptyText} />
       )}
       <GroupLabelsDialog
-        group={editingTgGroup}
+        group={editingGroupRef}
         allLabels={allLabels}
-        currentLabels={editingTgGroup ? editingCurrentLabels : []}
+        currentLabels={editingCurrentLabels}
         onClose={() => setEditingRow(null)}
         onSaved={async () => {
           try {
@@ -333,22 +334,6 @@ export function CombinedGroupsTable({
           } catch (error) {
             console.error(error)
             toast.warning("The labels were saved, but the group list could not be refreshed.")
-          }
-        }}
-      />
-      <WhatsappGroupLabelsDialog
-        group={editingWaGroup}
-        allLabels={allLabels}
-        currentLabels={editingWaGroup ? editingCurrentLabels : []}
-        onClose={() => setEditingRow(null)}
-        onSave={async (labels) => {
-          if (!editingWaGroup) return
-          try {
-            await setWhatsappGroupLabelsFn({ data: { groupId: editingWaGroup.id, labels: labels.map((l) => l.label) } })
-            await router.invalidate({ sync: true })
-          } catch (cause) {
-            console.error(cause)
-            toast.error("The labels could not be saved. Try again.")
           }
         }}
       />

@@ -21,8 +21,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { getGroupLabelColor } from "@/features/group-labels/group-labels.constants"
-import { GroupLabelsDialog } from "@/features/telegram/group-labels-dialog"
 import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import type { TgGroup, TgGroupLabel } from "@/lib/api/types"
@@ -311,7 +311,7 @@ export function GroupsTable({
         <EmptyState icon={emptyIcon} title={emptyTitle} text={emptyText} />
       )}
       <GroupLabelsDialog
-        group={editingGroup}
+        group={editingGroup ? { id: editingGroup.telegramId, title: editingGroup.title } : null}
         allLabels={allLabels}
         currentLabels={editingGroup ? (labelsByGroupId.get(editingGroup.telegramId) ?? []) : []}
         onClose={() => setEditingGroup(null)}
