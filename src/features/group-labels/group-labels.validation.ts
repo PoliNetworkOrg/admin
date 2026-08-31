@@ -3,7 +3,7 @@ import { z } from "zod"
 import { errorHasZodField, errorMessage } from "@/lib/errors"
 
 import { GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX } from "./group-labels.constants"
-import { isCategoryLabel, isReservedCategoryRoot } from "./label-tree"
+import { isCategoryLabel } from "./label-tree"
 
 const label = z.string().trim().min(1).max(GROUP_LABEL_MAX)
 const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/)
@@ -23,19 +23,19 @@ function categoryRoot(value: string): string | null {
 
 /**
  * The server-side backstop for the label shapes the admin UI can produce (see CATEGORY_ROOTS in
- * label-tree.ts): a flat tag with no dots and not a reserved root name, or a path nested at least one level
- * under a fixed category root — never a bare root like "didattica" itself, and never an unrelated path whose
- * root isn't one of the fixed ones. Only applied where a *new* path is being written into existence — fields
- * that merely identify an already-existing row (edit, delete, or the "from" side of a rename) stay unrestricted
- * so a pre-existing row is always still manageable.
+ * label-tree.ts): a flat tag with no dots, a fixed category root used to hold groups directly, or a path nested
+ * under one of those roots. The tag-creation UI still reserves the root names; allowing them here lets the
+ * "Add group" flow materialize `extra` or `didattica` the first time a group is assigned directly to that root.
+ * Only applied where a *new* path is being written into existence — fields that merely identify an already-existing
+ * row (edit, delete, or the "from" side of a rename) stay unrestricted so a pre-existing row is always manageable.
  */
 const newLabelPath = label.refine(
   (value) => {
     const segments = value.split(".")
     if (segments.some((segment) => segment.length === 0)) return false
-    return segments.length === 1 ? !isReservedCategoryRoot(value) : isCategoryLabel(value)
+    return segments.length === 1 || isCategoryLabel(value)
   },
-  { message: "Use a plain tag name, or nest a category under an existing root." }
+  { message: "Use a plain tag name, a category root, or nest a category under an existing root." }
 )
 
 export const createGroupLabelInput = z.object({ label: newLabelPath, color, description })
@@ -53,7 +53,7 @@ export function groupLabelSaveErrorMessage(cause: unknown) {
     return "A rename can't move a label to a different category root, or turn a tag into a category (or back)."
   }
   if (errorHasZodField(cause, "label")) {
-    return `Enter a valid label: a plain tag name, or a category nested under an existing root (max ${GROUP_LABEL_MAX} characters).`
+    return `Enter a valid label: a plain tag name, a category root, or a category nested under an existing root (max ${GROUP_LABEL_MAX} characters).`
   }
   if (errorHasZodField(cause, "color")) return "Choose a valid color."
   if (errorHasZodField(cause, "description")) {

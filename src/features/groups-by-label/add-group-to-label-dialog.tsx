@@ -81,6 +81,11 @@ export function AddGroupToLabelDialog({
     setError("")
   }
 
+  function closeDialog() {
+    setOpen(false)
+    reset()
+  }
+
   function toggleTgGroup(group: TgGroup) {
     setSelectedTgGroups((current) =>
       current.some((g) => g.telegramId === group.telegramId)
@@ -111,7 +116,7 @@ export function AddGroupToLabelDialog({
       const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
       await tagGroupFn({ data: { groupId: created.id, label: path } })
       toast.success(`${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`)
-      setOpen(false)
+      closeDialog()
       await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
@@ -153,7 +158,7 @@ export function AddGroupToLabelDialog({
           ? `${groupsToTag[0].title} labeled "${formatLabelBreadcrumb(path)}".`
           : `${groupsToTag.length} groups labeled "${formatLabelBreadcrumb(path)}".`
       )
-      setOpen(false)
+      closeDialog()
       await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
@@ -172,14 +177,14 @@ export function AddGroupToLabelDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         if (pending) return
-        setOpen(nextOpen)
-        if (!nextOpen) reset()
+        if (nextOpen) setOpen(true)
+        else closeDialog()
       }}
     >
       <DialogTrigger render={<Button />}>
         <Plus data-icon="inline-start" /> Add group
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="grid-cols-[minmax(0,1fr)] overflow-x-hidden sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add group to "{formatLabelBreadcrumb(path)}"</DialogTitle>
           <DialogDescription>
@@ -227,7 +232,7 @@ export function AddGroupToLabelDialog({
             <WhatsappGroupFields title={title} onTitleChange={setTitle} link={link} onLinkChange={setLink} />
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
                 Cancel
               </Button>
               <Button type="submit" disabled={pending || !title.trim() || !WHATSAPP_LINK_PATTERN.test(link.trim())}>
@@ -239,7 +244,7 @@ export function AddGroupToLabelDialog({
         )}
 
         {step === "existing" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             <Button
               type="button"
               variant="ghost"
@@ -268,7 +273,7 @@ export function AddGroupToLabelDialog({
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex min-w-0 flex-col gap-2">
                 <Input
                   placeholder={`Search ${platform === "telegram" ? "Telegram" : "WhatsApp"} groups…`}
                   value={groupQuery}
@@ -276,21 +281,30 @@ export function AddGroupToLabelDialog({
                   className="h-9"
                 />
                 {selectedExistingCount > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {(platform === "telegram" ? selectedTgGroups : selectedWaGroups).map((group) => (
-                      <button
-                        key={"telegramId" in group ? group.telegramId : group.id}
-                        type="button"
-                        onClick={() => ("telegramId" in group ? toggleTgGroup(group) : toggleWaGroup(group))}
-                        className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-                      >
-                        {group.title}
-                        <X className="size-3" />
-                      </button>
-                    ))}
-                  </div>
+                  <section
+                    aria-label={`${selectedExistingCount} selected group${selectedExistingCount === 1 ? "" : "s"}`}
+                    className="flex min-w-0 items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2"
+                  >
+                    <span className="pt-0.5 text-xs font-medium whitespace-nowrap text-primary">
+                      {selectedExistingCount} selected
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                      {(platform === "telegram" ? selectedTgGroups : selectedWaGroups).map((group) => (
+                        <button
+                          key={"telegramId" in group ? group.telegramId : group.id}
+                          type="button"
+                          title={`Remove ${group.title}`}
+                          onClick={() => ("telegramId" in group ? toggleTgGroup(group) : toggleWaGroup(group))}
+                          className="flex max-w-full min-w-0 items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/15"
+                        >
+                          <span className="truncate">{group.title}</span>
+                          <X className="size-3 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 )}
-                <div className="max-h-64 overflow-y-auto rounded-md border border-border p-1">
+                <div className="h-56 min-w-0 overflow-y-auto rounded-md border border-border p-1">
                   {platform === "telegram" ? (
                     filteredTgGroups.length ? (
                       filteredTgGroups.map((group) => {
@@ -342,7 +356,7 @@ export function AddGroupToLabelDialog({
 
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
                 Cancel
               </Button>
               <Button type="button" disabled={pending || !canSubmitExisting} onClick={() => void submitExisting()}>
