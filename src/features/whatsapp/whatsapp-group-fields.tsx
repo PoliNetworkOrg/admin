@@ -3,7 +3,7 @@ import { useId } from "react"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-export const WHATSAPP_LINK_PATTERN = /^https:\/\/chat\.whatsapp\.com\//
+import { WHATSAPP_INVITE_LINK_MAX } from "./whatsapp.validation"
 
 export function WhatsappGroupFields({
   title,
@@ -41,6 +41,7 @@ export function WhatsappGroupFields({
           onChange={(event) => onLinkChange(event.target.value)}
           placeholder="https://chat.whatsapp.com/…"
           type="url"
+          maxLength={WHATSAPP_INVITE_LINK_MAX}
           required
         />
       </Field>

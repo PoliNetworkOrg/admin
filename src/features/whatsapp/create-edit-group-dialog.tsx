@@ -17,7 +17,8 @@ import {
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
 import { createWhatsappGroup, editWhatsappGroup } from "@/features/whatsapp/groups.functions"
-import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
+import { WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
+import { isValidWhatsappInviteLink } from "@/features/whatsapp/whatsapp.validation"
 import type { WaGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 
@@ -43,7 +44,7 @@ export function CreateEditGroupDialog({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
 
-  const canSave = Boolean(title.trim()) && WHATSAPP_LINK_PATTERN.test(link.trim())
+  const canSave = Boolean(title.trim()) && isValidWhatsappInviteLink(link.trim())
 
   function reset() {
     setTitle(group?.title ?? "")

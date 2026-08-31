@@ -3,13 +3,15 @@ import { z } from "zod"
 
 import { adminMiddleware, groupWriteAdminMiddleware } from "@/server/auth.middleware"
 
+import { whatsappInviteLink } from "./whatsapp.validation"
+
 export const getWhatsappGroups = createServerFn()
   .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.wa.groups.getAll.query())
 
 const whatsappGroupFields = z.object({
   title: z.string().trim().min(1).max(200),
-  link: z.url({ hostname: /^chat\.whatsapp\.com$/ }),
+  link: whatsappInviteLink,
 })
 
 export const createWhatsappGroup = createServerFn({ method: "POST" })

@@ -19,7 +19,8 @@ import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.
 import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
 import { formatLabelBreadcrumb } from "@/features/group-labels/label-tree"
 import { createWhatsappGroup } from "@/features/whatsapp/groups.functions"
-import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
+import { WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
+import { isValidWhatsappInviteLink } from "@/features/whatsapp/whatsapp.validation"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 import { cn } from "@/lib/utils"
@@ -108,7 +109,7 @@ export function AddGroupToLabelDialog({
 
   async function submitNew(event: React.FormEvent) {
     event.preventDefault()
-    if (!title.trim() || !WHATSAPP_LINK_PATTERN.test(link.trim()) || pending) return
+    if (!title.trim() || !isValidWhatsappInviteLink(link.trim()) || pending) return
     setPending(true)
     setError("")
     try {
@@ -259,7 +260,7 @@ export function AddGroupToLabelDialog({
               <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || !title.trim() || !WHATSAPP_LINK_PATTERN.test(link.trim())}>
+              <Button type="submit" disabled={pending || !title.trim() || !isValidWhatsappInviteLink(link.trim())}>
                 {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
                 Add group
               </Button>

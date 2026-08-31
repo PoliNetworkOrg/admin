@@ -13,6 +13,7 @@ import {
 import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
+import { isValidWhatsappInviteLink } from "../src/features/whatsapp/whatsapp.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import {
   hasAdminRole,
@@ -178,6 +179,16 @@ test("group label paths reject URL separators", async () => {
     "utf8"
   )
   assert.match(validationSource, /segments\.some\(\(segment\) => !isValidLabelSegment\(segment\)\)/)
+})
+
+test("WhatsApp group links require a real HTTPS invite code", () => {
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456"), true)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456?mode=ems_copy_t"), true)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/"), false)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/two/segments"), false)
+  assert.equal(isValidWhatsappInviteLink("http://chat.whatsapp.com/AbCdEf123456"), false)
+  assert.equal(isValidWhatsappInviteLink("https://example.com/AbCdEf123456"), false)
+  assert.equal(isValidWhatsappInviteLink("not a URL"), false)
 })
 
 test("HR dashboard access is read-only", () => {
