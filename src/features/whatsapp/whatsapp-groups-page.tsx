@@ -150,6 +150,7 @@ export function WhatsappGroupsPage({
     key: "whatsapp-groups",
     columns,
     data: visibleGroups,
+    getRowId: (group) => String(group.id),
     initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
   })
 

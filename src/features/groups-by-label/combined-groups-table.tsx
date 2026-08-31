@@ -221,6 +221,7 @@ export function CombinedGroupsTable({
     key: "groups-by-label-combined",
     columns,
     data: displayRows,
+    getRowId: (row) => row.key,
     initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
   })
 
