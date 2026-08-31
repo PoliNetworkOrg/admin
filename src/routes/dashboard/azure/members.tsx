@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DataPageSkeleton } from "@/components/loading-skeleton"
 import { getAzureMembers } from "@/features/azure/azure.functions"
 import { AzureMembersPage } from "@/features/azure/members-page"
+import { hasWriteAdminRole } from "@/server/authorization"
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   loader: () => getAzureMembers(),
@@ -12,5 +13,6 @@ export const Route = createFileRoute("/dashboard/azure/members")({
 
 function AzureMembersRoute() {
   const members = Route.useLoaderData()
-  return <AzureMembersPage initialMembers={members} />
+  const { roles } = Route.useRouteContext()
+  return <AzureMembersPage initialMembers={members} canWrite={hasWriteAdminRole(roles)} />
 }

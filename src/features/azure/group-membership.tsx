@@ -26,7 +26,15 @@ const MAX_VISIBLE_MEMBERS = 7
 
 type MemberChoice = Pick<AzureMember, "id" | "displayName" | "mail">
 
-export function GroupMembership({ group, directoryMembers }: { group: AzureGroup; directoryMembers: AzureMember[] }) {
+export function GroupMembership({
+  group,
+  directoryMembers,
+  canWrite,
+}: {
+  group: AzureGroup
+  directoryMembers: AzureMember[]
+  canWrite: boolean
+}) {
   const sortedMembers = [...group.members].sort((a, b) => a.displayName.localeCompare(b.displayName))
   const visibleMembers = sortedMembers.slice(0, MAX_VISIBLE_MEMBERS)
   const hiddenMembers = sortedMembers.slice(MAX_VISIBLE_MEMBERS)
@@ -43,10 +51,12 @@ export function GroupMembership({ group, directoryMembers }: { group: AzureGroup
       ) : (
         <p className="text-sm text-muted-foreground">No members yet</p>
       )}
-      <div className="flex items-center gap-1">
-        <MembershipDialog group={group} directoryMembers={directoryMembers} mode="add" />
-        <MembershipDialog group={group} directoryMembers={directoryMembers} mode="remove" />
-      </div>
+      {canWrite && (
+        <div className="flex items-center gap-1">
+          <MembershipDialog group={group} directoryMembers={directoryMembers} mode="add" />
+          <MembershipDialog group={group} directoryMembers={directoryMembers} mode="remove" />
+        </div>
+      )}
     </div>
   )
 }

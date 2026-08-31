@@ -67,6 +67,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       setCategoryId(res.id)
       toast.success("Category created successfully!")
     } catch (e: unknown) {
+      console.error(e)
       const errorMessage = e instanceof Error ? e.message : String(e)
       toast.error(`Failed to create category: ${errorMessage}`)
       throw e
@@ -91,6 +92,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       )
       toast.success("Category updated successfully!")
     } catch (e: unknown) {
+      console.error(e)
       const errorMessage = e instanceof Error ? e.message : String(e)
       toast.error(`Failed to update category: ${errorMessage}`)
       throw e
@@ -109,6 +111,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       })
       toast.success("Category deleted successfully.")
     } catch (e: unknown) {
+      console.error(e)
       const errorMessage = e instanceof Error ? e.message : String(e)
       toast.error(`Failed to delete category: ${errorMessage}`)
     }
@@ -224,6 +227,7 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
       setEditAnswerEn("")
       toast.success("FAQ saved successfully.")
     } catch (e: unknown) {
+      console.error(e)
       const errorMessage = e instanceof Error ? e.message : String(e)
       toast.error(`Failed to save FAQ: ${errorMessage}`)
     }
@@ -260,7 +264,10 @@ export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
         }
         toast.success("FAQ deleted successfully.")
       })
-      .catch((e: string) => toast.error(`Failed to delete FAQ: ${e}`))
+      .catch((e: string) => {
+        console.error(e)
+        toast.error(`Failed to delete FAQ: ${e}`)
+      })
   }
 
   const handleCancel = (id: number) => {

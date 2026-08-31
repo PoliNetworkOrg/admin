@@ -3,17 +3,20 @@ import {
   CircleQuestionMark,
   Database,
   FolderKanban,
+  FolderTree,
   Globe,
   LayoutDashboard,
   type LucideIcon,
   Settings,
   ShieldCheck,
+  Tags,
   Users,
   UsersRound,
 } from "lucide-react"
 
 import azureIcon from "@/assets/svg/azure.svg"
 import telegramIcon from "@/assets/svg/telegram.svg"
+import whatsappIcon from "@/assets/svg/whatsapp.svg"
 
 export type DashboardNavigationItem = {
   title: string
@@ -46,6 +49,12 @@ export const dashboardNavigation = [
     ],
   },
   {
+    title: "WhatsApp",
+    icon: UsersRound,
+    iconSrc: whatsappIcon,
+    items: [{ title: "Groups", url: "/dashboard/whatsapp/groups", icon: Database }],
+  },
+  {
     title: "Azure",
     icon: UsersRound,
     iconSrc: azureIcon,
@@ -63,6 +72,8 @@ export const dashboardNavigation = [
       { title: "Associations", url: "/dashboard/web/associations", icon: Users },
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
       { title: "FAQs", url: "/dashboard/web/faqs", icon: CircleQuestionMark },
+      { title: "Group labels", url: "/dashboard/web/group-labels", icon: Tags },
+      { title: "Categories", url: "/dashboard/web/groups-by-label", icon: FolderTree },
     ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]

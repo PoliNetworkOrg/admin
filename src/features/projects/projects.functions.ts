@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import { parseProjectForm } from "./projects.validation"
 import type { Project } from "./types"
@@ -30,14 +30,14 @@ function projectFormData(data: ReturnType<typeof parseProjectForm>) {
 }
 
 export const getProjects = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(async ({ context }) => {
     const projects = await context.backend.web.projects.getAllProjects.query()
     return projects.map(projectFields)
   })
 
 export const createProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(parseProjectForm)
   .handler(async ({ data, context }) => {
     const formData = projectFormData(data)
@@ -47,7 +47,7 @@ export const createProject = createServerFn({ method: "POST" })
   })
 
 export const editProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator((data: FormData) => {
     const id = Number(data.get("id"))
     if (!Number.isInteger(id) || id <= 0) throw new Error("INVALID_ID")
@@ -63,7 +63,7 @@ export const editProject = createServerFn({ method: "POST" })
   })
 
 export const deleteProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(z.object({ id: z.number().int().positive() }))
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.deleteProject.mutate(data)
@@ -72,7 +72,7 @@ export const deleteProject = createServerFn({ method: "POST" })
   })
 
 export const reorderProjects = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webWriteAdminMiddleware])
   .validator(z.object({ projectIds: z.array(z.number().int().positive()).min(1) }))
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.reorderProjects.mutate(data)

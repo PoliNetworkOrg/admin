@@ -4,6 +4,7 @@ import { DetailPageSkeleton } from "@/components/loading-skeleton"
 import { TelegramUserProfile } from "@/features/telegram/user-detail/profile"
 import { UserDetailBackLink } from "@/features/telegram/user-detail/sections"
 import { getTelegramUserDetails } from "@/features/telegram/users.functions"
+import { hasWriteAdminRole } from "@/server/authorization"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
   loader: ({ params }) => {
@@ -17,10 +18,11 @@ export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
 
 function UserProfileRoute() {
   const data = Route.useLoaderData()
+  const { roles } = Route.useRouteContext()
   return (
     <div className="animate-appear">
       <UserDetailBackLink />
-      <TelegramUserProfile data={data} />
+      <TelegramUserProfile data={data} canWrite={hasWriteAdminRole(roles)} />
     </div>
   )
 }

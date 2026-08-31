@@ -59,7 +59,7 @@ function GrantDetails({
   )
 }
 
-export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
+export function TelegramUserProfile({ data, canWrite }: { data: TelegramUserDetail; canWrite: boolean }) {
   const router = useRouter()
   const [adminDialogOpen, setAdminDialogOpen] = useState(false)
   const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, ongoingGrant, scheduledGrants } = data
@@ -104,10 +104,12 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
           icon={ShieldCheck}
           label="ROLES"
           actions={
-            <>
-              <RoleDialog mode="add" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
-              <RoleDialog mode="remove" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
-            </>
+            canWrite ? (
+              <>
+                <RoleDialog mode="add" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
+                <RoleDialog mode="remove" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
+              </>
+            ) : undefined
           }
         >
           <div className="flex flex-wrap gap-1.5">
@@ -126,10 +128,12 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
           icon={CalendarClock}
           label="GRANTS"
           actions={
-            <>
-              <CreateGrantDialog user={user} />
-              {ongoingGrant && <InterruptGrantDialog userId={user.id} displayName={displayName} />}
-            </>
+            canWrite ? (
+              <>
+                <CreateGrantDialog user={user} />
+                {ongoingGrant && <InterruptGrantDialog userId={user.id} displayName={displayName} />}
+              </>
+            ) : undefined
           }
         >
           {ongoingGrant || scheduledGrants.length ? (
@@ -163,9 +167,11 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
         title="Group administration"
         count={administeredGroups.length}
         action={
-          <Button variant="outline" size="sm" className="text-[10px]" onClick={() => setAdminDialogOpen(true)}>
-            <UserPlus data-icon="inline-start" /> Add group
-          </Button>
+          canWrite ? (
+            <Button variant="outline" size="sm" className="text-[10px]" onClick={() => setAdminDialogOpen(true)}>
+              <UserPlus data-icon="inline-start" /> Add group
+            </Button>
+          ) : undefined
         }
       >
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
@@ -178,45 +184,49 @@ export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
                   Added by {entry.addedBy.firstName}
                   {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
                 </small>
-                <div className="mt-3 border-t border-border pt-3">
-                  <RemoveGroupAdminDialog
-                    userId={user.id}
-                    groupId={entry.group.id}
-                    groupTitle={entry.group.title}
-                    onSaved={async () => {
-                      toast.success("Group administrator removed.")
-                      try {
-                        await router.invalidate({ sync: true })
-                      } catch (error) {
-                        console.error(error)
-                        toast.warning("The assignment was removed, but the latest user data could not be refreshed.")
-                      }
-                    }}
-                  />
-                </div>
+                {canWrite && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <RemoveGroupAdminDialog
+                      userId={user.id}
+                      groupId={entry.group.id}
+                      groupTitle={entry.group.title}
+                      onSaved={async () => {
+                        toast.success("Group administrator removed.")
+                        try {
+                          await router.invalidate({ sync: true })
+                        } catch (error) {
+                          console.error(error)
+                          toast.warning("The assignment was removed, but the latest user data could not be refreshed.")
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
           {!administeredGroups.length && <SectionEmpty text="This user does not administer any group." />}
         </div>
       </DetailSection>
-      <AddGroupAdminDialog
-        open={adminDialogOpen}
-        userId={user.id}
-        groups={groups}
-        administeredGroupIds={new Set(administeredGroups.map((entry) => entry.group.id))}
-        onClose={() => setAdminDialogOpen(false)}
-        onSaved={async () => {
-          setAdminDialogOpen(false)
-          toast.success("Group administrator added.")
-          try {
-            await router.invalidate({ sync: true })
-          } catch (error) {
-            console.error(error)
-            toast.warning("The administrator was added, but the latest user data could not be refreshed.")
-          }
-        }}
-      />
+      {canWrite && (
+        <AddGroupAdminDialog
+          open={adminDialogOpen}
+          userId={user.id}
+          groups={groups}
+          administeredGroupIds={new Set(administeredGroups.map((entry) => entry.group.id))}
+          onClose={() => setAdminDialogOpen(false)}
+          onSaved={async () => {
+            setAdminDialogOpen(false)
+            toast.success("Group administrator added.")
+            try {
+              await router.invalidate({ sync: true })
+            } catch (error) {
+              console.error(error)
+              toast.warning("The administrator was added, but the latest user data could not be refreshed.")
+            }
+          }}
+        />
+      )}
       <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
         <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
           {messages.map((message) => (
