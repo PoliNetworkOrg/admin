@@ -114,10 +114,30 @@ export function AddGroupToLabelDialog({
     try {
       await ensureLabelExists()
       const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
-      await tagGroupFn({ data: { groupId: created.id, type: "wa", label: path } })
+      try {
+        await tagGroupFn({ data: { groupId: created.id, type: "wa", label: path } })
+      } catch (tagCause) {
+        console.error(tagCause)
+        toast.warning(
+          `${title.trim()} was added, but could not be labeled "${formatLabelBreadcrumb(path)}". Assign it manually.`
+        )
+        closeDialog()
+        try {
+          await router.invalidate({ sync: true })
+        } catch (refreshCause) {
+          console.error(refreshCause)
+          toast.warning("The group was added, but the latest group data could not be refreshed.")
+        }
+        return
+      }
       toast.success(`${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`)
       closeDialog()
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+      } catch (refreshCause) {
+        console.error(refreshCause)
+        toast.warning("The group was added and labeled, but the latest group data could not be refreshed.")
+      }
     } catch (cause) {
       console.error(cause)
       setError(errorMessage(cause, "The group could not be created. Check the details and try again."))

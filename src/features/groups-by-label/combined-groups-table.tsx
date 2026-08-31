@@ -61,13 +61,14 @@ export function CombinedGroupsTable({
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState("")
   const [refreshError, setRefreshError] = useState("")
-  const [editingRow, setEditingRow] = useState<CombinedGroupRow | null>(null)
+  const [editingKey, setEditingKey] = useState<string | null>(null)
 
   const displayRows = rows.map((row) =>
     row.platform === "telegram"
       ? { ...row, group: { ...row.group, hide: visibilityOverrides[row.group.telegramId] ?? row.group.hide } }
       : row
   )
+  const editingRow = editingKey ? (displayRows.find((row) => row.key === editingKey) ?? null) : null
 
   async function toggleVisibility(group: TgGroup) {
     if (updatingId !== null) return
@@ -274,11 +275,11 @@ export function CombinedGroupsTable({
                     className="cursor-pointer outline-none focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25"
                     tabIndex={0}
                     aria-label={`Edit labels for ${row.original.title}`}
-                    onClick={() => setEditingRow(row.original)}
+                    onClick={() => setEditingKey(row.original.key)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault()
-                        setEditingRow(row.original)
+                        setEditingKey(row.original.key)
                       }
                     }}
                   >
@@ -308,7 +309,7 @@ export function CombinedGroupsTable({
         group={editingGroupRef}
         allLabels={allLabels}
         currentLabels={editingCurrentLabels}
-        onClose={() => setEditingRow(null)}
+        onClose={() => setEditingKey(null)}
         onSaved={async () => {
           try {
             await router.invalidate({ sync: true })

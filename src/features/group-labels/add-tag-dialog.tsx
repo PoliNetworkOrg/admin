@@ -19,7 +19,7 @@ import { errorMessage } from "@/lib/errors"
 
 import { DEFAULT_GROUP_LABEL_COLOR, GROUP_LABEL_MAX } from "./group-labels.constants"
 import { createGroupLabel } from "./group-labels.functions"
-import { isReservedCategoryRoot } from "./label-tree"
+import { isReservedCategoryRoot, isValidLabelSegment } from "./label-tree"
 
 /** Creates a flat attribute tag (e.g. a language or campus facet). Tags never nest, unlike a category. */
 export function AddTagDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -32,7 +32,7 @@ export function AddTagDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   const trimmed = name.trim()
   const reserved = isReservedCategoryRoot(trimmed)
-  const canSave = trimmed.length > 0 && !trimmed.includes(".") && !reserved
+  const canSave = isValidLabelSegment(trimmed) && !reserved
 
   function reset() {
     setName("")
@@ -88,7 +88,9 @@ export function AddTagDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               required
             />
           </Field>
-          {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
+          {!isValidLabelSegment(trimmed) && trimmed && (
+            <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
+          )}
           {reserved && <p className="text-xs text-destructive">This name is reserved for a category.</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>

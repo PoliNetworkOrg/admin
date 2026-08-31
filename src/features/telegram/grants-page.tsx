@@ -28,7 +28,13 @@ function formatDate(value: Date | string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
 }
 
-export function TelegramGrantsPage({ grants: { ongoing, scheduled } }: { grants: TelegramGrants }) {
+export function TelegramGrantsPage({
+  grants: { ongoing, scheduled },
+  canWrite,
+}: {
+  grants: TelegramGrants
+  canWrite: boolean
+}) {
   const [tab, setTab] = useState<"all" | "ongoing" | "scheduled">("all")
   const ongoingGrants = ongoing.grants.map((record): GrantRow => ({ ...record, status: "active" }))
   const scheduledGrants = scheduled.grants.map((record): GrantRow => ({ ...record, status: "scheduled" }))
@@ -161,7 +167,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled } }: { grants:
         count={filteredCount}
         total={grants.length}
         searchPlaceholder="Search users, authorizers, or reasons…"
-        action={<CreateGrantDialog />}
+        action={canWrite ? <CreateGrantDialog /> : undefined}
         onSearch={(value) => {
           table.setGlobalFilter(value)
           table.setPageIndex(0)

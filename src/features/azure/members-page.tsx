@@ -27,7 +27,7 @@ function memberFilterFrom<Value>(value: Value): MemberFilter {
   return result.success ? result.data : { query: "", membersOnly: false }
 }
 
-export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMember[] }) {
+export function AzureMembersPage({ initialMembers, canWrite }: { initialMembers: AzureMember[]; canWrite: boolean }) {
   const router = useRouter()
   const [dialog, setDialog] = useState<MemberDialogState | null>(null)
   const [members, setMembers] = useState(initialMembers)
@@ -107,22 +107,26 @@ export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMemb
           </div>
         ),
       }),
-      memberColumnHelper.display({
-        id: "actions",
-        header: "",
-        cell: ({ row }) => (
-          <Button
-            variant="link"
-            size="sm"
-            className="text-primary"
-            onClick={() => setDialog({ mode: "edit", member: row.original })}
-          >
-            Manage
-          </Button>
-        ),
-      }),
+      ...(canWrite
+        ? [
+            memberColumnHelper.display({
+              id: "actions",
+              header: "",
+              cell: ({ row }) => (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => setDialog({ mode: "edit", member: row.original })}
+                >
+                  Manage
+                </Button>
+              ),
+            }),
+          ]
+        : []),
     ])
-  }, [])
+  }, [canWrite])
   const table = useAppTable({
     key: "azure-members",
     columns,
@@ -162,9 +166,11 @@ export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMemb
           table.setPageIndex(0)
         }}
         action={
-          <Button onClick={() => setDialog({ mode: "create" })}>
-            <Plus data-icon="inline-start" /> Add member
-          </Button>
+          canWrite ? (
+            <Button onClick={() => setDialog({ mode: "create" })}>
+              <Plus data-icon="inline-start" /> Add member
+            </Button>
+          ) : undefined
         }
       >
         <Button
@@ -254,7 +260,7 @@ export function AzureMembersPage({ initialMembers }: { initialMembers: AzureMemb
           onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
         />
       )}
-      {dialog && (
+      {canWrite && dialog && (
         <MemberDialog
           dialog={dialog}
           onClose={() => setDialog(null)}

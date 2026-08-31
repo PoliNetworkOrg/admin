@@ -3,7 +3,7 @@ import { z } from "zod"
 import { errorHasZodField, errorMessage } from "@/lib/errors"
 
 import { GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX } from "./group-labels.constants"
-import { isCategoryLabel } from "./label-tree"
+import { isCategoryLabel, isValidLabelSegment } from "./label-tree"
 
 const label = z.string().trim().min(1).max(GROUP_LABEL_MAX)
 const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/)
@@ -32,7 +32,7 @@ function categoryRoot(value: string): string | null {
 const newLabelPath = label.refine(
   (value) => {
     const segments = value.split(".")
-    if (segments.some((segment) => segment.length === 0)) return false
+    if (segments.some((segment) => !isValidLabelSegment(segment))) return false
     return segments.length === 1 || isCategoryLabel(value)
   },
   { message: "Use a plain tag name, a category root, or nest a category under an existing root." }

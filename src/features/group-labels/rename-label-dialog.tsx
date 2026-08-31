@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { GROUP_LABEL_MAX } from "./group-labels.constants"
 import { renameGroupLabel } from "./group-labels.functions"
 import { groupLabelSaveErrorMessage } from "./group-labels.validation"
-import { formatLabelBreadcrumb, isReservedCategoryRoot } from "./label-tree"
+import { formatLabelBreadcrumb, isReservedCategoryRoot, isValidLabelSegment } from "./label-tree"
 import type { GroupLabel } from "./types"
 
 export function RenameLabelDialog({
@@ -58,7 +58,7 @@ export function RenameLabelDialog({
   // Only a bare top-level rename (a tag, since the two category roots never reach this dialog) could collide
   // with a reserved root name — a nested rename can't, since it'd still be dotted.
   const reserved = !parentPrefix && isReservedCategoryRoot(trimmed)
-  const canSave = trimmed.length > 0 && !trimmed.includes(".") && trimmed !== segment && !reserved
+  const canSave = isValidLabelSegment(trimmed) && trimmed !== segment && !reserved
   const newPath = parentPrefix ? `${parentPrefix}.${trimmed}` : trimmed
 
   async function submit(event: React.FormEvent) {
@@ -143,7 +143,9 @@ export function RenameLabelDialog({
               required
             />
           </Field>
-          {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
+          {!isValidLabelSegment(trimmed) && trimmed && (
+            <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
+          )}
           {reserved && <p className="text-xs text-destructive">This name is reserved for a category.</p>}
           {trimmed && !trimmed.includes(".") && trimmed !== segment && (
             <p className="text-xs text-muted-foreground">

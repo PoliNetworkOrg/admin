@@ -17,15 +17,17 @@ import { GroupMembership } from "./group-membership"
 export function AzureGroupsPage({
   groups,
   directoryMembers,
+  canWrite,
 }: {
   groups: AzureGroup[]
   directoryMembers: AzureMember[]
+  canWrite: boolean
 }) {
   return (
     <div className="animate-appear">
       <GroupsHeader groups={groups} />
       {groups.length ? (
-        <GroupsList groups={groups} directoryMembers={directoryMembers} />
+        <GroupsList groups={groups} directoryMembers={directoryMembers} canWrite={canWrite} />
       ) : (
         <EmptyState
           icon={UsersRound}
@@ -62,7 +64,15 @@ function GroupsHeader({ groups }: { groups: AzureGroup[] }) {
   )
 }
 
-function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[]; directoryMembers: AzureMember[] }) {
+function GroupsList({
+  groups,
+  directoryMembers,
+  canWrite,
+}: {
+  groups: AzureGroup[]
+  directoryMembers: AzureMember[]
+  canWrite: boolean
+}) {
   const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.displayName.localeCompare(b.displayName)), [groups])
   const multiMemberGroups = sortedGroups.filter((group) => group.members.length > 1)
   const singleMemberGroups = sortedGroups.filter((group) => group.members.length <= 1)
@@ -74,11 +84,17 @@ function GroupsList({ groups, directoryMembers }: { groups: AzureGroup[]; direct
           title="Groups with 2+ members"
           groups={multiMemberGroups}
           directoryMembers={directoryMembers}
+          canWrite={canWrite}
           defaultOpen
         />
       )}
       {singleMemberGroups.length > 0 && (
-        <GroupSection title="Groups with 0–1 member" groups={singleMemberGroups} directoryMembers={directoryMembers} />
+        <GroupSection
+          title="Groups with 0–1 member"
+          groups={singleMemberGroups}
+          directoryMembers={directoryMembers}
+          canWrite={canWrite}
+        />
       )}
     </div>
   )
@@ -88,11 +104,13 @@ function GroupSection({
   title,
   groups,
   directoryMembers,
+  canWrite,
   defaultOpen = false,
 }: {
   title: string
   groups: AzureGroup[]
   directoryMembers: AzureMember[]
+  canWrite: boolean
   defaultOpen?: boolean
 }) {
   return (
@@ -115,7 +133,7 @@ function GroupSection({
           {groups.map((group) => (
             <div key={group.id}>
               <Separator />
-              <GroupRow group={group} directoryMembers={directoryMembers} />
+              <GroupRow group={group} directoryMembers={directoryMembers} canWrite={canWrite} />
             </div>
           ))}
         </CollapsibleContent>
@@ -124,7 +142,15 @@ function GroupSection({
   )
 }
 
-function GroupRow({ group, directoryMembers }: { group: AzureGroup; directoryMembers: AzureMember[] }) {
+function GroupRow({
+  group,
+  directoryMembers,
+  canWrite,
+}: {
+  group: AzureGroup
+  directoryMembers: AzureMember[]
+  canWrite: boolean
+}) {
   return (
     <section className="grid gap-5 px-4 py-5 lg:grid-cols-[minmax(14rem,0.75fr)_minmax(0,1.25fr)] lg:items-center">
       <div className="flex min-w-0 flex-col gap-2">
@@ -142,7 +168,7 @@ function GroupRow({ group, directoryMembers }: { group: AzureGroup; directoryMem
         </Badge>
       </div>
 
-      <GroupMembership group={group} directoryMembers={directoryMembers} />
+      <GroupMembership group={group} directoryMembers={directoryMembers} canWrite={canWrite} />
     </section>
   )
 }

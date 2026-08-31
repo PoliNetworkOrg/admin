@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, groupWriteAdminMiddleware } from "@/server/auth.middleware"
 
 export const getWhatsappGroups = createServerFn()
   .middleware([adminMiddleware])
@@ -13,12 +13,12 @@ const whatsappGroupFields = z.object({
 })
 
 export const createWhatsappGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([groupWriteAdminMiddleware])
   .validator(whatsappGroupFields)
   .handler(({ data, context }) => context.backend.wa.groups.add.mutate(data))
 
 export const editWhatsappGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([groupWriteAdminMiddleware])
   .validator(whatsappGroupFields.extend({ id: z.number() }))
   .handler(async ({ data, context }) => {
     const updated = await context.backend.wa.groups.modify.mutate(data)
@@ -27,9 +27,10 @@ export const editWhatsappGroup = createServerFn({ method: "POST" })
   })
 
 export const deleteWhatsappGroup = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([groupWriteAdminMiddleware])
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data, context }) => {
-    await context.backend.wa.groups.delete.mutate({ id: data.id })
+    const deleted = await context.backend.wa.groups.delete.mutate({ id: data.id })
+    if (!deleted) throw new Error("NOT_FOUND")
     return { error: null }
   })

@@ -19,7 +19,7 @@ import { errorMessage } from "@/lib/errors"
 
 import { DEFAULT_GROUP_LABEL_COLOR, GROUP_LABEL_MAX } from "./group-labels.constants"
 import { createGroupLabel } from "./group-labels.functions"
-import { CATEGORY_ROOTS, formatLabelSegment, labelPathToUrlSegments } from "./label-tree"
+import { CATEGORY_ROOTS, formatLabelSegment, isValidLabelSegment, labelPathToUrlSegments } from "./label-tree"
 
 /** Creates a new category nested under one of the two fixed roots (Didattica, Extra) — there's no "add a new
  * root" action, since only a code change (adding to `CATEGORY_ROOTS`) can introduce a new one. */
@@ -33,7 +33,7 @@ export function AddCategoryDialog({ open, onOpenChange }: { open: boolean; onOpe
   const segmentId = useId()
 
   const trimmed = segment.trim()
-  const canSave = Boolean(root) && trimmed.length > 0 && !trimmed.includes(".")
+  const canSave = Boolean(root) && isValidLabelSegment(trimmed)
 
   function reset() {
     setRoot(null)
@@ -119,7 +119,9 @@ export function AddCategoryDialog({ open, onOpenChange }: { open: boolean; onOpe
                 required
               />
             </Field>
-            {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
+            {!isValidLabelSegment(trimmed) && trimmed && (
+              <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
               <Button

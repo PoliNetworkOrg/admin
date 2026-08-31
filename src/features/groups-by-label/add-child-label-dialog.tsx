@@ -18,7 +18,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel } from "@/features/group-labels/group-labels.functions"
-import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
+import { formatLabelBreadcrumb, isValidLabelSegment, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
 import { errorMessage } from "@/lib/errors"
 
 export function AddChildLabelDialog({
@@ -47,7 +47,7 @@ export function AddChildLabelDialog({
   const segmentId = useId()
 
   const trimmed = segment.trim()
-  const canSave = trimmed.length > 0 && !trimmed.includes(".")
+  const canSave = isValidLabelSegment(trimmed)
 
   function reset() {
     setSegment("")
@@ -113,7 +113,7 @@ export function AddChildLabelDialog({
               required
             />
           </Field>
-          {trimmed && !trimmed.includes(".") && (
+          {isValidLabelSegment(trimmed) && (
             <p className="text-xs text-muted-foreground">
               Will be created as{" "}
               <span className="font-mono text-foreground">
@@ -121,7 +121,9 @@ export function AddChildLabelDialog({
               </span>
             </p>
           )}
-          {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
+          {!isValidLabelSegment(trimmed) && trimmed && (
+            <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button

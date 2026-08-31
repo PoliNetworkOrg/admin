@@ -10,11 +10,13 @@ import {
   associationSaveErrorMessage,
   parseCreateAssociationForm,
 } from "../src/features/associations/associations.validation.ts"
+import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
 import {
   hasAdminRole,
+  hasGroupWriteRole,
   hasWebAdminRole,
   hasWebWriteRole,
   hasWriteAdminRole,
@@ -145,21 +147,37 @@ test("the backend URL only falls back during development or compilation", () => 
   assert.equal(resolveBackendUrl(undefined, undefined, undefined), undefined)
 })
 
-test("only dashboard administrator roles authorize access", () => {
+test("dashboard reader roles authorize access", () => {
   assert.equal(hasAdminRole(["owner"]), true)
   assert.equal(hasAdminRole(["direttivo"]), true)
   assert.equal(hasAdminRole(["president"]), true)
   assert.equal(hasAdminRole(["hr"]), true)
-  assert.equal(hasAdminRole(["web"]), false)
+  assert.equal(hasAdminRole(["web"]), true)
   assert.equal(hasAdminRole(["creator"]), false)
   assert.equal(hasAdminRole(["creator", "owner"]), false)
   assert.equal(hasAdminRole([]), false)
 })
 
-test("the web role is restricted to the web dashboard scope", () => {
+test("the web role can write web content and groups, but not restricted administration areas", () => {
   assert.equal(hasWebAdminRole(["web"]), true)
   assert.equal(hasWebWriteRole(["web"]), true)
+  assert.equal(hasGroupWriteRole(["web"]), true)
+  assert.equal(hasWriteAdminRole(["web"]), false)
+  assert.equal(hasGroupWriteRole(["hr"]), false)
+  assert.equal(hasGroupWriteRole(["owner"]), true)
   assert.equal(hasWebAdminRole(["creator", "web"]), false)
+  assert.equal(hasGroupWriteRole(["creator", "web"]), false)
+})
+
+test("group label paths reject URL separators", async () => {
+  assert.equal(isValidLabelSegment("machine/learning"), false)
+  assert.equal(isValidLabelSegment("machine?learning"), false)
+  assert.equal(isValidLabelSegment("machine-learning"), true)
+  const validationSource = await readFile(
+    new URL("../src/features/group-labels/group-labels.validation.ts", import.meta.url),
+    "utf8"
+  )
+  assert.match(validationSource, /segments\.some\(\(segment\) => !isValidLabelSegment\(segment\)\)/)
 })
 
 test("HR dashboard access is read-only", () => {
@@ -221,6 +239,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/telegram/grants.functions.ts",
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
+    "src/features/whatsapp/groups.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -232,6 +251,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
           serverFunction.middleware.includes("writeAdminMiddleware") ||
+          serverFunction.middleware.includes("groupWriteAdminMiddleware") ||
           serverFunction.middleware.includes("webAdminMiddleware") ||
           serverFunction.middleware.includes("webWriteAdminMiddleware"),
         `${file}:${serverFunction.name} must authorize access`
@@ -240,27 +260,37 @@ test("dashboard server functions attach their scoped authorization middleware", 
   }
 })
 
-test("dashboard mutations require a scoped write-capable role", async () => {
-  const adminFunctionFiles = [
-    "src/features/associations/associations.functions.ts",
+test("dashboard mutations enforce their exact write scope", async () => {
+  const restrictedMutationFiles = [
     "src/features/azure/azure.functions.ts",
+    "src/features/telegram/grants.functions.ts",
+    "src/features/telegram/users.functions.ts",
+  ]
+  const groupMutationFiles = ["src/features/telegram/groups.functions.ts", "src/features/whatsapp/groups.functions.ts"]
+  const webMutationFiles = [
+    "src/features/associations/associations.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
     "src/features/group-labels/group-labels.functions.ts",
     "src/features/faqs/faqs.functions.ts",
-    "src/features/telegram/grants.functions.ts",
-    "src/features/telegram/groups.functions.ts",
-    "src/features/telegram/users.functions.ts",
   ]
 
-  for (const file of adminFunctionFiles) {
-    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
-    const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
-    for (const mutation of mutations) {
-      assert.ok(
-        mutation.middleware.includes("writeAdminMiddleware") || mutation.middleware.includes("webWriteAdminMiddleware"),
-        `${file}:${mutation.name} must protect mutations with write access`
-      )
+  for (const { expectedMiddleware, files } of [
+    { expectedMiddleware: "writeAdminMiddleware", files: restrictedMutationFiles },
+    { expectedMiddleware: "groupWriteAdminMiddleware", files: groupMutationFiles },
+    { expectedMiddleware: "webWriteAdminMiddleware", files: webMutationFiles },
+  ]) {
+    for (const file of files) {
+      const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
+      const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
+      assert.ok(mutations.length > 0, `${file} must export at least one mutation`)
+      for (const mutation of mutations) {
+        assert.deepEqual(
+          mutation.middleware,
+          [expectedMiddleware],
+          `${file}:${mutation.name} must use ${expectedMiddleware}`
+        )
+      }
     }
   }
 })
@@ -270,6 +300,7 @@ test("session middleware marks identity-dependent responses private", async () =
   assert.match(source, /setResponseHeader\("Cache-Control", "private, no-store"\)/)
   assert.match(source, /setResponseHeader\("Vary", "Cookie"\)/)
   assert.match(source, /if \(!hasWriteAdminRole\(context\.roles\)\) throw new Error\("UNAUTHORIZED"\)/)
+  assert.match(source, /if \(!hasGroupWriteRole\(context\.roles\)\) throw new Error\("UNAUTHORIZED"\)/)
   assert.doesNotMatch(source, /new Error\("TELEGRAM_NOT_LINKED"\)/)
 })
 

@@ -2,12 +2,10 @@ import { redirect } from "@tanstack/react-router"
 import { createMiddleware } from "@tanstack/react-start"
 
 import type { AdminSession } from "@/lib/auth"
-import { hasAdminRole } from "@/server/authorization"
-
 type DashboardAccess =
   | { status: "unauthenticated"; session: null; roles: string[] }
   | {
-      status: "telegram-unlinked" | "forbidden" | "authorized" | "web-authorized"
+      status: "telegram-unlinked" | "forbidden" | "authorized"
       session: AdminSession
       roles: string[]
     }
@@ -44,7 +42,7 @@ export const dashboardAccessMiddleware = createMiddleware({ type: "function" })
         dashboardAccess = { status: "forbidden", session: context.session, roles: [] }
       } else {
         dashboardAccess = {
-          status: hasAdminRole(authorization.roles) ? "authorized" : "web-authorized",
+          status: "authorized",
           session: authorization.session,
           roles: authorization.roles,
         }
@@ -87,6 +85,15 @@ export const writeAdminMiddleware = createMiddleware({ type: "function" })
   .server(async ({ next, context }) => {
     const { hasWriteAdminRole } = await import("@/server/authorization")
     if (!hasWriteAdminRole(context.roles)) throw new Error("UNAUTHORIZED")
+    return next()
+  })
+
+/** Group management is writable by full write administrators and the dedicated web role. */
+export const groupWriteAdminMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(async ({ next, context }) => {
+    const { hasGroupWriteRole } = await import("@/server/authorization")
+    if (!hasGroupWriteRole(context.roles)) throw new Error("UNAUTHORIZED")
     return next()
   })
 

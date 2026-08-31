@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { getAzureDirectory } from "@/features/azure/azure.functions"
 import { AzureGroupsPage, AzureGroupsSkeleton } from "@/features/azure/groups-page"
+import { hasWriteAdminRole } from "@/server/authorization"
 
 export const Route = createFileRoute("/dashboard/azure/groups")({
   loader: () => getAzureDirectory(),
@@ -12,5 +13,6 @@ export const Route = createFileRoute("/dashboard/azure/groups")({
 
 function AzureGroupsRoute() {
   const { groups, members } = Route.useLoaderData()
-  return <AzureGroupsPage groups={groups} directoryMembers={members} />
+  const { roles } = Route.useRouteContext()
+  return <AzureGroupsPage groups={groups} directoryMembers={members} canWrite={hasWriteAdminRole(roles)} />
 }

@@ -20,6 +20,11 @@ export function isReservedCategoryRoot(name: string): boolean {
   return CATEGORY_ROOTS.some((root) => root === normalized)
 }
 
+/** A path segment is embedded directly in the groups-by-label route, so it must not contain URL separators. */
+export function isValidLabelSegment(segment: string): boolean {
+  return segment.length > 0 && !/[./\\?#%]/.test(segment)
+}
+
 /** Humanizes a single path segment for display, e.g. "primo-anno" -> "Primo Anno". */
 export function formatLabelSegment(segment: string): string {
   return segment
