@@ -298,7 +298,7 @@ export function WhatsappGroupsPage({
         />
       )}
       <GroupLabelsDialog
-        group={editingLabelsGroup ? { id: editingLabelsGroup.id, title: editingLabelsGroup.title } : null}
+        group={editingLabelsGroup ? { id: editingLabelsGroup.id, title: editingLabelsGroup.title, type: "wa" } : null}
         allLabels={loadedGroupLabels}
         currentLabels={editingLabelsGroup ? (labelsByGroupId.get(editingLabelsGroup.id) ?? []) : []}
         onClose={() => setEditingLabelsGroup(null)}

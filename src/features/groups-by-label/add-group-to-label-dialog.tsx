@@ -114,7 +114,7 @@ export function AddGroupToLabelDialog({
     try {
       await ensureLabelExists()
       const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
-      await tagGroupFn({ data: { groupId: created.id, label: path } })
+      await tagGroupFn({ data: { groupId: created.id, type: "wa", label: path } })
       toast.success(`${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`)
       closeDialog()
       await router.invalidate({ sync: true })
@@ -137,7 +137,11 @@ export function AddGroupToLabelDialog({
       const results = await Promise.allSettled(
         groupsToTag.map((group) =>
           tagGroupFn({
-            data: { groupId: "telegramId" in group ? group.telegramId : group.id, label: path },
+            data: {
+              groupId: "telegramId" in group ? group.telegramId : group.id,
+              type: "telegramId" in group ? "tg" : "wa",
+              label: path,
+            },
           })
         )
       )

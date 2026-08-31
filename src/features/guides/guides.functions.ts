@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import { parseGuideForm } from "./guides.validation"
 
 export const getGuides = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(({ context }) => context.backend.web.guides_matricole.getAllGuides.query())
 
 export const createGuide = createServerFn({ method: "POST" })

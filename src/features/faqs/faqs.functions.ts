@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import {
   addFAQCategoryInput,
@@ -12,7 +12,7 @@ import {
 } from "./faqs.validation"
 
 export const listFAQs = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(({ context }) => context.backend.web.faqs.getAllFaqs.query())
 
 export const addFAQ = createServerFn({ method: "POST" })

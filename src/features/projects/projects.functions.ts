@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import { parseProjectForm } from "./projects.validation"
 import type { Project } from "./types"
@@ -30,7 +30,7 @@ function projectFormData(data: ReturnType<typeof parseProjectForm>) {
 }
 
 export const getProjects = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(async ({ context }) => {
     const projects = await context.backend.web.projects.getAllProjects.query()
     return projects.map(projectFields)

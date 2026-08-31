@@ -18,7 +18,7 @@ import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import type { TgGroupLabel } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 
-/** Works for both Telegram and WhatsApp groups — labels are a shared, platform-agnostic system. */
+/** Works for both Telegram and WhatsApp groups; the platform prevents ID collisions. */
 export function GroupLabelsDialog({
   group,
   allLabels,
@@ -26,7 +26,7 @@ export function GroupLabelsDialog({
   onClose,
   onSaved,
 }: {
-  group: { id: number; title: string } | null
+  group: { id: number; title: string; type: "tg" | "wa" } | null
   allLabels: TgGroupLabel[]
   currentLabels: TgGroupLabel[]
   onClose: () => void
@@ -72,8 +72,8 @@ export function GroupLabelsDialog({
     setError("")
     try {
       const results = await Promise.allSettled([
-        ...added.map((label) => tagGroupFn({ data: { groupId: group.id, label: label.label } })),
-        ...removed.map((label) => untagGroupFn({ data: { groupId: group.id, label: label.label } })),
+        ...added.map((label) => tagGroupFn({ data: { groupId: group.id, type: group.type, label: label.label } })),
+        ...removed.map((label) => untagGroupFn({ data: { groupId: group.id, type: group.type, label: label.label } })),
       ])
       const failed = results.filter((result) => result.status === "rejected").length
       if (failed > 0) {

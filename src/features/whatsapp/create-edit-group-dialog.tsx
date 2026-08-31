@@ -70,7 +70,7 @@ export function CreateEditGroupDialog({
                 data: { label: autoAssignLabel, color: DEFAULT_GROUP_LABEL_COLOR, description: "" },
               })
             }
-            await tagGroupFn({ data: { groupId: created.id, label: autoAssignLabel } })
+            await tagGroupFn({ data: { groupId: created.id, type: "wa", label: autoAssignLabel } })
             toast.success(`${values.title} added and labeled "${autoAssignLabel}".`)
           } catch (tagCause) {
             console.error(tagCause)

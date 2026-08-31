@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import {
   associationIdInput,
@@ -10,7 +10,7 @@ import {
 } from "./associations.validation"
 
 export const getAssociations = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(({ context }) => context.backend.web.associations.getAllAssociations.query())
 
 function associationFormData(data: ReturnType<typeof parseCreateAssociationForm>) {

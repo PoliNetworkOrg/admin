@@ -292,7 +292,7 @@ export function GroupsTable({
         <EmptyState icon={emptyIcon} title={emptyTitle} text={emptyText} />
       )}
       <GroupLabelsDialog
-        group={editingGroup ? { id: editingGroup.telegramId, title: editingGroup.title } : null}
+        group={editingGroup ? { id: editingGroup.telegramId, title: editingGroup.title, type: "tg" } : null}
         allLabels={allLabels}
         currentLabels={editingGroup ? (labelsByGroupId.get(editingGroup.telegramId) ?? []) : []}
         onClose={() => setEditingGroup(null)}

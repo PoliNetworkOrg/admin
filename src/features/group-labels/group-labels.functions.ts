@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
 
 import {
   createGroupLabelInput,
@@ -11,15 +11,31 @@ import {
 } from "./group-labels.validation"
 
 export const listGroupLabels = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(({ context }) => context.backend.tg.groupLabels.getAll.query())
 
 /** All groups (Telegram + WhatsApp) with their labels already resolved. */
 export const listGroupsWithLabels = createServerFn()
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .handler(({ context }) => context.backend.groups.search.getAll.query())
 
-const groupLabelTagInput = z.object({ groupId: z.number().int(), label: z.string().min(1).max(128) })
+/** Platform is required because Telegram and WhatsApp group IDs may collide. */
+const groupLabelTagInput = z.object({
+  groupId: z.number().int(),
+  type: z.enum(["tg", "wa"]),
+  label: z.string().min(1).max(128),
+})
+
+/** The web-only category view needs both platform lists without broadening their dashboard functions. */
+export const listGroupsForLabels = createServerFn()
+  .middleware([webAdminMiddleware])
+  .handler(async ({ context }) => {
+    const [tgGroups, waGroups] = await Promise.all([
+      context.backend.tg.groups.getAll.query(),
+      context.backend.wa.groups.getAll.query(),
+    ])
+    return { tgGroups, waGroups }
+  })
 
 export const tagGroup = createServerFn({ method: "POST" })
   .middleware([webWriteAdminMiddleware])

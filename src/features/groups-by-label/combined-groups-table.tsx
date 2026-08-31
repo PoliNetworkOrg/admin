@@ -225,9 +225,9 @@ export function CombinedGroupsTable({
 
   const editingGroupRef =
     editingRow?.platform === "telegram"
-      ? { id: editingRow.group.telegramId, title: editingRow.title }
+      ? { id: editingRow.group.telegramId, title: editingRow.title, type: "tg" as const }
       : editingRow?.platform === "whatsapp"
-        ? { id: editingRow.group.id, title: editingRow.title }
+        ? { id: editingRow.group.id, title: editingRow.title, type: "wa" as const }
         : null
   const editingCurrentLabels = editingRow?.labels ?? []
 

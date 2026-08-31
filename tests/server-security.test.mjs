@@ -13,7 +13,13 @@ import {
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
-import { hasAdminRole, hasWriteAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
+import {
+  hasAdminRole,
+  hasWebAdminRole,
+  hasWebWriteRole,
+  hasWriteAdminRole,
+  isAgentModeEnabled,
+} from "../src/server/authorization.ts"
 import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
@@ -144,9 +150,16 @@ test("only dashboard administrator roles authorize access", () => {
   assert.equal(hasAdminRole(["direttivo"]), true)
   assert.equal(hasAdminRole(["president"]), true)
   assert.equal(hasAdminRole(["hr"]), true)
+  assert.equal(hasAdminRole(["web"]), false)
   assert.equal(hasAdminRole(["creator"]), false)
   assert.equal(hasAdminRole(["creator", "owner"]), false)
   assert.equal(hasAdminRole([]), false)
+})
+
+test("the web role is restricted to the web dashboard scope", () => {
+  assert.equal(hasWebAdminRole(["web"]), true)
+  assert.equal(hasWebWriteRole(["web"]), true)
+  assert.equal(hasWebAdminRole(["creator", "web"]), false)
 })
 
 test("HR dashboard access is read-only", () => {
@@ -197,12 +210,14 @@ test("the auth proxy preserves the request and exact upstream response", async (
   ])
 })
 
-test("admin server functions attach the authorization middleware", async () => {
+test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
+    "src/features/group-labels/group-labels.functions.ts",
+    "src/features/faqs/faqs.functions.ts",
     "src/features/telegram/grants.functions.ts",
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
@@ -216,19 +231,23 @@ test("admin server functions attach the authorization middleware", async () => {
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.includes("writeAdminMiddleware"),
+          serverFunction.middleware.includes("writeAdminMiddleware") ||
+          serverFunction.middleware.includes("webAdminMiddleware") ||
+          serverFunction.middleware.includes("webWriteAdminMiddleware"),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
   }
 })
 
-test("dashboard mutations require a write-capable role", async () => {
+test("dashboard mutations require a scoped write-capable role", async () => {
   const adminFunctionFiles = [
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
+    "src/features/group-labels/group-labels.functions.ts",
+    "src/features/faqs/faqs.functions.ts",
     "src/features/telegram/grants.functions.ts",
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
@@ -239,7 +258,7 @@ test("dashboard mutations require a write-capable role", async () => {
     const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
     for (const mutation of mutations) {
       assert.ok(
-        mutation.middleware.includes("writeAdminMiddleware"),
+        mutation.middleware.includes("writeAdminMiddleware") || mutation.middleware.includes("webWriteAdminMiddleware"),
         `${file}:${mutation.name} must protect mutations with write access`
       )
     }
@@ -264,7 +283,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/azure/member-dialog.tsx": ["createAzureMember", "setAzureMemberNumber"],
     "src/features/guides/guide-dialogs.tsx": ["createGuide", "deleteGuide"],
     "src/features/projects/projects-page.tsx": ["createProject", "deleteProject", "editProject", "reorderProjects"],
-    "src/features/telegram/groups-page.tsx": ["setGroupVisibility"],
+    "src/features/telegram/groups-table.tsx": ["setGroupVisibility"],
     "src/features/telegram/leave-group-dialog.tsx": ["leaveTelegramGroup"],
     "src/features/telegram/user-detail/grant-dialogs.tsx": ["interruptTelegramGrant"],
     "src/features/telegram/user-detail/group-admin-dialog.tsx": ["addTelegramGroupAdmin", "removeTelegramGroupAdmin"],

@@ -1,21 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { DataPageSkeleton } from "@/components/loading-skeleton"
-import { listGroupLabels, listGroupsWithLabels } from "@/features/group-labels/group-labels.functions"
+import {
+  listGroupLabels,
+  listGroupsForLabels,
+  listGroupsWithLabels,
+} from "@/features/group-labels/group-labels.functions"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
 import { GroupsByLabelPage } from "@/features/groups-by-label/groups-by-label-page"
-import { getTelegramGroups } from "@/features/telegram/groups.functions"
-import { getWhatsappGroups } from "@/features/whatsapp/groups.functions"
 
 export const Route = createFileRoute("/dashboard/web/groups-by-label/$")({
   loader: async () => {
-    const [tgGroups, groupLabels, groupsWithLabels, waGroups] = await Promise.all([
-      getTelegramGroups(),
+    const [groups, groupLabels, groupsWithLabels] = await Promise.all([
+      listGroupsForLabels(),
       listGroupLabels(),
       listGroupsWithLabels(),
-      getWhatsappGroups(),
     ])
-    return { tgGroups, groupLabels, groupsWithLabels, waGroups }
+    return { ...groups, groupLabels, groupsWithLabels }
   },
   pendingComponent: () => <DataPageSkeleton columns={5} />,
   component: GroupsByLabelRoute,

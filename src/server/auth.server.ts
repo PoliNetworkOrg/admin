@@ -5,7 +5,7 @@ import { createAuthClient } from "better-auth/client"
 import { env } from "@/env"
 import type { AdminSession } from "@/lib/auth"
 import { createAuthPlugins } from "@/lib/auth-plugins"
-import { ADMIN_ROLES, hasAdminRole, isAgentModeEnabled } from "@/server/authorization"
+import { ADMIN_ROLES, hasAdminRole, hasWebAdminRole, isAgentModeEnabled } from "@/server/authorization"
 import { type BackendClient, createBackendClient } from "@/server/backend.server"
 
 const serverAuth = createAuthClient({
@@ -67,9 +67,10 @@ export type AdminAuthorization = {
   roles: string[]
 }
 
-export async function authorizeAdmin(
+async function authorizeWithRole(
   session: AdminSession,
-  backend: BackendClient
+  backend: BackendClient,
+  hasRole: (roles: readonly string[]) => boolean
 ): Promise<AdminAuthorization | "telegram-unlinked" | "forbidden"> {
   const telegramId = session.user.telegramId
   if (!telegramId) return "telegram-unlinked"
@@ -78,6 +79,14 @@ export async function authorizeAdmin(
     ? [...ADMIN_ROLES]
     : ((await backend.tg.permissions.getRoles.query({ userId: telegramId })).roles ?? [])
 
-  if (!hasAdminRole(roles)) return "forbidden"
+  if (!hasRole(roles)) return "forbidden"
   return { session, telegramId, roles }
+}
+
+export function authorizeAdmin(session: AdminSession, backend: BackendClient) {
+  return authorizeWithRole(session, backend, hasAdminRole)
+}
+
+export function authorizeWebAdmin(session: AdminSession, backend: BackendClient) {
+  return authorizeWithRole(session, backend, hasWebAdminRole)
 }

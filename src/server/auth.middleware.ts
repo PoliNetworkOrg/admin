@@ -2,10 +2,15 @@ import { redirect } from "@tanstack/react-router"
 import { createMiddleware } from "@tanstack/react-start"
 
 import type { AdminSession } from "@/lib/auth"
+import { hasAdminRole } from "@/server/authorization"
 
 type DashboardAccess =
   | { status: "unauthenticated"; session: null; roles: string[] }
-  | { status: "telegram-unlinked" | "forbidden" | "authorized"; session: AdminSession; roles: string[] }
+  | {
+      status: "telegram-unlinked" | "forbidden" | "authorized" | "web-authorized"
+      session: AdminSession
+      roles: string[]
+    }
 
 export const backendMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
   const { createRequestBackend } = await import("@/server/auth.server")
@@ -31,15 +36,15 @@ export const dashboardAccessMiddleware = createMiddleware({ type: "function" })
     if (!context.session) {
       dashboardAccess = { status: "unauthenticated", session: null, roles: [] }
     } else {
-      const { authorizeAdmin } = await import("@/server/auth.server")
-      const authorization = await authorizeAdmin(context.session, context.backend)
+      const { authorizeWebAdmin } = await import("@/server/auth.server")
+      const authorization = await authorizeWebAdmin(context.session, context.backend)
       if (authorization === "telegram-unlinked") {
         dashboardAccess = { status: "telegram-unlinked", session: context.session, roles: [] }
       } else if (authorization === "forbidden") {
         dashboardAccess = { status: "forbidden", session: context.session, roles: [] }
       } else {
         dashboardAccess = {
-          status: "authorized",
+          status: hasAdminRole(authorization.roles) ? "authorized" : "web-authorized",
           session: authorization.session,
           roles: authorization.roles,
         }
@@ -66,6 +71,17 @@ export const adminMiddleware = createMiddleware({ type: "function" })
     return next({ context: authorization })
   })
 
+/** Authorization for reads and writes that are exclusively exposed under /dashboard/web. */
+export const webAdminMiddleware = createMiddleware({ type: "function" })
+  .middleware([authenticatedMiddleware])
+  .server(async ({ next, context }) => {
+    const { authorizeWebAdmin } = await import("@/server/auth.server")
+    const authorization = await authorizeWebAdmin(context.session, context.backend)
+    if (authorization === "telegram-unlinked") throw redirect({ to: "/onboarding/link" })
+    if (authorization === "forbidden") throw redirect({ to: "/onboarding/unauthorized" })
+    return next({ context: authorization })
+  })
+
 export const writeAdminMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(async ({ next, context }) => {
@@ -76,7 +92,7 @@ export const writeAdminMiddleware = createMiddleware({ type: "function" })
 
 /** For mutations scoped to the /dashboard/web section: full write roles, plus the "web" role. */
 export const webWriteAdminMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
+  .middleware([webAdminMiddleware])
   .server(async ({ next, context }) => {
     const { hasWebWriteRole } = await import("@/server/authorization")
     if (!hasWebWriteRole(context.roles)) throw new Error("UNAUTHORIZED")
