@@ -113,7 +113,12 @@ export function GroupLabelTreeRow({
               onOpenChange={setRenameOpen}
             />
           )}
-          <AddChildLabelDialog path={node.path} open={addChildOpen} onOpenChange={setAddChildOpen} />
+          <AddChildLabelDialog
+            path={node.path}
+            open={addChildOpen}
+            onOpenChange={setAddChildOpen}
+            navigateOnSuccess={false}
+          />
         </div>
       )}
       {hasChildren && expanded && (

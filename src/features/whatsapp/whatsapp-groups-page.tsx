@@ -156,7 +156,7 @@ export function WhatsappGroupsPage({
   return (
     <div className="animate-appear">
       <DataToolbar
-        eyebrow="Whatsapp"
+        eyebrow="WhatsApp"
         title="WhatsApp groups"
         description="Maintain the community groups shared on WhatsApp."
         count={visibleGroups.length}

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { GROUP_LABEL_MAX } from "./group-labels.constants"
 import { renameGroupLabel } from "./group-labels.functions"
 import { groupLabelSaveErrorMessage } from "./group-labels.validation"
-import { formatLabelBreadcrumb, isReservedCategoryRoot, labelPathToUrlSegments } from "./label-tree"
+import { formatLabelBreadcrumb, isReservedCategoryRoot } from "./label-tree"
 import type { GroupLabel } from "./types"
 
 export function RenameLabelDialog({
@@ -66,28 +66,51 @@ export function RenameLabelDialog({
     if (!canSave || pending) return
     setPending(true)
     setError("")
+    // The backend renames each affected label one at a time with no cross-label transaction, so a rename
+    // spanning several nested labels can fail partway and leave the tree split between the old and new path.
+    // There's no atomic batch endpoint to call instead (would need a backend change, out of scope here), so
+    // this settles every rename first and, on any failure, best-effort renames the successful ones back —
+    // "all or nothing" from the admin's point of view even without a real DB transaction underneath.
+    const renames = affectedLabels.map((label) => ({
+      label,
+      newLabel: newPath + label.label.slice(path.length),
+    }))
     try {
-      await Promise.all(
-        affectedLabels.map((label) =>
+      const results = await Promise.allSettled(
+        renames.map(({ label, newLabel }) =>
           renameGroupLabelFn({
-            data: {
-              label: label.label,
-              newLabel: newPath + label.label.slice(path.length),
-              color: label.color,
-              description: label.description ?? "",
-            },
+            data: { label: label.label, newLabel, color: label.color, description: label.description ?? "" },
           })
         )
       )
-      toast.success(
-        affectedLabels.length > 1
-          ? `Renamed "${formatLabelBreadcrumb(path)}" and ${affectedLabels.length - 1} nested label(s) to "${formatLabelBreadcrumb(newPath)}".`
-          : `Renamed to "${formatLabelBreadcrumb(newPath)}".`
+      const anyFailed = results.some((result) => result.status === "rejected")
+      if (!anyFailed) {
+        toast.success(
+          affectedLabels.length > 1
+            ? `Renamed "${formatLabelBreadcrumb(path)}" and ${affectedLabels.length - 1} nested label(s) to "${formatLabelBreadcrumb(newPath)}".`
+            : `Renamed to "${formatLabelBreadcrumb(newPath)}".`
+        )
+        onOpenChange(false)
+        // Both current callers (the tree row and the flat card) live on the labels management page itself, so
+        // there's nowhere to navigate to — just refresh so the renamed node shows up immediately.
+        await router.invalidate({ sync: true })
+        return
+      }
+
+      const succeeded = renames.filter((_, index) => results[index]?.status === "fulfilled")
+      const rollbackResults = await Promise.allSettled(
+        succeeded.map(({ label, newLabel }) =>
+          renameGroupLabelFn({
+            data: { label: newLabel, newLabel: label.label, color: label.color, description: label.description ?? "" },
+          })
+        )
       )
-      onOpenChange(false)
-      await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(newPath).join("/")}` })
-      // The sidebar's label list is loaded by the persistent dashboard shell route, which doesn't
-      // re-run its loader on a navigate within its own subtree — force a refresh so it shows the new name.
+      const rollbackFailed = rollbackResults.some((result) => result.status === "rejected")
+      setError(
+        rollbackFailed
+          ? "The rename failed partway and some labels couldn't be rolled back automatically — check the category tree for leftover names."
+          : "The rename couldn't be completed and was rolled back. Check your permissions and try again."
+      )
       await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)

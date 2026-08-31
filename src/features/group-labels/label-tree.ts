@@ -110,9 +110,10 @@ export function labelPathToUrlSegments(path: string): string[] {
   return path.split(".").filter((segment) => segment.length > 0)
 }
 
-/** Converts sidebar URL segments back to a dotted hierarchy path. */
+/** Converts sidebar URL segments back to a dotted hierarchy path — the inverse of `labelPathToUrlSegments`,
+ * so a malformed URL (trailing/double slash) can't produce a path with an empty segment (e.g. a trailing dot). */
 export function urlSegmentsToLabelPath(segments: string[]): string {
-  return segments.join(".")
+  return segments.filter((segment) => segment.length > 0).join(".")
 }
 
 /** A group matches a branch when one of its labels is exactly `path`, or nested under it (e.g. "informatica.triennale.primo" under "informatica"). */

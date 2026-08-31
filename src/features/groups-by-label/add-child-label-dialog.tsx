@@ -25,11 +25,15 @@ export function AddChildLabelDialog({
   path,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  navigateOnSuccess = true,
 }: {
   path: string
   /** Pass both to drive the dialog externally (e.g. from a sidebar menu item) instead of rendering its own button. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Off when opened from the labels management page, which should stay put — only the browse page (where
+   * jumping into the newly created branch makes sense) wants the post-create navigation. */
+  navigateOnSuccess?: boolean
 }) {
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
@@ -61,9 +65,11 @@ export function AddChildLabelDialog({
       toast.success(`"${childPath}" created.`)
       setOpen(false)
       reset()
-      await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(childPath).join("/")}` })
-      // The sidebar's label list is loaded by the persistent dashboard shell route, which doesn't
-      // re-run its loader on a navigate within its own subtree — force a refresh so the new node appears.
+      if (navigateOnSuccess) {
+        await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(childPath).join("/")}` })
+      }
+      // Force a refresh so the new node appears wherever it's listed (this page's own tree, or the
+      // browse page just navigated into) without waiting on a background revalidation.
       await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
@@ -118,7 +124,15 @@ export function AddChildLabelDialog({
           {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                reset()
+                setOpen(false)
+              }}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={pending || !canSave}>

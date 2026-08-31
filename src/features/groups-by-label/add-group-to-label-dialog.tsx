@@ -129,13 +129,25 @@ export function AddGroupToLabelDialog({
     setError("")
     try {
       await ensureLabelExists()
-      await Promise.all(
+      const results = await Promise.allSettled(
         groupsToTag.map((group) =>
           tagGroupFn({
             data: { groupId: "telegramId" in group ? group.telegramId : group.id, label: path },
           })
         )
       )
+      const failed = results.filter((result) => result.status === "rejected").length
+      if (failed > 0) {
+        // Some groups may have already been tagged even though others failed — refresh so the underlying
+        // data reflects what's actually saved, instead of silently implying nothing happened.
+        await router.invalidate({ sync: true })
+        setError(
+          failed === groupsToTag.length
+            ? "The groups could not be labeled. Check your permissions and try again."
+            : `${failed} of ${groupsToTag.length} group(s) couldn't be labeled — the rest were. Check your permissions and try again.`
+        )
+        return
+      }
       toast.success(
         groupsToTag.length === 1
           ? `${groupsToTag[0].title} labeled "${formatLabelBreadcrumb(path)}".`

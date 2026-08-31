@@ -98,7 +98,7 @@ export function GroupLabelCard({
     }
   }
 
-  const swatch = getGroupLabelColor(groupLabel.color)
+  const swatch = getGroupLabelColor(editing ? color : groupLabel.color)
   const affectedLabels = allLabels.filter(
     (label) => label.label === groupLabel.label || label.label.startsWith(`${groupLabel.label}.`)
   )
@@ -227,7 +227,12 @@ export function GroupLabelCard({
         />
       )}
       {allowChildren && (
-        <AddChildLabelDialog path={groupLabel.label} open={addChildOpen} onOpenChange={setAddChildOpen} />
+        <AddChildLabelDialog
+          path={groupLabel.label}
+          open={addChildOpen}
+          onOpenChange={setAddChildOpen}
+          navigateOnSuccess={false}
+        />
       )}
 
       <AlertDialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>

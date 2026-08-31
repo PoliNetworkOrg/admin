@@ -79,7 +79,7 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
                 node={node}
                 depth={0}
                 forceExpanded={isSearching}
-                allLabels={loadedGroupLabels}
+                allLabels={labels}
                 onDelete={removeGroupLabel}
                 onSave={saveGroupLabel}
               />
@@ -105,7 +105,7 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
               <GroupLabelCard
                 key={label.label}
                 groupLabel={label}
-                allLabels={loadedGroupLabels}
+                allLabels={labels}
                 allowChildren={false}
                 onDelete={() => removeGroupLabel(label)}
                 onSave={(values) => saveGroupLabel(label, values)}

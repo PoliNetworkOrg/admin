@@ -122,7 +122,15 @@ export function AddCategoryDialog({ open, onOpenChange }: { open: boolean; onOpe
             {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => {
+                  reset()
+                  onOpenChange(false)
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={pending || !canSave}>

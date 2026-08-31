@@ -40,13 +40,17 @@ export function GroupLabelsDialog({
   const open = group !== null
 
   // Resets the working selection only when a different group is opened, not on every relations refresh
-  // (currentLabels is intentionally excluded: it gets a new array identity on every parent render).
+  // (currentLabels is intentionally excluded: it gets a new array identity on every parent render) — and
+  // keyed on the group's id rather than the `group` object itself, since every call site constructs a new
+  // `{ id, title }` literal inline on every render, which would otherwise re-fire this effect (discarding
+  // any in-progress, unsaved selection) on every unrelated re-render while the dialog is open.
   useEffect(() => {
     if (group) {
       setSelected(currentLabels)
       setError("")
     }
-  }, [group])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group?.id])
 
   const added = selected.filter((label) => !currentLabels.some((current) => isSameGroupLabel(current, label)))
   const removed = currentLabels.filter((label) => !selected.some((next) => isSameGroupLabel(next, label)))
@@ -67,10 +71,21 @@ export function GroupLabelsDialog({
     setPending(true)
     setError("")
     try {
-      await Promise.all([
+      const results = await Promise.allSettled([
         ...added.map((label) => tagGroupFn({ data: { groupId: group.id, label: label.label } })),
         ...removed.map((label) => untagGroupFn({ data: { groupId: group.id, label: label.label } })),
       ])
+      const failed = results.filter((result) => result.status === "rejected").length
+      if (failed > 0) {
+        // Some of these may have already applied even though others failed — refresh so the underlying
+        // data (and this dialog, next time it opens) reflects what's actually saved, instead of silently
+        // implying nothing happened.
+        await onSaved()
+        setError(
+          `${failed} of ${results.length} label change(s) couldn't be saved — some may have already applied. Check the group's labels and try again.`
+        )
+        return
+      }
       toast.success(`Labels updated for ${group.title}.`)
       onClose()
       await onSaved()

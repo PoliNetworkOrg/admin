@@ -92,7 +92,15 @@ export function AddTagDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           {reserved && <p className="text-xs text-destructive">This name is reserved for a category.</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                reset()
+                onOpenChange(false)
+              }}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={pending || !canSave}>

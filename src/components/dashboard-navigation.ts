@@ -49,7 +49,7 @@ export const dashboardNavigation = [
     ],
   },
   {
-    title: "Whatsapp",
+    title: "WhatsApp",
     icon: UsersRound,
     iconSrc: whatsappIcon,
     items: [{ title: "Groups", url: "/dashboard/whatsapp/groups", icon: Database }],
