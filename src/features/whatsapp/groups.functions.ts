@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, webWriteAdminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
 export const getWhatsappGroups = createServerFn()
   .middleware([adminMiddleware])
@@ -13,7 +13,7 @@ const whatsappGroupFields = z.object({
 })
 
 export const createWhatsappGroup = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([writeAdminMiddleware])
   .validator(whatsappGroupFields)
   .handler(({ data, context }) => context.backend.wa.groups.add.mutate(data))
 

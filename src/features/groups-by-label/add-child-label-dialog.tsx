@@ -18,7 +18,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel } from "@/features/group-labels/group-labels.functions"
-import { labelPathToUrlSegments } from "@/features/group-labels/label-tree"
+import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
 import { errorMessage } from "@/lib/errors"
 
 export function AddChildLabelDialog({
@@ -62,6 +62,9 @@ export function AddChildLabelDialog({
       setOpen(false)
       reset()
       await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(childPath).join("/")}` })
+      // The sidebar's label list is loaded by the persistent dashboard shell route, which doesn't
+      // re-run its loader on a navigate within its own subtree — force a refresh so the new node appears.
+      await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
       setError(errorMessage(cause, `"${childPath}" could not be created. Try a different name.`))
@@ -84,11 +87,12 @@ export function AddChildLabelDialog({
           <Plus data-icon="inline-start" /> Add category
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Add sub-category</DialogTitle>
           <DialogDescription>
-            Creates a new category nested under <strong className="text-foreground">{path}</strong>.
+            Creates a new category nested under{" "}
+            <strong className="text-foreground">{formatLabelBreadcrumb(path)}</strong>.
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={(event) => void submit(event)}>

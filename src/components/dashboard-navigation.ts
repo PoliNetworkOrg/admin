@@ -3,6 +3,7 @@ import {
   CircleQuestionMark,
   Database,
   FolderKanban,
+  FolderTree,
   Globe,
   LayoutDashboard,
   type LucideIcon,
@@ -72,6 +73,7 @@ export const dashboardNavigation = [
       { title: "Guides", url: "/dashboard/web/guides", icon: BookOpen },
       { title: "FAQs", url: "/dashboard/web/faqs", icon: CircleQuestionMark },
       { title: "Group labels", url: "/dashboard/web/group-labels", icon: Tags },
+      { title: "Categories", url: "/dashboard/web/groups-by-label", icon: FolderTree },
     ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]

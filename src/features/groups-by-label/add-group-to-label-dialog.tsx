@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
+import { formatLabelBreadcrumb } from "@/features/group-labels/label-tree"
 import { createWhatsappGroup } from "@/features/whatsapp/groups.functions"
 import { WHATSAPP_LINK_PATTERN, WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
@@ -93,7 +94,7 @@ export function AddGroupToLabelDialog({
       await ensureLabelExists()
       const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
       await tagGroupFn({ data: { groupId: created.id, label: path } })
-      toast.success(`${title.trim()} added and labeled "${path}".`)
+      toast.success(`${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`)
       setOpen(false)
       await router.invalidate({ sync: true })
     } catch (cause) {
@@ -112,10 +113,10 @@ export function AddGroupToLabelDialog({
       await ensureLabelExists()
       if (platform === "telegram" && selectedTgGroup) {
         await tagGroupFn({ data: { groupId: selectedTgGroup.telegramId, label: path } })
-        toast.success(`${selectedTgGroup.title} labeled "${path}".`)
+        toast.success(`${selectedTgGroup.title} labeled "${formatLabelBreadcrumb(path)}".`)
       } else if (platform === "whatsapp" && selectedWaGroup) {
         await tagGroupFn({ data: { groupId: selectedWaGroup.id, label: path } })
-        toast.success(`${selectedWaGroup.title} labeled "${path}".`)
+        toast.success(`${selectedWaGroup.title} labeled "${formatLabelBreadcrumb(path)}".`)
       } else {
         return
       }
@@ -143,9 +144,9 @@ export function AddGroupToLabelDialog({
       <DialogTrigger render={<Button />}>
         <Plus data-icon="inline-start" /> Add group
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add group to "{path}"</DialogTitle>
+          <DialogTitle>Add group to "{formatLabelBreadcrumb(path)}"</DialogTitle>
           <DialogDescription>
             {step === "choose" && "Create a brand new group, or categorize a group that already exists."}
             {step === "new" && "There's no bot managing WhatsApp groups yet, so this is just a manual record."}

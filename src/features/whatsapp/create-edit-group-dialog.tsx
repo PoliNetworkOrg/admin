@@ -114,7 +114,7 @@ export function CreateEditGroupDialog({
           </>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{group ? "Edit WhatsApp group" : "Add WhatsApp group"}</DialogTitle>
           <DialogDescription>

@@ -20,8 +20,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { GroupLabelBadges } from "@/features/group-labels/group-label-badges"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
-import { getGroupLabelColor } from "@/features/group-labels/group-labels.constants"
 import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
@@ -151,26 +151,7 @@ export function CombinedGroupsTable({
       }),
       groupColumnHelper.accessor("labels", {
         header: "Labels",
-        cell: ({ getValue }) => {
-          const labels = getValue()
-          if (!labels.length) return <span className="text-xs italic text-muted-foreground">No labels</span>
-          return (
-            <div className="flex flex-wrap gap-1">
-              {labels.map((label) => {
-                const swatch = getGroupLabelColor(label.color)
-                return (
-                  <Badge
-                    key={label.label}
-                    className={cn("text-[10px]", swatch.badgeClassName)}
-                    style={swatch.badgeStyle}
-                  >
-                    {label.label}
-                  </Badge>
-                )
-              })}
-            </div>
-          )
-        },
+        cell: ({ getValue }) => <GroupLabelBadges labels={getValue()} />,
       }),
       groupColumnHelper.accessor("link", {
         header: "Invite",

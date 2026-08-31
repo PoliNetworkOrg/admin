@@ -59,15 +59,11 @@ export const editGroupLabel = createServerFn({ method: "POST" })
     return updated
   })
 
-/**
- * TODO: the backend doesn't support renaming a label yet (`label` is the primary key, and `tg.groupLabels` has
- * no `rename` procedure) — this call will fail until that lands. The UI is ready for when it does.
- */
 export const renameGroupLabel = createServerFn({ method: "POST" })
   .middleware([webWriteAdminMiddleware])
   .validator(renameGroupLabelInput)
   .handler(async ({ data, context }) => {
-    const [renamed] = await context.backend.tg.groupLabels.rename.mutate({
+    const [renamed] = await context.backend.tg.groupLabels.modify.mutate({
       label: data.label,
       newLabel: data.newLabel,
       description: data.description,

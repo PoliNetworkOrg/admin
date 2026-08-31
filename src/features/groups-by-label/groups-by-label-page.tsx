@@ -1,7 +1,19 @@
+import { Link } from "@tanstack/react-router"
+import { ArrowLeft, ChevronRight } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { DataToolbar } from "@/components/data-toolbar"
-import { buildLabelsByGroupId, labelPathToUrlSegments, matchesLabelBranch } from "@/features/group-labels/label-tree"
+import { Button } from "@/components/ui/button"
+import {
+  buildCategoryRootTree,
+  buildLabelsByGroupId,
+  findLabelTreeNode,
+  formatLabelBreadcrumb,
+  formatLabelSegment,
+  hasExactLabel,
+  isCategoryLabel,
+  labelPathToUrlSegments,
+} from "@/features/group-labels/label-tree"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { AddGroupToLabelDialog } from "@/features/groups-by-label/add-group-to-label-dialog"
 import { CombinedGroupsTable, type CombinedGroupRow } from "@/features/groups-by-label/combined-groups-table"
@@ -33,9 +45,11 @@ export function GroupsByLabelPage({
     [loadedGroupLabels, loadedGroupsWithLabels]
   )
 
+  // Only groups tagged with this exact category — a level below shows up as a sub-category to click into, not
+  // mixed into this list, so the admin always knows precisely where a group is filed.
   const branchRows = useMemo(() => {
     const tgRows: CombinedGroupRow[] = loadedTgGroups
-      .filter((group) => matchesLabelBranch(tgLabelsByGroupId.get(group.telegramId) ?? [], path))
+      .filter((group) => hasExactLabel(tgLabelsByGroupId.get(group.telegramId) ?? [], path))
       .map((group) => ({
         key: `telegram-${group.telegramId}`,
         platform: "telegram",
@@ -47,7 +61,7 @@ export function GroupsByLabelPage({
       }))
 
     const waRows: CombinedGroupRow[] = loadedWaGroups
-      .filter((group) => matchesLabelBranch(waLabelsByGroupId.get(group.id) ?? [], path))
+      .filter((group) => hasExactLabel(waLabelsByGroupId.get(group.id) ?? [], path))
       .map((group) => ({
         key: `whatsapp-${group.id}`,
         platform: "whatsapp",
@@ -69,46 +83,117 @@ export function GroupsByLabelPage({
     )
   }, [branchRows, query])
 
+  // Guarantees Didattica and Extra always appear, even with zero labels yet — otherwise an empty root would
+  // have no card to click and no way back into it once it's the only path left to reach it.
+  const categoryTree = useMemo(
+    () => buildCategoryRootTree(loadedGroupLabels.filter((label) => isCategoryLabel(label.label))),
+    [loadedGroupLabels]
+  )
+  // An empty path is the top of the tree (the "Categories" landing page) — its sub-categories are the tree's
+  // own roots (Didattica, Extra), not a lookup, since there's no node for the empty path itself.
+  const isRoot = path === ""
+  const subCategories = useMemo(
+    () => (isRoot ? categoryTree : (findLabelTreeNode(categoryTree, path)?.children ?? [])),
+    [categoryTree, path, isRoot]
+  )
+
   const hasSearch = Boolean(query.trim())
   const labelExists = loadedGroupLabels.some((label) => label.label === path)
   const segments = labelPathToUrlSegments(path)
-  const title = segments[segments.length - 1] ?? path
-  const eyebrow = segments.length > 1 ? segments.slice(0, -1).join(".") : "Groups by category"
+  const title = isRoot ? "Categories" : formatLabelSegment(segments[segments.length - 1] ?? path)
+  const eyebrow = segments.length > 1 ? formatLabelBreadcrumb(segments.slice(0, -1).join(".")) : "Web"
+
+  // At a top-level category (Didattica, Extra) "up" goes back to the Categories landing page (the Didattica/Extra
+  // picker), not to the Group labels management page — browsing and managing are two separate destinations now
+  // that there's no sidebar tree to jump around the hierarchy with.
+  const parentSegments = segments.slice(0, -1)
+  const backUrl: string = parentSegments.length
+    ? `/dashboard/web/groups-by-label/${parentSegments.join("/")}`
+    : "/dashboard/web/groups-by-label"
+  const backLabel = parentSegments.length ? formatLabelSegment(parentSegments[parentSegments.length - 1]) : "Categories"
 
   return (
     <div className="animate-appear">
+      {!isRoot && (
+        <Button
+          variant="ghost"
+          size="sm"
+          render={<Link to={backUrl} />}
+          nativeButton={false}
+          className="-ml-2 mb-2 w-fit gap-1 text-muted-foreground"
+        >
+          <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back to {backLabel}
+        </Button>
+      )}
       <DataToolbar
         eyebrow={eyebrow}
         title={title}
-        description={`Groups labeled "${path}" or with a more specific category nested under it.`}
-        count={visibleRows.length}
-        total={branchRows.length}
-        searchPlaceholder="Search by group name or tag…"
-        onSearch={setQuery}
+        description={
+          isRoot
+            ? "Browse groups by category — pick Didattica or Extra to drill in."
+            : `Groups tagged directly with "${formatLabelBreadcrumb(path)}".`
+        }
+        count={isRoot ? subCategories.length : visibleRows.length}
+        total={isRoot ? subCategories.length : branchRows.length}
+        searchPlaceholder={isRoot ? undefined : "Search by group name or tag…"}
+        onSearch={isRoot ? undefined : setQuery}
         action={
-          <div className="flex items-center gap-2">
-            <AddChildLabelDialog path={path} />
-            <AddGroupToLabelDialog
-              path={path}
-              labelExists={labelExists}
-              tgGroups={loadedTgGroups}
-              waGroups={loadedWaGroups}
-              tgLabelsByGroupId={tgLabelsByGroupId}
-              waLabelsByGroupId={waLabelsByGroupId}
-            />
+          isRoot ? undefined : (
+            <div className="flex items-center gap-2">
+              <AddChildLabelDialog path={path} />
+              <AddGroupToLabelDialog
+                path={path}
+                labelExists={labelExists}
+                tgGroups={loadedTgGroups}
+                waGroups={loadedWaGroups}
+                tgLabelsByGroupId={tgLabelsByGroupId}
+                waLabelsByGroupId={waLabelsByGroupId}
+              />
+            </div>
+          )
+        }
+      />
+
+      {subCategories.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-semibold text-foreground/85">{isRoot ? "Categories" : "Sub-categories"}</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {subCategories.map((child) => {
+              const childUrl: string = `/dashboard/web/groups-by-label/${labelPathToUrlSegments(child.path).join("/")}`
+              return (
+                <Link
+                  key={child.path}
+                  to={childUrl}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium hover:border-primary/50 hover:bg-accent"
+                >
+                  <span className="truncate">{formatLabelSegment(child.segment)}</span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                </Link>
+              )
+            })}
           </div>
-        }
-      />
-      <CombinedGroupsTable
-        rows={visibleRows}
-        allLabels={loadedGroupLabels}
-        emptyTitle={hasSearch ? "No groups match this search" : `No groups labeled "${path}"`}
-        emptyText={
-          hasSearch
-            ? "Clear the search and try again."
-            : "No groups are tagged with this label or one nested under it yet."
-        }
-      />
+        </section>
+      )}
+
+      {!isRoot && (
+        <>
+          {subCategories.length > 0 && <h2 className="mb-2 text-sm font-semibold text-foreground/85">Groups</h2>}
+          <CombinedGroupsTable
+            rows={visibleRows}
+            allLabels={loadedGroupLabels}
+            emptyTitle={
+              hasSearch ? "No groups match this search" : `No groups labeled "${formatLabelBreadcrumb(path)}"`
+            }
+            emptyText={
+              hasSearch
+                ? "Clear the search and try again."
+                : subCategories.length > 0
+                  ? "No groups are tagged with this exact category — check the sub-categories above."
+                  : "No groups are tagged with this category yet."
+            }
+          />
+        </>
+      )}
     </div>
   )
 }

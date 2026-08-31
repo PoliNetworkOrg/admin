@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { GROUP_LABEL_MAX } from "./group-labels.constants"
 import { renameGroupLabel } from "./group-labels.functions"
 import { groupLabelSaveErrorMessage } from "./group-labels.validation"
-import { labelPathToUrlSegments } from "./label-tree"
+import { formatLabelBreadcrumb, isReservedCategoryRoot, labelPathToUrlSegments } from "./label-tree"
 import type { GroupLabel } from "./types"
 
 export function RenameLabelDialog({
@@ -53,10 +53,12 @@ export function RenameLabelDialog({
   }, [open, segment])
 
   const trimmed = newSegment.trim()
-  const canSave = trimmed.length > 0 && !trimmed.includes(".") && trimmed !== segment
-
   // No "." before the segment when it's a top-level node (path === segment).
   const parentPrefix = path.length > segment.length ? path.slice(0, path.length - segment.length - 1) : ""
+  // Only a bare top-level rename (a tag, since the two category roots never reach this dialog) could collide
+  // with a reserved root name — a nested rename can't, since it'd still be dotted.
+  const reserved = !parentPrefix && isReservedCategoryRoot(trimmed)
+  const canSave = trimmed.length > 0 && !trimmed.includes(".") && trimmed !== segment && !reserved
   const newPath = parentPrefix ? `${parentPrefix}.${trimmed}` : trimmed
 
   async function submit(event: React.FormEvent) {
@@ -79,11 +81,14 @@ export function RenameLabelDialog({
       )
       toast.success(
         affectedLabels.length > 1
-          ? `Renamed "${path}" and ${affectedLabels.length - 1} nested label(s) to "${newPath}".`
-          : `Renamed to "${newPath}".`
+          ? `Renamed "${formatLabelBreadcrumb(path)}" and ${affectedLabels.length - 1} nested label(s) to "${formatLabelBreadcrumb(newPath)}".`
+          : `Renamed to "${formatLabelBreadcrumb(newPath)}".`
       )
       onOpenChange(false)
       await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(newPath).join("/")}` })
+      // The sidebar's label list is loaded by the persistent dashboard shell route, which doesn't
+      // re-run its loader on a navigate within its own subtree — force a refresh so it shows the new name.
+      await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
       setError(groupLabelSaveErrorMessage(cause))
@@ -94,13 +99,13 @@ export function RenameLabelDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !pending && onOpenChange(nextOpen)}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Rename category</DialogTitle>
           <DialogDescription>
             {affectedLabels.length > 1
-              ? `Renames "${path}" and the ${affectedLabels.length - 1} label(s) nested under it, keeping their colors, descriptions, and tagged groups.`
-              : `Renaming "${path}" keeps its color, description, and any groups already tagged with it.`}
+              ? `Renames "${formatLabelBreadcrumb(path)}" and the ${affectedLabels.length - 1} label(s) nested under it, keeping their colors, descriptions, and tagged groups.`
+              : `Renaming "${formatLabelBreadcrumb(path)}" keeps its color, description, and any groups already tagged with it.`}
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={(event) => void submit(event)}>
@@ -116,6 +121,7 @@ export function RenameLabelDialog({
             />
           </Field>
           {trimmed.includes(".") && <p className="text-xs text-destructive">Use a plain name, without dots.</p>}
+          {reserved && <p className="text-xs text-destructive">This name is reserved for a category.</p>}
           {trimmed && !trimmed.includes(".") && trimmed !== segment && (
             <p className="text-xs text-muted-foreground">
               Will become <span className="font-mono text-foreground">{newPath}</span>

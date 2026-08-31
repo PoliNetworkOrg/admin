@@ -1,5 +1,53 @@
 import type { GroupLabel } from "./types"
 
+/**
+ * The two fixed, structural containers for the browsable category hierarchy (school/level/course/year, or the
+ * extra-groups branch) — e.g. "didattica.design.triennale" or "extra.affitti". Everything else (language/campus
+ * facets like "ita", "eng", "bovisa") is a flat attribute tag attached to individual groups, not part of this
+ * tree. These roots are deliberately not admin-creatable: without a backend "kind" column there's no way to tell
+ * an empty category-root-in-waiting apart from a flat tag, so the distinction is made *by construction* — a new
+ * category is always created nested under one of these two, a new tag is always created bare.
+ */
+export const CATEGORY_ROOTS = ["didattica", "extra"]
+
+export function isCategoryLabel(label: string): boolean {
+  return CATEGORY_ROOTS.some((root) => label === root || label.startsWith(`${root}.`))
+}
+
+/** True when `name` collides with a fixed category root — reserved so a tag or rename can never shadow one. */
+export function isReservedCategoryRoot(name: string): boolean {
+  const normalized = name.trim().toLocaleLowerCase()
+  return CATEGORY_ROOTS.some((root) => root === normalized)
+}
+
+/** Humanizes a single path segment for display, e.g. "primo-anno" -> "Primo Anno". */
+export function formatLabelSegment(segment: string): string {
+  return segment
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+/** Renders a dotted path as a readable breadcrumb, e.g. "didattica.design" -> "Didattica › Design". */
+export function formatLabelBreadcrumb(path: string): string {
+  return labelPathToUrlSegments(path).map(formatLabelSegment).join(" › ")
+}
+
+/**
+ * Humanizes a category path for a compact chip: its last two segments, e.g. "didattica.design.triennale" ->
+ * "Design › Triennale". A single trailing segment alone is often low-information (e.g. an academic year like
+ * "26-27" tacked onto the end of a category), so two segments give a chip enough context to be useful on its own.
+ */
+export function formatLabelCompact(path: string): string {
+  return labelPathToUrlSegments(path).slice(-2).map(formatLabelSegment).join(" › ")
+}
+
+/** Picks the right compact display for any label, category or tag, without the caller needing to branch. */
+export function formatLabelChip(path: string): string {
+  return isCategoryLabel(path) ? formatLabelCompact(path) : formatLabelSegment(path)
+}
+
 export type LabelTreeNode = {
   segment: string
   path: string
@@ -41,6 +89,22 @@ export function buildLabelTree(labels: GroupLabel[]): LabelTreeNode[] {
   return roots
 }
 
+/** Like `buildLabelTree`, but guarantees both fixed category roots always appear (as empty placeholders if
+ * they have no labels yet), so the management page always has somewhere to add the first category under. */
+export function buildCategoryRootTree(categoryLabels: GroupLabel[]): LabelTreeNode[] {
+  const nodesByPath = new Map(buildLabelTree(categoryLabels).map((node) => [node.path, node]))
+  return CATEGORY_ROOTS.map((root) => nodesByPath.get(root) ?? { segment: root, path: root, label: null, children: [] })
+}
+
+/** Finds the node at `path` within a tree, walking down one segment at a time instead of searching blindly. */
+export function findLabelTreeNode(nodes: LabelTreeNode[], path: string): LabelTreeNode | undefined {
+  for (const node of nodes) {
+    if (node.path === path) return node
+    if (path.startsWith(`${node.path}.`)) return findLabelTreeNode(node.children, path)
+  }
+  return undefined
+}
+
 /** Converts a hierarchy path ("informatica.triennale") to its sidebar URL segments. */
 export function labelPathToUrlSegments(path: string): string[] {
   return path.split(".").filter((segment) => segment.length > 0)
@@ -54,6 +118,11 @@ export function urlSegmentsToLabelPath(segments: string[]): string {
 /** A group matches a branch when one of its labels is exactly `path`, or nested under it (e.g. "informatica.triennale.primo" under "informatica"). */
 export function matchesLabelBranch(groupLabels: GroupLabel[], path: string): boolean {
   return groupLabels.some((label) => label.label === path || label.label.startsWith(`${path}.`))
+}
+
+/** A group has this exact category — unlike `matchesLabelBranch`, a group nested one level deeper doesn't count. */
+export function hasExactLabel(groupLabels: GroupLabel[], path: string): boolean {
+  return groupLabels.some((label) => label.label === path)
 }
 
 /**
@@ -105,4 +174,13 @@ export function filterLabelTree(nodes: LabelTreeNode[], query: string): LabelTre
     }
   }
   return result
+}
+
+/** Filters a flat list of tags (no hierarchy) by name or description — the flat-list counterpart of `filterLabelTree`. */
+export function filterFlatLabels(labels: GroupLabel[], query: string): GroupLabel[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (!normalizedQuery) return labels
+  return labels.filter((label) =>
+    [label.label, label.description ?? ""].some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
+  )
 }

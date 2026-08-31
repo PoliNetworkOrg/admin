@@ -1,4 +1,4 @@
-import { CircleDashed, LoaderCircle, Pencil, Save, Trash2, X } from "lucide-react"
+import { FolderPlus, LoaderCircle, MoreVertical, Pencil, PencilLine, Save, Trash2, X } from "lucide-react"
 import { useState } from "react"
 
 import {
@@ -14,61 +14,75 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { cn } from "@/lib/utils"
 
 import { GroupLabelColorPicker } from "./group-label-color-picker"
-import { GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX, getGroupLabelColor } from "./group-labels.constants"
-import type { GroupLabel, GroupLabelFormValues } from "./types"
+import { GROUP_LABEL_DESCRIPTION_MAX, getGroupLabelColor } from "./group-labels.constants"
+import { formatLabelBreadcrumb, formatLabelSegment } from "./label-tree"
+import { RenameLabelDialog } from "./rename-label-dialog"
+import type { GroupLabel, GroupLabelEditValues } from "./types"
 
 type GroupLabelCardProps = {
   groupLabel: GroupLabel
-  draft: boolean
-  initialEditActive: boolean
-  onCancelDraft: () => void
+  /** The full label list, used to find this label's descendants when renaming (they get re-pathed too). */
+  allLabels: GroupLabel[]
+  /** Rendered before everything else in the row — the tree's expand/collapse chevron, when this node has children. */
+  leading?: React.ReactNode
+  /** Off for the two fixed category roots — the whole category tree depends on their exact name. */
+  allowRename?: boolean
+  /** Off for flat tags, which never nest. */
+  allowChildren?: boolean
   onDelete: () => Promise<boolean>
-  onSave: (values: GroupLabelFormValues) => Promise<boolean>
+  onSave: (values: GroupLabelEditValues) => Promise<boolean>
 }
 
 export function GroupLabelCard({
   groupLabel,
-  draft,
-  initialEditActive,
-  onCancelDraft,
+  allLabels,
+  leading,
+  allowRename = true,
+  allowChildren = true,
   onDelete,
   onSave,
 }: GroupLabelCardProps) {
-  const [label, setLabel] = useState(groupLabel.label)
-  const [editing, setEditing] = useState(initialEditActive)
   const [color, setColor] = useState(groupLabel.color)
   const [description, setDescription] = useState(groupLabel.description ?? "")
+  const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const canSave = Boolean(label.trim())
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [addChildOpen, setAddChildOpen] = useState(false)
+
+  const segments = groupLabel.label.split(".")
+  const segment = segments[segments.length - 1] || groupLabel.label
+  const displaySegment = formatLabelSegment(segment)
 
   function resetFields() {
-    setLabel(groupLabel.label)
     setColor(groupLabel.color)
     setDescription(groupLabel.description ?? "")
   }
 
   function cancelEdit() {
-    if (draft) {
-      onCancelDraft()
-      return
-    }
     resetFields()
     setEditing(false)
   }
 
   async function save() {
-    if (saving || !canSave) return
+    if (saving) return
     setSaving(true)
     try {
-      const saved = await onSave({ label: label.trim(), color, description: description.trim() })
+      const saved = await onSave({ color, description: description.trim() })
       if (saved) setEditing(false)
     } finally {
       setSaving(false)
@@ -85,113 +99,136 @@ export function GroupLabelCard({
   }
 
   const swatch = getGroupLabelColor(groupLabel.color)
+  const affectedLabels = allLabels.filter(
+    (label) => label.label === groupLabel.label || label.label.startsWith(`${groupLabel.label}.`)
+  )
 
   return (
     <>
-      <Card
-        className={cn("h-full", draft && "border-dashed border-primary/60 bg-primary/[0.035] ring-1 ring-primary/10")}
-      >
-        <CardHeader
-          className={cn(
-            "grid-cols-[1fr_auto] gap-x-4",
-            editing && "border-b pb-(--card-spacing)",
-            draft && "border-primary/15"
-          )}
-        >
-          <CardTitle className="flex min-w-0 items-start gap-3 text-lg">
-            {editing ? (
-              <div className="min-w-0 flex-1 space-y-2">
-                {draft && (
-                  <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                    <CircleDashed data-icon="inline-start" /> Unsaved draft
-                  </Badge>
-                )}
-                <div className="flex items-center gap-2">
-                  <GroupLabelColorPicker value={color} onChange={setColor} />
-                  <Input
-                    aria-label="Label"
-                    value={label}
-                    onChange={(event) => setLabel(event.target.value)}
-                    className="bg-background text-base font-medium"
-                    maxLength={GROUP_LABEL_MAX}
-                    required
-                    autoFocus={draft}
-                  />
-                </div>
-              </div>
-            ) : (
-              <Badge className={cn("h-auto py-1 text-sm", swatch.badgeClassName)} style={swatch.badgeStyle}>
-                {groupLabel.label}
+      <Card className="flex-row items-center gap-4 px-(--card-spacing) py-3">
+        {leading}
+
+        {editing ? (
+          <>
+            <div className="flex shrink-0 items-center gap-2">
+              <GroupLabelColorPicker value={color} onChange={setColor} />
+              <Badge
+                className={cn("h-auto max-w-64 min-w-0 shrink py-1 text-sm", swatch.badgeClassName)}
+                style={swatch.badgeStyle}
+                title={groupLabel.label}
+              >
+                <span className="truncate">{displaySegment}</span>
               </Badge>
-            )}
-          </CardTitle>
-          <CardAction className="flex items-center gap-1.5">
-            {editing ? (
-              <>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  disabled={saving || !canSave}
-                  onClick={() => void save()}
-                  aria-label={`Save ${label}`}
-                >
-                  {saving ? <LoaderCircle className="animate-spin-slow" /> : <Save />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={saving}
-                  onClick={cancelEdit}
-                  aria-label="Cancel editing"
-                >
-                  <X />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label={`Edit ${groupLabel.label}`}
-                  onClick={() => {
-                    resetFields()
-                    setEditing(true)
-                  }}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  aria-label={`Delete ${groupLabel.label}`}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 />
-                </Button>
-              </>
-            )}
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-1 flex-col gap-4">
-          {editing ? (
-            <Textarea
+            </div>
+            <Input
               aria-label="Description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="min-h-24 bg-background"
+              className="min-w-0 flex-1 bg-background"
               maxLength={GROUP_LABEL_DESCRIPTION_MAX}
               placeholder="What kind of groups does this label apply to?"
             />
-          ) : (
-            <p className="text-sm leading-6 text-foreground/85">
+          </>
+        ) : (
+          <>
+            <Badge
+              className={cn("h-auto max-w-[min(50%,24rem)] min-w-0 shrink py-1 text-sm", swatch.badgeClassName)}
+              style={swatch.badgeStyle}
+              title={groupLabel.label}
+            >
+              <span className="truncate">{displaySegment}</span>
+            </Badge>
+            <p className="min-w-0 flex-1 truncate text-sm text-foreground/85">
               {groupLabel.description || <span className="text-muted-foreground italic">No description</span>}
             </p>
+          </>
+        )}
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {editing ? (
+            <>
+              <Button
+                type="button"
+                size="icon-sm"
+                disabled={saving}
+                onClick={() => void save()}
+                aria-label={`Save ${displaySegment}`}
+              >
+                {saving ? <LoaderCircle className="animate-spin-slow" /> : <Save />}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                disabled={saving}
+                onClick={cancelEdit}
+                aria-label="Cancel editing"
+              >
+                <X />
+              </Button>
+            </>
+          ) : (
+            <>
+              {(allowRename || allowChildren) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<Button type="button" variant="outline" size="icon-sm" />}>
+                    <MoreVertical />
+                    <span className="sr-only">More actions for {displaySegment}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuGroup>
+                      {allowRename && (
+                        <DropdownMenuItem onClick={() => setRenameOpen(true)}>
+                          <PencilLine /> Rename
+                        </DropdownMenuItem>
+                      )}
+                      {allowChildren && (
+                        <DropdownMenuItem onClick={() => setAddChildOpen(true)}>
+                          <FolderPlus /> Add sub-category
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={`Edit color and description for ${displaySegment}`}
+                onClick={() => {
+                  resetFields()
+                  setEditing(true)
+                }}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon-sm"
+                aria-label={`Delete ${displaySegment}`}
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 />
+              </Button>
+            </>
           )}
-        </CardContent>
+        </div>
       </Card>
+
+      {allowRename && (
+        <RenameLabelDialog
+          path={groupLabel.label}
+          segment={segment}
+          affectedLabels={affectedLabels}
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+        />
+      )}
+      {allowChildren && (
+        <AddChildLabelDialog path={groupLabel.label} open={addChildOpen} onOpenChange={setAddChildOpen} />
+      )}
 
       <AlertDialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
         <AlertDialogContent size="sm">
@@ -201,7 +238,8 @@ export function GroupLabelCard({
             </AlertDialogMedia>
             <AlertDialogTitle>Delete label</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{groupLabel.label}</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>{formatLabelBreadcrumb(groupLabel.label)}</strong>? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

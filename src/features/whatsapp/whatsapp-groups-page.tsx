@@ -18,15 +18,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { GroupLabelBadges } from "@/features/group-labels/group-label-badges"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
-import { getGroupLabelColor, isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
 import { buildLabelsByGroupId } from "@/features/group-labels/label-tree"
 import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
 import type { GroupWithLabels, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
-import { cn } from "@/lib/utils"
 
 function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], select: boolean): TgGroupLabel[] {
   if (select) {
@@ -110,26 +110,7 @@ export function WhatsappGroupsPage({
       groupColumnHelper.display({
         id: "labels",
         header: "Labels",
-        cell: ({ row }) => {
-          const labels = labelsByGroupId.get(row.original.id)
-          if (!labels?.length) return <span className="text-xs italic text-muted-foreground">No labels</span>
-          return (
-            <div className="flex flex-wrap gap-1">
-              {labels.map((label) => {
-                const swatch = getGroupLabelColor(label.color)
-                return (
-                  <Badge
-                    key={label.label}
-                    className={cn("text-[10px]", swatch.badgeClassName)}
-                    style={swatch.badgeStyle}
-                  >
-                    {label.label}
-                  </Badge>
-                )
-              })}
-            </div>
-          )
-        },
+        cell: ({ row }) => <GroupLabelBadges labels={labelsByGroupId.get(row.original.id) ?? []} />,
       }),
       groupColumnHelper.display({
         id: "invite",

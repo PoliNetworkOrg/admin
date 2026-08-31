@@ -84,7 +84,7 @@ export function GroupLabelsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !pending && !nextOpen && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit labels</DialogTitle>
           <DialogDescription>{group ? `Choose the labels that apply to ${group.title}.` : null}</DialogDescription>

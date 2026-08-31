@@ -1,13 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import { ChevronRight, FolderTree, LogOut } from "lucide-react"
+import { ChevronRight, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import type { TgGroupLabel } from "@/lib/api/types"
 import type { AdminSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 import { AppMark } from "./app-mark"
-import { DashboardLabelNav } from "./dashboard-label-nav"
 import { accountNavigation, dashboardNavigation, overviewNavigation } from "./dashboard-navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible"
@@ -47,12 +45,9 @@ type DashboardSidebarProps = React.ComponentProps<typeof Sidebar> & {
   user: AdminSession["user"] | undefined
   loggingOut: boolean
   onLogout: () => void
-  groupLabels: TgGroupLabel[]
 }
 
-const labelNavCategoryTitle = "Groups by label"
-
-export function DashboardSidebar({ user, loggingOut, onLogout, groupLabels, ...props }: DashboardSidebarProps) {
+export function DashboardSidebar({ user, loggingOut, onLogout, ...props }: DashboardSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -199,36 +194,6 @@ export function DashboardSidebar({ user, loggingOut, onLogout, groupLabels, ...p
                 </Collapsible>
               )
             })}
-
-            {groupLabels.length > 0 && (
-              <Collapsible
-                open={categoryState[labelNavCategoryTitle] ?? pathname.startsWith("/dashboard/web/groups-by-label")}
-                onOpenChange={(nextOpen) => persistCategory(labelNavCategoryTitle, nextOpen)}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={labelNavCategoryTitle}
-                    render={<CollapsibleTrigger />}
-                    className={cn(
-                      navItemClass,
-                      "text-sidebar-foreground/80",
-                      pathname.startsWith("/dashboard/web/groups-by-label") &&
-                        "bg-sidebar-accent/40 text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <FolderTree />
-                    <span>{labelNavCategoryTitle}</span>
-                    <ChevronRight className="ml-auto text-sidebar-foreground/60 transition-transform duration-150 group-data-open/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                  <CollapsibleContent>
-                    <SidebarMenuSub className="mt-0.5 mr-0 gap-0.5 border-0 pe-0">
-                      <DashboardLabelNav groupLabels={groupLabels} onNavigate={() => setOpenMobile(false)} />
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
