@@ -18,6 +18,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
+import {
+  MODERATION_ACTION_LABELS,
+  MODERATION_STATUS_LABELS,
+  moderationStatusBadgeVariant,
+  moderationUserName,
+  shouldShowDeletedMessageCount,
+} from "../moderation.constants"
 import { InterruptGrantDialog } from "./grant-dialogs"
 import { AddGroupAdminDialog, RemoveGroupAdminDialog } from "./group-admin-dialog"
 import { RoleDialog } from "./role-dialog"
@@ -254,15 +261,24 @@ export function TelegramUserProfile({ data, canWrite }: { data: TelegramUserDeta
                     {message.message}
                   </p>
                   <div className="mt-4 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[9px] text-muted-foreground">Message #{message.messageId}</span>
-                    <a
-                      className="flex items-center gap-1 rounded-sm font-mono text-[10px] font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-                      href={messageLink(message.chatId, message.messageId)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open message <ExternalLink className="size-3.5" />
-                    </a>
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-[9px] text-muted-foreground">Message #{message.messageId}</span>
+                      {message.deletedAt && <Badge variant="destructive">Deleted</Badge>}
+                    </span>
+                    {message.deletedAt ? (
+                      <time className="font-mono text-[10px] text-muted-foreground">
+                        Deleted {formatDate(message.deletedAt)}
+                      </time>
+                    ) : (
+                      <a
+                        className="flex items-center gap-1 rounded-sm font-mono text-[10px] font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
+                        href={messageLink(message.chatId, message.messageId)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open message <ExternalLink className="size-3.5" />
+                      </a>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -277,10 +293,28 @@ export function TelegramUserProfile({ data, canWrite }: { data: TelegramUserDeta
             <Card size="sm" key={`${audit.id}-${audit.type}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[13px]">{audit.type}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-[13px]">{MODERATION_ACTION_LABELS[audit.type]}</h3>
+                    <Badge variant={moderationStatusBadgeVariant(audit.status)}>
+                      {MODERATION_STATUS_LABELS[audit.status]}
+                    </Badge>
+                  </div>
                   <time className="shrink-0 text-[10px] text-muted-foreground">{formatDate(audit.createdAt)}</time>
                 </div>
                 <p className="mt-3 text-xs leading-[1.5]">{audit.reason ?? "No reason provided"}</p>
+                <dl className="mt-3 grid gap-1.5 text-[10px] text-muted-foreground">
+                  <Definition label="Moderator">{moderationUserName(audit.admin, audit.adminId)}</Definition>
+                  {audit.totalGroupCount > 0 && (
+                    <Definition label="Groups">
+                      {audit.successGroupCount} succeeded, {audit.failedGroupCount} failed of {audit.totalGroupCount}
+                    </Definition>
+                  )}
+                  {shouldShowDeletedMessageCount(audit) && (
+                    <Definition label="Recent messages deleted">
+                      {audit.deletedMessageCount ?? "Count unavailable"}
+                    </Definition>
+                  )}
+                </dl>
                 {audit.groupTitle && (
                   <small className="mt-2 block text-[10px] text-muted-foreground">
                     {audit.groupTitle} · {audit.groupId}

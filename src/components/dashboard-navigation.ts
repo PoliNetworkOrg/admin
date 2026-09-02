@@ -5,6 +5,7 @@ import {
   FolderKanban,
   FolderTree,
   Globe,
+  History,
   LayoutDashboard,
   type LucideIcon,
   Settings,
@@ -45,6 +46,7 @@ export const dashboardNavigation = [
     items: [
       { title: "Users", url: "/dashboard/telegram/users", icon: UsersRound },
       { title: "Groups", url: "/dashboard/telegram/groups", icon: Database },
+      { title: "Moderation", url: "/dashboard/telegram/moderation", icon: History },
       { title: "Grants", url: "/dashboard/telegram/grants", icon: ShieldCheck },
     ],
   },

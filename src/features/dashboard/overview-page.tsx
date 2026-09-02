@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowRight, BookOpen, Database, ShieldCheck, UsersRound } from "lucide-react"
+import { ArrowRight, BookOpen, Database, History, ShieldCheck, UsersRound } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,6 +17,13 @@ const areas = [
     description: "Review community metadata, invite links, and public visibility.",
     to: "/dashboard/telegram/groups",
     icon: Database,
+    service: "Telegram",
+  },
+  {
+    title: "Moderation log",
+    description: "Review moderation actions, deleted-message counts, and BanAll progress.",
+    to: "/dashboard/telegram/moderation",
+    icon: History,
     service: "Telegram",
   },
   {

@@ -6,6 +6,8 @@ import { z } from "zod"
 import type { TgUser } from "@/lib/api/types"
 import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
+import { moderationAuditSchema } from "./user-detail/types"
+
 export const getTelegramUsers = createServerFn()
   .middleware([adminMiddleware])
   .handler(async ({ context }) => {
@@ -71,6 +73,7 @@ export const getTelegramUserDetails = createServerFn()
       .filter((record) => record.grant.userId === user.id)
       .map((record) => record.grant)
       .sort((left, right) => new Date(left.validSince).getTime() - new Date(right.validSince).getTime())
+    const moderationAudits = z.array(moderationAuditSchema).parse(audits)
 
     return {
       user,
@@ -79,7 +82,7 @@ export const getTelegramUserDetails = createServerFn()
       groupAdmin: permissions.groupAdmin.filter((group) => group !== null),
       groups,
       messages: messages.messages ?? [],
-      audits,
+      audits: moderationAudits,
       ongoingGrant: ongoingGrant.grant ?? null,
       scheduledGrants: userScheduledGrants,
     }
