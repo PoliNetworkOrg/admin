@@ -114,15 +114,18 @@ function CategorySearchResult({
   )
 }
 
-/** Lets an admin pick labels for a group: a browsable category tree, plus flat tag chips — no dotted paths shown. */
+/** Lets an admin pick labels for a group: a browsable category tree plus flat tag chips, or just the tags. */
 export function LabelTreeSelector({
   allLabels,
   selected,
   onToggleMany,
+  tagsOnly = false,
 }: {
   allLabels: GroupLabel[]
   selected: GroupLabel[]
   onToggleMany: (labels: GroupLabel[], select: boolean) => void
+  /** Limit the picker to flat tags, omitting the category tree and category search results. */
+  tagsOnly?: boolean
 }) {
   const [query, setQuery] = useState("")
   const categoryLabels = useMemo(() => allLabels.filter((label) => isCategoryLabel(label.label)), [allLabels])
@@ -141,7 +144,7 @@ export function LabelTreeSelector({
   return (
     <div className="flex flex-col gap-2">
       <Input
-        placeholder="Search labels…"
+        placeholder={tagsOnly ? "Search tags…" : "Search labels…"}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         className="h-9"
@@ -170,38 +173,39 @@ export function LabelTreeSelector({
         </div>
       )}
       <div className="max-h-64 overflow-y-auto rounded-md border border-border p-1">
-        {isSearching
-          ? matchingCategories.length > 0 && (
-              <div className="mb-1">
-                <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  Categories
-                </p>
-                {matchingCategories.map((label) => (
-                  <CategorySearchResult
-                    key={label.label}
-                    label={label}
-                    isSelected={isSelected}
-                    onToggleMany={onToggleMany}
-                  />
-                ))}
-              </div>
-            )
-          : tree.length > 0 && (
-              <div className="mb-1">
-                <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  Categories
-                </p>
-                {tree.map((node) => (
-                  <LabelTreeSelectorNode
-                    key={node.path}
-                    node={node}
-                    isSelected={isSelected}
-                    onToggleMany={onToggleMany}
-                    depth={0}
-                  />
-                ))}
-              </div>
-            )}
+        {!tagsOnly &&
+          (isSearching
+            ? matchingCategories.length > 0 && (
+                <div className="mb-1">
+                  <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    Categories
+                  </p>
+                  {matchingCategories.map((label) => (
+                    <CategorySearchResult
+                      key={label.label}
+                      label={label}
+                      isSelected={isSelected}
+                      onToggleMany={onToggleMany}
+                    />
+                  ))}
+                </div>
+              )
+            : tree.length > 0 && (
+                <div className="mb-1">
+                  <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    Categories
+                  </p>
+                  {tree.map((node) => (
+                    <LabelTreeSelectorNode
+                      key={node.path}
+                      node={node}
+                      isSelected={isSelected}
+                      onToggleMany={onToggleMany}
+                      depth={0}
+                    />
+                  ))}
+                </div>
+              ))}
         {visibleTags.length > 0 && (
           <div>
             <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Tags</p>
@@ -229,8 +233,10 @@ export function LabelTreeSelector({
             </div>
           </div>
         )}
-        {(isSearching ? !matchingCategories.length : !tree.length) && !visibleTags.length && (
-          <p className="p-2 text-sm text-muted-foreground">No matching labels</p>
+        {(tagsOnly || (isSearching ? !matchingCategories.length : !tree.length)) && !visibleTags.length && (
+          <p className="p-2 text-sm text-muted-foreground">
+            {isSearching ? `No matching ${tagsOnly ? "tags" : "labels"}` : "No tags"}
+          </p>
         )}
       </div>
     </div>

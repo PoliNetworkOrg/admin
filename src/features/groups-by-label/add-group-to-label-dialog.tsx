@@ -15,9 +15,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
+import { DEFAULT_GROUP_LABEL_COLOR, isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
 import { formatLabelBreadcrumb } from "@/features/group-labels/label-tree"
+import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
+import type { GroupLabel } from "@/features/group-labels/types"
 import { createWhatsappGroup } from "@/features/whatsapp/groups.functions"
 import { WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
 import { isValidWhatsappInviteLink } from "@/features/whatsapp/whatsapp.validation"
@@ -31,6 +33,8 @@ type Platform = "telegram" | "whatsapp"
 export function AddGroupToLabelDialog({
   path,
   labelExists,
+  allowCreate = true,
+  allLabels,
   tgGroups,
   waGroups,
   tgLabelsByGroupId,
@@ -38,6 +42,9 @@ export function AddGroupToLabelDialog({
 }: {
   path: string
   labelExists: boolean
+  /** Off where a brand new group would end up filed under this label alone — the dialog then only labels existing groups. */
+  allowCreate?: boolean
+  allLabels: GroupLabel[]
   tgGroups: TgGroup[]
   waGroups: WaGroup[]
   tgLabelsByGroupId: Map<number, TgGroupLabel[]>
@@ -48,14 +55,19 @@ export function AddGroupToLabelDialog({
   const createWhatsappGroupFn = useServerFn(createWhatsappGroup)
   const tagGroupFn = useServerFn(tagGroup)
 
+  // With creation off there's nothing to choose between, so the dialog opens straight on the existing-groups step.
+  const initialStep: Step = allowCreate ? "choose" : "existing"
+
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<Step>("choose")
+  const [step, setStep] = useState<Step>(initialStep)
   const [platform, setPlatform] = useState<Platform | null>(null)
   const [groupQuery, setGroupQuery] = useState("")
   const [selectedTgGroups, setSelectedTgGroups] = useState<TgGroup[]>([])
   const [selectedWaGroups, setSelectedWaGroups] = useState<WaGroup[]>([])
   const [title, setTitle] = useState("")
   const [link, setLink] = useState("")
+  const [hide, setHide] = useState(false)
+  const [selectedTags, setSelectedTags] = useState<GroupLabel[]>([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
 
@@ -72,13 +84,15 @@ export function AddGroupToLabelDialog({
     : availableWaGroups
 
   function reset() {
-    setStep("choose")
+    setStep(initialStep)
     setPlatform(null)
     setGroupQuery("")
     setSelectedTgGroups([])
     setSelectedWaGroups([])
     setTitle("")
     setLink("")
+    setHide(false)
+    setSelectedTags([])
     setError("")
   }
 
@@ -101,6 +115,16 @@ export function AddGroupToLabelDialog({
     )
   }
 
+  function toggleTags(labels: GroupLabel[], select: boolean) {
+    setSelectedTags((current) => {
+      if (select) {
+        const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
+        return [...current, ...toAdd]
+      }
+      return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
+    })
+  }
+
   async function ensureLabelExists() {
     if (!labelExists) {
       await createGroupLabelFn({ data: { label: path, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
@@ -114,13 +138,19 @@ export function AddGroupToLabelDialog({
     setError("")
     try {
       await ensureLabelExists()
-      const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim() } })
-      try {
-        await tagGroupFn({ data: { groupId: created.id, type: "wa", label: path } })
-      } catch (tagCause) {
-        console.error(tagCause)
+      const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim(), hide } })
+      const labelsToApply = [{ label: path }, ...selectedTags]
+      const tagResults = await Promise.allSettled(
+        labelsToApply.map((label) => tagGroupFn({ data: { groupId: created.id, type: "wa", label: label.label } }))
+      )
+      const failedLabels = labelsToApply.filter((_, index) => tagResults[index]?.status === "rejected")
+      if (failedLabels.length > 0) {
+        for (const result of tagResults) {
+          if (result.status === "rejected") console.error(result.reason)
+        }
+        const failedLabelNames = failedLabels.map((label) => `"${formatLabelBreadcrumb(label.label)}"`).join(", ")
         toast.warning(
-          `${title.trim()} was added, but could not be labeled "${formatLabelBreadcrumb(path)}". Assign it manually.`
+          `${title.trim()} was added, but could not be labeled ${failedLabelNames}. Assign ${failedLabels.length === 1 ? "it" : "them"} manually.`
         )
         closeDialog()
         try {
@@ -131,7 +161,12 @@ export function AddGroupToLabelDialog({
         }
         return
       }
-      toast.success(`${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`)
+      const extraTagCount = selectedTags.length
+      toast.success(
+        extraTagCount > 0
+          ? `${title.trim()} added to "${formatLabelBreadcrumb(path)}" with ${extraTagCount} additional tag${extraTagCount === 1 ? "" : "s"}.`
+          : `${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`
+      )
       closeDialog()
       try {
         await router.invalidate({ sync: true })
@@ -254,7 +289,18 @@ export function AddGroupToLabelDialog({
             >
               <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
             </Button>
-            <WhatsappGroupFields title={title} onTitleChange={setTitle} link={link} onLinkChange={setLink} />
+            <WhatsappGroupFields
+              title={title}
+              onTitleChange={setTitle}
+              link={link}
+              onLinkChange={setLink}
+              hide={hide}
+              onHideChange={setHide}
+            />
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Also tag with</p>
+              <LabelTreeSelector allLabels={allLabels} selected={selectedTags} onToggleMany={toggleTags} tagsOnly />
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
@@ -270,15 +316,17 @@ export function AddGroupToLabelDialog({
 
         {step === "existing" && (
           <div className="flex min-w-0 flex-col gap-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2 w-fit gap-1 text-muted-foreground"
-              onClick={() => (platform ? setPlatform(null) : setStep("choose"))}
-            >
-              <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
-            </Button>
+            {(allowCreate || platform) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-2 w-fit gap-1 text-muted-foreground"
+                onClick={() => (platform ? setPlatform(null) : setStep("choose"))}
+              >
+                <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
+              </Button>
+            )}
 
             {!platform ? (
               <div className="grid grid-cols-2 gap-3">

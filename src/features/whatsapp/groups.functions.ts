@@ -12,6 +12,7 @@ export const getWhatsappGroups = createServerFn()
 const whatsappGroupFields = z.object({
   title: z.string().trim().min(1).max(200),
   link: whatsappInviteLink,
+  hide: z.boolean().optional(),
 })
 
 export const createWhatsappGroup = createServerFn({ method: "POST" })
@@ -35,4 +36,13 @@ export const deleteWhatsappGroup = createServerFn({ method: "POST" })
     const deleted = await context.backend.wa.groups.delete.mutate({ id: data.id })
     if (!deleted) throw new Error("NOT_FOUND")
     return { error: null }
+  })
+
+export const setWhatsappGroupVisibility = createServerFn({ method: "POST" })
+  .middleware([groupWriteAdminMiddleware])
+  .validator(z.object({ id: z.number().int(), hide: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const updated = await context.backend.wa.groups.setHide.mutate(data)
+    if (!updated) throw new Error("GROUP_VISIBILITY_NOT_UPDATED")
+    return { updated: true as const }
   })
