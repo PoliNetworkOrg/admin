@@ -6,17 +6,16 @@ import { DataToolbar } from "@/components/data-toolbar"
 import { Button } from "@/components/ui/button"
 import {
   buildCategoryRootTree,
-  buildLabelsByGroupId,
   findLabelTreeNode,
   formatLabelBreadcrumb,
   formatLabelSegment,
-  hasExactLabel,
   isCategoryLabel,
   labelPathToUrlSegments,
 } from "@/features/group-labels/label-tree"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { AddGroupToLabelDialog } from "@/features/groups-by-label/add-group-to-label-dialog"
-import { CombinedGroupsTable, type CombinedGroupRow } from "@/features/groups-by-label/combined-groups-table"
+import { CombinedGroupsTable } from "@/features/groups-by-label/combined-groups-table"
+import { useLabelGroupRows } from "@/features/groups-by-label/use-label-group-rows"
 import type { GroupWithLabels, TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 
 export function GroupsByLabelPage({
@@ -34,54 +33,14 @@ export function GroupsByLabelPage({
 }) {
   const [query, setQuery] = useState("")
 
-  // Kept as two separate maps (not merged into one) since Telegram and WhatsApp group ids are independent
-  // sequences that could otherwise collide.
-  const tgLabelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "tg"),
-    [loadedGroupLabels, loadedGroupsWithLabels]
-  )
-  const waLabelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "wa"),
-    [loadedGroupLabels, loadedGroupsWithLabels]
-  )
-
-  // Only groups tagged with this exact category — a level below shows up as a sub-category to click into, not
-  // mixed into this list, so the admin always knows precisely where a group is filed.
-  const branchRows = useMemo(() => {
-    const tgRows: CombinedGroupRow[] = loadedTgGroups
-      .filter((group) => hasExactLabel(tgLabelsByGroupId.get(group.telegramId) ?? [], path))
-      .map((group) => ({
-        key: `telegram-${group.telegramId}`,
-        platform: "telegram",
-        title: group.title,
-        tag: group.tag,
-        link: group.link,
-        labels: tgLabelsByGroupId.get(group.telegramId) ?? [],
-        group,
-      }))
-
-    const waRows: CombinedGroupRow[] = loadedWaGroups
-      .filter((group) => hasExactLabel(waLabelsByGroupId.get(group.id) ?? [], path))
-      .map((group) => ({
-        key: `whatsapp-${group.id}`,
-        platform: "whatsapp",
-        title: group.title,
-        tag: null,
-        link: group.link,
-        labels: waLabelsByGroupId.get(group.id) ?? [],
-        group,
-      }))
-
-    return [...tgRows, ...waRows]
-  }, [loadedTgGroups, loadedWaGroups, tgLabelsByGroupId, waLabelsByGroupId, path])
-
-  const visibleRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase().replace(/^@/, "")
-    if (!normalizedQuery) return branchRows
-    return branchRows.filter((row) =>
-      [row.title, row.tag].filter(Boolean).join(" ").toLocaleLowerCase().includes(normalizedQuery)
-    )
-  }, [branchRows, query])
+  const { tgLabelsByGroupId, waLabelsByGroupId, branchRows, visibleRows } = useLabelGroupRows({
+    path,
+    query,
+    loadedTgGroups,
+    loadedWaGroups,
+    loadedGroupLabels,
+    loadedGroupsWithLabels,
+  })
 
   // Guarantees Didattica and Extra always appear, even with zero labels yet — otherwise an empty root would
   // have no card to click and no way back into it once it's the only path left to reach it.
@@ -144,6 +103,7 @@ export function GroupsByLabelPage({
               <AddGroupToLabelDialog
                 path={path}
                 labelExists={labelExists}
+                allLabels={loadedGroupLabels}
                 tgGroups={loadedTgGroups}
                 waGroups={loadedWaGroups}
                 tgLabelsByGroupId={tgLabelsByGroupId}

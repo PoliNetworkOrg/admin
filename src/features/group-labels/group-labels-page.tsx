@@ -107,6 +107,7 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
                 groupLabel={label}
                 allLabels={labels}
                 allowChildren={false}
+                linkTo={`/dashboard/web/tags/${encodeURIComponent(label.label)}`}
                 onDelete={() => removeGroupLabel(label)}
                 onSave={(values) => saveGroupLabel(label, values)}
               />

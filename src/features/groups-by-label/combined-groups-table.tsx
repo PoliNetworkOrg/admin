@@ -26,6 +26,7 @@ import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
+import { setWhatsappGroupVisibility } from "@/features/whatsapp/groups.functions"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
@@ -57,8 +58,13 @@ export function CombinedGroupsTable({
 }) {
   const router = useRouter()
   const setGroupVisibilityFn = useServerFn(setGroupVisibility)
+  const setWaGroupVisibilityFn = useServerFn(setWhatsappGroupVisibility)
   const [visibilityOverrides, setVisibilityOverrides] = useState<Record<number, boolean>>({})
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  // Kept separate from the Telegram overrides above (not merged into one map) for the same reason as the label
+  // maps: Telegram and WhatsApp group ids are independent sequences that could otherwise collide.
+  const [waVisibilityOverrides, setWaVisibilityOverrides] = useState<Record<number, boolean>>({})
+  const [waUpdatingId, setWaUpdatingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState("")
   const [refreshError, setRefreshError] = useState("")
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -66,7 +72,7 @@ export function CombinedGroupsTable({
   const displayRows = rows.map((row) =>
     row.platform === "telegram"
       ? { ...row, group: { ...row.group, hide: visibilityOverrides[row.group.telegramId] ?? row.group.hide } }
-      : row
+      : { ...row, group: { ...row.group, hide: waVisibilityOverrides[row.group.id] ?? row.group.hide } }
   )
   const editingRow = editingKey ? (displayRows.find((row) => row.key === editingKey) ?? null) : null
 
@@ -100,6 +106,39 @@ export function CombinedGroupsTable({
       setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  async function toggleWaVisibility(group: WaGroup) {
+    if (waUpdatingId !== null) return
+    const hide = !group.hide
+    setWaUpdatingId(group.id)
+    setMutationError("")
+    setWaVisibilityOverrides((current) => ({ ...current, [group.id]: hide }))
+
+    try {
+      await setWaGroupVisibilityFn({ data: { id: group.id, hide } })
+      toast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
+      try {
+        await router.invalidate({ sync: true })
+        setRefreshError("")
+        setWaVisibilityOverrides((current) => {
+          const { [group.id]: _removed, ...remaining } = current
+          return remaining
+        })
+      } catch (error) {
+        console.error(error)
+        setRefreshError("The visibility was updated, but the latest group data could not be refreshed.")
+      }
+    } catch (error) {
+      console.error(error)
+      setWaVisibilityOverrides((current) => {
+        const { [group.id]: _removed, ...remaining } = current
+        return remaining
+      })
+      setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
+    } finally {
+      setWaUpdatingId(null)
     }
   }
 
@@ -180,8 +219,26 @@ export function CombinedGroupsTable({
         cell: ({ row }) => {
           if (row.original.platform === "whatsapp") {
             const group = row.original.group
+            const pending = waUpdatingId === group.id
+            const visible = !group.hide
             return (
               <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "gap-1 text-xs",
+                    visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
+                  )}
+                  disabled={pending}
+                  aria-busy={pending}
+                  aria-pressed={visible}
+                  aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
+                  onClick={() => void toggleWaVisibility(group)}
+                >
+                  {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
+                  {visible ? "Visible" : "Hidden"}
+                </Button>
                 <CreateEditGroupDialog group={group} />
                 <DeleteGroupDialog id={group.id} title={group.title} />
               </div>
@@ -215,7 +272,7 @@ export function CombinedGroupsTable({
         },
       }),
     ])
-  }, [updatingId])
+  }, [updatingId, waUpdatingId])
 
   const table = useAppTable({
     key: "groups-by-label-combined",
