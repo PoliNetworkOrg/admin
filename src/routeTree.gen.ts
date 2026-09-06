@@ -34,6 +34,7 @@ import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azu
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
+import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
 import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
 
@@ -166,6 +167,11 @@ const DashboardTelegramUsersIndexRoute =
     path: '/telegram/users/',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardWebTagsTagRoute = DashboardWebTagsTagRouteImport.update({
+  id: '/tags/$tag',
+  path: '/tags/$tag',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
 const DashboardWebGroupsByLabelSplatRoute =
   DashboardWebGroupsByLabelSplatRouteImport.update({
     id: '/groups-by-label/$',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/telegram/users': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
   fileRoutesByTo: FileRoutesByTo
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
     | '/dashboard/telegram/users'
     | '/dashboard/web/groups-by-label'
   id:
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
   fileRoutesById: FileRoutesById
@@ -541,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/web/tags/$tag': {
+      id: '/dashboard/web/tags/$tag'
+      path: '/tags/$tag'
+      fullPath: '/dashboard/web/tags/$tag'
+      preLoaderRoute: typeof DashboardWebTagsTagRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
     '/dashboard/web/groups-by-label/$': {
       id: '/dashboard/web/groups-by-label/$'
       path: '/groups-by-label/$'
@@ -565,6 +584,7 @@ interface DashboardWebRouteChildren {
   DashboardWebGuidesRoute: typeof DashboardWebGuidesRoute
   DashboardWebProjectsRoute: typeof DashboardWebProjectsRoute
   DashboardWebGroupsByLabelSplatRoute: typeof DashboardWebGroupsByLabelSplatRoute
+  DashboardWebTagsTagRoute: typeof DashboardWebTagsTagRoute
   DashboardWebGroupsByLabelIndexRoute: typeof DashboardWebGroupsByLabelIndexRoute
 }
 
@@ -575,6 +595,7 @@ const DashboardWebRouteChildren: DashboardWebRouteChildren = {
   DashboardWebGuidesRoute: DashboardWebGuidesRoute,
   DashboardWebProjectsRoute: DashboardWebProjectsRoute,
   DashboardWebGroupsByLabelSplatRoute: DashboardWebGroupsByLabelSplatRoute,
+  DashboardWebTagsTagRoute: DashboardWebTagsTagRoute,
   DashboardWebGroupsByLabelIndexRoute: DashboardWebGroupsByLabelIndexRoute,
 }
 

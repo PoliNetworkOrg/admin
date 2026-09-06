@@ -5,6 +5,7 @@ import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middl
 
 import {
   createGroupLabelInput,
+  createReleaseLabelInput,
   editGroupLabelInput,
   groupLabelIdentifierInput,
   renameGroupLabelInput,
@@ -58,6 +59,18 @@ export const createGroupLabel = createServerFn({ method: "POST" })
       createdBy: context.telegramId,
     })
     if (!created) throw new Error("The label could not be created.")
+    return created
+  })
+
+export const createReleaseLabel = createServerFn({ method: "POST" })
+  .middleware([webWriteAdminMiddleware])
+  .validator(createReleaseLabelInput)
+  .handler(async ({ data, context }) => {
+    const [created] = await context.backend.tg.groupLabels.create.mutate({
+      ...data,
+      createdBy: context.telegramId,
+    })
+    if (!created) throw new Error("The publication could not be created.")
     return created
   })
 

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router"
 import { FolderPlus, LoaderCircle, MoreVertical, Pencil, PencilLine, Save, Trash2, X } from "lucide-react"
 import { useState } from "react"
 
@@ -42,6 +43,8 @@ type GroupLabelCardProps = {
   allowRename?: boolean
   /** Off for flat tags, which never nest. */
   allowChildren?: boolean
+  /** When set, the name badge links here — a distinct target, so the card's own edit and delete controls stay clickable. */
+  linkTo?: string
   onDelete: () => Promise<boolean>
   onSave: (values: GroupLabelEditValues) => Promise<boolean>
 }
@@ -52,6 +55,7 @@ export function GroupLabelCard({
   leading,
   allowRename = true,
   allowChildren = true,
+  linkTo,
   onDelete,
   onSave,
 }: GroupLabelCardProps) {
@@ -131,13 +135,25 @@ export function GroupLabelCard({
           </>
         ) : (
           <>
-            <Badge
-              className={cn("h-auto max-w-[min(50%,24rem)] min-w-0 shrink py-1 text-sm", swatch.badgeClassName)}
-              style={swatch.badgeStyle}
-              title={groupLabel.label}
-            >
-              <span className="truncate">{displaySegment}</span>
-            </Badge>
+            {linkTo ? (
+              <Link
+                to={linkTo}
+                title={`View the groups tagged "${groupLabel.label}"`}
+                className="flex max-w-[min(50%,24rem)] min-w-0 shrink rounded-md hover:opacity-80 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+              >
+                <Badge className={cn("h-auto min-w-0 py-1 text-sm", swatch.badgeClassName)} style={swatch.badgeStyle}>
+                  <span className="truncate">{displaySegment}</span>
+                </Badge>
+              </Link>
+            ) : (
+              <Badge
+                className={cn("h-auto max-w-[min(50%,24rem)] min-w-0 shrink py-1 text-sm", swatch.badgeClassName)}
+                style={swatch.badgeStyle}
+                title={groupLabel.label}
+              >
+                <span className="truncate">{displaySegment}</span>
+              </Badge>
+            )}
             <p className="min-w-0 flex-1 truncate text-sm text-foreground/85">
               {groupLabel.description || <span className="text-muted-foreground italic">No description</span>}
             </p>
