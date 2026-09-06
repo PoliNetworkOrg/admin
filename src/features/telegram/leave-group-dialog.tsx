@@ -60,7 +60,7 @@ export function LeaveGroupDialog({ chatId, title }: { chatId: number; title: str
 
   return (
     <AlertDialog open={open} onOpenChange={(nextOpen) => !pending && setOpen(nextOpen)}>
-      <AlertDialogTrigger render={<Button variant="destructive" size="icon-sm" title="Leave" />}>
+      <AlertDialogTrigger render={<Button variant="destructive" size="icon-sm" />}>
         <Trash2 />
         <span className="sr-only">Leave {title}</span>
       </AlertDialogTrigger>

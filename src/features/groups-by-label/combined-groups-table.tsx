@@ -156,7 +156,7 @@ export function CombinedGroupsTable({
         cell: ({ getValue }) => <GroupLabelBadges labels={getValue()} />,
       }),
       groupColumnHelper.accessor("link", {
-        header: "Invite",
+        header: "",
         cell: ({ getValue }) => {
           const link = getValue()
           return link ? (
@@ -165,14 +165,13 @@ export function CombinedGroupsTable({
               href={link}
               target="_blank"
               rel="noreferrer"
-              title="Open invite link"
               onClick={(event) => event.stopPropagation()}
             >
               <ExternalLink className="size-4" />
               <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span title="Not shared" className="inline-flex text-muted-foreground">
+            <span className="inline-flex text-muted-foreground">
               <X className="size-4" />
               <span className="sr-only">Not shared</span>
             </span>
@@ -205,7 +204,6 @@ export function CombinedGroupsTable({
                 disabled={pending}
                 aria-busy={pending}
                 aria-pressed={visible}
-                title={visible ? "Visible" : "Hidden"}
                 aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
                 onClick={() => void toggleVisibility(group)}
               >

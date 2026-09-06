@@ -148,34 +148,8 @@ export function GroupsTable({
         cell: ({ row }) => <GroupLabelBadges labels={labelsByGroupId.get(row.original.telegramId) ?? []} />,
       }),
       groupColumnHelper.display({
-        id: "visibility",
-        header: "Visibility",
-        cell: ({ row }) => {
-          const group = row.original
-          const pending = updatingId === group.telegramId
-          const visible = !group.hide
-          return (
-            <div onClick={(event) => event.stopPropagation()}>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
-                disabled={pending}
-                aria-busy={pending}
-                aria-pressed={visible}
-                title={visible ? "Visible" : "Hidden"}
-                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group)}
-              >
-                {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-              </Button>
-            </div>
-          )
-        },
-      }),
-      groupColumnHelper.display({
         id: "invite",
-        header: "Invite",
+        header: "",
         cell: ({ row }) => {
           const link = row.original.link
           return link ? (
@@ -184,14 +158,13 @@ export function GroupsTable({
               href={link}
               target="_blank"
               rel="noreferrer"
-              title="Open invite link"
               onClick={(event) => event.stopPropagation()}
             >
               <ExternalLink className="size-4" />
               <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span title="Not shared" className="inline-flex text-muted-foreground">
+            <span className="inline-flex text-muted-foreground">
               <X className="size-4" />
               <span className="sr-only">Not shared</span>
             </span>
@@ -199,13 +172,30 @@ export function GroupsTable({
         },
       }),
       groupColumnHelper.display({
-        id: "leave",
+        id: "actions",
         header: "",
-        cell: ({ row }) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <LeaveGroupDialog chatId={row.original.telegramId} title={row.original.title} />
-          </div>
-        ),
+        cell: ({ row }) => {
+          const group = row.original
+          const pending = updatingId === group.telegramId
+          const visible = !group.hide
+          return (
+            <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
+                disabled={pending}
+                aria-busy={pending}
+                aria-pressed={visible}
+                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
+                onClick={() => void toggleVisibility(group)}
+              >
+                {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
+              </Button>
+              <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
+            </div>
+          )
+        },
       }),
     ])
   }, [updatingId, labelsByGroupId])

@@ -114,7 +114,7 @@ export function WhatsappGroupsPage({
       }),
       groupColumnHelper.display({
         id: "invite",
-        header: "Invite",
+        header: "",
         cell: ({ row }) => {
           const link = row.original.link
           return link ? (
@@ -123,14 +123,13 @@ export function WhatsappGroupsPage({
               href={link}
               target="_blank"
               rel="noreferrer"
-              title="Open invite link"
               onClick={(event) => event.stopPropagation()}
             >
               <ExternalLink className="size-4" />
               <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span title="Not shared" className="inline-flex text-muted-foreground">
+            <span className="inline-flex text-muted-foreground">
               <X className="size-4" />
               <span className="sr-only">Not shared</span>
             </span>
