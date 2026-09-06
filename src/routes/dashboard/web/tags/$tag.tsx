@@ -14,7 +14,7 @@ export const Route = createFileRoute("/dashboard/web/tags/$tag")({
     // A category already has a browsable page of its own — routing it here too would be a second, competing view
     // of the same label, reachable by hand-typing a URL.
     if (isCategoryLabel(params.tag)) {
-const to: string = `/dashboard/web/groups-by-label/${labelPathToUrlSegments(params.tag).map(encodeURIComponent).join("/")}`
+      const to: string = `/dashboard/web/groups-by-label/${labelPathToUrlSegments(params.tag).map(encodeURIComponent).join("/")}`
       throw redirect({ to })
     }
   },
