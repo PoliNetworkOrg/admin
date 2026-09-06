@@ -166,7 +166,7 @@ export function CombinedGroupsTable({
       }),
       groupColumnHelper.display({
         id: "actions",
-        header: "",
+        header: "Actions",
         cell: ({ row }) => {
           if (row.original.platform === "whatsapp") {
             const group = row.original.group
@@ -176,11 +176,8 @@ export function CombinedGroupsTable({
               <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className={cn(
-                    "gap-1 text-xs",
-                    visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
-                  )}
+                  size="icon-sm"
+                  className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
                   disabled={pending}
                   aria-busy={pending}
                   aria-pressed={visible}
@@ -188,7 +185,6 @@ export function CombinedGroupsTable({
                   onClick={() => void toggleWaVisibility(group.id, group.title, group.hide)}
                 >
                   {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-                  {visible ? "Visible" : "Hidden"}
                 </Button>
                 <CreateEditGroupDialog group={group} />
                 <DeleteGroupDialog id={group.id} title={group.title} />

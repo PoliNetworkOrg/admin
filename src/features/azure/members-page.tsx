@@ -111,7 +111,7 @@ export function AzureMembersPage({ initialMembers, canWrite }: { initialMembers:
         ? [
             memberColumnHelper.display({
               id: "actions",
-              header: "",
+              header: "Actions",
               cell: ({ row }) => (
                 <Button
                   variant="link"

@@ -110,7 +110,7 @@ export function ReportsPage({ entries: initialEntries }: { entries: ReportRow[] 
       }),
       columnHelper.display({
         id: "actions",
-        header: "Azioni",
+        header: "Actions",
         cell: ({ row }) =>
           row.original.status === "pending" ? (
             <div className="flex gap-2">

@@ -140,7 +140,7 @@ export function GroupsTable({
       }),
       groupColumnHelper.display({
         id: "actions",
-        header: "",
+        header: "Actions",
         cell: ({ row }) => {
           const group = row.original
           const pending = updatingId === group.telegramId
