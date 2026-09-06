@@ -1,7 +1,9 @@
 import {
+  Bot,
   BookOpen,
   CircleQuestionMark,
   Database,
+  Flag,
   FolderKanban,
   FolderTree,
   Globe,
@@ -10,6 +12,7 @@ import {
   Settings,
   ShieldCheck,
   Tags,
+  TriangleAlert,
   Users,
   UsersRound,
 } from "lucide-react"
@@ -46,6 +49,17 @@ export const dashboardNavigation = [
       { title: "Users", url: "/dashboard/telegram/users", icon: UsersRound },
       { title: "Groups", url: "/dashboard/telegram/groups", icon: Database },
       { title: "Grants", url: "/dashboard/telegram/grants", icon: ShieldCheck },
+    ],
+  },
+  {
+    title: "Bot",
+    icon: Bot,
+    iconSrc: undefined,
+    items: [
+      { title: "Moderazione", url: "/dashboard/bot/audit-log", icon: ShieldCheck },
+      { title: "Gestione gruppi", url: "/dashboard/bot/group-management", icon: Database },
+      { title: "Report", url: "/dashboard/bot/reports", icon: Flag },
+      { title: "Errori", url: "/dashboard/bot/exceptions", icon: TriangleAlert },
     ],
   },
   {
