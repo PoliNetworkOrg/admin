@@ -29,8 +29,8 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@polinetwork/backend':
-        specifier: ^0.18.0
-        version: 0.18.0
+        specifier: ^0.18.1
+        version: 0.18.1
       '@t3-oss/env-core':
         specifier: ^0.13.10
         version: 0.13.11(typescript@6.0.3)(zod@4.3.5)
@@ -1278,8 +1278,8 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@polinetwork/backend@0.18.0':
-    resolution: {integrity: sha512-B/4JNI9RB0bsPXDFHm0jkCLDEzqoydvZOz/G7bsR/9qti5cpFIUNaIbGPIRIjDGmVB5bO3DFVU6xM3iLc5eQ9A==}
+  '@polinetwork/backend@0.18.1':
+    resolution: {integrity: sha512-JMH+twKn7WvjX0y7VK5u5FgBLRa1Z651nlR3BRZW/P8xMlNAgLhuin5wP8UWZ6++QdzvMui9XnXEsojuCxt8wg==}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -6363,7 +6363,7 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@polinetwork/backend@0.18.0': {}
+  '@polinetwork/backend@0.18.1': {}
 
   '@polka/url@1.0.0-next.29': {}
 
