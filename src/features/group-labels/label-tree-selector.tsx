@@ -15,6 +15,7 @@ import {
   formatLabelChip,
   formatLabelSegment,
   isCategoryLabel,
+  hasReleaseLabelPrefix,
   type LabelTreeNode,
 } from "./label-tree"
 import type { GroupLabel } from "./types"
@@ -129,7 +130,12 @@ export function LabelTreeSelector({
 }) {
   const [query, setQuery] = useState("")
   const categoryLabels = useMemo(() => allLabels.filter((label) => isCategoryLabel(label.label)), [allLabels])
-  const tagLabels = useMemo(() => allLabels.filter((label) => !isCategoryLabel(label.label)), [allLabels])
+  const tagLabels = useMemo(
+    () => allLabels.filter((label) => !isCategoryLabel(label.label) && !hasReleaseLabelPrefix(label.label)),
+    [allLabels]
+  )
+  const releaseLabels = useMemo(() => allLabels.filter((label) => hasReleaseLabelPrefix(label.label)), [allLabels])
+  const visibleReleases = useMemo(() => filterFlatLabels(releaseLabels, query), [releaseLabels, query])
   const tree = useMemo(() => buildLabelTree(categoryLabels), [categoryLabels])
   const isSearching = Boolean(query.trim())
   // Searching a hierarchy by expanding one branch at a time is slow, unlike picking a tag — so a search instead
@@ -144,7 +150,7 @@ export function LabelTreeSelector({
   return (
     <div className="flex flex-col gap-2">
       <Input
-        placeholder={tagsOnly ? "Search tags…" : "Search labels…"}
+        placeholder={tagsOnly ? "Search attributes and publications…" : "Search labels…"}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         className="h-9"
@@ -206,38 +212,50 @@ export function LabelTreeSelector({
                   ))}
                 </div>
               ))}
-        {visibleTags.length > 0 && (
-          <div>
-            <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Tags</p>
-            <div className="flex flex-wrap gap-1 px-2 pb-1">
-              {visibleTags.map((label) => {
-                const checked = isSelected(label)
-                const swatch = getGroupLabelColor(label.color)
-                return (
-                  <button
-                    key={label.label}
-                    type="button"
-                    aria-pressed={checked}
-                    onClick={() => onToggleMany([label], !checked)}
-                    className={cn(
-                      "flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium",
-                      checked ? swatch.badgeClassName : "border-border bg-transparent text-muted-foreground"
-                    )}
-                    style={checked ? swatch.badgeStyle : undefined}
-                  >
-                    <LabelDot color={label.color} />
-                    {formatLabelSegment(label.label)}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+        {[
+          { title: "Attributes", labels: visibleTags },
+          { title: "Publications", labels: visibleReleases },
+        ].map(
+          (section) =>
+            section.labels.length > 0 && (
+              <div key={section.title}>
+                <p className="px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                  {section.title}
+                </p>
+                <div className="flex flex-wrap gap-1 px-2 pb-1">
+                  {section.labels.map((label) => {
+                    const checked = isSelected(label)
+                    const swatch = getGroupLabelColor(label.color)
+                    return (
+                      <button
+                        key={label.label}
+                        type="button"
+                        aria-pressed={checked}
+                        onClick={() => onToggleMany([label], !checked)}
+                        className={cn(
+                          "flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium",
+                          checked ? swatch.badgeClassName : "border-border bg-transparent text-muted-foreground"
+                        )}
+                        style={checked ? swatch.badgeStyle : undefined}
+                      >
+                        <LabelDot color={label.color} />
+                        {formatLabelSegment(label.label)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
         )}
-        {(tagsOnly || (isSearching ? !matchingCategories.length : !tree.length)) && !visibleTags.length && (
-          <p className="p-2 text-sm text-muted-foreground">
-            {isSearching ? `No matching ${tagsOnly ? "tags" : "labels"}` : "No tags"}
-          </p>
-        )}
+        {(tagsOnly || (isSearching ? !matchingCategories.length : !tree.length)) &&
+          !visibleTags.length &&
+          !visibleReleases.length && (
+            <p className="p-2 text-sm text-muted-foreground">
+              {isSearching
+                ? `No matching ${tagsOnly ? "attributes or publications" : "labels"}`
+                : "No attributes or publications"}
+            </p>
+          )}
       </div>
     </div>
   )

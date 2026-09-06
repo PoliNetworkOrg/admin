@@ -3,7 +3,7 @@ import { z } from "zod"
 import { errorHasZodField, errorMessage } from "@/lib/errors"
 
 import { GROUP_LABEL_DESCRIPTION_MAX, GROUP_LABEL_MAX } from "./group-labels.constants"
-import { isCategoryLabel, isValidLabelSegment } from "./label-tree"
+import { hasReleaseLabelPrefix, isCategoryLabel, isValidLabelSegment, RELEASE_LABEL_PREFIX } from "./label-tree"
 
 const label = z.string().trim().min(1).max(GROUP_LABEL_MAX)
 const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/)
@@ -31,6 +31,7 @@ function categoryRoot(value: string): string | null {
  */
 const newLabelPath = label.refine(
   (value) => {
+    if (hasReleaseLabelPrefix(value)) return false
     const segments = value.split(".")
     if (segments.some((segment) => !isValidLabelSegment(segment))) return false
     return segments.length === 1 || isCategoryLabel(value)
@@ -39,9 +40,29 @@ const newLabelPath = label.refine(
 )
 
 export const createGroupLabelInput = z.object({ label: newLabelPath, color, description })
+/** Release creation accepts a name, never an arbitrary existing label to promote. */
+export const createReleaseLabelInput = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(GROUP_LABEL_MAX - RELEASE_LABEL_PREFIX.length)
+      .refine((name) => isValidLabelSegment(name) && !hasReleaseLabelPrefix(name), {
+        message: "Enter a publication name without the reserved release- prefix or URL separators.",
+      }),
+    color,
+    description,
+  })
+  .transform(({ name, ...fields }) => ({ ...fields, label: `${RELEASE_LABEL_PREFIX}${name}` }))
+
 export const editGroupLabelInput = z.object({ label, color, description })
 export const renameGroupLabelInput = z
   .object({ label, newLabel: newLabelPath, color, description })
+  .refine((data) => !hasReleaseLabelPrefix(data.label), {
+    message: "Publication labels cannot be renamed with the category and tag editor.",
+    path: ["newLabel"],
+  })
   .refine((data) => categoryRoot(data.label) === categoryRoot(data.newLabel), {
     message: "A rename can't move a label to a different category root, or turn a tag into a category (or back).",
     path: ["newLabel"],
@@ -50,10 +71,10 @@ export const groupLabelIdentifierInput = z.object({ label })
 
 export function groupLabelSaveErrorMessage(cause: unknown) {
   if (errorHasZodField(cause, "newLabel")) {
-    return "A rename can't move a label to a different category root, or turn a tag into a category (or back)."
+    return "Keep the same category root and label type. The release- prefix is reserved for publications."
   }
   if (errorHasZodField(cause, "label")) {
-    return `Enter a valid label: a plain tag name, a category root, or a category nested under an existing root (max ${GROUP_LABEL_MAX} characters).`
+    return `Enter a valid label: a plain tag name, a category root, or a category nested under an existing root (max ${GROUP_LABEL_MAX} characters). The release- prefix is reserved for publications.`
   }
   if (errorHasZodField(cause, "color")) return "Choose a valid color."
   if (errorHasZodField(cause, "description")) {

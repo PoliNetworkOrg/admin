@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { DataToolbar } from "@/components/data-toolbar"
 import { Button } from "@/components/ui/button"
-import { formatLabelSegment } from "@/features/group-labels/label-tree"
+import { formatLabelSegment, isReleaseLabel } from "@/features/group-labels/label-tree"
 import { AddGroupToLabelDialog } from "@/features/groups-by-label/add-group-to-label-dialog"
 import { CombinedGroupsTable } from "@/features/groups-by-label/combined-groups-table"
 import { PublishTagGroupsDialog } from "@/features/groups-by-label/publish-tag-groups-dialog"
@@ -42,6 +42,7 @@ export function TagGroupsPage({
 
   const hasSearch = Boolean(query.trim())
   const labelExists = loadedGroupLabels.some((label) => label.label === tag)
+  const publication = isReleaseLabel(tag)
   const title = formatLabelSegment(tag)
   const backUrl: string = "/dashboard/web/group-labels"
 
@@ -57,9 +58,13 @@ export function TagGroupsPage({
         <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back to Group labels
       </Button>
       <DataToolbar
-        eyebrow="Web"
+        eyebrow={publication ? "Publications" : "Attributes"}
         title={title}
-        description={`Groups tagged "${title}".`}
+        description={
+          publication
+            ? "Publishing this batch preserves all categories and attributes."
+            : `Groups with the permanent attribute "${title}".`
+        }
         count={visibleRows.length}
         total={branchRows.length}
         searchPlaceholder="Search by group name or tag…"
@@ -67,7 +72,7 @@ export function TagGroupsPage({
         action={
           <div className="flex items-center gap-2">
             {/* Publishing acts on the whole tag, not on what the search box currently shows. */}
-            <PublishTagGroupsDialog tag={tag} rows={branchRows} />
+            {publication && <PublishTagGroupsDialog tag={tag} rows={branchRows} />}
             <AddGroupToLabelDialog
               path={tag}
               labelExists={labelExists}

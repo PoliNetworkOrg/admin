@@ -298,7 +298,7 @@ export function AddGroupToLabelDialog({
               onHideChange={setHide}
             />
             <div>
-              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Also tag with</p>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Attributes and publications</p>
               <LabelTreeSelector allLabels={allLabels} selected={selectedTags} onToggleMany={toggleTags} tagsOnly />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}

@@ -1,4 +1,4 @@
-import { FolderTree, Plus, Tags } from "lucide-react"
+import { FolderTree, Megaphone, Plus, Tags } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { DataToolbar } from "@/components/data-toolbar"
@@ -14,6 +14,7 @@ import {
   filterFlatLabels,
   filterLabelTree,
   isCategoryLabel,
+  hasReleaseLabelPrefix,
   type LabelTreeNode,
 } from "./label-tree"
 import type { GroupLabel } from "./types"
@@ -33,26 +34,32 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
   const [query, setQuery] = useState("")
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [addTagOpen, setAddTagOpen] = useState(false)
+  const [addPublicationOpen, setAddPublicationOpen] = useState(false)
 
   const categoryLabels = useMemo(() => labels.filter((label) => isCategoryLabel(label.label)), [labels])
-  const tagLabels = useMemo(() => labels.filter((label) => !isCategoryLabel(label.label)), [labels])
+  const tagLabels = useMemo(
+    () => labels.filter((label) => !isCategoryLabel(label.label) && !hasReleaseLabelPrefix(label.label)),
+    [labels]
+  )
+  const releaseLabels = useMemo(() => labels.filter((label) => hasReleaseLabelPrefix(label.label)), [labels])
+  const filteredReleases = useMemo(() => filterFlatLabels(releaseLabels, query), [releaseLabels, query])
 
   const categoryTree = useMemo(() => buildCategoryRootTree(categoryLabels), [categoryLabels])
   const filteredCategoryTree = useMemo(() => filterLabelTree(categoryTree, query), [categoryTree, query])
   const filteredTags = useMemo(() => filterFlatLabels(tagLabels, query), [tagLabels, query])
 
   const isSearching = Boolean(query.trim())
-  const matchCount = countRealLabels(filteredCategoryTree) + filteredTags.length
+  const matchCount = countRealLabels(filteredCategoryTree) + filteredTags.length + filteredReleases.length
 
   return (
     <div className="animate-appear">
       <DataToolbar
         eyebrow="Web"
         title="Group labels"
-        description="Manage the categories and tags used to organize groups on the PoliNetwork website."
+        description="Manage permanent categories and attributes separately from publication batches."
         count={matchCount}
         total={labels.length}
-        searchPlaceholder="Search categories and tags…"
+        searchPlaceholder="Search categories, attributes and publications…"
         onSearch={setQuery}
         action={
           <div className="flex items-center gap-2">
@@ -94,10 +101,10 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
         )}
       </section>
 
-      <section>
-        <h2 className="mb-1 text-sm font-semibold text-foreground/85">Tags</h2>
+      <section className="mb-6">
+        <h2 className="mb-1 text-sm font-semibold text-foreground/85">Attributes</h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          Flat attributes, like a language or campus, that don&apos;t belong to the category hierarchy.
+          Permanent tags, like a language or campus. They are preserved when groups are published.
         </p>
         {filteredTags.length ? (
           <div className="flex flex-col gap-2">
@@ -127,6 +134,47 @@ export function GroupLabelsPage({ loadedGroupLabels }: { loadedGroupLabels: Grou
         )}
       </section>
 
+      <section aria-label="Publications">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-foreground/85">Publications</h2>
+            <p className="text-xs text-muted-foreground">
+              Temporary batches of groups to publish together. Only their release labels are cleared.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => setAddPublicationOpen(true)}>
+            <Megaphone data-icon="inline-start" /> Create publication
+          </Button>
+        </div>
+        {filteredReleases.length ? (
+          <div className="flex flex-col gap-2">
+            {filteredReleases.map((label) => (
+              <GroupLabelCard
+                key={label.label}
+                groupLabel={label}
+                allLabels={labels}
+                allowChildren={false}
+                allowRename={false}
+                linkTo={`/dashboard/web/tags/${encodeURIComponent(label.label)}`}
+                onDelete={() => removeGroupLabel(label)}
+                onSave={(values) => saveGroupLabel(label, values)}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Megaphone}
+            title={releaseLabels.length ? "No publications match this search" : "No publications yet"}
+            text={
+              releaseLabels.length
+                ? "Try a different name or description."
+                : "Create a publication, add existing groups, then publish the batch."
+            }
+          />
+        )}
+      </section>
+
+      <AddTagDialog open={addPublicationOpen} onOpenChange={setAddPublicationOpen} publication />
       <AddCategoryDialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen} />
       <AddTagDialog open={addTagOpen} onOpenChange={setAddTagOpen} />
     </div>
