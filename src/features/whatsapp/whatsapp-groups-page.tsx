@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router"
 import type { Column } from "@tanstack/react-table"
-import { ArrowDown, ArrowUp, ChevronsUpDown, ExternalLink, MessageCircleMore, Tag } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, ExternalLink, MessageCircleMore, Tag, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -119,17 +119,21 @@ export function WhatsappGroupsPage({
           const link = row.original.link
           return link ? (
             <a
-              className="rounded-md font-medium text-primary flex items-center gap-1 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
+              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
               href={link}
               target="_blank"
               rel="noreferrer"
+              title="Open invite link"
               onClick={(event) => event.stopPropagation()}
             >
-              <ExternalLink className="size-3" />
-              Open invite link
+              <ExternalLink className="size-4" />
+              <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span className="text-xs italic text-muted-foreground">Not shared</span>
+            <span title="Not shared" className="inline-flex text-muted-foreground">
+              <X className="size-4" />
+              <span className="sr-only">Not shared</span>
+            </span>
           )
         },
       }),

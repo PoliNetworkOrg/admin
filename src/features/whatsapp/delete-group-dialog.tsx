@@ -51,7 +51,7 @@ export function DeleteGroupDialog({ id, title }: { id: number; title: string }) 
         if (!nextOpen) setError("")
       }}
     >
-      <AlertDialogTrigger render={<Button variant="destructive" size="icon-sm" />}>
+      <AlertDialogTrigger render={<Button variant="destructive" size="icon-sm" title="Delete" />}>
         <Trash2 />
         <span className="sr-only">Delete {title}</span>
       </AlertDialogTrigger>

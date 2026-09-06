@@ -10,6 +10,7 @@ import {
   EyeOff,
   LoaderCircle,
   MessageCircleMore,
+  X,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -160,17 +161,21 @@ export function CombinedGroupsTable({
           const link = getValue()
           return link ? (
             <a
-              className="rounded-md font-medium text-primary flex items-center gap-1 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
+              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
               href={link}
               target="_blank"
               rel="noreferrer"
+              title="Open invite link"
               onClick={(event) => event.stopPropagation()}
             >
-              <ExternalLink className="size-3" />
-              Open invite link
+              <ExternalLink className="size-4" />
+              <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span className="text-xs italic text-muted-foreground">Not shared</span>
+            <span title="Not shared" className="inline-flex text-muted-foreground">
+              <X className="size-4" />
+              <span className="sr-only">Not shared</span>
+            </span>
           )
         },
       }),
@@ -195,19 +200,16 @@ export function CombinedGroupsTable({
             <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
               <Button
                 variant="outline"
-                size="sm"
-                className={cn(
-                  "gap-1 text-xs",
-                  visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
-                )}
+                size="icon-sm"
+                className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
                 disabled={pending}
                 aria-busy={pending}
                 aria-pressed={visible}
+                title={visible ? "Visible" : "Hidden"}
                 aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
                 onClick={() => void toggleVisibility(group)}
               >
                 {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-                {visible ? "Visible" : "Hidden"}
               </Button>
               <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
             </div>
