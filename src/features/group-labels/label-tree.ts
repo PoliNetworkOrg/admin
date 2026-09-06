@@ -10,6 +10,23 @@ import type { GroupLabel } from "./types"
  */
 export const CATEGORY_ROOTS = ["didattica", "extra"]
 
+export const RELEASE_LABEL_PREFIX = "release-"
+
+/** Reserve case variants too, so an attribute cannot accidentally become a release label. */
+export function hasReleaseLabelPrefix(label: string): boolean {
+  return label.trim().toLowerCase().startsWith(RELEASE_LABEL_PREFIX)
+}
+
+/** Only a nonempty, flat release label is eligible for publication. */
+export function isReleaseLabel(label: string): boolean {
+  return (
+    label === label.trim() &&
+    hasReleaseLabelPrefix(label) &&
+    label.slice(RELEASE_LABEL_PREFIX.length).trim().length > 0 &&
+    isValidLabelSegment(label)
+  )
+}
+
 export function isCategoryLabel(label: string): boolean {
   return CATEGORY_ROOTS.some((root) => label === root || label.startsWith(`${root}.`))
 }

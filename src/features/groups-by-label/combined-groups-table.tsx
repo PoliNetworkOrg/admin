@@ -27,6 +27,8 @@ import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
+import { setWhatsappGroupVisibility } from "@/features/whatsapp/groups.functions"
+import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
@@ -58,51 +60,35 @@ export function CombinedGroupsTable({
 }) {
   const router = useRouter()
   const setGroupVisibilityFn = useServerFn(setGroupVisibility)
-  const [visibilityOverrides, setVisibilityOverrides] = useState<Record<number, boolean>>({})
-  const [updatingId, setUpdatingId] = useState<number | null>(null)
-  const [mutationError, setMutationError] = useState("")
-  const [refreshError, setRefreshError] = useState("")
+  const setWaGroupVisibilityFn = useServerFn(setWhatsappGroupVisibility)
+  const {
+    updatingId,
+    mutationError: tgMutationError,
+    refreshError: tgRefreshError,
+    resolveHide: resolveTgHide,
+    toggleVisibility,
+  } = useGroupVisibilityToggle((telegramId: number, hide: boolean) =>
+    setGroupVisibilityFn({ data: { telegramId, hide } })
+  )
+  // Kept as a separate hook instance (not merged into one map) for the same reason as the label maps: Telegram
+  // and WhatsApp group ids are independent sequences that could otherwise collide.
+  const {
+    updatingId: waUpdatingId,
+    mutationError: waMutationError,
+    refreshError: waRefreshError,
+    resolveHide: resolveWaHide,
+    toggleVisibility: toggleWaVisibility,
+  } = useGroupVisibilityToggle((id: number, hide: boolean) => setWaGroupVisibilityFn({ data: { id, hide } }))
+  const mutationError = tgMutationError || waMutationError
+  const refreshError = tgRefreshError || waRefreshError
   const [editingKey, setEditingKey] = useState<string | null>(null)
 
   const displayRows = rows.map((row) =>
     row.platform === "telegram"
-      ? { ...row, group: { ...row.group, hide: visibilityOverrides[row.group.telegramId] ?? row.group.hide } }
-      : row
+      ? { ...row, group: { ...row.group, hide: resolveTgHide(row.group.telegramId, row.group.hide) } }
+      : { ...row, group: { ...row.group, hide: resolveWaHide(row.group.id, row.group.hide) } }
   )
   const editingRow = editingKey ? (displayRows.find((row) => row.key === editingKey) ?? null) : null
-
-  async function toggleVisibility(group: TgGroup) {
-    if (updatingId !== null) return
-    const hide = !group.hide
-    setUpdatingId(group.telegramId)
-    setMutationError("")
-    setVisibilityOverrides((current) => ({ ...current, [group.telegramId]: hide }))
-
-    try {
-      await setGroupVisibilityFn({ data: { telegramId: group.telegramId, hide } })
-      toast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
-      try {
-        await router.invalidate({ sync: true })
-        setRefreshError("")
-        setVisibilityOverrides((current) => {
-          const { [group.telegramId]: _removed, ...remaining } = current
-          return remaining
-        })
-      } catch (error) {
-        console.error(error)
-        setRefreshError("The visibility was updated, but the latest group data could not be refreshed.")
-      }
-    } catch (error) {
-      console.error(error)
-      setVisibilityOverrides((current) => {
-        const { [group.telegramId]: _removed, ...remaining } = current
-        return remaining
-      })
-      setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
-    } finally {
-      setUpdatingId(null)
-    }
-  }
 
   const columns = useMemo(() => {
     const sortableHeader = (
@@ -184,8 +170,26 @@ export function CombinedGroupsTable({
         cell: ({ row }) => {
           if (row.original.platform === "whatsapp") {
             const group = row.original.group
+            const pending = waUpdatingId === group.id
+            const visible = !group.hide
             return (
               <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "gap-1 text-xs",
+                    visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
+                  )}
+                  disabled={pending}
+                  aria-busy={pending}
+                  aria-pressed={visible}
+                  aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
+                  onClick={() => void toggleWaVisibility(group.id, group.title, group.hide)}
+                >
+                  {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
+                  {visible ? "Visible" : "Hidden"}
+                </Button>
                 <CreateEditGroupDialog group={group} />
                 <DeleteGroupDialog id={group.id} title={group.title} />
               </div>
@@ -205,7 +209,7 @@ export function CombinedGroupsTable({
                 aria-busy={pending}
                 aria-pressed={visible}
                 aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group)}
+                onClick={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
               >
                 {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
               </Button>
@@ -215,7 +219,7 @@ export function CombinedGroupsTable({
         },
       }),
     ])
-  }, [updatingId])
+  }, [updatingId, waUpdatingId])
 
   const table = useAppTable({
     key: "groups-by-label-combined",

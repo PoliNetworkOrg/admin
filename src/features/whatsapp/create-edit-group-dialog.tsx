@@ -41,6 +41,7 @@ export function CreateEditGroupDialog({
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(group?.title ?? "")
   const [link, setLink] = useState(group?.link ?? "")
+  const [hide, setHide] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
 
@@ -49,6 +50,7 @@ export function CreateEditGroupDialog({
   function reset() {
     setTitle(group?.title ?? "")
     setLink(group?.link ?? "")
+    setHide(false)
     setError("")
   }
 
@@ -58,7 +60,9 @@ export function CreateEditGroupDialog({
     setPending(true)
     setError("")
     try {
-      const values = { title: title.trim(), link: link.trim() }
+      const values = group
+        ? { title: title.trim(), link: link.trim() }
+        : { title: title.trim(), link: link.trim(), hide }
       if (group) {
         await editGroupFn({ data: { id: group.id, ...values } })
         toast.success(`${values.title} updated.`)
@@ -135,7 +139,14 @@ export function CreateEditGroupDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-          <WhatsappGroupFields title={title} onTitleChange={setTitle} link={link} onLinkChange={setLink} />
+          <WhatsappGroupFields
+            title={title}
+            onTitleChange={setTitle}
+            link={link}
+            onLinkChange={setLink}
+            hide={hide}
+            onHideChange={group ? undefined : setHide}
+          />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>

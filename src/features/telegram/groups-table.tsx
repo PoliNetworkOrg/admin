@@ -26,6 +26,7 @@ import { GroupLabelBadges } from "@/features/group-labels/group-label-badges"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { setGroupVisibility } from "@/features/telegram/groups.functions"
 import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
+import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { TgGroup, TgGroupLabel } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
@@ -50,49 +51,15 @@ export function GroupsTable({
 }) {
   const router = useRouter()
   const setGroupVisibilityFn = useServerFn(setGroupVisibility)
-  const [visibilityOverrides, setVisibilityOverrides] = useState<Record<number, boolean>>({})
-  const [updatingId, setUpdatingId] = useState<number | null>(null)
-  const [mutationError, setMutationError] = useState("")
-  const [refreshError, setRefreshError] = useState("")
+  const { updatingId, mutationError, refreshError, resolveHide, toggleVisibility } = useGroupVisibilityToggle(
+    (telegramId: number, hide: boolean) => setGroupVisibilityFn({ data: { telegramId, hide } })
+  )
   const [editingGroup, setEditingGroup] = useState<TgGroup | null>(null)
 
   const groups = loadedGroups.map((group) => ({
     ...group,
-    hide: visibilityOverrides[group.telegramId] ?? group.hide,
+    hide: resolveHide(group.telegramId, group.hide),
   }))
-
-  async function toggleVisibility(group: TgGroup) {
-    if (updatingId !== null) return
-    const hide = !group.hide
-    setUpdatingId(group.telegramId)
-    setMutationError("")
-    setVisibilityOverrides((current) => ({ ...current, [group.telegramId]: hide }))
-
-    try {
-      await setGroupVisibilityFn({ data: { telegramId: group.telegramId, hide } })
-      toast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
-      try {
-        await router.invalidate({ sync: true })
-        setRefreshError("")
-        setVisibilityOverrides((current) => {
-          const { [group.telegramId]: _removed, ...remaining } = current
-          return remaining
-        })
-      } catch (error) {
-        console.error(error)
-        setRefreshError("The visibility was updated, but the latest group data could not be refreshed.")
-      }
-    } catch (error) {
-      console.error(error)
-      setVisibilityOverrides((current) => {
-        const { [group.telegramId]: _removed, ...remaining } = current
-        return remaining
-      })
-      setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
-    } finally {
-      setUpdatingId(null)
-    }
-  }
 
   const columns = useMemo(() => {
     const sortableHeader = (
@@ -188,7 +155,7 @@ export function GroupsTable({
                 aria-busy={pending}
                 aria-pressed={visible}
                 aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group)}
+                onClick={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
               >
                 {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
               </Button>
