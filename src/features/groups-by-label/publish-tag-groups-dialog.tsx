@@ -78,8 +78,15 @@ export function PublishTagGroupsDialog({ tag, rows }: { tag: string; rows: Combi
       toast.success(
         `Published "${tagName}" — ${rows.length} group${rows.length === 1 ? "" : "s"} visible, tag cleared.`
       )
-      setOpen(false)
-      await router.invalidate({ sync: true })
+      try {
+        await router.invalidate({ sync: true })
+        setOpen(false)
+      } catch (cause) {
+        console.error(cause)
+        // Keep the dialog open (instead of closing it and setting an error nobody can see) so the admin
+        // knows a refresh is still needed even though the publish itself already succeeded.
+        setError("The groups were published, but the list could not be refreshed. Refresh the page to see the change.")
+      }
     } catch (cause) {
       console.error(cause)
       setError(errorMessage(cause, "The groups could not be published. Check your permissions and try again."))

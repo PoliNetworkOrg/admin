@@ -38,6 +38,7 @@ import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import { CreateEditGroupDialog } from "@/features/whatsapp/create-edit-group-dialog"
 import { DeleteGroupDialog } from "@/features/whatsapp/delete-group-dialog"
 import { setWhatsappGroupVisibility } from "@/features/whatsapp/groups.functions"
+import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { GroupWithLabels, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
 import { cn } from "@/lib/utils"
@@ -67,10 +68,9 @@ export function WhatsappGroupsPage({
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
   const [editingLabelsGroup, setEditingLabelsGroup] = useState<WaGroup | null>(null)
-  const [visibilityOverrides, setVisibilityOverrides] = useState<Record<number, boolean>>({})
-  const [updatingId, setUpdatingId] = useState<number | null>(null)
-  const [mutationError, setMutationError] = useState("")
-  const [refreshError, setRefreshError] = useState("")
+  const { updatingId, mutationError, refreshError, resolveHide, toggleVisibility } = useGroupVisibilityToggle(
+    (id: number, hide: boolean) => setGroupVisibilityFn({ data: { id, hide } })
+  )
 
   const labelsByGroupId = useMemo(
     () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "wa"),
@@ -89,44 +89,11 @@ export function WhatsappGroupsPage({
         const matchesExcluded = excludedLabels.every((label) => !groupLabels.some((gl) => gl.label === label.label))
         return matchesRequired && matchesExcluded
       })
-      .map((group) => ({ ...group, hide: visibilityOverrides[group.id] ?? group.hide }))
-  }, [loadedGroups, query, requiredLabels, excludedLabels, labelsByGroupId, visibilityOverrides])
+      .map((group) => ({ ...group, hide: resolveHide(group.id, group.hide) }))
+  }, [loadedGroups, query, requiredLabels, excludedLabels, labelsByGroupId, resolveHide])
 
   const activeLabelFilterCount = requiredLabels.length + excludedLabels.length
   const hasFilters = Boolean(query.trim()) || activeLabelFilterCount > 0
-
-  async function toggleVisibility(group: WaGroup) {
-    if (updatingId !== null) return
-    const hide = !group.hide
-    setUpdatingId(group.id)
-    setMutationError("")
-    setVisibilityOverrides((current) => ({ ...current, [group.id]: hide }))
-
-    try {
-      await setGroupVisibilityFn({ data: { id: group.id, hide } })
-      toast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
-      try {
-        await router.invalidate({ sync: true })
-        setRefreshError("")
-        setVisibilityOverrides((current) => {
-          const { [group.id]: _removed, ...remaining } = current
-          return remaining
-        })
-      } catch (error) {
-        console.error(error)
-        setRefreshError("The visibility was updated, but the latest group data could not be refreshed.")
-      }
-    } catch (error) {
-      console.error(error)
-      setVisibilityOverrides((current) => {
-        const { [group.id]: _removed, ...remaining } = current
-        return remaining
-      })
-      setMutationError("The visibility setting could not be updated. Check your permissions and try again.")
-    } finally {
-      setUpdatingId(null)
-    }
-  }
 
   const columns = useMemo(() => {
     const sortableHeader = (
@@ -207,7 +174,7 @@ export function WhatsappGroupsPage({
                 aria-busy={pending}
                 aria-pressed={visible}
                 aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group)}
+                onClick={() => void toggleVisibility(group.id, group.title, group.hide)}
               >
                 {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
                 {visible ? "Visible" : "Hidden"}
