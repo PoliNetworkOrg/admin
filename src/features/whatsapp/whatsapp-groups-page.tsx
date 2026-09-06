@@ -11,6 +11,7 @@ import {
   LoaderCircle,
   MessageCircleMore,
   Tag,
+  X
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -135,22 +136,25 @@ export function WhatsappGroupsPage({
       }),
       groupColumnHelper.display({
         id: "invite",
-        header: "Invite",
+        header: "",
         cell: ({ row }) => {
           const link = row.original.link
           return link ? (
             <a
-              className="rounded-md font-medium text-primary flex items-center gap-1 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
+              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
               href={link}
               target="_blank"
               rel="noreferrer"
               onClick={(event) => event.stopPropagation()}
             >
-              <ExternalLink className="size-3" />
-              Open invite link
+              <ExternalLink className="size-4" />
+              <span className="sr-only">Open invite link</span>
             </a>
           ) : (
-            <span className="text-xs italic text-muted-foreground">Not shared</span>
+            <span className="inline-flex text-muted-foreground">
+              <X className="size-4" />
+              <span className="sr-only">Not shared</span>
+            </span>
           )
         },
       }),
