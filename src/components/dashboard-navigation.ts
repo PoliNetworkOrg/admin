@@ -7,6 +7,7 @@ import {
   Globe,
   LayoutDashboard,
   type LucideIcon,
+  Mail,
   Settings,
   ShieldCheck,
   Tags,
@@ -61,6 +62,7 @@ export const dashboardNavigation = [
     items: [
       { title: "Groups", url: "/dashboard/azure/groups", icon: Database },
       { title: "Members", url: "/dashboard/azure/members", icon: UsersRound },
+      { title: "Email templates", url: "/dashboard/azure/email-templates", icon: Mail },
     ],
   },
   {

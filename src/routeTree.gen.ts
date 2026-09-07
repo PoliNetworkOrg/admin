@@ -27,6 +27,7 @@ import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
+import { Route as DashboardAzureEmailTemplatesRouteImport } from './routes/dashboard/azure/email-templates'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
@@ -125,6 +126,12 @@ const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   path: '/azure/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAzureEmailTemplatesRoute =
+  DashboardAzureEmailTemplatesRouteImport.update({
+    id: '/azure/email-templates',
+    path: '/azure/email-templates',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/email-templates': typeof DashboardAzureEmailTemplatesRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -195,6 +203,7 @@ export interface FileRoutesByTo {
   '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/email-templates': typeof DashboardAzureEmailTemplatesRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -222,6 +231,7 @@ export interface FileRoutesById {
   '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/azure/email-templates': typeof DashboardAzureEmailTemplatesRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/onboarding/unauthorized'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/dashboard/azure/email-templates'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/onboarding/unauthorized'
     | '/dashboard'
     | '/api/auth/$'
+    | '/dashboard/azure/email-templates'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
@@ -301,6 +313,7 @@ export interface FileRouteTypes {
     | '/onboarding/unauthorized'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/dashboard/azure/email-templates'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/telegram/grants'
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/azure/email-templates': {
+      id: '/dashboard/azure/email-templates'
+      path: '/azure/email-templates'
+      fullPath: '/dashboard/azure/email-templates'
+      preLoaderRoute: typeof DashboardAzureEmailTemplatesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -530,6 +550,7 @@ interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
   DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAzureEmailTemplatesRoute: typeof DashboardAzureEmailTemplatesRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
@@ -543,6 +564,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRoute,
   DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAzureEmailTemplatesRoute: DashboardAzureEmailTemplatesRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,

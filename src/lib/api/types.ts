@@ -20,5 +20,7 @@ export type WebProject = ApiOutput["web"]["projects"]["getAllProjects"][number]
 
 export type WaGroup = ApiOutput["wa"]["groups"]["getAll"][number]
 
+export type EmailTemplate = ApiOutput["email"]["templates"]["getAll"][number]
+
 /** A group (Telegram or WhatsApp) with its labels already resolved, from the cross-platform search router. */
 export type GroupWithLabels = ApiOutput["groups"]["search"]["getAll"][number]
