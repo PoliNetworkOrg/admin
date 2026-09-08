@@ -12,6 +12,7 @@ export function DataToolbar({
   total,
   onSearch,
   searchPlaceholder,
+  defaultSearchValue,
   action,
   children,
   eyebrow = "Directory",
@@ -22,12 +23,13 @@ export function DataToolbar({
   total?: number
   onSearch?: (value: string) => void
   searchPlaceholder?: string
+  defaultSearchValue?: string
   action?: ReactNode
   children?: ReactNode
   eyebrow?: string
 }) {
   const searchId = useId()
-  const [searchValue, setSearchValue] = useState("")
+  const [searchValue, setSearchValue] = useState(defaultSearchValue ?? "")
   const deferredSearchValue = useDeferredValue(searchValue)
   const onSearchRef = useRef(onSearch)
   onSearchRef.current = onSearch

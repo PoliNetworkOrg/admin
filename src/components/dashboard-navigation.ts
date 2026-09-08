@@ -1,7 +1,9 @@
 import {
   BookOpen,
+  CircleCheck,
   CircleQuestionMark,
   Database,
+  Flag,
   FolderKanban,
   FolderTree,
   Globe,
@@ -74,6 +76,15 @@ export const dashboardNavigation = [
       { title: "FAQs", url: "/dashboard/web/faqs", icon: CircleQuestionMark },
       { title: "Group labels", url: "/dashboard/web/group-labels", icon: Tags },
       { title: "Categories", url: "/dashboard/web/groups-by-label", icon: FolderTree },
+    ],
+  },
+  {
+    title: "Reports",
+    icon: Flag,
+    iconSrc: undefined,
+    items: [
+      { title: "Reported", url: "/dashboard/reports/group-links", icon: Flag },
+      { title: "Resolved", url: "/dashboard/reports/resolved", icon: CircleCheck },
     ],
   },
 ] as const satisfies readonly DashboardNavigationCategory[]

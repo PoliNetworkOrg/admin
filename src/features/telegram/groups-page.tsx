@@ -30,12 +30,14 @@ export function TelegramGroupsPage({
   loadedGroups,
   loadedGroupLabels,
   loadedGroupsWithLabels,
+  initialQuery,
 }: {
   loadedGroups: TgGroup[]
   loadedGroupLabels: TgGroupLabel[]
   loadedGroupsWithLabels: GroupWithLabels[]
+  initialQuery?: string
 }) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialQuery ?? "")
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
 
@@ -71,6 +73,7 @@ export function TelegramGroupsPage({
         count={visibleGroups.length}
         total={loadedGroups.length}
         searchPlaceholder="Search by group name or tag…"
+        defaultSearchValue={initialQuery}
         onSearch={setQuery}
       >
         <Popover>

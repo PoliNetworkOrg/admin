@@ -25,6 +25,8 @@ import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faq
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
+import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
+import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -115,6 +117,18 @@ const DashboardTelegramGrantsRoute = DashboardTelegramGrantsRouteImport.update({
   path: '/telegram/grants',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardReportsResolvedRoute =
+  DashboardReportsResolvedRouteImport.update({
+    id: '/reports/resolved',
+    path: '/reports/resolved',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardReportsGroupLinksRoute =
+  DashboardReportsGroupLinksRouteImport.update({
+    id: '/reports/group-links',
+    path: '/reports/group-links',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
   id: '/azure/members',
   path: '/azure/members',
@@ -172,6 +186,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -197,6 +213,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -224,6 +242,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -252,6 +272,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -277,6 +299,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -303,6 +327,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -441,6 +467,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramGrantsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/reports/resolved': {
+      id: '/dashboard/reports/resolved'
+      path: '/reports/resolved'
+      fullPath: '/dashboard/reports/resolved'
+      preLoaderRoute: typeof DashboardReportsResolvedRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reports/group-links': {
+      id: '/dashboard/reports/group-links'
+      path: '/reports/group-links'
+      fullPath: '/dashboard/reports/group-links'
+      preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/azure/members': {
       id: '/dashboard/azure/members'
       path: '/azure/members'
@@ -532,6 +572,8 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
+  DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
+  DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
@@ -545,6 +587,8 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
+  DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
+  DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,

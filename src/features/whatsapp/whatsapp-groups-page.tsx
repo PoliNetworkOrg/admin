@@ -58,14 +58,16 @@ export function WhatsappGroupsPage({
   loadedGroups,
   loadedGroupLabels,
   loadedGroupsWithLabels,
+  initialQuery,
 }: {
   loadedGroups: WaGroup[]
   loadedGroupLabels: TgGroupLabel[]
   loadedGroupsWithLabels: GroupWithLabels[]
+  initialQuery?: string
 }) {
   const router = useRouter()
   const setGroupVisibilityFn = useServerFn(setWhatsappGroupVisibility)
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialQuery ?? "")
   const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
   const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
   const [editingLabelsGroup, setEditingLabelsGroup] = useState<WaGroup | null>(null)
@@ -219,6 +221,7 @@ export function WhatsappGroupsPage({
         count={visibleGroups.length}
         total={loadedGroups.length}
         searchPlaceholder="Search by group name…"
+        defaultSearchValue={initialQuery}
         onSearch={setQuery}
         action={<CreateEditGroupDialog />}
       >
