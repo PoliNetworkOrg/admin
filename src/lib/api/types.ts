@@ -22,3 +22,5 @@ export type WaGroup = ApiOutput["wa"]["groups"]["getAll"][number]
 
 /** A group (Telegram or WhatsApp) with its labels already resolved, from the cross-platform search router. */
 export type GroupWithLabels = ApiOutput["groups"]["search"]["getAll"][number]
+
+export type GroupLinkReport = ApiOutput["web"]["reports"]["list"][number]
