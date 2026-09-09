@@ -63,9 +63,7 @@ function groupReports(reports: GroupLinkReport[]): ReportGroup[] {
 
   for (const report of reports) {
     const key =
-      report.reportType === "broken_link"
-        ? `broken_link:${report.type}:${report.groupId}`
-        : `missing:${report.label}`
+      report.reportType === "broken_link" ? `broken_link:${report.type}:${report.groupId}` : `missing:${report.label}`
 
     const existing = groups.get(key)
     if (!existing) {
@@ -100,9 +98,7 @@ export function GroupLinkReportsPage({
   async function handleAction(group: ReportGroup, action: "resolve" | "dismiss") {
     setPendingKey(group.key)
     try {
-      await (action === "resolve"
-        ? resolve({ data: { ids: group.ids } })
-        : dismiss({ data: { ids: group.ids } }))
+      await (action === "resolve" ? resolve({ data: { ids: group.ids } }) : dismiss({ data: { ids: group.ids } }))
       await router.invalidate()
       toast.success(action === "resolve" ? "Report resolved." : "Report dismissed.")
     } catch (error) {
@@ -166,7 +162,9 @@ export function GroupLinkReportsPage({
               >
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    <span>{report.reportType === "broken_link" ? (report.groupTitle ?? "—") : missingLabel(report)}</span>
+                    <span>
+                      {report.reportType === "broken_link" ? (report.groupTitle ?? "—") : missingLabel(report)}
+                    </span>
                     {group.count > 1 && (
                       <Badge variant="destructive" className="h-5 min-w-5 px-1">
                         {group.count}
@@ -190,7 +188,9 @@ export function GroupLinkReportsPage({
                     </Badge>
                   </TableCell>
                 )}
-                <TableCell className="text-muted-foreground">{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(report.createdAt).toLocaleDateString()}
+                </TableCell>
                 {showActions && (
                   <TableCell className="flex justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
                     <Button
