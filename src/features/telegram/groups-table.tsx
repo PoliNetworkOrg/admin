@@ -152,13 +152,11 @@ export function GroupsTable({
     autoResetPageIndex: false,
   })
 
-  // `table` is excluded: useAppTable returns a new object every render, which would
-  // otherwise re-fire this effect (and reset the page) on every render instead of only
-  // when the (already-filtered) group list changes.
   useEffect(() => {
-    table.setPageIndex(0)
+    const pageCount = table.getPageCount()
+    if (table.state.pagination.pageIndex >= pageCount) table.setPageIndex(Math.max(0, pageCount - 1))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedGroups])
+  }, [groups.length])
 
   return (
     <>

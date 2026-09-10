@@ -169,9 +169,10 @@ export function WhatsappGroupsPage({
   })
 
   useEffect(() => {
-    table.setPageIndex(0)
+    const pageCount = table.getPageCount()
+    if (table.state.pagination.pageIndex >= pageCount) table.setPageIndex(Math.max(0, pageCount - 1))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, requiredLabels, excludedLabels])
+  }, [visibleGroups.length])
 
   return (
     <div className="animate-appear">
