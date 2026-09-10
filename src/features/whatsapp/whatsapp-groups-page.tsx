@@ -1,23 +1,13 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import type { Column } from "@tanstack/react-table"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronsUpDown,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  LoaderCircle,
-  MessageCircleMore,
-  Tag,
-  X,
-} from "lucide-react"
-import { useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, MessageCircleMore, Tag } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { DataToolbar } from "@/components/data-toolbar"
 import { EmptyState } from "@/components/empty-state"
+import { InviteLinkButton, VisibilityToggleButton, EditLabelsButton } from "@/components/group-action-buttons"
 import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -42,7 +32,6 @@ import { setWhatsappGroupVisibility } from "@/features/whatsapp/groups.functions
 import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { GroupWithLabels, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
-import { cn } from "@/lib/utils"
 
 function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], select: boolean): TgGroupLabel[] {
   if (select) {
@@ -137,30 +126,6 @@ export function WhatsappGroupsPage({
         cell: ({ row }) => <GroupLabelBadges labels={labelsByGroupId.get(row.original.id) ?? []} />,
       }),
       groupColumnHelper.display({
-        id: "invite",
-        header: "",
-        cell: ({ row }) => {
-          const link = row.original.link
-          return link ? (
-            <a
-              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <ExternalLink className="size-4" />
-              <span className="sr-only">Open invite link</span>
-            </a>
-          ) : (
-            <span className="inline-flex text-muted-foreground">
-              <X className="size-4" />
-              <span className="sr-only">Not shared</span>
-            </span>
-          )
-        },
-      }),
-      groupColumnHelper.display({
         id: "actions",
         header: "",
         cell: ({ row }) => {
@@ -168,25 +133,25 @@ export function WhatsappGroupsPage({
           const pending = updatingId === group.id
           const visible = !group.hide
           return (
-            <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "gap-1 text-xs",
-                  visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
-                )}
-                disabled={pending}
-                aria-busy={pending}
-                aria-pressed={visible}
-                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group.id, group.title, group.hide)}
-              >
-                {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-                {visible ? "Visible" : "Hidden"}
-              </Button>
-              <CreateEditGroupDialog group={group} />
-              <DeleteGroupDialog id={group.id} title={group.title} />
+            <div className="flex items-center justify-end divide-x divide-border">
+              <div className="pr-3">
+                <InviteLinkButton link={group.link} />
+              </div>
+              <div className="px-3">
+                <VisibilityToggleButton
+                  title={group.title}
+                  visible={visible}
+                  pending={pending}
+                  onToggle={() => void toggleVisibility(group.id, group.title, group.hide)}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 px-3">
+                <CreateEditGroupDialog group={group} />
+                <EditLabelsButton title={group.title} onClick={() => setEditingLabelsGroup(group)} />
+              </div>
+              <div className="pl-3">
+                <DeleteGroupDialog id={group.id} title={group.title} />
+              </div>
             </div>
           )
         },
@@ -200,7 +165,13 @@ export function WhatsappGroupsPage({
     data: visibleGroups,
     getRowId: (group) => String(group.id),
     initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
+    autoResetPageIndex: false,
   })
+
+  useEffect(() => {
+    table.setPageIndex(0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, requiredLabels, excludedLabels])
 
   return (
     <div className="animate-appear">
@@ -316,19 +287,7 @@ export function WhatsappGroupsPage({
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer outline-none focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25"
-                    tabIndex={0}
-                    aria-label={`Edit labels for ${row.original.title}`}
-                    onClick={() => setEditingLabelsGroup(row.original)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault()
-                        setEditingLabelsGroup(row.original)
-                      }
-                    }}
-                  >
+                  <TableRow key={row.id}>
                     {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
                         <table.FlexRender cell={cell} />

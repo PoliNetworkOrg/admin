@@ -103,7 +103,10 @@ export function TelegramUsersPage({ users }: { users: TgUser[] }) {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="border-0 hover:bg-transparent">
                     {headerGroup.headers.map((header) => (
-                      <DataTableHead key={header.id} className="last:w-16">
+                      <DataTableHead
+                        key={header.id}
+                        className={header.column.id === "actions" ? "w-24 text-right" : undefined}
+                      >
                         {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                       </DataTableHead>
                     ))}
@@ -134,7 +137,10 @@ export function TelegramUsersPage({ users }: { users: TgUser[] }) {
                       }}
                     >
                       {row.getAllCells().map((cell) => (
-                        <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
+                        <TableCell
+                          key={cell.id}
+                          className={`px-4 py-3.5 text-sm${cell.column.id === "actions" ? " text-right" : ""}`}
+                        >
                           <table.FlexRender cell={cell} />
                         </TableCell>
                       ))}
