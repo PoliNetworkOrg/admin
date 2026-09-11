@@ -1,21 +1,12 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import type { Column } from "@tanstack/react-table"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronsUpDown,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  LoaderCircle,
-  MessageCircleMore,
-  X,
-} from "lucide-react"
-import { useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, MessageCircleMore, Pencil } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { EmptyState } from "@/components/empty-state"
+import { InviteLinkButton, VisibilityToggleButton, EditLabelsButton } from "@/components/group-action-buttons"
 import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +22,6 @@ import { setWhatsappGroupVisibility } from "@/features/whatsapp/groups.functions
 import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
-import { cn } from "@/lib/utils"
 
 type CombinedGroupRowBase = {
   key: string
@@ -83,10 +73,14 @@ export function CombinedGroupsTable({
   const refreshError = tgRefreshError || waRefreshError
   const [editingKey, setEditingKey] = useState<string | null>(null)
 
-  const displayRows = rows.map((row) =>
-    row.platform === "telegram"
-      ? { ...row, group: { ...row.group, hide: resolveTgHide(row.group.telegramId, row.group.hide) } }
-      : { ...row, group: { ...row.group, hide: resolveWaHide(row.group.id, row.group.hide) } }
+  const displayRows = useMemo(
+    () =>
+      rows.map((row) =>
+        row.platform === "telegram"
+          ? { ...row, group: { ...row.group, hide: resolveTgHide(row.group.telegramId, row.group.hide) } }
+          : { ...row, group: { ...row.group, hide: resolveWaHide(row.group.id, row.group.hide) } }
+      ),
+    [rows, resolveTgHide, resolveWaHide]
   )
   const editingRow = editingKey ? (displayRows.find((row) => row.key === editingKey) ?? null) : null
 
@@ -141,57 +135,36 @@ export function CombinedGroupsTable({
         header: "Labels",
         cell: ({ getValue }) => <GroupLabelBadges labels={getValue()} />,
       }),
-      groupColumnHelper.accessor("link", {
-        header: "",
-        cell: ({ getValue }) => {
-          const link = getValue()
-          return link ? (
-            <a
-              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <ExternalLink className="size-4" />
-              <span className="sr-only">Open invite link</span>
-            </a>
-          ) : (
-            <span className="inline-flex text-muted-foreground">
-              <X className="size-4" />
-              <span className="sr-only">Not shared</span>
-            </span>
-          )
-        },
-      }),
       groupColumnHelper.display({
         id: "actions",
         header: "",
         cell: ({ row }) => {
+          const link = row.original.link
+
           if (row.original.platform === "whatsapp") {
             const group = row.original.group
             const pending = waUpdatingId === group.id
             const visible = !group.hide
             return (
-              <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "gap-1 text-xs",
-                    visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground"
-                  )}
-                  disabled={pending}
-                  aria-busy={pending}
-                  aria-pressed={visible}
-                  aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                  onClick={() => void toggleWaVisibility(group.id, group.title, group.hide)}
-                >
-                  {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-                  {visible ? "Visible" : "Hidden"}
-                </Button>
-                <CreateEditGroupDialog group={group} />
-                <DeleteGroupDialog id={group.id} title={group.title} />
+              <div className="flex items-center justify-end divide-x divide-border">
+                <div className="pr-3">
+                  <InviteLinkButton link={link} />
+                </div>
+                <div className="px-3">
+                  <VisibilityToggleButton
+                    title={group.title}
+                    visible={visible}
+                    pending={pending}
+                    onToggle={() => void toggleWaVisibility(group.id, group.title, group.hide)}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 px-3">
+                  <CreateEditGroupDialog group={group} />
+                  <EditLabelsButton title={group.title} onClick={() => setEditingKey(row.original.key)} />
+                </div>
+                <div className="pl-3">
+                  <DeleteGroupDialog id={group.id} title={group.title} />
+                </div>
               </div>
             )
           }
@@ -200,20 +173,33 @@ export function CombinedGroupsTable({
           const pending = updatingId === group.telegramId
           const visible = !group.hide
           return (
-            <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
-                disabled={pending}
-                aria-busy={pending}
-                aria-pressed={visible}
-                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
-              >
-                {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-              </Button>
-              <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
+            <div className="flex items-center justify-end divide-x divide-border">
+              <div className="pr-3">
+                <InviteLinkButton link={link} />
+              </div>
+              <div className="px-3">
+                <VisibilityToggleButton
+                  title={group.title}
+                  visible={visible}
+                  pending={pending}
+                  onToggle={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 px-3">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-border bg-muted/30 text-muted-foreground"
+                  disabled
+                  aria-label={`Editing ${group.title} is not available`}
+                >
+                  <Pencil />
+                </Button>
+                <EditLabelsButton title={group.title} onClick={() => setEditingKey(row.original.key)} />
+              </div>
+              <div className="pl-3">
+                <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
+              </div>
             </div>
           )
         },
@@ -227,7 +213,14 @@ export function CombinedGroupsTable({
     data: displayRows,
     getRowId: (row) => row.key,
     initialState: { sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 0, pageSize: 20 } },
+    autoResetPageIndex: false,
   })
+
+  useEffect(() => {
+    const pageCount = table.getPageCount()
+    if (table.state.pagination.pageIndex >= pageCount) table.setPageIndex(Math.max(0, pageCount - 1))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayRows.length])
 
   const editingGroupRef =
     editingRow?.platform === "telegram"
@@ -275,19 +268,7 @@ export function CombinedGroupsTable({
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer outline-none focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25"
-                    tabIndex={0}
-                    aria-label={`Edit labels for ${row.original.title}`}
-                    onClick={() => setEditingKey(row.original.key)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault()
-                        setEditingKey(row.original.key)
-                      }
-                    }}
-                  >
+                  <TableRow key={row.id}>
                     {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
                         <table.FlexRender cell={cell} />

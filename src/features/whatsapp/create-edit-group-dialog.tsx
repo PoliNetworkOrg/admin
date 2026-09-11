@@ -107,7 +107,19 @@ export function CreateEditGroupDialog({
         if (!nextOpen) reset()
       }}
     >
-      <DialogTrigger render={group ? <Button variant="outline" size="icon-sm" /> : <Button />}>
+      <DialogTrigger
+        render={
+          group ? (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="border-emerald-300 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/30 dark:text-emerald-300"
+            />
+          ) : (
+            <Button />
+          )
+        }
+      >
         {group ? (
           <>
             <Pencil />

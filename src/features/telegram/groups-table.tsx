@@ -1,22 +1,12 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import type { Column } from "@tanstack/react-table"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronsUpDown,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  LoaderCircle,
-  type LucideIcon,
-  MessageCircleMore,
-  X,
-} from "lucide-react"
-import { useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, type LucideIcon, MessageCircleMore } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { EmptyState } from "@/components/empty-state"
+import { InviteLinkButton, VisibilityToggleButton, EditLabelsButton } from "@/components/group-action-buttons"
 import { Pagination } from "@/components/pagination"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -29,11 +19,10 @@ import { LeaveGroupDialog } from "@/features/telegram/leave-group-dialog"
 import { useGroupVisibilityToggle } from "@/hooks/use-group-visibility-toggle"
 import type { TgGroup, TgGroupLabel } from "@/lib/api/types"
 import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
-import { cn } from "@/lib/utils"
 
 const groupColumnHelper = createAppColumnHelper<TgGroup>()
 
-/** The interactive groups table (visibility toggle, invite link, leave, click-to-edit-labels), given an already-filtered group list. */
+/** The interactive groups table (visibility toggle, invite link, leave, edit labels), given an already-filtered group list. */
 export function GroupsTable({
   groups: loadedGroups,
   allLabels,
@@ -56,10 +45,15 @@ export function GroupsTable({
   )
   const [editingGroup, setEditingGroup] = useState<TgGroup | null>(null)
 
-  const groups = loadedGroups.map((group) => ({
-    ...group,
-    hide: resolveHide(group.telegramId, group.hide),
-  }))
+  // Keep the data reference stable across table-state renders; TanStack Table resets pagination when data changes.
+  const groups = useMemo(
+    () =>
+      loadedGroups.map((group) => ({
+        ...group,
+        hide: resolveHide(group.telegramId, group.hide),
+      })),
+    [loadedGroups, resolveHide]
+  )
 
   const columns = useMemo(() => {
     const sortableHeader = (
@@ -115,30 +109,6 @@ export function GroupsTable({
         cell: ({ row }) => <GroupLabelBadges labels={labelsByGroupId.get(row.original.telegramId) ?? []} />,
       }),
       groupColumnHelper.display({
-        id: "invite",
-        header: "",
-        cell: ({ row }) => {
-          const link = row.original.link
-          return link ? (
-            <a
-              className="rounded-md font-medium text-primary inline-flex items-center outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <ExternalLink className="size-4" />
-              <span className="sr-only">Open invite link</span>
-            </a>
-          ) : (
-            <span className="inline-flex text-muted-foreground">
-              <X className="size-4" />
-              <span className="sr-only">Not shared</span>
-            </span>
-          )
-        },
-      }),
-      groupColumnHelper.display({
         id: "actions",
         header: "",
         cell: ({ row }) => {
@@ -146,20 +116,24 @@ export function GroupsTable({
           const pending = updatingId === group.telegramId
           const visible = !group.hide
           return (
-            <div onClick={(event) => event.stopPropagation()} className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className={cn(visible ? "border-primary/30 bg-accent text-primary" : "text-muted-foreground")}
-                disabled={pending}
-                aria-busy={pending}
-                aria-pressed={visible}
-                aria-label={`${group.title} is ${visible ? "visible" : "hidden"}. Change visibility`}
-                onClick={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
-              >
-                {pending ? <LoaderCircle className="animate-spin-slow" /> : visible ? <Eye /> : <EyeOff />}
-              </Button>
-              <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
+            <div className="flex items-center justify-end divide-x divide-border">
+              <div className="pr-3">
+                <InviteLinkButton link={group.link} />
+              </div>
+              <div className="px-3">
+                <VisibilityToggleButton
+                  title={group.title}
+                  visible={visible}
+                  pending={pending}
+                  onToggle={() => void toggleVisibility(group.telegramId, group.title, group.hide)}
+                />
+              </div>
+              <div className="px-3">
+                <EditLabelsButton title={group.title} onClick={() => setEditingGroup(group)} />
+              </div>
+              <div className="pl-3">
+                <LeaveGroupDialog chatId={group.telegramId} title={group.title} />
+              </div>
             </div>
           )
         },
@@ -175,7 +149,14 @@ export function GroupsTable({
       sorting: [{ id: "title", desc: false }],
       pagination: { pageIndex: 0, pageSize: 20 },
     },
+    autoResetPageIndex: false,
   })
+
+  useEffect(() => {
+    const pageCount = table.getPageCount()
+    if (table.state.pagination.pageIndex >= pageCount) table.setPageIndex(Math.max(0, pageCount - 1))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups.length])
 
   return (
     <>
@@ -215,19 +196,7 @@ export function GroupsTable({
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer outline-none focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/25"
-                    tabIndex={0}
-                    aria-label={`Edit labels for ${row.original.title}`}
-                    onClick={() => setEditingGroup(row.original)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault()
-                        setEditingGroup(row.original)
-                      }
-                    }}
-                  >
+                  <TableRow key={row.id}>
                     {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="px-4 py-3.5 text-sm">
                         <table.FlexRender cell={cell} />
