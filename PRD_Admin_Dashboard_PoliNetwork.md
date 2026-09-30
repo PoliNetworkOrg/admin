@@ -1,9 +1,11 @@
 # PRD — Admin Dashboard PoliNetwork
 
 **Documento di prodotto per il Team IT**
-**Versione:** 2.0
-**Data:** 29 agosto 2026
+**Versione:** 2.1
+**Data:** 30 settembre 2026
 **Stato:** Bozza per revisione
+
+**Documenti di dettaglio:** [`PRD_Classificazione_Feature.md`](./PRD_Classificazione_Feature.md) (priorità e dipendenze) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) (capacità e ruoli) · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) (Identity Provider) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) (tabelle e contratti)
 
 ## 0. Scopo
 
@@ -26,7 +28,7 @@ Il backend Telegram conosce sei ruoli: `admin`, `hr`, `president`, `direttivo`, 
 | `admin` | da estendere (§1.3) | no |
 | `creator` | no, escluso esplicitamente anche se combinato con altri ruoli | no |
 
-I permessi sono binari e globali per ruolo: non esiste granularità per modulo/azione né scoping (es. "vede solo gli admin del proprio corso"). Va introdotta un'autorizzazione per capacità (§2.1) che estenda questo modello senza sostituirlo.
+I permessi sono binari e globali per ruolo: non esiste granularità per modulo/azione né scoping (es. "vede solo gli admin del proprio corso"). Va introdotta un'autorizzazione per capacità (§2.1) che estenda questo modello senza sostituirlo. Oggi il codice richiede inoltre un Telegram collegato per entrare in dashboard; il design dell'Identity Provider (§2.6) rimuove questo vincolo.
 
 ### 1.2 Socio, Admin e membro di team — categorie indipendenti
 
@@ -64,7 +66,7 @@ Una persona admin appartiene a **un solo corso di studi** come dato anagrafico p
 
 ### 2.1 Autorizzazione per capacità (RBAC granulare)
 
-Permessi indipendenti per modulo: lettura/scrittura su soci, Telegram, Azure, contenuti, governance, audit. Un utente può avere più capacità (es. Content editor + Telegram moderator). Le azioni ad alto impatto (cancellazioni, assegnazione ruoli, rimozione da gruppi, export dati personali) mostrano il permesso richiesto e richiedono conferma esplicita. Resta retrocompatibile con i ruoli Telegram esistenti, che diventano un caso particolare del nuovo modello.
+Permessi indipendenti per modulo: lettura/scrittura su soci, Telegram, Azure, contenuti, governance, audit. Un utente può avere più capacità (es. Content editor + Telegram moderator). Le azioni ad alto impatto (cancellazioni, assegnazione ruoli, rimozione da gruppi, export dati personali) mostrano il permesso richiesto e richiedono conferma esplicita. Resta retrocompatibile con i ruoli Telegram esistenti, che diventano un caso particolare del nuovo modello. Catalogo delle capacità, ruoli preset (gerarchia e funzionali) e regole di scoping sono in [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md); il modello dati è in [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md).
 
 ### 2.2 Audit amministrativo unificato
 
@@ -95,6 +97,8 @@ Identity/authentication provider proprio di PoliNetwork, distinto dal login attu
 - base per assegnare permessi differenziati in base a cosa la persona fa/è in PoliNetwork — ogni persona ha comunque un livello minimo di accesso alle proprie informazioni;
 - precondizione per un futuro accesso esterno multi-tenant (associazioni partner, §12).
 
+Design in [`IdentityProvider_Design.md`](./IdentityProvider_Design.md). In sintesi: il login resta email OTP/passkey su Better Auth, per chiunque (anche dal sito pubblico); Telegram, affiliazione Politecnico (`@mail.polimi.it`/`@polimi.it`, codice via email) e record Socio (claim via codice) sono tre collegamenti indipendenti sulla stessa identità; l'autorizzazione non dipende più da Telegram; l'identità viene esposta agli altri servizi (sito pubblico, polinet.cc, futuri) tramite OIDC.
+
 ---
 
 ## 3. Anagrafica Soci e Censimento Admin/Team
@@ -121,7 +125,7 @@ Alcuni campi sono obbligatori, altri opzionali (l'elenco puntuale, incluso se se
 
 Vincoli: numero associativo univoco; storicizzazione degli stati (non sovrascrittura: i soci scaduti/ex soci restano nello storico); nessuna cancellazione bulk senza anteprima e conferma; ogni lettura/scrittura sensibile passa per l'audit (§2.2).
 
-Flusso: richiesta/iscrizione → verifica dati → deduplica → firma privacy policy → approvazione → numero socio → collegamento opzionale a Telegram/Azure → rinnovo annuale della quota (§6) → storico.
+Flusso: richiesta/iscrizione → verifica dati → deduplica → firma privacy policy → approvazione → numero socio → invio del codice di claim all'email di iscrizione (il socio lo usa per collegare il tesseramento alla propria identità, §2.6) → collegamento opzionale a Telegram/Azure → rinnovo annuale della quota (§6) → storico.
 
 ### 3.2 Censimento Admin/Team — campi
 
@@ -272,11 +276,11 @@ Dipende dall'Anagrafica Soci (segmentazione destinatari) ed eventualmente dagli 
 ## 19. Decisioni aperte
 
 **§1 — Ruoli e gerarchie**
-1. Il ruolo "Capo Admin" va modellato come nuovo ruolo Telegram/backend, o come attributo applicativo (scope) sopra il ruolo `admin` esistente, gestito solo lato dashboard? — da decidere.
+1. Il ruolo "Capo Admin" va modellato come nuovo ruolo Telegram/backend, o come attributo applicativo (scope) sopra il ruolo `admin` esistente, gestito solo lato dashboard? — da decidere. Il modello RBAC proposto lo tratta come preset di capacità con scope (`capability_grant`, `scopeType` corso), cioè lato dashboard: da confermare.
 2. Con quale periodicità viene rinnovato il ruolo di Capo Admin (es. legato all'anno accademico)?
 
 **§2 — Fondamenta**
-3. Il nuovo Identity Provider PoliNetwork (§2.6) sostituisce integralmente l'attuale autenticazione, o si affianca ad essa come livello applicativo sopra le identità Telegram/Azure esistenti?
+3. Il nuovo Identity Provider PoliNetwork (§2.6) sostituisce integralmente l'attuale autenticazione, o si affianca ad essa come livello applicativo sopra le identità Telegram/Azure esistenti? — il design propone di estendere l'istanza Better Auth già in uso (login invariato, Telegram non più obbligatorio, OIDC sopra): da confermare.
 4. Il consenso privacy raccolto in dashboard (§2.5) sostituisce integralmente i form esterni oggi in uso, o convive con essi durante una fase di transizione?
 
 **§3 — Anagrafica Soci e Censimento Admin/Team**
@@ -296,3 +300,11 @@ Dipende dall'Anagrafica Soci (segmentazione destinatari) ed eventualmente dagli 
 **§12 — Area Associazioni Partner**
 11. Le richieste di pubblicazione riguardano solo Telegram, o resta necessaria anche l'integrazione WhatsApp?
 12. Il sistema a crediti per le pubblicazioni resta previsto, e con quale logica di ricarica/consumo?
+
+**Identity Provider** (da [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) §7)
+13. Il codice di claim del tesseramento viene generato in automatico all'approvazione dell'iscrizione, o con un'azione manuale di chi approva?
+14. Se l'email di iscrizione è diversa da quella dell'identità PoliNetwork, è permesso re-inviare il codice a un nuovo indirizzo, e chi lo autorizza?
+15. Chi assegna le prime `capability_grant` dirette, e con quale processo (one-off di migrazione o richiesta via Onboarding, §8)?
+16. Il plugin `oidcProvider` di Better Auth è compatibile con la versione installata (1.5.5) per registrazione client, consenso e maturità?
+17. Il sito pubblico è il primo consumer dell'OIDC provider: va definito con chi lavora al sito l'ordine reale rispetto a polinet.cc.
+18. Se estendere l'allowlist dei domini istituzionali oltre `@mail.polimi.it` e `@polimi.it` (la lista resta configurabile).

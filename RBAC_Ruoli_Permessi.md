@@ -1,9 +1,9 @@
 # Ruoli e permessi — Admin Dashboard PoliNetwork
 
-**Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §1, §2.1 · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) §4 (RBAC)
-**Versione:** 1.0
-**Data:** 30 agosto 2026
-**Esclusioni:** pagine di caricamento annunci (§15 Bacheca casa e coinquilini) — assumo sia questo il riferimento; segnalamelo se intendevi altro.
+**Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §1, §2.1 · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) §4 (RBAC) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) (tabella `capability_grant`)
+**Versione:** 1.1
+**Data:** 30 settembre 2026
+**Esclusioni:** pagine di caricamento annunci (§15 Bacheca casa e coinquilini), non coperte da capacità dedicate.
 
 ## 0. Principio
 
@@ -16,6 +16,8 @@ Due famiglie di ruoli:
 ---
 
 ## 1. Catalogo capacità (per pagina/modulo)
+
+Ogni riga è una chiave di catalogo; il livello concesso (`read`/`write`/`approve`/`publish`/`send`) è un campo separato nel modello dati (`capability_grant.level`).
 
 | Capacità | Pagine coperte | Livelli |
 |---|---|---|
@@ -54,7 +56,7 @@ Non hanno una capacità dedicata: **Home/Overview** e **Account personale** — 
 | Ruolo | Capacità di default | Note |
 |---|---|---|
 | **Owner** | Tutte, incluso `rbac.manage` | Unico livello con pieno controllo su chi ha accesso a cosa. |
-| **Direttivo** | Tutte tranne `rbac.manage` | Accesso e scrittura completi come da PRD §1.1; l'assegnazione di capacità dirette resta riservata a Owner (o delegabile, §19 punto 4 del design IdP). |
+| **Direttivo** | Tutte tranne `rbac.manage` | Accesso e scrittura completi come da PRD §1.1; l'assegnazione di capacità dirette resta riservata a Owner (o delegabile, `IdentityProvider_Design.md` §7 punto 4). |
 | **Presidente** | Come Direttivo | Più la firma esplicita dei rinnovi Direttivo→associazione quando richiesta (§6). |
 | **Capo Admin** | `capoadmin_view` (scoped), `admin_census` read (scoped), `telegram.groups`/`telegram.users` read (scoped ai gruppi di competenza), `onboarding` approve (solo per richieste che risalgono a lui, §8) | Tutto **scoped** al proprio corso/ambito — mai visibilità globale. |
 | **Admin (operativo)** | Solo Account personale + propria area Onboarding | Nessuna capacità di lettura/scrittura su altri moduli finché non riceve capacità funzionali aggiuntive. |
@@ -90,7 +92,7 @@ Non hanno una capacità dedicata: **Home/Overview** e **Account personale** — 
 
 ---
 
-## 5. Cosa resta da decidere con voi
+## 5. Decisioni aperte
 
 1. `members.sensitive` — quali campi rientrano davvero (codice fiscale sì/no è ancora aperto nel PRD, §19 punto 5) e se HR li vede o restano mascherati anche per HR (PRD §19 punto 6).
 2. Se "Membership Officer/Finance" diventa un ruolo reale distinto o resta capacità del solo Direttivo (PRD §19 punto 9).

@@ -1,8 +1,8 @@
 # Design — Identity Provider PoliNetwork
 
-**Documento collegato:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §2.6 · [`PRD_Classificazione_Feature.md`](./PRD_Classificazione_Feature.md) #0
-**Versione:** 1.0
-**Data:** 30 agosto 2026
+**Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §2.6 · [`PRD_Classificazione_Feature.md`](./PRD_Classificazione_Feature.md) #0 · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) (catalogo capacità e ruoli) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) (tabelle e contratti)
+**Versione:** 1.1
+**Data:** 30 settembre 2026
 **Base tecnica:** Better Auth (già in uso in `@polinetwork/backend`, Drizzle/Postgres)
 
 ## 0. Cosa esiste già (verificato nel codice)
@@ -59,7 +59,7 @@ Stesso schema UX già validato per Telegram, invertito nel canale: invece di un 
 
 1. L'utente è già autenticato (sessione attiva) — sul sito pubblico o in dashboard, indifferentemente. Da un'area "Account"/"Il mio profilo" apre "Verifica il tuo account Politecnico".
 2. Inserisce il proprio indirizzo istituzionale. L'input è validato contro un **allowlist di domini configurabile**: al momento **`@mail.polimi.it`** e **`@polimi.it`** (gli unici confermati). L'allowlist va tenuta come tabella/config, non hardcoded, per poter aggiungere altri atenei in futuro senza saperli oggi.
-3. Il backend genera un codice a 6 cifre con TTL breve (10 minuti, stesso ordine di grandezza del TTL già usato in `tg.link`), lo salva in una nuova tabella `institutional_email_link` (`userId`, `email`, `code`, `expiresAt`, `verifiedAt`), e lo invia via Microsoft Graph — stesso canale email già in uso per l'OTP di login, nessuna nuova infrastruttura di invio.
+3. Il backend genera un codice a 6 cifre con TTL breve (10 minuti, stesso ordine di grandezza del TTL già usato in `tg.link`), ne salva l'hash (mai il codice in chiaro) in una nuova tabella `institutional_email_link` (schema completo in `IdentityProvider_DataModel.md` §1), e lo invia via Microsoft Graph — stesso canale email già in uso per l'OTP di login, nessuna nuova infrastruttura di invio.
 4. L'utente inserisce il codice (stesso componente UI dell'OTP di login, riusato).
 5. Il backend verifica codice e scadenza, marca l'indirizzo come verificato, scrive l'evento nell'audit unificato (§2.2 del PRD).
 6. L'indirizzo verificato viene salvato su `user.institutionalEmail` / `institutionalEmailVerifiedAt` (stesso pattern delle colonne `telegramId`/`telegramUsername` già presenti sulla riga `user`).
@@ -81,7 +81,7 @@ Stesso schema UX già validato per Telegram, invertito nel canale: invece di un 
 ### Flusso
 
 1. Il Direttivo (o ruolo autorizzato) approva l'iscrizione in Anagrafica Soci; viene generato il numero associativo (già previsto dal PRD §3.1).
-2. Il backend crea un codice di claim con TTL più lungo del solito (es. alcuni giorni, dato che la persona potrebbe non avere ancora un account PoliNetwork), salvato in `membership_claim` (`numeroAssociativo`, `email`, `code`, `expiresAt`, `claimedByUserId`).
+2. Il backend crea un codice di claim con TTL più lungo del solito (es. alcuni giorni, dato che la persona potrebbe non avere ancora un account PoliNetwork), salvato, come hash, in `membership_claim` (schema in `IdentityProvider_DataModel.md` §1).
 3. Il codice viene inviato via email all'indirizzo fornito in iscrizione (stesso invio Graph).
 4. La persona, se non ha già un'identità PoliNetwork, si registra con la sua email personale (login standard, §"Principio guida"); se ce l'ha già, usa quella.
 5. Da un'area "Collega il mio tesseramento", inserisce il codice ricevuto. Il backend verifica codice+TTL e collega `user.id` al record Socio corrispondente.
@@ -97,8 +97,8 @@ Oggi l'autorizzazione (`authorizeAdmin`) fallisce con `"telegram-unlinked"` se l
 
 Proposta (coerente con PRD §2.1):
 
-- Nuova tabella `capability_grant`: `subjectUserId`, `capability` (es. `members.read`, `members.write`, `telegram.moderate`, `azure.manage`, `content.write`, `governance.read`, `audit.read`), `scopeType` (`none` / `course` / `team`), `scopeValue`, `grantedBy`, `grantedAt`, `revokedAt`.
-- `authorizeAdmin` viene **esteso**, non sostituito: continua a leggere i ruoli Telegram esistenti quando presenti (retrocompatibilità esplicitamente richiesta dal PRD §2.1) e li mappa a capacità implicite (`owner`/`direttivo`/`president` → tutte le capacità; `hr` → sola lettura), poi li unisce alle eventuali `capability_grant` dirette sull'utente.
+- Nuova tabella `capability_grant` (campi in `IdentityProvider_DataModel.md` §1): una riga per capacità assegnata a una persona, con `level` e scope opzionale (`course` / `team`), storicizzata via `revokedAt`. Le capacità sono quelle del catalogo di `RBAC_Ruoli_Permessi.md` §1, non una lista definita qui.
+- `authorizeAdmin` viene **esteso**, non sostituito: continua a leggere i ruoli Telegram esistenti quando presenti (retrocompatibilità esplicitamente richiesta dal PRD §2.1) e li mappa a capacità implicite secondo i preset di `RBAC_Ruoli_Permessi.md` §2 (`owner` → tutte, incluso `rbac.manage`; `direttivo`/`president` → tutte tranne `rbac.manage`; `hr` → preset HR, sola lettura su Anagrafica Soci ma scrittura su Censimento Admin/Team e Onboarding; `admin` → solo Account personale e propria area Onboarding; `creator` → nessun accesso, anche se combinato con altri ruoli), poi li unisce alle eventuali `capability_grant` dirette sull'utente.
 - Risultato: un utente **senza** Telegram collegato ma con una `capability_grant` diretta può comunque accedere alla dashboard con le capacità assegnate — Telegram diventa una delle fonti di autorizzazione, non l'unica.
 - Il popolamento iniziale di `capability_grant` per gli owner/direttivo attuali è un one-off di migrazione, non un flusso utente.
 
@@ -137,11 +137,11 @@ Non si sposta la sessione applicativa di ogni servizio sull'IdP: ogni app mantie
 
 ---
 
-## 7. Decisioni aperte (da aggiungere a PRD §19)
+## 7. Decisioni aperte (riportate in PRD §19, punti 13–18)
 
 1. ~~Quali domini email istituzionali sono ammessi al collegamento Politecnico~~ — **risolto**: `@mail.polimi.it` e `@polimi.it`. Resta aperto se/quando estendere ad altri atenei (allowlist va comunque tenuta configurabile, non hardcoded).
 2. Chi genera il codice di claim del tesseramento (§3): è un'azione automatica all'approvazione dell'iscrizione, o un'azione manuale di chi approva?
 3. Cosa succede se l'email usata in fase di iscrizione a socio (§3.1) è diversa dall'email con cui la persona poi crea/ha già la propria identità PoliNetwork? Il claim va comunque per codice indipendentemente dall'email di login, ma va deciso se re-inviare il codice a una nuova email è permesso e chi lo autorizza.
 4. Chi assegna le prime `capability_grant` dirette e con quale processo (one-off di migrazione vs. richiesta tramite Onboarding, §8)?
-5. Il plugin `oidcProvider` di Better Auth va verificato contro la versione installata (`better-auth@1.5.5`) per compatibilità, requisiti di persistenza (client registration, consent screen) e maturità, prima di confermare la stima di difficoltà in §1 della classificazione.
+5. Il plugin `oidcProvider` di Better Auth va verificato contro la versione installata (`better-auth@1.5.5`) per compatibilità, requisiti di persistenza (client registration, consent screen) e maturità, prima di confermare la stima di difficoltà della riga #0 della classificazione. Verifica già fatta: `admin` dichiara `better-auth ^1.5.5`, lockfile a 1.5.5.
 6. Il sito pubblico è il primo consumer reale dell'OIDC provider (probabile, vista la conferma che l'IdP lo serve): va scoping-ato con chi lavora al sito per definire l'ordine reale di implementazione della SSO multi-servizio, prima o insieme a polinet.cc.
