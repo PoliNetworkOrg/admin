@@ -233,11 +233,45 @@ type InlineEditTextareaProps = Omit<React.ComponentProps<"textarea">, "value"> &
   value: string
   /** Field error shown under the textarea; also sets `aria-invalid` and `aria-describedby`. */
   error?: string | null
+  /**
+   * No box of its own: the surrounding edit-mode `TranslationPanel` is the field, and the text sits exactly where
+   * the read-only text sat (13/20, no padding, one line minimum).
+   */
+  bare?: boolean
 }
 
-/** Auto-growing textarea, three rows minimum. */
-export function InlineEditTextarea({ label, value, maxLength, error, className, ...props }: InlineEditTextareaProps) {
+const bareTextareaClasses =
+  "min-h-5 resize-none rounded-none border-0 bg-transparent p-0 text-[13px] leading-5 text-(--pn-fg) shadow-none placeholder:text-(--pn-fg-subtle) focus-visible:border-0 focus-visible:ring-0 aria-invalid:ring-0 pointer-coarse:text-base md:text-[13px] dark:bg-transparent"
+
+/** Auto-growing textarea, three rows minimum (`bare`: one line, inside a `TranslationPanel`). */
+export function InlineEditTextarea({
+  label,
+  value,
+  maxLength,
+  error,
+  bare = false,
+  className,
+  ...props
+}: InlineEditTextareaProps) {
   const errorId = useId()
+  if (bare) {
+    return (
+      <div className="flex min-w-0 flex-col">
+        <Textarea
+          aria-label={label}
+          value={value}
+          maxLength={maxLength}
+          rows={1}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={cn(bareTextareaClasses, className)}
+          {...props}
+        />
+        {maxLength !== undefined && <FieldCounter length={value.length} max={maxLength} className="mt-1 self-end" />}
+        {error && <FieldError id={errorId}>{error}</FieldError>}
+      </div>
+    )
+  }
   return (
     <div className="min-w-0 flex-1">
       <div className="relative">

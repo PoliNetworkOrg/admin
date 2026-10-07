@@ -188,6 +188,7 @@ export function ProjectCard({
       <TranslationGroup>
         <TranslationPanel lang="it" editing>
           <InlineEditTextarea
+            bare
             label="Italian description"
             lang="it"
             placeholder="Descrizione in italiano"
@@ -198,6 +199,7 @@ export function ProjectCard({
         </TranslationPanel>
         <TranslationPanel lang="en" editing>
           <InlineEditTextarea
+            bare
             label="English description"
             lang="en"
             placeholder="Description in English"

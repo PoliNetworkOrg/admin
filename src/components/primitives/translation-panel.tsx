@@ -1,5 +1,5 @@
 import { Languages } from "lucide-react"
-import type { ReactNode } from "react"
+import type { MouseEvent, ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -21,7 +21,11 @@ export function TranslationGroup({ children, className }: { children: ReactNode;
 
 type TranslationPanelProps = {
   lang: TranslationLanguage
-  /** Edit mode: accent border (stronger while a field inside has focus) and accent label. */
+  /**
+   * Edit mode: the panel is the field (pair it with `bare` fields). Same size and background as view mode; only the
+   * accent border and label appear, stronger while a field inside has focus, and a click on the panel focuses its
+   * first field.
+   */
   editing?: boolean
   children: ReactNode
   className?: string
@@ -37,11 +41,12 @@ export function TranslationPanel({ lang, editing = false, children, className }:
       role="group"
       aria-label={LANGUAGE_NAMES[lang]}
       lang={lang}
+      onMouseDown={editing ? focusFirstField : undefined}
       className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border p-3 transition-[border-color] duration-120",
+        "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border bg-(--pn-muted)/60 p-3 transition-[border-color,background-color] duration-120",
         editing
-          ? "border-[color-mix(in_oklch,var(--pn-accent)_28%,var(--pn-line))] bg-(--pn-surface) focus-within:border-[color-mix(in_oklch,var(--pn-accent)_60%,var(--pn-line))]"
-          : "border-transparent bg-(--pn-muted)/60",
+          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-[color-mix(in_oklch,var(--pn-accent)_70%,var(--pn-line))] focus-within:bg-(--pn-muted)"
+          : "border-transparent",
         className
       )}
     >
@@ -58,6 +63,19 @@ export function TranslationPanel({ lang, editing = false, children, className }:
       {children}
     </div>
   )
+}
+
+/** A press on the panel's padding or header lands in its first field instead of doing nothing. */
+function focusFirstField(event: MouseEvent<HTMLDivElement>) {
+  const target = event.target as HTMLElement
+  if (target.closest("input, textarea, button, a, [role=button]")) return
+  const field = event.currentTarget.querySelector<HTMLInputElement | HTMLTextAreaElement>("textarea, input")
+  if (!field || field.disabled) return
+  event.preventDefault()
+  field.focus()
+  if (field instanceof HTMLTextAreaElement || field.type === "text") {
+    field.setSelectionRange(field.value.length, field.value.length)
+  }
 }
 
 /** Read-only text inside a `TranslationPanel`; `lines` clamps long descriptions in card collections. */
