@@ -518,7 +518,7 @@ PageBar  [left: Search by group or email…][Count "42 groups · 318 memberships
 ```
 
 - Collapsible header 48px, chevron + title 14/500 + `Count` muted. Second group collapsed by default; state persists in session storage. Search expands both.
-- Row: name 13/500, mail 12 muted mono-free, `Count` "9 members" 12 muted tabular, `AvatarGroup` (24px, max 7, "+N" chip), actions (icon buttons `UserPlus`/`UserMinus`, `canWrite`).
+- Row: name 13/500, mail 12 muted mono-free, `Count` "9 members" 12 muted tabular, `AvatarGroup` (24px, max 7, name tooltips; the "+N" chip is a button opening a popover with "{n} members" and every member in one scrollable column, avatar + name, max 320px tall), actions (icon buttons `UserPlus`/`UserMinus`, `canWrite`).
 - Content animates with `grid-template-rows 0fr→1fr` 200ms ease-in-out plus opacity 150ms; reduced motion instant.
 
 ### 4.8 Queue page

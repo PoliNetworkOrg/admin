@@ -252,7 +252,7 @@ function GroupRow({ group, canWrite, onOpenDialog }: RowActionsProps & { group: 
         {pluralize(group.members.length, "member")}
       </span>
       <div className="hidden w-[212px] justify-end @min-[520px]:flex">
-        <AvatarGroup people={people} />
+        <AvatarGroup people={people} listLabel={`Members of ${group.displayName}`} />
       </div>
       {canWrite ? (
         <div className="flex items-center gap-1">
