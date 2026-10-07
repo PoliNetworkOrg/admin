@@ -16,6 +16,7 @@ export function InviteLinkButton({ link, name }: InviteLinkButtonProps) {
         label="Not shared"
         ariaLabel={name ? `${name} invite link not shared` : undefined}
         icon={Link2Off}
+        appearance="tinted"
         disabled
         focusableWhenDisabled
       />
@@ -26,6 +27,7 @@ export function InviteLinkButton({ link, name }: InviteLinkButtonProps) {
       label="Open invite link"
       ariaLabel={name ? `Open invite link for ${name}` : undefined}
       icon={ExternalLink}
+      appearance="tinted"
       nativeButton={false}
       render={<a href={link} target="_blank" rel="noreferrer" />}
     />

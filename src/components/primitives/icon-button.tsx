@@ -14,7 +14,8 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
   /** Names the record for screen readers ("Leave Analisi 1") while the tooltip stays short ("Leave group"). */
   ariaLabel?: string
   icon: LucideIcon
-  tone?: "default" | "danger"
+  tone?: "default" | "info" | "success" | "warning" | "danger"
+  appearance?: "ghost" | "tinted"
   pending?: boolean
   iconClassName?: string
   tooltipSide?: "top" | "bottom" | "left" | "right"
@@ -22,15 +23,27 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
 
 const toneClasses = {
   default: "hover:bg-(--pn-muted) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
+  info: "text-(--pn-info-fg) hover:bg-(--pn-info-bg) hover:text-(--pn-info-fg)",
+  success: "text-(--pn-success-fg) hover:bg-(--pn-success-bg) hover:text-(--pn-success-fg)",
+  warning: "text-(--pn-warning-fg) hover:bg-(--pn-warning-bg) hover:text-(--pn-warning-fg)",
   danger: "hover:bg-(--pn-danger-bg) hover:text-(--pn-danger-fg)",
 }
 
-/** 36px ghost icon button with matching `aria-label` and tooltip. */
+const tintedToneClasses = {
+  default: "",
+  info: "[--pn-icon-fg:var(--pn-action-blue)] [--pn-icon-tint:var(--pn-action-blue)]",
+  success: "[--pn-icon-fg:var(--pn-action-green)] [--pn-icon-tint:var(--pn-action-green-tint)]",
+  warning: "[--pn-icon-fg:var(--pn-action-amber)] [--pn-icon-tint:var(--pn-action-amber-tint)]",
+  danger: "[--pn-icon-fg:var(--pn-action-red)] [--pn-icon-tint:var(--pn-action-red)]",
+}
+
+/** 36px icon button with matching `aria-label` and tooltip; group actions opt into tinted colors. */
 export function IconButton({
   label,
   ariaLabel,
   icon: Icon,
   tone = "default",
+  appearance = "ghost",
   pending = false,
   disabled,
   className,
@@ -51,6 +64,10 @@ export function IconButton({
           buttonMotion,
           "text-(--pn-fg-muted) active:not-aria-[haspopup]:translate-y-0 disabled:text-(--pn-fg-subtle) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:bg-transparent",
           toneClasses[tone],
+          appearance === "tinted" && ["border-(--pn-line-strong)", tintedToneClasses[tone]],
+          appearance === "tinted" &&
+            tone !== "default" &&
+            "text-(--pn-icon-fg) hover:border-[color-mix(in_oklch,var(--pn-icon-fg)_30%,transparent)] hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_12%,transparent)] hover:text-(--pn-icon-fg) dark:hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_16%,transparent)]",
           className
         )}
         {...props}

@@ -1,7 +1,5 @@
 import { Eye, EyeOff } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-
 import { IconButton } from "./icon-button"
 
 type VisibilityToggleProps = {
@@ -21,11 +19,13 @@ export function VisibilityToggle({ visible, pending, onToggle, disabled, name, c
       label="Visible on the site"
       ariaLabel={name ? `${name} visible on the site` : undefined}
       icon={visible ? Eye : EyeOff}
+      tone={visible ? "info" : "warning"}
+      appearance="tinted"
       aria-pressed={visible}
       pending={pending}
       disabled={disabled}
       onClick={onToggle}
-      className={cn(!visible && "text-(--pn-warning-fg) hover:text-(--pn-warning-fg)", className)}
+      className={className}
     />
   )
 }

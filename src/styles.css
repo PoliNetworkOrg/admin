@@ -67,6 +67,13 @@
   --pn-danger-solid: #a43b35;
   --pn-info-fg: var(--pn-brand-700);
   --pn-info-bg: var(--pn-brand-50);
+  /* Original group-action palette; independent of status and toast colors. */
+  --pn-action-blue: oklch(0.468 0.141 255.426);
+  --pn-action-green: oklch(0.508 0.118 165.612);
+  --pn-action-green-tint: oklch(0.696 0.17 162.48);
+  --pn-action-amber: oklch(0.555 0.163 48.998);
+  --pn-action-amber-tint: oklch(0.769 0.188 70.08);
+  --pn-action-red: oklch(0.545 0.15 33.74);
   --pn-scrim: oklch(0.16 0.02 250 / 0.4);
 
   /* Elevation (§3.4). Dark mode swaps these for a ring plus a deeper shadow. */
@@ -162,6 +169,10 @@
   --pn-danger-solid: #c9524a;
   --pn-info-fg: var(--pn-brand-300);
   --pn-info-bg: var(--pn-brand-900);
+  --pn-action-blue: oklch(0.751 0.114 253.205);
+  --pn-action-green: oklch(0.845 0.143 164.978);
+  --pn-action-amber: oklch(0.879 0.169 91.605);
+  --pn-action-red: oklch(0.646 0.219 25.849);
   --pn-scrim: oklch(0 0 0 / 0.6);
 
   --pn-shadow-float: 0 0 0 1px var(--pn-line-strong), 0 8px 24px oklch(0 0 0 / 0.5);

@@ -222,6 +222,8 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
           label="Edit group"
           ariaLabel={`Edit ${group.title}`}
           icon={Pencil}
+          tone="success"
+          appearance="tinted"
           onClick={() => controller.show("edit", group)}
         />
       ) : (
@@ -231,6 +233,8 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
         label="Edit labels"
         ariaLabel={`Edit labels for ${group.title}`}
         icon={Tags}
+        tone="warning"
+        appearance="tinted"
         onClick={() => controller.show("labels", group)}
       />
       {group.type === "tg" ? (
@@ -239,6 +243,7 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
           ariaLabel={`Leave ${group.title}`}
           icon={LogOut}
           tone="danger"
+          appearance="tinted"
           onClick={() => controller.show("leave", group)}
         />
       ) : (
@@ -247,6 +252,7 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
           ariaLabel={`Delete ${group.title}`}
           icon={Trash2}
           tone="danger"
+          appearance="tinted"
           onClick={() => controller.show("delete", group)}
         />
       )}
