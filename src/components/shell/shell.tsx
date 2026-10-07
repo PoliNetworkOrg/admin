@@ -1,6 +1,7 @@
 import { Outlet, useRouterState } from "@tanstack/react-router"
 import { type MouseEvent, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 
+import { TOOLTIP_DELAY } from "@/components/primitives/hint"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { type AdminSession, useSession } from "@/lib/auth"
 
@@ -135,7 +136,7 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
 
   return (
     <ShellFrameContext.Provider value={frame}>
-      <TooltipProvider delay={400} closeDelay={0} timeout={300}>
+      <TooltipProvider delay={TOOLTIP_DELAY} closeDelay={0} timeout={300}>
         <div className="flex h-dvh overflow-hidden bg-(--pn-bg) text-[14px] leading-5 text-(--pn-fg)">
           <Rail
             match={match}

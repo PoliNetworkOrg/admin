@@ -3,6 +3,7 @@ import { Moon, Search, Sun } from "lucide-react"
 import { type FocusEvent, type KeyboardEvent, type MouseEvent, type ReactNode, useRef, useState } from "react"
 
 import logoUrl from "@/assets/logo.png"
+import { TOOLTIP_DELAY_SLOW } from "@/components/primitives/hint"
 import { useModifierKey } from "@/components/primitives/use-modifier-key"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -58,7 +59,9 @@ function RailItem({ label, tooltip, hint, active, focusable, target, className, 
 
   return (
     <Tooltip>
-      <TooltipTrigger render={trigger}>{children}</TooltipTrigger>
+      <TooltipTrigger render={trigger} delay={TOOLTIP_DELAY_SLOW}>
+        {children}
+      </TooltipTrigger>
       <TooltipContent side="right" sideOffset={8}>
         {tooltip ?? label}
         {hint}
