@@ -30,8 +30,9 @@ type SegmentedControlProps<T extends string> = {
 }
 
 /**
- * 36px segmented control (§2.3) on Base UI `ToggleGroup`: a `--pn-muted` track with 32px segments; the pressed
- * one sits on the surface with a 1px line. Pressing the active segment again keeps it selected.
+ * 36px segmented control (§2.3) on Base UI `ToggleGroup`: a `--pn-muted` track with 32px segments of equal width
+ * from 1024px (each as wide as the widest label); the pressed one sits on the surface with a 1px line. Pressing the active
+ * segment again keeps it selected.
  */
 export function SegmentedControl<T extends string>({
   label,
@@ -54,7 +55,9 @@ export function SegmentedControl<T extends string>({
       }}
       disabled={disabled}
       className={cn(
-        "inline-flex h-9 w-fit shrink-0 items-center gap-0.5 rounded-(--pn-r-3) bg-(--pn-muted) p-0.5 data-disabled:opacity-100",
+        // Equal segments from 1024px (`1fr` with an automatic minimum, so none shrinks below its label); narrower,
+        // segments keep their natural width so a long set can wrap in the toolbar.
+        "inline-flex h-9 w-fit shrink-0 items-center gap-0.5 rounded-(--pn-r-3) bg-(--pn-muted) p-0.5 data-disabled:opacity-100 lg:inline-grid lg:grid-flow-col lg:[grid-auto-columns:1fr]",
         className
       )}
     >
