@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
-import { UsersRound } from "lucide-react"
+import { ChevronRight, UsersRound } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import { buttonMotion, DataTable, type DataTableColumn, EmptyState, Unset } from "@/components/primitives"
@@ -19,20 +19,23 @@ const columns: DataTableColumn<TgUser>[] = [
   {
     id: "name",
     label: "Name",
-    minWidth: 260,
+    minWidth: 220,
+    fill: true,
     cell: (user) => {
       const name = telegramUserName(user)
       return (
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate" title={name}>
-            {name}
-          </span>
-          <span className="truncate text-xs leading-4 font-normal text-(--pn-fg-muted)">
-            {user.username ? `@${user.username}` : <Unset />}
-          </span>
+        <span className="block truncate" title={name}>
+          {name}
         </span>
       )
     },
+  },
+  {
+    id: "username",
+    label: "Username",
+    minWidth: 180,
+    priority: 2,
+    cell: (user) => (user.username ? `@${user.username}` : <Unset />),
   },
   {
     id: "telegramId",
@@ -40,6 +43,19 @@ const columns: DataTableColumn<TgUser>[] = [
     mono: true,
     priority: 1,
     cell: (user) => user.id,
+  },
+  {
+    // Signals that the row opens the user's detail; the row itself is the link target.
+    id: "open",
+    label: "",
+    minWidth: 44,
+    className: "w-px",
+    cell: () => (
+      <ChevronRight
+        aria-hidden
+        className="size-4 text-(--pn-fg-subtle) transition-[color,translate] duration-120 [tr:hover_&]:translate-x-0.5 [tr:hover_&]:text-(--pn-fg-muted)"
+      />
+    ),
   },
 ]
 

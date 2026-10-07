@@ -766,8 +766,8 @@ SectionCard  (no title)
 ### 7.3 Telegram users `/dashboard/telegram/users`
 
 - Template: List. Header bar: search "Search by name or username…" (strips leading @), `Count` "{n} users"; no primary action (users are not created here).
-- Removed: eyebrow, title, description, arrow column, avatar initials tile (first column is the name only).
-- Columns: Name (13/500; secondary line `@username` 12 muted or `—`) · Telegram ID (mono) · Username column is **merged into the Name secondary line** (one fewer repeat). Row click opens detail; `aria-label="Open {name}"`.
+- Removed: eyebrow, title, description, avatar initials tile (first column is the name only).
+- Columns: Name (13/500, one line) · Username (`@username` or `—`) · Telegram ID (mono) · a trailing 16px `ChevronRight` in `--pn-fg-subtle` (`--pn-fg-muted` and 2px nudge on row hover) that signals the row opens the detail. Row click opens detail; `aria-label="Open {name}"`.
 - Page size 20. Empty: filtered "No users match" / "Try another name or username." + `Clear search`; true "No Telegram users yet" / "Users appear here once the bot has seen them."
 
 ### 7.4 Telegram user detail `/dashboard/telegram/users/$userId`
