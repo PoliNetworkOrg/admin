@@ -2,6 +2,7 @@ import { Database } from "lucide-react"
 import { useMemo } from "react"
 
 import {
+  CopyableText,
   buttonMotion,
   DataTable,
   type DataTableColumn,
@@ -125,7 +126,7 @@ export function TelegramGroupsPage({
       mono: true,
       priority: 2,
       width: 150,
-      cell: (row) => row.id,
+      cell: (row) => <CopyableText value={String(row.id)} what="Telegram ID" />,
     },
     {
       id: "tag",
@@ -136,9 +137,9 @@ export function TelegramGroupsPage({
       width: 176,
       cell: (row) =>
         row.tag ? (
-          <span title={`@${row.tag}`} className="block truncate">
+          <CopyableText value={row.tag} what="Tag">
             @{row.tag}
-          </span>
+          </CopyableText>
         ) : (
           <Unset />
         ),

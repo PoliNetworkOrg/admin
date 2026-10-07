@@ -1,6 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react"
 
 import {
+  CopyableText,
   DataTable,
   type DataTableColumn,
   GroupLabelBadges,
@@ -101,9 +102,9 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
       width: 176,
       cell: (row) =>
         row.tag ? (
-          <span title={`@${row.tag}`} className="block truncate">
+          <CopyableText value={row.tag} what="Tag">
             @{row.tag}
-          </span>
+          </CopyableText>
         ) : (
           <Unset />
         ),
