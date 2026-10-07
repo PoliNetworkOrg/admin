@@ -65,7 +65,7 @@ export function PanelSheet({
       <SheetContent
         side="left"
         showCloseButton={false}
-        className="gap-0 rounded-r-(--pn-r-5) border-(--pn-line) bg-(--pn-surface-raised) p-0 text-(--pn-fg) transition-transform duration-200 ease-(--pn-ease-out) data-ending-style:opacity-100 data-ending-style:duration-150 data-ending-style:ease-(--pn-ease-in) data-starting-style:opacity-100 data-[side=left]:w-70 data-[side=left]:data-ending-style:-translate-x-full data-[side=left]:data-starting-style:-translate-x-full data-[side=left]:sm:max-w-none"
+        className="gap-0 rounded-r-(--pn-r-5) select-none border-(--pn-line) bg-(--pn-surface-raised) p-0 text-(--pn-fg) transition-transform duration-200 ease-(--pn-ease-out) data-ending-style:opacity-100 data-ending-style:duration-150 data-ending-style:ease-(--pn-ease-in) data-starting-style:opacity-100 data-[side=left]:w-70 data-[side=left]:data-ending-style:-translate-x-full data-[side=left]:data-starting-style:-translate-x-full data-[side=left]:sm:max-w-none"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="flex h-13 shrink-0 items-center justify-between border-b border-(--pn-line) pr-2 pl-4">

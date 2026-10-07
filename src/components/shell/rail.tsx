@@ -161,7 +161,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
       onBlur={onBlur}
       onKeyDown={onKeyDown}
       className={cn(
-        "flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-(--pn-line) bg-(--pn-nav) py-2",
+        "flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-(--pn-line) bg-(--pn-nav) py-2 select-none",
         className
       )}
     >

@@ -88,7 +88,12 @@ export type PanelProps = {
 /** The 224px section panel (docs/design.md §2.2). States the service name once, in its header. */
 export function Panel({ service, match, pendingReports, className }: PanelProps) {
   return (
-    <aside className={cn("flex h-full w-56 shrink-0 flex-col border-r border-(--pn-line) bg-(--pn-nav)", className)}>
+    <aside
+      className={cn(
+        "flex h-full w-56 shrink-0 flex-col border-r border-(--pn-line) bg-(--pn-nav) select-none",
+        className
+      )}
+    >
       <div className="flex h-13 shrink-0 items-center gap-2 border-b border-(--pn-line) px-4">
         <ServiceGlyph service={service} className="size-4 text-(--pn-fg-muted)" />
         <span className="truncate text-[14px] font-semibold text-(--pn-fg)">{service.title}</span>
