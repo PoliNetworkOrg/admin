@@ -22,7 +22,7 @@ const railActiveClass =
 
 type RailItemTarget =
   | { kind: "link"; to: DashboardPath; onClick?: (event: MouseEvent<HTMLAnchorElement>) => void }
-  | { kind: "button"; onClick: () => void }
+  | { kind: "button"; onClick: (event: MouseEvent<HTMLButtonElement>) => void }
 
 type RailItemProps = {
   label: string
@@ -33,14 +33,27 @@ type RailItemProps = {
   active: boolean
   focusable: boolean
   target: RailItemTarget
+  /** Marks the theme toggle, where the command palette's theme switch starts its reveal. */
+  themeToggle?: boolean
   className?: string
   children: ReactNode
 }
 
-function RailItem({ label, tooltip, hint, active, focusable, target, className, children }: RailItemProps) {
+function RailItem({
+  label,
+  tooltip,
+  hint,
+  active,
+  focusable,
+  target,
+  themeToggle,
+  className,
+  children,
+}: RailItemProps) {
   const shared = {
     "aria-label": label,
     "data-rail-item": "",
+    "data-theme-toggle": themeToggle ? "" : undefined,
     tabIndex: focusable ? 0 : -1,
     className: cn(railItemClass, active && railActiveClass, className),
   }
@@ -206,6 +219,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
         active={false}
         focusable={tabStop === themeIndex}
         target={{ kind: "button", onClick: toggleTheme }}
+        themeToggle
       >
         {theme === "dark" ? <Sun {...iconProps} /> : <Moon {...iconProps} />}
       </RailItem>
