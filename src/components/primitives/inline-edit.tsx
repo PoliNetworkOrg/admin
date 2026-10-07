@@ -30,9 +30,9 @@ type InlineEditProps = {
   message?: ReactNode
   view: ReactNode
   edit: ReactNode
-  /** View-mode actions placed before the edit button (e.g. a `⋮` menu). */
+  /** Trailing view-mode actions (e.g. a `⋮` menu). */
   actions?: ReactNode
-  /** Destructive view-mode action placed last, after the edit button. */
+  /** Destructive view-mode action after Edit and before trailing actions. */
   deleteAction?: ReactNode
   /** Tooltip of the edit button ("Edit project"); also its accessible label unless `editAriaLabel` is set. */
   editLabel?: string
@@ -96,9 +96,9 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
 function ViewActions({ onEdit, actions, deleteAction, editLabel = "Edit", editAriaLabel }: InlineEditProps) {
   return (
     <RowActions className="shrink-0">
-      {actions}
       <IconButton label={editLabel} ariaLabel={editAriaLabel} icon={Pencil} onClick={onEdit} />
       {deleteAction}
+      {actions}
     </RowActions>
   )
 }

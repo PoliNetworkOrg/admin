@@ -421,7 +421,7 @@ PageBar  [left: Search / Segments][Count]                     [right: + Add …]
 ──────────────────────────────────────────────────────────────────────────────
 grid  gap 16   (2 columns ≥ 1024, 1 below)
   ┌ InlineEditCard ───────────────────────────────────────────────────────┐
-  │ [logo 40] Title                                   [⋮] [✎] [🗑]         │
+  │ [logo 40] Title                                   [✎] [🗑] [⋮]         │
   │ link (muted, 13)                                                      │
   │ IT  …description, 4-line clamp…                                       │
   │ EN  …                                                                 │
@@ -444,15 +444,16 @@ PageBar  [left: Search][Count]                       [right: Add tag ▾][+ Add 
 SectionHeading  Categories                  (i) description 13px
   ▸ Didattica                                                                  [⋮]
   ▾ Extra
-      ▸ ● Lecco           Groups at the Lecco campus                      [⋮][✎][🗑]
-          ● Primo Anno    —                                               [⋮][✎][🗑]
+      ▸ ● Lecco           Groups at the Lecco campus                      [✎][🗑][⋮]
+          ● Primo Anno    —                                               [✎][🗑][⋮]
 SectionHeading  Attributes
-  ● Italian        Language of the group                                  [✎][🗑]
+  ● Italian        Language of the group                                  [✎][🗑][⋮]
 SectionHeading  Publications                                 [Create publication]
   ● release-2026-27   Batch for the 2026/27 freshmen                      [✎][🗑]
 ```
 
-- Row actions read `⋮ ✎ 🗑` (menu, edit, delete) everywhere, as on Projects cards (§4.2): the destructive action stays last.
+- Row actions read `✎ 🗑 ⋮` (edit, delete, menu) everywhere, as on Projects cards (§4.2): More actions always occupies the far-right position.
+- Below 640px, label rows remain 44px high with one trailing `⋮` menu. Edit and Delete move into that menu; category indentation is 8px per level, capped at 32px. Desktop action placement and indentation stay unchanged.
 - Rows 44px, flat list surfaces per section (one bordered surface, rows separated by 1px `--pn-line`). Depth is indentation of 24px per level; no vertical guide lines.
 - Chevron 16px `ChevronRight`, rotates 90° in 150ms ease-out when expanded (the one rotating icon in the app); `Expand {name}`/`Collapse {name}` aria-labels. Expanded state persists in session storage; search force-expands.
 - Pure grouping nodes show the segment name in `--pn-fg` and `—` in the description cell; real labels show a colored dot (8px) before the name.
@@ -533,20 +534,20 @@ Used by: Reports › Open, Reports › Closed.
 
 ### 5.1 Tables (`DataTable`)
 
-| Property       | Rule                                                                                                                                                                                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Surface        | `--pn-surface`, 1px `--pn-line`, `--pn-r-4`, overflow hidden; horizontal scroll inside when needed                                                                                                                                                                |
-| Header row     | 36px, 12/500 `--pn-fg-muted`, sentence case, transparent background, 1px bottom `--pn-line`; sticky to the surface top when the surface scrolls horizontally only                                                                                                 |
-| Sort indicator | sortable headers are buttons (36px hit area, full cell); unsorted shows no icon; hover shows `ChevronsUpDown` 12px `--pn-fg-subtle`; sorted shows `ChevronUp`/`ChevronDown` 12px `--pn-fg`; `aria-sort` set                                                       |
-| Rows           | 44px; 1px `--pn-line` between rows; last row no border                                                                                                                                                                                                            |
-| Cells          | 13/400; first column 13/500 `--pn-fg`; padding 12 × 16, first cell 20 left, last cell 20 right; `vertical-align: middle`                                                                                                                                          |
-| Numeric / id   | right-aligned when numeric quantities (counts, member id); mono left-aligned when identifiers (Telegram IDs)                                                                                                                                                      |
-| Hover          | `--pn-muted` background 120ms, only when the row is interactive or has actions                                                                                                                                                                                    |
-| Clickable row  | `cursor: pointer`, `tabindex=0`, `Enter`/`Space` open, `aria-label="Open {name}"`; the first cell text is also a real `<a>` for middle-click                                                                                                                      |
-| Selected       | `--pn-accent-soft` background (used only in pick lists)                                                                                                                                                                                                           |
-| Actions column | right-aligned, 36px icon buttons `ghost`, always visible in `--pn-fg-muted`, hover `--pn-fg` on `--pn-muted`; the destructive action is last, separated by 8px extra, hover `--pn-danger-fg` on `--pn-danger-bg`; max 4 icons, further actions go into a `⋯` menu |
-| Truncation     | the title column takes the width the other columns leave (`fill`), `truncate`, `title` attr; no fixed `max-w-*` caps; link cells show the host only                                                                                                               |
-| Secondary line | allowed only in the first column (13 → 12 muted), row remains 44px via 20+16 line boxes                                                                                                                                                                           |
+| Property       | Rule                                                                                                                                                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Surface        | `--pn-surface`, 1px `--pn-line`, `--pn-r-4`, overflow hidden; horizontal scroll inside when needed                                                                                                                                                                                                     |
+| Header row     | 36px, 12/500 `--pn-fg-muted`, sentence case, transparent background, 1px bottom `--pn-line`; sticky to the surface top when the surface scrolls horizontally only                                                                                                                                      |
+| Sort indicator | sortable headers are buttons (36px hit area, full cell); unsorted shows no icon; hover shows `ChevronsUpDown` 12px `--pn-fg-subtle`; sorted shows `ChevronUp`/`ChevronDown` 12px `--pn-fg`; `aria-sort` set                                                                                            |
+| Rows           | 44px; 1px `--pn-line` between rows; last row no border                                                                                                                                                                                                                                                 |
+| Cells          | 13/400; first column 13/500 `--pn-fg`; padding 12 × 16, first cell 20 left, last cell 20 right; `vertical-align: middle`                                                                                                                                                                               |
+| Numeric / id   | right-aligned when numeric quantities (counts, member id); mono left-aligned when identifiers (Telegram IDs)                                                                                                                                                                                           |
+| Hover          | `--pn-muted` background 120ms, only when the row is interactive or has actions                                                                                                                                                                                                                         |
+| Clickable row  | `cursor: pointer`, `tabindex=0`, `Enter`/`Space` open, `aria-label="Open {name}"`; the first cell text is also a real `<a>` for middle-click                                                                                                                                                           |
+| Selected       | `--pn-accent-soft` background (used only in pick lists)                                                                                                                                                                                                                                                |
+| Actions column | right-aligned, 36px icon buttons `ghost`, always visible in `--pn-fg-muted`, hover `--pn-fg` on `--pn-muted`; the destructive action follows the primary actions, separated by 8px extra, hover `--pn-danger-fg` on `--pn-danger-bg`; max 4 icons, further actions go into a `⋯` menu at the far right |
+| Truncation     | the title column takes the width the other columns leave (`fill`), `truncate`, `title` attr; no fixed `max-w-*` caps; link cells show the host only                                                                                                                                                    |
+| Secondary line | allowed only in the first column (13 → 12 muted), row remains 44px via 20+16 line boxes                                                                                                                                                                                                                |
 
 ### 5.2 Status badges (`StatusBadge`) and chips (`Chip`)
 
@@ -839,7 +840,7 @@ SectionCard  Audit log  4
 ### 7.10 Projects `/dashboard/web/projects`
 
 - Template: Card-collection. Header bar: segmented `News {n} | General {n} | Deprecated {n}`, `Count` "{n} projects"; right `Add project`.
-- Card: drag handle, logo 40 (image or initials; fallback "PR"), title 14/500, actions `⋮` (menu: "Move to News/General/Deprecated" radio group), `✎`, `🗑`. Body: link (13 `--pn-accent`, host only, external icon; `—` when missing), then "IT" tiny chip + description (4-line clamp), "EN" tiny chip + description.
+- Card: drag handle, logo 40 (image or initials; fallback "PR"), title 14/500, actions `✎`, `🗑`, `⋮` (menu: "Move to News/General/Deprecated" radio group). Body: link (13 `--pn-accent`, host only, external icon; `—` when missing), then "IT" tiny chip + description (4-line clamp), "EN" tiny chip + description.
 - Inline edit per §5.9: logo upload button over the logo (SVG/PNG/JPEG ≤ 1 MB; verbatim errors as field errors), Title (max 160), Link (placeholder `https://…`), IT/EN textareas (max 5000). Save disabled until title + both descriptions.
 - Drafts: `Add project` inserts a card at the top in edit mode with empty fields and placeholders "Project title" / "Descrizione in italiano" / "Description in English" (placeholders, not prefilled text) and a "Draft" badge.
 - Delete → `ConfirmDialog` "Delete project?" / "{title} is removed from the website. This cannot be undone." / `Delete project`. Toasts "Project added." / "Project updated." / "Project deleted." / "Project moved to {Category}." Reorder error toast "Couldn't save the project order." (order reverts).
@@ -874,7 +875,7 @@ SectionCard  Audit log  4
 ### 7.14 Labels `/dashboard/web/group-labels` (section renamed from "Group labels")
 
 - Template: Tree (4.3). Header bar: search "Search categories, attributes and publications…", `Count` "{n} of {total} labels"; right `Add tag ▾` (`outline`, menu: "Add attribute", "Create publication") + `Add category` (`default`).
-- Three `SectionHeading`s with the one-line descriptions (1.6). Rows 44px: chevron (categories), dot 8px in label color (real labels), name 13/500 (link to the category page or tag page; hover underline), description 13 muted or `—`, actions in the §4.3 order: `⋮` (attributes: Rename; categories: Rename, Add sub-category; roots: Add sub-category only; publications: no menu), `✎` (color + description inline edit), `🗑`.
+- Three `SectionHeading`s with the one-line descriptions (1.6). Rows 44px: chevron (categories), dot 8px in label color (real labels), name 13/500 (link to the category page or tag page; hover underline), description 13 muted or `—`, actions in the §4.3 order: `✎` (color + description inline edit), `🗑`, `⋮` (attributes: Rename; categories: Rename, Add sub-category; roots: Add sub-category only; publications: no menu).
 - Inline edit (`InlineEditRow`): color `Select` trigger is a 20px swatch (aria "Label color") with a 5-column swatch popover (Gray, Red, Orange, Amber, Green, Teal, Blue, Indigo, Purple, Pink; unknown → "Custom" outline) and a live `LabelChip` preview; description input (max 500, placeholder verbatim); `Cancel` / `Save`.
 - Delete → `ConfirmDialog` "Delete label?" / "{breadcrumb} is removed from every group that uses it. This cannot be undone." / `Delete label`. Toasts "Label updated." / "Label deleted."
 - `AddCategoryDialog` (`md`): step 1 title "Add category" description "Which top-level category does this belong under?" two `NavCard`s "Didattica" / "Extra"; step 2 `← Back` ghost, description "Creates a new category under {Root}.", field "Name" (max 128; validation verbatim). Footer `Cancel` / `Add category`. Toast "{Name} created under {Root}." then navigate.

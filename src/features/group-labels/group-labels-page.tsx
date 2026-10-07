@@ -1,7 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ChevronDown, ChevronRight, EllipsisVertical, Megaphone, Plus, Tag, Tags, Trash2 } from "lucide-react"
-import { type ReactNode, useDeferredValue, useEffect, useMemo, useState } from "react"
+import { type CSSProperties, type ReactNode, useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
   buttonMotion,
@@ -456,6 +456,7 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
       <MenuContent>
         {!isRoot && <MenuItem onClick={() => ctx.onRename(node.path)}>Rename</MenuItem>}
         <MenuItem onClick={() => ctx.onAddChild(node.path)}>Add sub-category</MenuItem>
+        {node.label && <MobileLabelActions label={node.label} ctx={ctx} />}
       </MenuContent>
     </Menu>
   ) : null
@@ -479,10 +480,10 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
           actions={
             ctx.canWrite && (
               <RowActions className="shrink-0">
-                {menu}
-                {/* Keeps ⋮ in line with the rows that also have ✎ and 🗑. */}
+                {/* Reserve Edit/Delete slots so ⋮ stays aligned at the far right. */}
                 <span aria-hidden className="size-9" />
                 <span aria-hidden className="ml-2 size-9" />
+                {menu}
               </RowActions>
             )
           }
@@ -503,7 +504,7 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
 
 const rowClasses = "border-b border-(--pn-line)"
 const mobileRowClasses =
-  "max-sm:flex-wrap max-sm:gap-y-0 max-sm:py-1 max-sm:[&>div:first-child]:basis-full max-sm:[&>div:last-child]:ml-auto"
+  "max-sm:gap-2 max-sm:px-3 max-sm:[&>div:last-child>span]:hidden max-sm:[&>div:last-child>button:not([aria-haspopup=menu])]:hidden"
 const nameLinkClasses =
   "min-w-0 truncate text-[13px] leading-5 font-medium text-(--pn-fg) underline-offset-2 hover:underline"
 
@@ -541,7 +542,26 @@ function Description({ text }: { text: string | null }) {
 }
 
 function Indent({ depth }: { depth: number }) {
-  return depth > 0 ? <span aria-hidden className="shrink-0 max-sm:max-w-24" style={{ width: depth * 24 }} /> : null
+  const style: CSSProperties & Record<"--label-indent" | "--label-mobile-indent", string> = {
+    "--label-indent": `${depth * 24}px`,
+    "--label-mobile-indent": `${Math.min(depth * 8, 32)}px`,
+  }
+  return depth > 0 ? (
+    <span aria-hidden className="w-(--label-indent) shrink-0 max-sm:w-(--label-mobile-indent)" style={style} />
+  ) : null
+}
+
+function MobileLabelActions({ label, ctx }: { label: GroupLabel; ctx: RowContext }) {
+  return (
+    <>
+      <MenuItem className="sm:hidden" onClick={() => ctx.onEdit(label.label)}>
+        Edit color and description
+      </MenuItem>
+      <MenuItem className="sm:hidden" variant="destructive" onClick={() => ctx.onDelete(label)}>
+        Delete label
+      </MenuItem>
+    </>
+  )
 }
 
 /** Grouping nodes (no label row) and read-only rows: same 44px geometry as `InlineEditRow`. */
@@ -619,15 +639,21 @@ function LabelRow({
       editAriaLabel={`Edit color and description for ${name}`}
       actions={
         menu ??
-        (labelKind(label.label) === "attribute" ? (
+        (!isCategoryLabel(label.label) ? (
           <Menu>
             <MenuTrigger
               render={
-                <IconButton label="More actions" ariaLabel={`More actions for ${name}`} icon={EllipsisVertical} />
+                <IconButton
+                  label="More actions"
+                  ariaLabel={`More actions for ${name}`}
+                  icon={EllipsisVertical}
+                  className={isReleaseLabel(label.label) ? "sm:hidden" : undefined}
+                />
               }
             />
             <MenuContent>
-              <MenuItem onClick={() => ctx.onRename(label.label)}>Rename</MenuItem>
+              {!isReleaseLabel(label.label) && <MenuItem onClick={() => ctx.onRename(label.label)}>Rename</MenuItem>}
+              <MobileLabelActions label={label} ctx={ctx} />
             </MenuContent>
           </Menu>
         ) : null)
