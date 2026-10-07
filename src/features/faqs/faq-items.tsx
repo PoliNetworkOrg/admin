@@ -230,9 +230,8 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
           >
             {row("IT", questionIt, "input", firstField)}
             {row("EN", questionEn, "input")}
-            <div className="col-span-2 h-1" />
-            {row("IT", answerIt, "textarea")}
             <div className="col-span-2 my-1 border-t border-(--pn-line)" />
+            {row("IT", answerIt, "textarea")}
             {row("EN", answerEn, "textarea")}
           </div>
         }
