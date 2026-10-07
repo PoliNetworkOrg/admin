@@ -164,6 +164,7 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
     } catch (caught) {
       console.error(caught)
       setError(caught instanceof Error ? caught.message : "Couldn't save the FAQ.")
+    } finally {
       setSaving(false)
     }
   }

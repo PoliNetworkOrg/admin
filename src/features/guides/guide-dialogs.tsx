@@ -33,8 +33,8 @@ type PublishEditionDialogProps = {
   existingVersions: string[]
   /** Prefilled version: the latest edition's version with its last number incremented. */
   suggestedVersion: string
-  /** Runs after the dialog closed on success. */
-  onPublished: (guide: Guide) => void
+  /** Reloads the route and reports success before the dialog closes. */
+  onPublished: (guide: Guide) => Promise<void>
 }
 
 type Errors = { version?: string; file?: string }
@@ -99,8 +99,8 @@ export function PublishEditionDialog({
           : "Couldn't publish the edition. Check the file and try again."
       )
     }
+    await onPublished(guide)
     onOpenChange(false)
-    onPublished(guide)
   }
 
   return (

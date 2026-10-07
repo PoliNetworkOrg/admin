@@ -127,6 +127,7 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
               }
             />
             <CombinedGroupsTable
+              search={query}
               rows={visible}
               labels={labels}
               tgGroups={tgGroups}

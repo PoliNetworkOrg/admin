@@ -60,9 +60,9 @@ export function AddTagDialog({ open, onOpenChange, kind }: AddTagDialogProps) {
       console.error(cause)
       throw new Error(groupLabelSaveErrorMessage(cause))
     }
+    await router.invalidate({ sync: true })
     appToast.success(text.toast(name.trimmed))
     onOpenChange(false)
-    await router.invalidate({ sync: true })
   }
 
   return (

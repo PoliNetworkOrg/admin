@@ -26,8 +26,8 @@ export function DeleteWhatsappGroupDialog({ open, onOpenChange, group, onDeleted
         cause,
       })
     }
-    appToast.success(`${group.title} deleted.`)
     await onDeleted()
+    appToast.success(`${group.title} deleted.`)
   }
 
   return (

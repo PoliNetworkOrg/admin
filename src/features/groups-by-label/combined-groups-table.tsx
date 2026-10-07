@@ -33,18 +33,24 @@ type CombinedGroupsTableProps = {
   labels: GroupLabel[]
   /** Telegram groups (`listGroupsForLabels().tgGroups` or `getTelegramGroups`), for the Tag column. */
   tgGroups: Pick<TgGroup, "telegramId" | "tag">[]
+  search: string
 }
 
 /**
  * Telegram + WhatsApp groups in one table with the per-platform row actions (docs/design.md §7.15). The
  * categories and tag pages pass rows and an empty state; mutations reload the route through `router.invalidate()`.
  */
-export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups }: CombinedGroupsTableProps) {
+export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, search }: CombinedGroupsTableProps) {
   const labelsByPath = useLabelsByPath(labels)
   const groupActions = useGroupActions(labels, rows)
   const [sort, setSort] = useState<TableSort>({ column: "title", direction: "asc" })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  const [previousSearch, setPreviousSearch] = useState(search)
+  if (previousSearch !== search) {
+    setPreviousSearch(search)
+    setPage(1)
+  }
 
   const sorted = useMemo(() => {
     const tags = new Map(tgGroups.map((group) => [group.telegramId, group.tag]))

@@ -158,9 +158,9 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
           onOpenChange={setPublishOpen}
           existingVersions={guides.map((guide) => guide.version)}
           suggestedVersion={nextVersion(guides[0]?.version)}
-          onPublished={(guide) => {
+          onPublished={async (guide) => {
+            await router.invalidate({ sync: true })
             appToast.success(`Edition ${guide.version} published.`)
-            void router.invalidate({ sync: true })
           }}
         />
       )}

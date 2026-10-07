@@ -4,7 +4,7 @@ import { z } from "zod"
 import { TableSkeleton } from "@/components/primitives"
 import { PageContent } from "@/components/shell"
 import { listGroupLabels, listGroupsWithLabels } from "@/features/group-labels/group-labels.functions"
-import { parseVisibility } from "@/features/groups/labels-filter-popover"
+import { parseVisibility } from "@/features/groups/visibility"
 import { TelegramGroupsPage } from "@/features/telegram/groups-page"
 import { getTelegramGroups } from "@/features/telegram/groups.functions"
 

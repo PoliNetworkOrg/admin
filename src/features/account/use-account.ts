@@ -1,6 +1,7 @@
 import { useServerFn } from "@tanstack/react-start"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { appToast } from "@/components/shell"
 import { type AdminSession, auth, useSession } from "@/lib/auth"
 
 import { uploadProfilePicture } from "./account.functions"
@@ -37,7 +38,8 @@ function useSecurityData() {
       setState("ready")
     } catch (error) {
       console.error(error)
-      setState("error")
+      setState((current) => (current === "loading" ? "error" : current))
+      appToast.warning("Passkeys and sessions could not be refreshed. Try again.")
     }
   }, [])
 

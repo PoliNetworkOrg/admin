@@ -71,6 +71,7 @@ export function PanelSheet({
         <div className="flex h-13 shrink-0 items-center justify-between border-b border-(--pn-line) pr-2 pl-4">
           <Link
             to={overview.path}
+            activeOptions={{ exact: true }}
             onClick={close}
             aria-label="PoliNetwork Admin — Overview"
             className="flex items-center gap-2 rounded-(--pn-r-2) text-[14px] font-semibold"
@@ -100,6 +101,7 @@ export function PanelSheet({
                 <Link
                   key={service.id}
                   to={serviceHref(service)}
+                  activeOptions={{ exact: true }}
                   onClick={close}
                   aria-current={current ? "page" : undefined}
                   className={cn(rowClass, current && rowCurrentClass)}
@@ -186,6 +188,7 @@ function SheetRow({
   return (
     <Link
       to={to}
+      activeOptions={{ exact: true }}
       onClick={onNavigate}
       aria-current={current ? "page" : undefined}
       className={cn(rowClass, current && rowCurrentClass)}

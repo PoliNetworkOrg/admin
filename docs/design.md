@@ -668,7 +668,7 @@ Blocks in `--pn-muted`, `--pn-r-2`, opacity pulse 1 → 0.6 → 1 over 1.4s ease
 
 ### 5.13 Accessibility baseline
 
-Every icon button has `aria-label`; every input has a label; focus is never removed; dialogs trap focus and return it to the trigger; live regions: toasts (`role=status`), counts (`aria-live=polite` on `Count`), optimistic row removal announces "Report resolved". Color is never the only signal (status badges have text; visibility toggle has `aria-pressed` and label). Hit areas ≥ 36px, ≥ 44px on coarse pointers via padding. DOM order = visual order (the header bar is rendered before `main`).
+Every icon button has `aria-label`; every input has a label; focus is never removed; dialogs trap focus and return it to the trigger; live regions: toasts (`role=status`), counts (`aria-live=polite` on `Count`), optimistic row removal announces "Report resolved". Color is never the only signal (status badges have text; visibility toggle has `aria-pressed` and label). Hit areas ≥ 36px, ≥ 44px on coarse pointers via padding. DOM order = visual order (the header bar is rendered before `main`, including in server HTML).
 
 ---
 
@@ -962,6 +962,8 @@ Title: "No {things} yet" (true empty) or "No {things} match" (filtered). Text: o
 
 `d MMM yyyy` ("6 Oct 2026") for dates; `d MMM yyyy, HH:mm` for timestamps; ranges with " → ". Relative time is not used in tables. "Added recently" / "Unknown device" / "Unknown IP" fallbacks are kept. All dates are tabular and never wrap (`whitespace-nowrap`).
 
+Dashboard timestamps use `Europe/Rome` with `en-GB` formatting so the server and browser render the same text. Date/time inputs continue to use the local timezone for entry.
+
 ### 8.7 Unset values
 
 `—` (em dash character, `--pn-fg-muted`, with `aria-label` "Not set") replaces "Not set", "Not provided", "Not assigned", "No link provided", "No description", "No licenses", "No labels", "No Telegram username", "Not available". Exceptions that stay as words: "Unnamed passkey", "Unnamed user", "Unnamed member", "Unnamed account", "Unknown device", "Unknown IP", "User {id}" (they name a thing, not an absence).
@@ -977,11 +979,11 @@ docs/design.md                     ← this file
 src/styles.css                     ← all --pn-* tokens (light + dark), shadcn remap, focus, selection, invalid fields,
                                      disabled buttons, modal layers, toasts
 src/components/shell/              ← import from "@/components/shell"
-  shell.tsx                        ← DashboardShell: rail + panel + column(header bar + scrolling main) + sheet + palette
+  shell.tsx                        ← DashboardShell: rail + panel + column(PageBar + scrolling PageContent) + sheet + palette
   rail.tsx, panel.tsx, panel-sheet.tsx, command-palette.tsx, account-avatar.tsx, service-glyph.tsx
   page-bar.tsx                     ← PageBar, Toolbar, SearchField, Count, BackButton, ScrollTitle, PageContent
   nav.ts                           ← services, sections, matchPath, documentTitle
-  theme.ts, toast.ts, use-can-write.ts, use-sign-out.ts, use-keyboard-shortcuts.ts
+  theme.ts, toast.ts, use-can-write.ts, use-sign-out.tsx, use-keyboard-shortcuts.ts
 src/components/primitives/         ← import from "@/components/primitives" (one file per primitive, index.ts barrel)
 src/components/route-error.tsx     ← RouteError / RouteNotFound: in the content column inside the shell, centred above it
 src/components/telegram/           ← create-grant dialog and Telegram user helpers shared by the grants and user pages
@@ -1000,7 +1002,7 @@ src/features/**                    ← pages, dialogs, server functions (*.funct
 Data flow: a route's `loader` calls server functions (`createServerFn`, `src/features/**/*.functions.ts`) and passes the result to the page. Pages hold UI state only (open dialogs, edit mode, query, page). Mutations follow four rules:
 
 1. **Wrap the server function in `useServerFn(fn)`** (`@tanstack/react-start`) in the component that calls it from an event handler, so a protected function's auth redirect goes through the router. `tests/server-security.test.mjs` lists every POST server function with the file that wraps it; a new mutation needs an entry.
-2. **Then `await router.invalidate({ sync: true })`** so every matched loader (including the shell's pending-reports count) has reloaded before the dialog closes or the success toast shows. A failed reload after a successful mutation is a warning toast, not an error.
+2. **Then `await router.invalidate({ sync: true })`** so every matched loader (including the shell's pending-reports count) has reloaded before the dialog closes or the success toast shows. Loader failures render the route error boundary; they do not mean the mutation failed. Do not offer to repeat a successful mutation because its subsequent reload failed.
 3. **Optimistic UI reverts on failure** and shows the error toast (§9.4.16).
 4. **Every `catch` block and `.catch(handler)` logs the caught error with `console.error(error)`** before mapping it to copy; the test suite enforces it.
 
@@ -1012,17 +1014,17 @@ Errors and not-found states need no per-route wiring: the router defaults render
 
 Shell (`@/components/shell`):
 
-- `PageBar({ left?, right?, title?, back?: { label, link }, context?, contextMono?, scrollTitleRef?, scrollTitle? })` — one per page, anywhere in the page; it portals into the fixed 52px header. `back` → deep-page template (`link` takes `Link` options, e.g. `{ to: "/dashboard/telegram/users" }` or a parent category with `params`); `title` → Overview/Account template; otherwise the section template (`left` = `Toolbar`). Below 1024px the section template's first row reads "{Service} › {Section}".
+- `PageBar({ left?, right?, title?, back?: { label, link }, context?, contextMono?, scrollTitleRef?, scrollTitle? })` — one per page, before `PageContent`; it renders the fixed 52px header on the server and client. Match its optional `width` to `PageContent`. `back` → deep-page template (`link` takes `Link` options, e.g. `{ to: "/dashboard/telegram/users" }` or a parent category with `params`); `title` → Overview/Account template; otherwise the section template (`left` = `Toolbar`). Below 1024px the section template's first row reads "{Service} › {Section}".
 - `Toolbar({ lead?, search?: SearchFieldProps, filters?, count? })` — `lead` holds page-scoping controls before the search.
 - `SearchField({ value, onChange, placeholder?, label?, inputRef?, className? })` — placeholder defaults to the section's `searchPlaceholder` in `nav.ts`; Esc clears; `/` focuses it.
 - `Count({ value, total?, noun, plural?, parts? })` — pass the singular noun.
 - `BackButton`, `ScrollTitle({ targetRef, title? })`.
-- `PageContent({ width?: "wide" | "tree" | "record" | "settings" | "overview", children })` — the §2.4 container; wrap every page body in it.
+- `PageContent({ width?: "wide" | "tree" | "record" | "settings" | "overview", children })` — the §2.4 container and `main` scroller; wrap every page body in it. The router restores its scroll position on Back/Forward and resets it on a new navigation.
 - `useInShell()` — whether the caller renders inside `DashboardShell` (used by `RouteError` to pick its frame).
 - The shell renders the one sr-only `h1` (the section title) on section pages; deep pages (`RecordHeader`) and Overview/Account (`PageBar title`) render their own visible `h1`.
 - `appToast.{success, info, warning, error}(message)` — §5.7 durations; use it instead of raw `toast`.
 - `useCanWrite(scope?: "web")`, `canWrite(roles, scope?)`.
-- `useSignOut()` → `{ signOut, pending }` — signs out, lands on `/login`, toasts "Couldn't sign out. Try again." on failure.
+- `useSignOut()` → `{ signOut, pending }` — shared pending state and an in-flight guard for the shell and Account; signs out, lands on `/login`, toasts "Couldn't sign out. Try again." on failure.
 - `useTheme()` → `{ theme, setTheme, toggleTheme }`; `themeToggleLabel(theme)`.
 - `nav.ts`: `services`, `panelServices`, `serviceById`, `matchPath`, `serviceFor`, `sectionFor`, `isDeepPage`, `documentTitle`, `DashboardPath` (every `/dashboard…` route path), `ServiceGlyph`.
 

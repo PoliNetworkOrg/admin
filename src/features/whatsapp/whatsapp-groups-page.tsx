@@ -26,12 +26,10 @@ import {
   compareText,
   LabelsFilterPopover,
   matchesLabelFilter,
-  matchesVisibility,
   sortRows,
   useGroupListState,
-  VISIBILITY_FILTERS,
-  type VisibilityFilter,
 } from "@/features/groups/labels-filter-popover"
+import { matchesVisibility, VISIBILITY_FILTERS, type VisibilityFilter } from "@/features/groups/visibility"
 import { WhatsappGroupDialog } from "@/features/whatsapp/whatsapp-group-dialog"
 import type { GroupWithLabels, WaGroup } from "@/lib/api/types"
 

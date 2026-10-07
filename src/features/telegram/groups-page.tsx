@@ -26,12 +26,10 @@ import {
   compareText,
   LabelsFilterPopover,
   matchesLabelFilter,
-  matchesVisibility,
   sortRows,
   useGroupListState,
-  VISIBILITY_FILTERS,
-  type VisibilityFilter,
 } from "@/features/groups/labels-filter-popover"
+import { matchesVisibility, VISIBILITY_FILTERS, type VisibilityFilter } from "@/features/groups/visibility"
 import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
 
 type TelegramGroupRow = GroupWithLabels & { tag: string | null }

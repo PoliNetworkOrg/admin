@@ -1,13 +1,5 @@
 import { Outlet, useRouterState } from "@tanstack/react-router"
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { type MouseEvent, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { type AdminSession, useSession } from "@/lib/auth"
@@ -24,12 +16,12 @@ import {
   serviceFor,
   services,
 } from "./nav"
-import { type ContentWidth, PageBarContent, type ShellFrame, ShellFrameContext } from "./page-bar"
+import { PageBarContent, type ShellFrame, ShellFrameContext } from "./page-bar"
 import { Panel } from "./panel"
 import { PanelSheet } from "./panel-sheet"
 import { Rail } from "./rail"
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts"
-import { useSignOut } from "./use-sign-out"
+import { SignOutProvider, useSignOut } from "./use-sign-out"
 
 const DESKTOP_QUERY = "(min-width: 1024px)"
 
@@ -91,6 +83,14 @@ export type DashboardShellProps = {
  * their header content through `PageBar` and their body inside `PageContent`.
  */
 export function DashboardShell({ initialSession, pendingReports }: DashboardShellProps) {
+  return (
+    <SignOutProvider>
+      <DashboardFrame initialSession={initialSession} pendingReports={pendingReports} />
+    </SignOutProvider>
+  )
+}
+
+function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const match = matchPath(pathname)
   const service = serviceFor(match)
@@ -100,22 +100,14 @@ export function DashboardShell({ initialSession, pendingReports }: DashboardShel
   const serviceHref = useRememberedSections(service, section?.path)
 
   const sessionQuery = useSession()
-  const user = toShellUser(sessionQuery.data === undefined ? initialSession : sessionQuery.data)
+  const user = toShellUser(sessionQuery.data ?? initialSession)
   const { signOut } = useSignOut()
   const onSignOut = useCallback(() => void signOut(), [signOut])
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [expandedService, setExpandedService] = useState<ServiceId | null>(null)
-  const [header, setHeader] = useState<HTMLElement | null>(null)
   const [main, setMain] = useState<HTMLElement | null>(null)
-  const [width, setWidth] = useState<ContentWidth>("wide")
-  const [pageBarCount, setPageBarCount] = useState(0)
-
-  const registerPageBar = useCallback(() => {
-    setPageBarCount((count) => count + 1)
-    return () => setPageBarCount((count) => count - 1)
-  }, [])
 
   const openNavigation = useCallback(() => {
     setExpandedService(hasPanel ? service.id : null)
@@ -125,11 +117,6 @@ export function DashboardShell({ initialSession, pendingReports }: DashboardShel
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), [])
   const openPalette = useCallback(() => setPaletteOpen(true), [])
   useKeyboardShortcuts(togglePalette)
-
-  // `main` is the scroller, so the router's window scroll restoration does not reach it.
-  useLayoutEffect(() => {
-    main?.scrollTo({ top: 0 })
-  }, [main, pathname])
 
   if (isDesktop && sheetOpen) setSheetOpen(false)
 
@@ -142,8 +129,8 @@ export function DashboardShell({ initialSession, pendingReports }: DashboardShel
   }
 
   const frame = useMemo(
-    (): ShellFrame => ({ header, main, service, section, width, setWidth, openNavigation, registerPageBar }),
-    [header, main, service, section, width, openNavigation, registerPageBar]
+    (): ShellFrame => ({ main, setMain, service, section, openNavigation }),
+    [main, service, section, openNavigation]
   )
 
   return (
@@ -162,17 +149,12 @@ export function DashboardShell({ initialSession, pendingReports }: DashboardShel
             <Panel service={service} match={match} pendingReports={pendingReports} className="max-lg:hidden" />
           ) : null}
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="min-h-13 shrink-0 border-b border-(--pn-line) bg-(--pn-bg)">
-              <div ref={setHeader} />
-              {pageBarCount === 0 ? <PageBarContent /> : null}
+          <div className="flex min-w-0 flex-1 flex-col [&:has([data-page-bar])>[data-shell-fallback]]:hidden">
+            <header data-shell-fallback="" className="min-h-13 shrink-0 border-b border-(--pn-line) bg-(--pn-bg)">
+              <PageBarContent />
             </header>
-            <main ref={setMain} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {/* Section pages have no visible h1: the active panel item names them (§1.1). Deep pages,
-                  Overview and Account render their own. */}
-              {section && !isDeepPage(match) ? <h1 className="sr-only">{section.title}</h1> : null}
-              <Outlet />
-            </main>
+            {section && !isDeepPage(match) ? <h1 className="sr-only">{section.title}</h1> : null}
+            <Outlet />
           </div>
 
           <PanelSheet

@@ -171,9 +171,9 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
       console.error(cause)
       throw new Error(errorMessage(cause, "Couldn't delete the label. Check your permissions and try again."))
     }
+    await router.invalidate({ sync: true })
     if (slot.editingId === label.label) slot.stop()
     appToast.success("Label deleted.")
-    await router.invalidate({ sync: true })
   }
 
   const openTagDialog = (kind: TagKind) => setTagDialog({ open: true, kind })
@@ -237,6 +237,7 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
   return (
     <>
       <PageBar
+        width="tree"
         left={
           <Toolbar
             // Wider than the 280px default so the long placeholder is readable.

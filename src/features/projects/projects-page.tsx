@@ -229,8 +229,11 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       appToast.error("Couldn't move the project.")
       return
     }
+    const moved = projects.map((item) => (item.id === project.id ? { ...item, category: target } : item))
+    const ordered = await persistCategoryOrders(moved, [project.category, target])
     await refresh()
-    appToast.success(`Project moved to ${getProjectCategoryLabel(target)}.`)
+    if (ordered) appToast.success(`Project moved to ${getProjectCategoryLabel(target)}.`)
+    else appToast.warning("Project moved, but its category order couldn't be saved.")
   }
 
   async function removeProject(project: Project) {
@@ -240,8 +243,26 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
       console.error(error)
       throw new Error("Couldn't delete the project. Check your permissions and try again.", { cause: error })
     }
+    const ordered = await persistCategoryOrders(
+      projects.filter((item) => item.id !== project.id),
+      [project.category]
+    )
     await refresh()
-    appToast.success("Project deleted.")
+    if (ordered) appToast.success("Project deleted.")
+    else appToast.warning("Project deleted, but the remaining order couldn't be saved.")
+  }
+
+  async function persistCategoryOrders(items: Project[], categories: ProjectCategory[]) {
+    try {
+      for (const category of categories) {
+        const ids = items.filter((item) => item.category === category).map((item) => item.id)
+        if (ids.length > 1) await enqueueReorder(ids)
+      }
+      return true
+    } catch (error) {
+      console.error(error)
+      return false
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {

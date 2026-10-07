@@ -68,10 +68,6 @@ export const GROUP_LABEL_COLORS = [
 
 export const DEFAULT_GROUP_LABEL_COLOR: string = GROUP_LABEL_COLORS[6].hex // Blue
 
-export function isGroupLabelHexColor(value: string): boolean {
-  return /^#[0-9A-Fa-f]{6}$/.test(value)
-}
-
 type GroupLabelSwatch = {
   hex: string
   label: string

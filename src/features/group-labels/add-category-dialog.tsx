@@ -54,13 +54,13 @@ export function AddCategoryDialog({ open, onOpenChange, labels }: AddCategoryDia
       console.error(cause)
       throw new Error(groupLabelSaveErrorMessage(cause))
     }
+    await router.invalidate({ sync: true })
     appToast.success(`${formatLabelSegment(name.trimmed)} created under ${rootTitle}.`)
     onOpenChange(false)
     await router.navigate({
       to: "/dashboard/web/groups-by-label/$",
       params: { _splat: labelPathToUrlSegments(path).join("/") },
     })
-    await router.invalidate({ sync: true })
   }
 
   return (

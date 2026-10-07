@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx"
 import type { CSSProperties } from "react"
 import { twMerge } from "tailwind-merge"
 
-export type CSSVariableProperties = CSSProperties & {
+type CSSVariableProperties = CSSProperties & {
   [name: `--${string}`]: string | number | undefined
 }
 

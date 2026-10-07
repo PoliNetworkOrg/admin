@@ -1,4 +1,10 @@
-import { type AnyRouter, Link, type RegisteredRouter, type ValidateLinkOptions } from "@tanstack/react-router"
+import {
+  type AnyRouter,
+  Link,
+  type RegisteredRouter,
+  type ValidateLinkOptions,
+  useRouterState,
+} from "@tanstack/react-router"
 import { ArrowLeft, PanelLeft, Search, X } from "lucide-react"
 import {
   createContext,
@@ -8,10 +14,8 @@ import {
   type RefObject,
   useContext,
   useEffect,
-  useLayoutEffect,
   useState,
 } from "react"
-import { createPortal } from "react-dom"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -31,17 +35,12 @@ const widthClass = {
 } satisfies Record<ContentWidth, string>
 
 export type ShellFrame = {
-  /** The header bar element `PageBar` portals into. */
-  header: HTMLElement | null
   /** The scroll container, used as the IntersectionObserver root by `ScrollTitle`. */
   main: HTMLElement | null
+  setMain: (main: HTMLElement | null) => void
   service: Service
   section: Section | null
-  width: ContentWidth
-  setWidth: (width: ContentWidth) => void
   openNavigation: () => void
-  /** Returns the unregister function; the shell renders a bare bar while no page has registered one. */
-  registerPageBar: () => () => void
 }
 
 export const ShellFrameContext = createContext<ShellFrame | null>(null)
@@ -59,16 +58,20 @@ function useShellFrame() {
 
 /** Centers the page content at the template width with the shell's side padding (§2.4). */
 export function PageContent({ width = "wide", children }: { width?: ContentWidth; children: ReactNode }) {
-  const { setWidth } = useShellFrame()
-  useLayoutEffect(() => {
-    setWidth(width)
-    return () => setWidth("wide")
-  }, [setWidth, width])
+  const { setMain } = useShellFrame()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   return (
-    <div className={cn("px-6 pb-12 min-[1440px]:px-8", width === "settings" ? "pt-8" : "pt-6")}>
-      <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
-    </div>
+    <main
+      key={pathname}
+      ref={setMain}
+      data-scroll-restoration-id={`dashboard-main:${pathname}`}
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+    >
+      <div className={cn("px-6 pb-12 min-[1440px]:px-8", width === "settings" ? "pt-8" : "pt-6")}>
+        <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
+      </div>
+    </main>
   )
 }
 
@@ -82,6 +85,8 @@ export type PageBarBack<TRouter extends AnyRouter = RegisteredRouter, TOptions =
 }
 
 export type PageBarProps<TRouter extends AnyRouter = RegisteredRouter, TOptions = unknown> = {
+  /** Match the page's `PageContent` width. */
+  width?: ContentWidth
   /** Section pages: the `Toolbar`. On `< 1024px` it moves to a second row. */
   left?: ReactNode
   /** One primary action, plus at most one `outline` secondary; the primary goes last. */
@@ -103,19 +108,21 @@ export type PageBarProps<TRouter extends AnyRouter = RegisteredRouter, TOptions 
 const barRow = "h-[51px]"
 const titleText = "truncate text-[15px]/[22px] font-semibold tracking-[-0.005em] text-(--pn-fg)"
 
-/** The 52px header bar above `main`. Render one per page, anywhere in the page; it portals into the shell. */
+/** The 52px header bar above `main`, rendered before PageContent on the server and client. */
 export function PageBar<TRouter extends AnyRouter = RegisteredRouter, TOptions = unknown>(
   props: PageBarProps<TRouter, TOptions>
 ): ReactNode
 export function PageBar(props: PageBarProps) {
-  const { header, registerPageBar } = useShellFrame()
-  useLayoutEffect(() => registerPageBar(), [registerPageBar])
-  if (!header) return null
-  return createPortal(<PageBarContent {...props} />, header)
+  return (
+    <header data-page-bar="" className="min-h-13 shrink-0 border-b border-(--pn-line) bg-(--pn-bg)">
+      <PageBarContent {...props} />
+    </header>
+  )
 }
 
 /** Also rendered by the shell itself while the page has no `PageBar`, so the navigation toggle stays reachable. */
 export function PageBarContent({
+  width = "wide",
   left,
   right,
   title,
@@ -125,7 +132,7 @@ export function PageBarContent({
   scrollTitleRef,
   scrollTitle,
 }: PageBarProps) {
-  const { service, section, width } = useShellFrame()
+  const { service, section } = useShellFrame()
   const actions = right ? <div className="flex items-center justify-end gap-2">{right}</div> : null
 
   let bar: ReactNode

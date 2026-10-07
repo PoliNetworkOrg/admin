@@ -3,6 +3,7 @@ import { Moon, Search, Sun } from "lucide-react"
 import { type FocusEvent, type KeyboardEvent, type MouseEvent, type ReactNode, useRef, useState } from "react"
 
 import logoUrl from "@/assets/logo.png"
+import { useModifierKey } from "@/components/primitives/use-modifier-key"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
@@ -10,9 +11,8 @@ import { AccountAvatar, type ShellUser } from "./account-avatar"
 import { type DashboardPath, type PageMatch, type Service, panelServices, serviceById, serviceFor } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
-import { paletteShortcutLabel } from "./use-keyboard-shortcuts"
 
-export const railItemClass =
+const railItemClass =
   "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
 
 // The 2px × 20px indicator sits on the rail's left edge: items are inset 8px, hence -left-2.
@@ -45,7 +45,13 @@ function RailItem({ label, tooltip, hint, active, focusable, target, className, 
   }
   const trigger =
     target.kind === "link" ? (
-      <Link to={target.to} onClick={target.onClick} aria-current={active ? "page" : undefined} {...shared} />
+      <Link
+        to={target.to}
+        onClick={target.onClick}
+        activeOptions={{ exact: true }}
+        aria-current={active ? "page" : undefined}
+        {...shared}
+      />
     ) : (
       <button type="button" onClick={target.onClick} {...shared} />
     )
@@ -79,6 +85,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const { theme, toggleTheme } = useTheme()
+  const modifierKey = useModifierKey()
 
   const activeId = serviceFor(match).id
   const overview = serviceById("overview")
@@ -165,7 +172,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
         label="Search"
         hint={
           <kbd className="rounded-(--pn-r-1) bg-(--pn-bg)/20 px-1 font-sans text-[11px] leading-4">
-            {paletteShortcutLabel()}
+            {modifierKey === "⌘" ? "⌘K" : "Ctrl K"}
           </kbd>
         }
         active={false}

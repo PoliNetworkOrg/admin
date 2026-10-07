@@ -87,9 +87,9 @@ export function WhatsappGroupDialog({ open, onOpenChange, group, onSaved }: What
         cause,
       })
     }
+    await onSaved()
     appToast.success(group ? `${values.title} updated.` : `${values.title} added.`)
     onOpenChange(false)
-    await onSaved()
   }
 
   return (

@@ -169,6 +169,7 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
               }
             />
             <CombinedGroupsTable
+              search={query}
               rows={visible}
               labels={labels}
               tgGroups={tgGroups}

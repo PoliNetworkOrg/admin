@@ -184,12 +184,12 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       appToast.error("Couldn't update the report. Check your permissions and try again.")
       return
     }
-    appToast.success(action === "resolve" ? "Report resolved." : "Report dismissed.")
     // Reloads this list and the panel's open-reports count; the row stays hidden until the new list lands.
     await router.invalidate({ sync: true })
     window.clearTimeout(unmount)
     setKey(setLeaving, group.key, false)
     setKey(setRemoved, group.key, false)
+    appToast.success(action === "resolve" ? "Report resolved." : "Report dismissed.")
   }
 
   function openReport(group: ReportGroup) {

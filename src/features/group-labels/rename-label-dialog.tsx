@@ -74,10 +74,10 @@ export function RenameLabelDialog({ open, onOpenChange, path, labels, onRenamed 
           : "The rename couldn't be completed and was rolled back. Check your permissions and try again."
       )
     }
+    await router.invalidate({ sync: true })
     appToast.success(`Renamed to ${formatLabelBreadcrumb(newPath)}.`)
     onOpenChange(false)
     onRenamed?.(newPath)
-    await router.invalidate({ sync: true })
   }
 
   return (

@@ -1,4 +1,4 @@
-export const MAX_PROFILE_PICTURE_BYTES = 1024 * 1024
+const MAX_PROFILE_PICTURE_BYTES = 1024 * 1024
 const PROFILE_PICTURE_TYPES = new Set(["image/png", "image/jpeg"])
 
 /** PNG or JPEG, up to 1 MB: the rule the backend enforces, checked on the client before uploading. */

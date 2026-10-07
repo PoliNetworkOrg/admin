@@ -14,7 +14,7 @@ export function AccountPage({ initialSession, roles }: { initialSession: AdminSe
 
   return (
     <>
-      <PageBar title="Account" />
+      <PageBar title="Account" width="settings" />
       <PageContent width="settings">
         <div className="flex flex-col gap-12">
           <div className="flex flex-col gap-6">

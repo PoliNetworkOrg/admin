@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils"
 import { GROUP_LABEL_MAX } from "./group-labels.constants"
 import { hasReleaseLabelPrefix, isReservedCategoryRoot, isValidLabelSegment } from "./label-tree"
 
-export type LabelNameKind = "category" | "attribute" | "publication"
+type LabelNameKind = "category" | "attribute" | "publication"
 
 /** The label dialogs' validation copy, verbatim. Empty names are not an error: the submit button stays disabled. */
-export function labelNameError(name: string, kind: LabelNameKind): string | null {
+function labelNameError(name: string, kind: LabelNameKind): string | null {
   const trimmed = name.trim()
   if (!trimmed) return null
   if (!isValidLabelSegment(trimmed)) return "Use a plain name, without dots or URL separators."

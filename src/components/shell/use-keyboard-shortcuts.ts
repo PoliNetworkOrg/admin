@@ -17,6 +17,8 @@ export function useKeyboardShortcuts(onTogglePalette: () => void) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.isComposing) return
 
+      if (document.querySelector('[role="dialog"]:not([data-command-palette]), [role="alertdialog"]')) return
+
       if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault()
         onTogglePalette()
@@ -24,7 +26,7 @@ export function useKeyboardShortcuts(onTogglePalette: () => void) {
       }
 
       if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return
-      if (isTypingTarget(event.target)) return
+      if (isTypingTarget(event.target) || document.querySelector("[data-command-palette]")) return
       const search = document.querySelector<HTMLInputElement>(PAGE_SEARCH_SELECTOR)
       if (!search) return
       event.preventDefault()
@@ -35,9 +37,4 @@ export function useKeyboardShortcuts(onTogglePalette: () => void) {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [onTogglePalette])
-}
-
-/** "⌘K" on Apple platforms, "Ctrl K" elsewhere. */
-export function paletteShortcutLabel() {
-  return /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl K"
 }

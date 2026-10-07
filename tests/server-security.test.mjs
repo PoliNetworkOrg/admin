@@ -241,6 +241,7 @@ test("the auth proxy preserves the request and exact upstream response", async (
 
 test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
@@ -304,6 +305,48 @@ test("dashboard mutations enforce their exact write scope", async () => {
       }
     }
   }
+})
+
+test("dashboard mutation controls use their server's write scope", async () => {
+  const scopes = {
+    "src/features/azure/groups-page.tsx": undefined,
+    "src/features/azure/members-page.tsx": undefined,
+    "src/features/telegram/grants-page.tsx": undefined,
+    "src/features/telegram/user-detail/profile.tsx": undefined,
+    "src/features/telegram/groups-page.tsx": "web",
+    "src/features/whatsapp/whatsapp-groups-page.tsx": "web",
+    "src/features/associations/associations-page.tsx": "web",
+    "src/features/faqs/faqs-page.tsx": "web",
+    "src/features/group-labels/group-labels-page.tsx": "web",
+    "src/features/groups-by-label/categories-page.tsx": "web",
+    "src/features/groups-by-label/category-page.tsx": "web",
+    "src/features/groups-by-label/tag-groups-page.tsx": "web",
+    "src/features/group-link-reports/reports-page.tsx": "web",
+    "src/features/guides/guides-page.tsx": "web",
+    "src/features/projects/projects-page.tsx": "web",
+  }
+  const directory = new URL("../src", import.meta.url).pathname
+  const checked = new Set()
+  for (const file of await sourceFiles(directory)) {
+    const relativeFile = file.replace(`${directory}/`, "src/")
+    const source = ts.createSourceFile(file, await readFile(file, "utf8"), ts.ScriptTarget.Latest, true)
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useCanWrite") {
+        assert.ok(Object.hasOwn(scopes, relativeFile), `${relativeFile} needs a write-scope entry`)
+        const expected = scopes[relativeFile]
+        assert.equal(node.arguments.length, expected === undefined ? 0 : 1, relativeFile)
+        if (expected !== undefined) {
+          assert.ok(ts.isStringLiteral(node.arguments[0]), `${relativeFile} must declare its write scope`)
+          assert.equal(node.arguments[0].text, expected, relativeFile)
+        }
+        checked.add(relativeFile)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  const compare = (a, b) => a.localeCompare(b)
+  assert.deepEqual([...checked].sort(compare), Object.keys(scopes).sort(compare))
 })
 
 test("session middleware marks identity-dependent responses private", async () => {

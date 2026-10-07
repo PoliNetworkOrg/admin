@@ -19,7 +19,7 @@ function subscribe(onChange: () => void) {
  * Applies the theme with every transition suppressed: `data-theme-switching` stays on <html> until the
  * frame painted with the new colors is done, so nothing cross-fades (docs/design.md §2.1, §6).
  */
-export function applyTheme(theme: Theme) {
+function applyTheme(theme: Theme) {
   const root = document.documentElement
   root.setAttribute("data-theme-switching", "")
   root.classList.toggle("dark", theme === "dark")

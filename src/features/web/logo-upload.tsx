@@ -62,7 +62,7 @@ export function WebLogo({ src, name, fallback, className }: WebLogoProps) {
 function noop() {}
 
 /** A chosen logo: the file to upload and its data URL preview. */
-export type ChosenLogo = { file: File; preview: string }
+type ChosenLogo = { file: File; preview: string }
 
 type WebLogoUploadProps = WebLogoProps & {
   rules: LogoRules

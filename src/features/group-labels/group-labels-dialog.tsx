@@ -73,9 +73,9 @@ export function GroupLabelsDialog({
       )
       return
     }
+    await onSaved()
     appToast.success(`Labels updated for ${group.title}.`)
     onOpenChange(false)
-    await onSaved()
   }
 
   return (

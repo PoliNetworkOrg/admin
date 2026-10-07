@@ -16,11 +16,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { GroupLabel } from "@/features/group-labels/types"
 import { cn } from "@/lib/utils"
 
+import type { VisibilityFilter } from "./visibility"
+
 export type LabelFilter = { include: string[]; exclude: string[] }
 
-export const EMPTY_LABEL_FILTER: LabelFilter = { include: [], exclude: [] }
+const EMPTY_LABEL_FILTER: LabelFilter = { include: [], exclude: [] }
 
-export function labelFilterCount(filter: LabelFilter) {
+function labelFilterCount(filter: LabelFilter) {
   return filter.include.length + filter.exclude.length
 }
 
@@ -29,25 +31,6 @@ export function matchesLabelFilter(labels: string[], filter: LabelFilter) {
   return (
     filter.include.every((label) => labels.includes(label)) && filter.exclude.every((label) => !labels.includes(label))
   )
-}
-
-export const VISIBILITY_FILTERS = [
-  { value: "all", label: "All" },
-  { value: "visible", label: "Visible" },
-  { value: "hidden", label: "Hidden" },
-] as const
-
-export type VisibilityFilter = (typeof VISIBILITY_FILTERS)[number]["value"]
-
-export const VISIBILITY_VALUES = ["all", "visible", "hidden"] as const satisfies readonly VisibilityFilter[]
-
-/** The `?visibility=` search param; an unknown value falls back to the default instead of failing the route. */
-export function parseVisibility(value: string | undefined): VisibilityFilter | undefined {
-  return VISIBILITY_VALUES.find((option) => option === value)
-}
-
-export function matchesVisibility(hide: boolean, visibility: VisibilityFilter) {
-  return visibility === "all" || hide === (visibility === "hidden")
 }
 
 type GroupListStateOptions = {

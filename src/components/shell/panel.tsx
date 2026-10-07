@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { type KeyboardEvent, Suspense, use } from "react"
+import { type KeyboardEvent, Suspense, use, useDeferredValue } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -49,12 +49,14 @@ export type SectionItemsProps = {
 export function SectionItems({ service, match, pendingReports, onNavigate }: SectionItemsProps) {
   const current = sectionFor(match)
   const deep = isDeepPage(match)
+  const count = useDeferredValue(pendingReports)
   return service.sections.map((section: Section) => {
     const active = current?.path === section.path
     return (
       <Link
         key={section.id}
         to={section.path}
+        activeOptions={{ exact: true }}
         onClick={onNavigate}
         data-section-item=""
         aria-current={active && !deep ? "page" : undefined}
@@ -68,7 +70,7 @@ export function SectionItems({ service, match, pendingReports, onNavigate }: Sec
         <span className="truncate">{section.title}</span>
         {service.id === "reports" && section.id === "open" ? (
           <Suspense fallback={null}>
-            <PendingReportsCount count={pendingReports} />
+            <PendingReportsCount count={count} />
           </Suspense>
         ) : null}
       </Link>

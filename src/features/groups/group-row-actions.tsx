@@ -110,8 +110,8 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
         appToast.error(VISIBILITY_ERROR)
         return
       }
-      appToast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
       await refresh("The visibility was updated, but the latest group data could not be refreshed.")
+      appToast.success(`${group.title} is now ${hide ? "hidden" : "visible"}.`)
       setOverride(key, null)
     } finally {
       inFlight.current = false
@@ -184,7 +184,7 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
   }
 }
 
-export type GroupActions = ReturnType<typeof useGroupActions>
+type GroupActions = ReturnType<typeof useGroupActions>
 
 type GroupRowActionsProps = {
   group: GroupWithLabels

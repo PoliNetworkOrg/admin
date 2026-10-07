@@ -69,7 +69,7 @@ export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
 
   return (
     <>
-      <PageBar title="Overview" />
+      <PageBar title="Overview" width="overview" />
       <PageContent width="overview">
         <div className="flex flex-col gap-8">
           {someFailed ? (
@@ -127,6 +127,7 @@ export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
                     <li key={id} className="border-b border-(--pn-line) last:border-b-0">
                       <Link
                         to={to}
+                        search={id === "hidden" ? { visibility: "hidden" } : undefined}
                         className="flex h-11 items-center gap-3 px-5 text-[13px] text-(--pn-fg) tabular-nums transition-[background-color] duration-120 hover:bg-(--pn-muted) focus-visible:outline-offset-[-2px]"
                       >
                         <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-(--pn-fg-muted)" />

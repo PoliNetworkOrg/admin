@@ -3,7 +3,7 @@ import type { RegisteredRouter } from "@tanstack/react-router"
 import { appToast } from "@/components/shell"
 import type { TgUser } from "@/lib/api/types"
 
-export type TelegramUserName = Pick<TgUser, "firstName" | "lastName">
+type TelegramUserName = Pick<TgUser, "firstName" | "lastName">
 
 export function telegramUserName(user: TelegramUserName) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
@@ -23,8 +23,8 @@ export async function failWith<T>(call: Promise<T>, message: string): Promise<T>
 }
 
 /**
- * Reloads every matched loader after a mutation. The mutation already succeeded, so a failed reload is a
- * warning ("The role was updated, but the latest user data could not be refreshed."), not an error.
+ * Reloads every matched loader before the mutation UI settles. Loader failures render the router's error
+ * boundary; an unexpected invalidation exception also shows the supplied refresh warning.
  */
 export async function refreshAfterMutation(router: Pick<RegisteredRouter, "invalidate">, warning: string) {
   try {

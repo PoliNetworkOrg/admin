@@ -91,7 +91,10 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogPortal>
         <DialogOverlay className="duration-0 data-closed:animate-none data-open:animate-none" />
-        <DialogPrimitive.Popup className="fixed top-[15vh] left-1/2 z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-(--pn-r-5) bg-(--pn-surface-raised) text-(--pn-fg) shadow-(--pn-shadow-modal) outline-none">
+        <DialogPrimitive.Popup
+          data-command-palette=""
+          className="fixed top-[15vh] left-1/2 z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-(--pn-r-5) bg-(--pn-surface-raised) text-(--pn-fg) shadow-(--pn-shadow-modal) outline-none"
+        >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
           <Command shouldFilter={false} loop label="Command palette">
             <div className="flex h-12 items-center gap-2.5 border-b border-(--pn-line) px-4">

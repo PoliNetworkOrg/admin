@@ -33,12 +33,12 @@ export function LeaveGroupDialog({ open, onOpenChange, group, onLeft }: LeaveGro
     }
     if (result.error && result.error !== "NOT_FOUND") throw new Error(leaveErrorText(result.error))
 
+    await onLeft()
     if (result.error === "NOT_FOUND") {
       appToast.warning("The bot left the group, but its database record was already missing.")
     } else {
       appToast.success(`Left ${group.title}.`)
     }
-    await onLeft()
   }
 
   return (

@@ -1,4 +1,11 @@
-import { format } from "date-fns"
+const dateOptions = { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Rome" } as const
+const dateFormat = new Intl.DateTimeFormat("en-GB", dateOptions)
+const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  ...dateOptions,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+})
 
 const numberFormat = new Intl.NumberFormat("en-GB")
 const pluralRules = new Intl.PluralRules("en-GB")
@@ -15,11 +22,11 @@ const IRREGULAR_PLURALS = new Map([
 ])
 
 export function formatDate(date: Date): string {
-  return format(date, "d MMM yyyy")
+  return dateFormat.format(date)
 }
 
 export function formatDateTime(date: Date): string {
-  return format(date, "d MMM yyyy, HH:mm")
+  return dateTimeFormat.format(date)
 }
 
 export function formatRange(start: Date, end: Date): string {
@@ -30,7 +37,7 @@ export function formatNumber(value: number): string {
   return numberFormat.format(value)
 }
 
-export function pluralNoun(count: number, noun: string): string {
+function pluralNoun(count: number, noun: string): string {
   if (pluralRules.select(count) === "one") return noun
   const irregular = IRREGULAR_PLURALS.get(noun)
   if (irregular) return irregular

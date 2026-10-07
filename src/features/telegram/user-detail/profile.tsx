@@ -39,7 +39,7 @@ type Audit = TelegramUserDetail["audits"][number]
 export function TelegramUserNotFound({ userId }: { userId: string }) {
   return (
     <>
-      <PageBar back={BACK} context={userId} contextMono />
+      <PageBar width="record" back={BACK} context={userId} contextMono />
       <PageContent width="record">
         <h1 className="sr-only">User not found</h1>
         <EmptyState
@@ -105,6 +105,7 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
   return (
     <>
       <PageBar
+        width="record"
         back={BACK}
         context={String(user.id)}
         contextMono

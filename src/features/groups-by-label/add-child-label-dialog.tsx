@@ -45,6 +45,7 @@ export function AddChildLabelDialog({
       console.error(cause)
       throw new Error(groupLabelSaveErrorMessage(cause))
     }
+    await router.invalidate({ sync: true })
     appToast.success(`${childPath} created.`)
     onOpenChange(false)
     onCreated?.(childPath)
@@ -54,7 +55,6 @@ export function AddChildLabelDialog({
         params: { _splat: labelPathToUrlSegments(childPath).join("/") },
       })
     }
-    await router.invalidate({ sync: true })
   }
 
   return (
