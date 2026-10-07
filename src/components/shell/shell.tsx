@@ -18,7 +18,14 @@ import {
   serviceFor,
   services,
 } from "./nav"
-import { PageBarContent, pageBarFrame, type ShellFrame, ShellFrameContext, useRenderedPathname } from "./page-bar"
+import {
+  PageBarContent,
+  pageBarFrame,
+  servicePanelVisible,
+  type ShellFrame,
+  ShellFrameContext,
+  useRenderedPathname,
+} from "./page-bar"
 import { Panel } from "./panel"
 import { PanelSheet } from "./panel-sheet"
 import { Rail } from "./rail"
@@ -105,7 +112,7 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
   const match = matchPath(pathname)
   const service = serviceFor(match)
   const section = sectionFor(match)
-  const hasPanel = service.sections.length > 0
+  const hasPanel = servicePanelVisible(service)
   const isDesktop = useIsDesktop()
   const serviceHref = useRememberedSections(service, section?.path)
 

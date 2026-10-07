@@ -136,6 +136,11 @@ export function PageBar(props: PageBarProps) {
   )
 }
 
+/** The section panel only appears for services with more than one section; a single one would just repeat the rail. */
+export function servicePanelVisible(service: Service) {
+  return service.sections.length > 1
+}
+
 /** Also rendered by the shell itself while the page has no `PageBar`, so the navigation toggle stays reachable. */
 export function PageBarContent({
   width = "wide",
@@ -149,6 +154,7 @@ export function PageBarContent({
   scrollTitle,
 }: PageBarProps) {
   const { service, section } = useShellFrame()
+  const hasPanel = servicePanelVisible(service)
   const actions = right ? <div className="flex items-center justify-end gap-2">{right}</div> : null
 
   let bar: ReactNode
@@ -181,11 +187,21 @@ export function PageBarContent({
     )
   } else {
     // Section page: one row at >= 1024 (toolbar | actions); below, "{Service} › {Section}" and actions on
-    // row 1 (the panel that names both is hidden) and the toolbar alone on row 2.
+    // row 1 (the panel that names both is hidden) and the toolbar alone on row 2. A single-section service has no
+    // panel at all, so at >= 1024 its title stays in front of the toolbar on the one row.
+    const named = section !== null && !hasPanel
     bar = (
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [grid-template-areas:'lead_right'_'tool_tool'] lg:[grid-template-areas:'tool_right']">
-        <div className={cn("flex min-w-0 items-center gap-2 [grid-area:lead] lg:hidden", barRow)}>
-          <NavigationToggle className="lg:hidden" />
+      <div
+        className={cn(
+          "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [grid-template-areas:'lead_right'_'tool_tool']",
+          named
+            ? "lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:[grid-template-areas:'lead_tool_right']"
+            : "lg:[grid-template-areas:'tool_right']"
+        )}
+      >
+        <div className={cn("flex min-w-0 items-center gap-2 [grid-area:lead]", !named && "lg:hidden", barRow)}>
+          {/* Without a panel the sheet adds nothing to the rail, so the toggle only shows where the rail is hidden. */}
+          <NavigationToggle className={hasPanel ? "lg:hidden" : "sm:hidden"} />
           {section ? (
             <span aria-hidden className={titleText}>
               {service.title} › {section.title}
