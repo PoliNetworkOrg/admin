@@ -1,5 +1,5 @@
 import { useSortable } from "@dnd-kit/react/sortable"
-import { ExternalLink, GripVertical, MoreVertical, Trash2 } from "lucide-react"
+import { ExternalLink, FolderInput, GripVertical, Trash2 } from "lucide-react"
 import { useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 
@@ -215,7 +215,7 @@ export function ProjectCard({
     <Menu>
       <MenuTrigger
         render={
-          <IconButton label="Move project" ariaLabel={`Move ${project.title}`} icon={MoreVertical} pending={moving} />
+          <IconButton label="Move project" ariaLabel={`Move ${project.title}`} icon={FolderInput} pending={moving} />
         }
       />
       <MenuContent className="w-48">
