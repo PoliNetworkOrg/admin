@@ -31,7 +31,9 @@ type InlineEditProps = {
    */
   viewHeader?: ReactNode
   edit: ReactNode
-  /** Trailing view-mode actions (e.g. a `⋮` menu). */
+  /** View-mode actions before Edit (e.g. "Move project"). Order: these → Edit → `deleteAction` → `actions`. */
+  leadingActions?: ReactNode
+  /** Trailing view-mode actions: the `⋮` "More actions" menu. */
   actions?: ReactNode
   /** Destructive view-mode action after Edit and before trailing actions. */
   deleteAction?: ReactNode
@@ -131,9 +133,17 @@ function Kbd({ children }: { children: ReactNode }) {
   )
 }
 
-function ViewActions({ onEdit, actions, deleteAction, editLabel = "Edit", editAriaLabel }: InlineEditProps) {
+function ViewActions({
+  onEdit,
+  leadingActions,
+  actions,
+  deleteAction,
+  editLabel = "Edit",
+  editAriaLabel,
+}: InlineEditProps) {
   return (
     <RowActions className="shrink-0">
+      {leadingActions}
       <IconButton label={editLabel} ariaLabel={editAriaLabel} icon={Pencil} onClick={onEdit} />
       {deleteAction}
       {actions}

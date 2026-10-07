@@ -202,7 +202,7 @@ type GroupRowActionsProps = {
 }
 
 /**
- * Per-platform cluster (§7.6, §7.7): copy/open invite link · visibility · [edit] · edit labels · leave/delete.
+ * Per-platform cluster (§7.6, §7.7): copy/open invite link · visibility · edit labels · [edit] · leave/delete (other actions, then edit, then the destructive one).
  * Without write access only the invite link remains.
  */
 export function GroupRowActions({ group, controller, canWrite, alignEdit = false }: GroupRowActionsProps) {
@@ -218,6 +218,14 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
         pending={controller.isToggling(group)}
         onToggle={() => void controller.toggleVisibility(group)}
       />
+      <IconButton
+        label="Edit labels"
+        ariaLabel={`Edit labels for ${group.title}`}
+        icon={Tags}
+        tone="warning"
+        appearance="tinted"
+        onClick={() => controller.show("labels", group)}
+      />
       {group.type === "wa" ? (
         <IconButton
           label="Edit group"
@@ -230,14 +238,6 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
       ) : (
         alignEdit && <span aria-hidden className="size-9 shrink-0" />
       )}
-      <IconButton
-        label="Edit labels"
-        ariaLabel={`Edit labels for ${group.title}`}
-        icon={Tags}
-        tone="warning"
-        appearance="tinted"
-        onClick={() => controller.show("labels", group)}
-      />
       {group.type === "tg" ? (
         <IconButton
           label="Leave group"

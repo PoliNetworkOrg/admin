@@ -271,7 +271,7 @@ export function ProjectCard({
         editLabel="Edit project"
         editAriaLabel={`Edit ${project.title}`}
         handle={handle}
-        actions={moveMenu}
+        leadingActions={moveMenu}
         deleteAction={deleteButton}
         viewHeader={viewHeader}
         view={view}
