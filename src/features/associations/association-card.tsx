@@ -155,6 +155,7 @@ export function AssociationCard({
 
   return (
     <InlineEditCard
+      draft={draft}
       readOnly={!canWrite}
       editing={editing}
       onEdit={onEdit}

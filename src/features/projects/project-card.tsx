@@ -257,6 +257,7 @@ export function ProjectCard({
       )}
     >
       <InlineEditCard
+        draft={draft}
         className="relative"
         readOnly={!canWrite}
         editing={editing}
