@@ -16,7 +16,7 @@ import {
   serviceFor,
   services,
 } from "./nav"
-import { PageBarContent, type ShellFrame, ShellFrameContext } from "./page-bar"
+import { PageBarContent, pageBarFrame, type ShellFrame, ShellFrameContext } from "./page-bar"
 import { Panel } from "./panel"
 import { PanelSheet } from "./panel-sheet"
 import { Rail } from "./rail"
@@ -150,7 +150,7 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
           ) : null}
 
           <div className="flex min-w-0 flex-1 flex-col [&:has([data-page-bar])>[data-shell-fallback]]:hidden">
-            <header data-shell-fallback="" className="min-h-13 shrink-0 border-b border-(--pn-line) bg-(--pn-bg)">
+            <header data-shell-fallback="" className={pageBarFrame}>
               <PageBarContent />
             </header>
             {section && !isDeepPage(match) ? <h1 className="sr-only">{section.title}</h1> : null}

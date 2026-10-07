@@ -68,7 +68,7 @@ export function PageContent({ width = "wide", children }: { width?: ContentWidth
       data-scroll-restoration-id={`dashboard-main:${pathname}`}
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
     >
-      <div className={cn("px-6 pb-12 min-[1440px]:px-8", width === "settings" ? "pt-8" : "pt-6")}>
+      <div className={cn("px-6 pb-12 min-[1440px]:px-8", width === "settings" ? "pt-5" : "pt-3")}>
         <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
       </div>
     </main>
@@ -106,15 +106,18 @@ export type PageBarProps<TRouter extends AnyRouter = RegisteredRouter, TOptions 
 }
 
 const barRow = "h-[51px]"
+
+/** No bottom rule: the bar sits inset like the content below it rather than lining up with the panel header. */
+export const pageBarFrame = "min-h-13 shrink-0 bg-(--pn-bg) lg:pt-4"
 const titleText = "truncate text-[15px]/[22px] font-semibold tracking-[-0.005em] text-(--pn-fg)"
 
-/** The 52px header bar above `main`, rendered before PageContent on the server and client. */
+/** The header bar above `main`, rendered before PageContent on the server and client. */
 export function PageBar<TRouter extends AnyRouter = RegisteredRouter, TOptions = unknown>(
   props: PageBarProps<TRouter, TOptions>
 ): ReactNode
 export function PageBar(props: PageBarProps) {
   return (
-    <header data-page-bar="" className="min-h-13 shrink-0 border-b border-(--pn-line) bg-(--pn-bg)">
+    <header data-page-bar="" className={pageBarFrame}>
       <PageBarContent {...props} />
     </header>
   )
