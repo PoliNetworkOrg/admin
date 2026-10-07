@@ -63,7 +63,7 @@ export function IconButton({
         disabled={disabled || pending}
         className={cn(
           buttonMotion,
-          "text-(--pn-fg-muted) active:not-aria-[haspopup]:translate-y-0 disabled:text-(--pn-fg-subtle) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:bg-transparent",
+          "text-(--pn-fg-muted) active:not-aria-[haspopup]:translate-y-0 disabled:text-(--pn-fg-subtle) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:bg-transparent data-disabled:hover:text-(--pn-fg-subtle)",
           toneClasses[tone],
           appearance === "tinted" && ["border-(--pn-line-strong)", tintedToneClasses[tone]],
           appearance === "tinted" &&
