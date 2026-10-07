@@ -17,13 +17,16 @@ import {
   MenuRadioItem,
   MenuTrigger,
   StatusBadge,
+  TranslationGroup,
+  TranslationPanel,
+  TranslationText,
   Unset,
 } from "@/components/primitives"
 import { hostOf } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { WebLogo, WebLogoUpload } from "../web/logo-upload"
-import { focusOnFinePointer, LanguageChip, LanguageTerm } from "../web/web-card"
+import { focusOnFinePointer } from "../web/web-card"
 import {
   isProjectCategory,
   PROJECT_CATEGORIES,
@@ -111,14 +114,17 @@ export function ProjectCard({
     </button>
   )
 
+  const viewHeader = (
+    <div className="flex h-10 min-w-0 items-center gap-3">
+      <WebLogo src={project.logo} name={project.title} fallback="PR" />
+      <p title={project.title} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
+        {project.title}
+      </p>
+    </div>
+  )
+
   const view = (
     <>
-      <div className="flex h-10 min-w-0 items-center gap-3">
-        <WebLogo src={project.logo} name={project.title} fallback="PR" />
-        <p title={project.title} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
-          {project.title}
-        </p>
-      </div>
       <p className="text-[13px] leading-5">
         {project.link ? (
           <a
@@ -135,16 +141,14 @@ export function ProjectCard({
           <Unset />
         )}
       </p>
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
-        <LanguageTerm code="IT" name="Italian" />
-        <dd lang="it" className="line-clamp-4 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
-          {project.descriptionIt}
-        </dd>
-        <LanguageTerm code="EN" name="English" />
-        <dd lang="en" className="line-clamp-4 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
-          {project.descriptionEn}
-        </dd>
-      </dl>
+      <TranslationGroup>
+        <TranslationPanel lang="it">
+          <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
+        </TranslationPanel>
+        <TranslationPanel lang="en">
+          <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
+        </TranslationPanel>
+      </TranslationGroup>
     </>
   )
 
@@ -181,26 +185,28 @@ export function ProjectCard({
         onBlur={session.onLinkBlur}
         error={session.linkError}
       />
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
-        <LanguageChip code="IT" className="mt-2.5" />
-        <InlineEditTextarea
-          label="Italian description"
-          lang="it"
-          placeholder="Descrizione in italiano"
-          value={session.values.descriptionIt}
-          maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
-          onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
-        />
-        <LanguageChip code="EN" className="mt-2.5" />
-        <InlineEditTextarea
-          label="English description"
-          lang="en"
-          placeholder="Description in English"
-          value={session.values.descriptionEn}
-          maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
-          onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
-        />
-      </div>
+      <TranslationGroup>
+        <TranslationPanel lang="it" editing>
+          <InlineEditTextarea
+            label="Italian description"
+            lang="it"
+            placeholder="Descrizione in italiano"
+            value={session.values.descriptionIt}
+            maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
+          />
+        </TranslationPanel>
+        <TranslationPanel lang="en" editing>
+          <InlineEditTextarea
+            label="English description"
+            lang="en"
+            placeholder="Description in English"
+            value={session.values.descriptionEn}
+            maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
+          />
+        </TranslationPanel>
+      </TranslationGroup>
     </>
   )
 
@@ -266,6 +272,7 @@ export function ProjectCard({
         handle={handle}
         actions={moveMenu}
         deleteAction={deleteButton}
+        viewHeader={viewHeader}
         view={view}
         edit={edit}
       />

@@ -9,12 +9,15 @@ import {
   InlineEditInput,
   InlineEditTextarea,
   StatusBadge,
+  TranslationGroup,
+  TranslationPanel,
+  TranslationText,
 } from "@/components/primitives"
 import { Count } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { WebLogo, WebLogoUpload } from "../web/logo-upload"
-import { focusOnFinePointer, LanguageChip, LanguageTerm } from "../web/web-card"
+import { focusOnFinePointer } from "../web/web-card"
 import {
   ASSOCIATION_DESCRIPTION_MAX_LENGTH,
   ASSOCIATION_LINK_FIELDS,
@@ -69,24 +72,25 @@ export function AssociationCard({
     if (editing) focusOnFinePointer(nameRef.current)
   }, [editing])
 
+  const viewHeader = (
+    <div className="flex h-10 min-w-0 items-center gap-3">
+      <WebLogo src={association.logo} name={association.name} fallback="AS" />
+      <p title={association.name} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
+        {association.name}
+      </p>
+    </div>
+  )
+
   const view = (
     <>
-      <div className="flex h-10 min-w-0 items-center gap-3">
-        <WebLogo src={association.logo} name={association.name} fallback="AS" />
-        <p title={association.name} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
-          {association.name}
-        </p>
-      </div>
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
-        <LanguageTerm code="IT" name="Italian" />
-        <dd lang="it" className="line-clamp-5 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
-          {association.descriptionIt}
-        </dd>
-        <LanguageTerm code="EN" name="English" />
-        <dd lang="en" className="line-clamp-5 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
-          {association.descriptionEn}
-        </dd>
-      </dl>
+      <TranslationGroup>
+        <TranslationPanel lang="it">
+          <TranslationText lines={5}>{association.descriptionIt}</TranslationText>
+        </TranslationPanel>
+        <TranslationPanel lang="en">
+          <TranslationText lines={5}>{association.descriptionEn}</TranslationText>
+        </TranslationPanel>
+      </TranslationGroup>
       {/* Pinned to the bottom so cards sharing a grid row line their footers up. */}
       <div className="mt-auto flex min-h-9 items-center gap-2">
         <Count value={publicLinkCount(association)} noun="public link" className="text-xs" />
@@ -122,26 +126,28 @@ export function AssociationCard({
         />
         {draft && <StatusBadge tone="warning">Draft</StatusBadge>}
       </div>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
-        <LanguageChip code="IT" className="mt-2.5" />
-        <InlineEditTextarea
-          label="Italian description"
-          lang="it"
-          placeholder="Descrizione in italiano"
-          value={session.values.descriptionIt}
-          maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
-          onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
-        />
-        <LanguageChip code="EN" className="mt-2.5" />
-        <InlineEditTextarea
-          label="English description"
-          lang="en"
-          placeholder="Description in English"
-          value={session.values.descriptionEn}
-          maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
-          onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
-        />
-      </div>
+      <TranslationGroup>
+        <TranslationPanel lang="it" editing>
+          <InlineEditTextarea
+            label="Italian description"
+            lang="it"
+            placeholder="Descrizione in italiano"
+            value={session.values.descriptionIt}
+            maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
+          />
+        </TranslationPanel>
+        <TranslationPanel lang="en" editing>
+          <InlineEditTextarea
+            label="English description"
+            lang="en"
+            placeholder="Description in English"
+            value={session.values.descriptionEn}
+            maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
+          />
+        </TranslationPanel>
+      </TranslationGroup>
     </>
   )
 
@@ -175,6 +181,7 @@ export function AssociationCard({
           }
         />
       }
+      viewHeader={viewHeader}
       view={view}
       edit={edit}
     />

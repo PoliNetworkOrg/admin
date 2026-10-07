@@ -25,6 +25,11 @@ type InlineEditProps = {
   /** Validation message for the footer's left slot. */
   message?: ReactNode
   view: ReactNode
+  /**
+   * Cards: the view's top row (logo + title). The actions sit beside it and `view` spans the full card width below,
+   * so view and edit bodies are equally wide. Without it the actions take a column next to the whole view.
+   */
+  viewHeader?: ReactNode
   edit: ReactNode
   /** Trailing view-mode actions (e.g. a `⋮` menu). */
   actions?: ReactNode
@@ -138,11 +143,21 @@ export function InlineEditCard(props: InlineEditProps) {
           {props.handle}
         </span>
       )}
-      {/* Grows with a stretched grid cell, so a view's last block can sit at the bottom with `mt-auto`. */}
-      <div className="flex flex-1 items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch">{editing ? props.edit : props.view}</div>
-        {!editing && !props.readOnly && <ViewActions {...props} />}
-      </div>
+      {/* The body grows with a stretched grid cell, so a view's last block can sit at the bottom with `mt-auto`. */}
+      {props.viewHeader && !editing ? (
+        <>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">{props.viewHeader}</div>
+            {!props.readOnly && <ViewActions {...props} />}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-3">{props.view}</div>
+        </>
+      ) : (
+        <div className="flex flex-1 items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch">{editing ? props.edit : props.view}</div>
+          {!editing && !props.readOnly && <ViewActions {...props} />}
+        </div>
+      )}
       {editing && <EditFooter {...props} />}
     </article>
   )
