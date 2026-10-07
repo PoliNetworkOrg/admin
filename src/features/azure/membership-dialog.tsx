@@ -122,6 +122,14 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
         setError("Microsoft 365 could not complete the change. Try again.")
         return
       }
+      try {
+        await router.invalidate({ sync: true })
+      } catch (caught) {
+        console.error(caught)
+        appToast.warning("The membership was updated, but the latest group data could not be refreshed.")
+      }
+      appToast.success(adding ? `${name} added to ${group.displayName}.` : `${name} removed from ${group.displayName}.`)
+      onOpenChange(false)
     } catch (caught) {
       console.error(caught)
       setError(
@@ -132,15 +140,6 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
       return
     } finally {
       setPending(false)
-    }
-
-    appToast.success(adding ? `${name} added to ${group.displayName}.` : `${name} removed from ${group.displayName}.`)
-    onOpenChange(false)
-    try {
-      await router.invalidate({ sync: true })
-    } catch (caught) {
-      console.error(caught)
-      appToast.warning("The membership was updated, but the latest group data could not be refreshed.")
     }
   }
 

@@ -66,9 +66,9 @@ export function AssociationsPage({ loadedAssociations: associations }: { loadedA
   const deferredQuery = useDeferredValue(query)
   const [links, setLinks] = useState<{ id: number; open: boolean; opened: number }>({ id: 0, open: false, opened: 0 })
 
-  const slot = useEditSlot<number>("association")
-  const [form, setForm] = useState<AssociationForm | null>(null)
   const [saving, setSaving] = useState(false)
+  const slot = useEditSlot<number>("association", saving)
+  const [form, setForm] = useState<AssociationForm | null>(null)
   const [saveError, setSaveError] = useState<string | undefined>(undefined)
   const [logoError, setLogoError] = useState<string | null>(null)
   const [sessionFor, setSessionFor] = useState<number | null>(null)

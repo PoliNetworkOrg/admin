@@ -9,29 +9,31 @@ import { pluralize } from "@/lib/format"
 import { renameGroupLabel } from "./group-labels.functions"
 import { groupLabelSaveErrorMessage } from "./group-labels.validation"
 import { LabelNameField, useLabelName, useResetOnOpen } from "./label-name-field"
-import { formatLabelBreadcrumb } from "./label-tree"
+import { formatLabelBreadcrumb, isCategoryLabel } from "./label-tree"
 import type { GroupLabel } from "./types"
 
 type RenameLabelDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Dotted category path; may be a grouping node without a label row of its own. */
+  /** Attribute name or category path; a category may be a grouping node without its own label row. */
   path: string
   labels: GroupLabel[]
   /** Called with the new path after a successful rename (e.g. to carry expanded tree state over). */
   onRenamed?: (newPath: string) => void
 }
 
-/** Renames the last segment of a category; every label nested under it is re-pathed too. */
+/** Renames an attribute or the last segment of a category, including its nested labels. */
 export function RenameLabelDialog({ open, onOpenChange, path, labels, onRenamed }: RenameLabelDialogProps) {
   const router = useRouter()
   const renameGroupLabelFn = useServerFn(renameGroupLabel)
   const nameId = useId()
-  const segments = path.split(".")
+  const category = isCategoryLabel(path)
+  const kind = category ? "category" : "attribute"
+  const segments = category ? path.split(".") : [path]
   const segment = segments.at(-1) ?? path
   const parent = segments.slice(0, -1).join(".")
-  const name = useLabelName("category", segment)
-  const affected = labels.filter((label) => label.label === path || label.label.startsWith(`${path}.`))
+  const name = useLabelName(kind, segment)
+  const affected = labels.filter((label) => label.label === path || (category && label.label.startsWith(`${path}.`)))
   const nestedCount = affected.filter((label) => label.label !== path).length
 
   useResetOnOpen(open, () => name.reset(segment))
@@ -84,13 +86,13 @@ export function RenameLabelDialog({ open, onOpenChange, path, labels, onRenamed 
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Rename category"
+      title={`Rename ${kind}`}
       description={
         nestedCount > 0
           ? `Renames ${breadcrumb} and the ${pluralize(nestedCount, "label")} nested under it, keeping their colors, descriptions, and tagged groups.`
           : `Renaming ${breadcrumb} keeps its color, description, and any groups already tagged with it.`
       }
-      noun="category"
+      noun={kind}
       dirty={changed}
       submitLabel="Rename"
       canSubmit={changed}

@@ -51,6 +51,9 @@ export function groupActionsWidth(icons: 4 | 5, canWrite: boolean) {
   return icons * 36 + (icons - 1) * 4 + 8 + 36
 }
 
+export const mobileGroupTableClasses =
+  "max-sm:[&_table]:block max-sm:[&_thead]:block max-sm:[&_thead_tr]:block max-sm:[&_thead_th:first-child]:block max-sm:[&_thead_th:first-child]:max-w-none max-sm:[&_thead_th:last-child]:hidden max-sm:[&_tbody]:block max-sm:[&_tbody_tr]:grid max-sm:[&_tbody_tr]:h-auto max-sm:[&_tbody_tr]:grid-cols-1 max-sm:[&_tbody_td:first-child]:max-w-none max-sm:[&_tbody_td:first-child]:py-3 max-sm:[&_tbody_td:last-child]:w-auto max-sm:[&_tbody_td:last-child]:justify-self-end max-sm:[&_tbody_td:last-child]:pb-2"
+
 /** `router.invalidate({ sync: true })` after a mutation; a failed reload is a warning, the mutation itself succeeded. */
 export function useRefreshGroups() {
   const router = useRouter()

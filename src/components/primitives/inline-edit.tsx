@@ -48,6 +48,7 @@ type InlineEditProps = {
 function useEditKeys({ editing, readOnly, saving, valid, dirty, onCancel, onSave }: InlineEditProps) {
   return (event: KeyboardEvent<HTMLElement>) => {
     if (!editing || readOnly || !(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return
     if (event.key === "Escape") {
       event.preventDefault()
       if (!saving) onCancel()
@@ -114,7 +115,11 @@ export function InlineEditCard(props: InlineEditProps) {
         props.className
       )}
     >
-      {!props.readOnly && !props.editing && props.handle}
+      {props.handle && (
+        <span className="contents" hidden={props.readOnly || props.editing}>
+          {props.handle}
+        </span>
+      )}
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-3">{editing ? props.edit : props.view}</div>
         {!editing && !props.readOnly && <ViewActions {...props} />}

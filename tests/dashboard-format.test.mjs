@@ -21,3 +21,18 @@ test("dashboard timestamps remain identical across server and browser timezones"
     else process.env.TZ = originalTimezone
   }
 })
+
+test("calendar inputs display the selected local day across timezones", () => {
+  const originalTimezone = process.env.TZ
+  try {
+    for (const timezone of ["UTC", "Europe/Rome", "America/Los_Angeles", "Asia/Tokyo", "Pacific/Auckland"]) {
+      process.env.TZ = timezone
+      for (const hour of [0, 23]) {
+        assert.equal(formatDate(new Date(2026, 9, 6, hour, 30), "local"), "6 Oct 2026")
+      }
+    }
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ
+    else process.env.TZ = originalTimezone
+  }
+})

@@ -15,8 +15,8 @@ type MemberDialogProps = {
   onOpenChange: (open: boolean) => void
   /** Shows the new member ID in the table right away; returns the function that reverts it. */
   onOptimisticUpdate: (memberId: string, employeeId: string) => () => void
-  /** Runs after a successful save, once the dialog has closed. */
-  onSaved: (target: MemberDialogTarget) => void
+  /** Reloads the saved member before the dialog closes. */
+  onSaved: (target: MemberDialogTarget) => Promise<void>
 }
 
 const MEMBER_ID_ERROR = "Enter a valid positive member ID."
@@ -81,8 +81,8 @@ export function MemberDialog({ target, open, onOpenChange, onOptimisticUpdate, o
       console.error(caught)
       throw new Error(caught instanceof Error ? saveError(caught) : SAVE_ERROR, { cause: caught })
     }
+    await onSaved(target)
     onOpenChange(false)
-    onSaved(target)
   }
 
   return (

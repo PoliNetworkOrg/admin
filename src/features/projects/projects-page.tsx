@@ -101,9 +101,9 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   const reorderQueue = useRef<Promise<unknown>>(Promise.resolve())
   const projects = optimistic ?? loadedProjects
 
-  const slot = useEditSlot<number>("project")
-  const [form, setForm] = useState<ProjectForm | null>(null)
   const [saving, setSaving] = useState(false)
+  const slot = useEditSlot<number>("project", saving)
+  const [form, setForm] = useState<ProjectForm | null>(null)
   const [saveError, setSaveError] = useState<string | undefined>(undefined)
   // §5.10: the link is validated on the first Save attempt, then again on blur once it has errored.
   const [linkErrored, setLinkErrored] = useState(false)
@@ -157,6 +157,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   }
 
   function addProject() {
+    if (saving) return
     setDraftCategory(category)
     if (!editingDraft) startEdit(DRAFT_ID)
   }

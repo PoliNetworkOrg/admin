@@ -152,7 +152,7 @@ export function PublishEditionDialog({
             }
           >
             <CalendarDays aria-hidden className="text-(--pn-fg-muted)" />
-            <span className="tabular-nums">{formatDate(date)}</span>
+            <span className="tabular-nums">{formatDate(date, "local")}</span>
             <ChevronDown aria-hidden className="ml-auto text-(--pn-fg-muted)" />
           </PopoverTrigger>
           <PopoverContent

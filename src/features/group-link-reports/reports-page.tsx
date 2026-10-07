@@ -48,6 +48,15 @@ const ISSUE_LABEL = {
 /** One row per broken group or missing label; `latest` supplies the row's text and date. */
 type ReportGroup = { key: string; latest: GroupLinkReport; ids: number[] }
 
+function ReportIssue({ report }: { report: GroupLinkReport }) {
+  return (
+    <>
+      {report.reportType === "broken_link" && report.type ? <PlatformGlyph platform={report.type} /> : null}
+      {ISSUE_LABEL[report.reportType]}
+    </>
+  )
+}
+
 function groupKey(report: GroupLinkReport) {
   return report.reportType === "broken_link" ? `broken:${report.type}:${report.groupId}` : `missing:${report.label}`
 }
@@ -213,18 +222,24 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       label: "Reference",
       minWidth: 220,
       fill: true,
+      className: "max-sm:py-2",
       cell: ({ latest, ids }) => {
         const text = reference(latest)
         return (
-          <span className="flex min-w-0 items-center gap-2">
-            {text ? (
-              <span title={text} className="truncate">
-                {text}
-              </span>
-            ) : (
-              <Unset />
-            )}
-            {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
+          <span className="block min-w-0">
+            <span className="flex min-w-0 items-center gap-2">
+              {text ? (
+                <span title={text} className="truncate">
+                  {text}
+                </span>
+              ) : (
+                <Unset />
+              )}
+              {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
+            </span>
+            <span className="mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) sm:hidden">
+              <ReportIssue report={latest} />
+            </span>
           </span>
         )
       },
@@ -233,10 +248,10 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       id: "issue",
       label: "Issue",
       minWidth: 160,
+      className: "max-sm:hidden",
       cell: ({ latest }) => (
         <span className="flex items-center gap-2 whitespace-nowrap">
-          {latest.reportType === "broken_link" && latest.type ? <PlatformGlyph platform={latest.type} /> : null}
-          {ISSUE_LABEL[latest.reportType]}
+          <ReportIssue report={latest} />
         </span>
       ),
     },

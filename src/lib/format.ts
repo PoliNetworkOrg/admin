@@ -21,8 +21,10 @@ const IRREGULAR_PLURALS = new Map([
   ["entry", "entries"],
 ])
 
-export function formatDate(date: Date): string {
-  return dateFormat.format(date)
+export function formatDate(date: Date, timeZone: "Europe/Rome" | "local" = "Europe/Rome"): string {
+  return timeZone === "local"
+    ? date.toLocaleDateString("en-GB", { ...dateOptions, timeZone: undefined })
+    : dateFormat.format(date)
 }
 
 export function formatDateTime(date: Date): string {

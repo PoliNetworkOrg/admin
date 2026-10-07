@@ -151,9 +151,9 @@ function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGr
       console.error(result.error)
       throw new Error(grantMutationError(result.error))
     }
+    await refreshAfterMutation(router, "The grant was created, but the latest grants could not be refreshed.")
     appToast.success(`Grant created for ${telegramUserName(selectedUser)}.`)
     onOpenChange(false)
-    await refreshAfterMutation(router, "The grant was created, but the latest grants could not be refreshed.")
   }
 
   const queryError = lookupResult.kind === "invalid" ? lookupResult.message : undefined

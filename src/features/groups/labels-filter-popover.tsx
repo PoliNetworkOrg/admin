@@ -193,7 +193,7 @@ export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPop
         className={cn(
           raisedSurface,
           floatingMotion,
-          "max-h-(--available-height) w-80 gap-3 overflow-y-auto rounded-(--pn-r-4) p-3"
+          "max-h-(--available-height) w-80 gap-3 overflow-y-auto rounded-(--pn-r-4) p-3 max-lg:max-w-[calc(100vw-2rem)]"
         )}
       >
         {labels.length === 0 ? (

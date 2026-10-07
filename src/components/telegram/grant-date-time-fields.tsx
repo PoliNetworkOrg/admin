@@ -158,7 +158,7 @@ function DesktopDateTimeInput({ id, label, value, onChange, minimum, invalid, di
         >
           <CalendarIcon aria-hidden data-icon="inline-start" />
           {selected ? (
-            <span className="tabular-nums">{formatDate(selected)}</span>
+            <span className="tabular-nums">{formatDate(selected, "local")}</span>
           ) : (
             <span className="text-(--pn-fg-subtle)">Choose {label.toLocaleLowerCase()}</span>
           )}

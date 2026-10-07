@@ -118,12 +118,14 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
   const visibleCount = matchingCategories + visibleAttributes.length + visiblePublications.length
 
   const expansion = useExpandedPaths()
-  const slot = useEditSlot<string>("label")
-  const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
+  const slot = useEditSlot<string>("label", saving)
+  const [draft, setDraft] = useState<Draft | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const editing = labels.find((label) => label.label === slot.editingId) ?? null
-  if (editing && draft?.label !== editing.label) {
+  if (!editing && draft !== null) {
+    setDraft(null)
+  } else if (editing && draft?.label !== editing.label) {
     setDraft({ label: editing.label, color: editing.color, description: editing.description ?? "" })
   }
   const dirty =
@@ -500,6 +502,8 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
 }
 
 const rowClasses = "border-b border-(--pn-line)"
+const mobileRowClasses =
+  "max-sm:flex-wrap max-sm:gap-y-0 max-sm:py-1 max-sm:[&>div:first-child]:basis-full max-sm:[&>div:last-child]:ml-auto"
 const nameLinkClasses =
   "min-w-0 truncate text-[13px] leading-5 font-medium text-(--pn-fg) underline-offset-2 hover:underline"
 
@@ -537,7 +541,7 @@ function Description({ text }: { text: string | null }) {
 }
 
 function Indent({ depth }: { depth: number }) {
-  return depth > 0 ? <span aria-hidden className="shrink-0" style={{ width: depth * 24 }} /> : null
+  return depth > 0 ? <span aria-hidden className="shrink-0 max-sm:max-w-24" style={{ width: depth * 24 }} /> : null
 }
 
 /** Grouping nodes (no label row) and read-only rows: same 44px geometry as `InlineEditRow`. */
@@ -555,7 +559,7 @@ function PlainRow({
   actions?: ReactNode
 }) {
   return (
-    <div className={cn("flex min-h-11 items-center gap-3 px-4", rowClasses)}>
+    <div className={cn("flex min-h-11 items-center gap-3 px-4", rowClasses, actions && mobileRowClasses)}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <Indent depth={depth} />
@@ -599,7 +603,10 @@ function LabelRow({
 
   return (
     <InlineEditRow
-      className={rowClasses}
+      className={cn(
+        rowClasses,
+        draft === null ? mobileRowClasses : "max-sm:[&>div:first-child>div:last-child]:basis-full"
+      )}
       editing={draft !== null}
       onEdit={() => ctx.onEdit(label.label)}
       onCancel={ctx.onCancel}
@@ -610,7 +617,21 @@ function LabelRow({
       error={ctx.saveError}
       editLabel="Edit label"
       editAriaLabel={`Edit color and description for ${name}`}
-      actions={menu}
+      actions={
+        menu ??
+        (labelKind(label.label) === "attribute" ? (
+          <Menu>
+            <MenuTrigger
+              render={
+                <IconButton label="More actions" ariaLabel={`More actions for ${name}`} icon={EllipsisVertical} />
+              }
+            />
+            <MenuContent>
+              <MenuItem onClick={() => ctx.onRename(label.label)}>Rename</MenuItem>
+            </MenuContent>
+          </Menu>
+        ) : null)
+      }
       deleteAction={
         <IconButton
           label="Delete label"
@@ -643,7 +664,7 @@ function LabelRow({
               placeholder="What kind of groups does this label apply to?"
               maxLength={GROUP_LABEL_DESCRIPTION_MAX}
               autoFocus
-              className="min-w-56"
+              className="min-w-56 max-sm:min-w-0"
             />
           </>
         )

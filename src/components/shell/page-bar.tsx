@@ -176,7 +176,11 @@ export function PageBarContent({
             </span>
           ) : null}
         </div>
-        {left ? <div className="flex h-11 min-w-0 items-center [grid-area:tool] lg:h-[51px]">{left}</div> : null}
+        {left ? (
+          <div className="flex h-11 min-w-0 items-center [grid-area:tool] max-lg:h-auto max-lg:min-h-11 max-lg:py-1 lg:h-[51px]">
+            {left}
+          </div>
+        ) : null}
         {actions ? <div className={cn("flex items-center [grid-area:right]", barRow)}>{actions}</div> : null}
       </div>
     )
@@ -356,7 +360,7 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
         autoComplete="off"
         spellCheck={false}
         data-page-search=""
-        className="h-9 w-full rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface) pr-9 pl-8 text-[14px] text-(--pn-fg) placeholder:text-(--pn-fg-subtle) [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-9 w-full rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface) pr-9 pl-8 text-[14px] text-(--pn-fg) placeholder:text-(--pn-fg-subtle) max-lg:text-base [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value !== "" ? (
         <button
@@ -385,17 +389,25 @@ export type ToolbarProps = {
 /** The section-page left slot: lead → search → filters → count (§1.2, §2.3). */
 export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
   return (
-    <div className="flex w-full min-w-0 items-center gap-4">
+    <div className="flex w-full min-w-0 items-center gap-4 max-lg:flex-wrap max-lg:gap-2 max-lg:[&_[role=group]]:h-auto max-lg:[&_[role=group]]:max-w-full max-lg:[&_[role=group]]:flex-wrap">
       {lead || search || filters ? (
-        <div className={cn("flex min-w-0 flex-1 items-center gap-2", lead ? "lg:flex-[0_1_auto]" : "lg:flex-none")}>
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 max-lg:contents",
+            lead ? "lg:flex-[0_1_auto]" : "lg:flex-none"
+          )}
+        >
           {lead}
           {search ? (
-            <SearchField {...search} className={cn("flex-1 lg:w-60 lg:flex-none xl:w-70", search.className)} />
+            <SearchField
+              {...search}
+              className={cn("flex-1 max-lg:w-full max-lg:flex-none lg:w-60 lg:flex-none xl:w-70", search.className)}
+            />
           ) : null}
           {filters}
         </div>
       ) : null}
-      {count}
+      {count ? <div className="contents max-lg:ml-auto max-lg:flex max-lg:shrink-0 max-lg:pl-2">{count}</div> : null}
     </div>
   )
 }

@@ -70,9 +70,9 @@ function RoleDialogBody({ open, onOpenChange, mode, userId, roles, configuredRol
       console.error(result.error)
       throw new Error(roleMutationError(result.error, adding))
     }
+    await refreshAfterMutation(router, "The role was updated, but the latest user data could not be refreshed.")
     appToast.success(`${roleLabel(role)} role ${adding ? "assigned" : "removed"}.`)
     onOpenChange(false)
-    await refreshAfterMutation(router, "The role was updated, but the latest user data could not be refreshed.")
   }
 
   return (

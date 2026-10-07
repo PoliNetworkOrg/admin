@@ -17,6 +17,7 @@ import {
   GroupRowActions,
   groupKey,
   labelLink,
+  mobileGroupTableClasses,
   resolveLabels,
   useGroupActions,
   useLabelsByPath,
@@ -166,6 +167,7 @@ export function WhatsappGroupsPage({
       />
       <PageContent width="wide">
         <DataTable
+          className={canWrite ? mobileGroupTableClasses : undefined}
           label="WhatsApp groups"
           columns={columns}
           rows={rows}

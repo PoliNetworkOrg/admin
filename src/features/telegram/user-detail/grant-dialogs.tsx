@@ -33,8 +33,8 @@ export function InterruptGrantDialog({ open, onOpenChange, userId, userName }: I
       console.error(result.error)
       throw new Error(grantMutationError(result.error))
     }
-    appToast.success(`Grant ended for ${userName}.`)
     await refreshAfterMutation(router, "The grant was ended, but the latest user data could not be refreshed.")
+    appToast.success(`Grant ended for ${userName}.`)
   }
 
   return (

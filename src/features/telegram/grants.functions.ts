@@ -3,16 +3,6 @@ import { z } from "zod"
 
 import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
-export const getTelegramGrants = createServerFn()
-  .middleware([adminMiddleware])
-  .handler(async ({ context }) => {
-    const [ongoing, scheduled] = await Promise.all([
-      context.backend.tg.grants.getOngoing.query(),
-      context.backend.tg.grants.getScheduled.query(),
-    ])
-    return { ongoing, scheduled }
-  })
-
 /**
  * The grants page: both grant lists plus the users who authorized them, so "Authorized by" can show a name.
  * The users list is decoration here; when it fails the page still loads and shows the grantor ids.

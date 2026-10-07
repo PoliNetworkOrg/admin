@@ -53,7 +53,8 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim())
   const [openIds, setOpenIds] = useState<number[]>([])
-  const edit = useEditSlot<number>("FAQ")
+  const [saving, setSaving] = useState(false)
+  const edit = useEditSlot<number>("FAQ", saving)
   const editDirty = useRef(false)
   const [categoryDialog, setCategoryDialog] = useState<CategoryDialogState>({ key: 0, category: null })
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
@@ -95,19 +96,24 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
   }
 
   async function saveFaq(faqId: number, categoryId: number, input: FaqInput) {
-    let savedId = faqId
+    setSaving(true)
     try {
-      if (faqId === DRAFT_ID) {
-        savedId = (await addFAQFn({ data: { ...input, categoryId } })).id
-      } else {
-        await editFAQFn({ data: { id: faqId, ...input, categoryId } })
+      let savedId = faqId
+      try {
+        if (faqId === DRAFT_ID) {
+          savedId = (await addFAQFn({ data: { ...input, categoryId } })).id
+        } else {
+          await editFAQFn({ data: { id: faqId, ...input, categoryId } })
+        }
+      } catch (error) {
+        console.error(error)
+        throw new Error("Couldn't save the FAQ.")
       }
-    } catch (error) {
-      console.error(error)
-      throw new Error("Couldn't save the FAQ.")
+      await router.invalidate({ sync: true })
+      finishEdit(savedId)
+    } finally {
+      setSaving(false)
     }
-    await router.invalidate({ sync: true })
-    finishEdit(savedId)
   }
 
   const addFaqButton =

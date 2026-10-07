@@ -53,9 +53,9 @@ function AddGroupAdminDialogBody({
       addGroupAdmin({ data: { userId, groupId: group.telegramId } }),
       "The user could not be added as a group administrator."
     )
+    await refreshAfterMutation(router, "The administrator was added, but the latest user data could not be refreshed.")
     appToast.success("Group administrator added.")
     onOpenChange(false)
-    await refreshAfterMutation(router, "The administrator was added, but the latest user data could not be refreshed.")
   }
 
   return (
@@ -139,8 +139,8 @@ export function RemoveGroupAdminDialog({
       console.error(result.error)
       throw new Error(groupAdminMutationError(result.error))
     }
-    appToast.success("Group administrator removed.")
     await refreshAfterMutation(router, "The assignment was removed, but the latest user data could not be refreshed.")
+    appToast.success("Group administrator removed.")
   }
 
   return (

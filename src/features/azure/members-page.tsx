@@ -150,9 +150,9 @@ export function AzureMembersPage({ members }: { members: AzureMember[] }) {
   )
 
   async function onSaved(target: MemberDialogTarget) {
-    appToast.success(target.mode === "create" ? "Member created." : "Member ID updated.")
     try {
       await router.invalidate({ sync: true })
+      if (target.mode === "edit") dropOptimistic(target.member.id)
     } catch (caught) {
       console.error(caught)
       // The saved member ID stays on screen; only the rest of the directory is stale.
@@ -161,9 +161,8 @@ export function AzureMembersPage({ members }: { members: AzureMember[] }) {
           ? "The member was created, but the latest directory data could not be refreshed."
           : "The member ID was updated, but the latest directory data could not be refreshed."
       )
-      return
     }
-    if (target.mode === "edit") dropOptimistic(target.member.id)
+    appToast.success(target.mode === "create" ? "Member created." : "Member ID updated.")
   }
 
   function openDialog(target: MemberDialogTarget) {
@@ -286,7 +285,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] }) {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onOptimisticUpdate={applyOptimistic}
-          onSaved={(target) => void onSaved(target)}
+          onSaved={onSaved}
         />
       ) : null}
     </>

@@ -223,7 +223,13 @@ export function DataTable<T>({
           tabIndex={interactive ? 0 : undefined}
           aria-label={interactive && rowLabel ? `Open ${rowLabel(row)}` : undefined}
           data-selected={selectedRowId === id || undefined}
-          onClick={interactive ? () => onRowClick(row) : undefined}
+          onClick={
+            interactive
+              ? (event) => {
+                  if (isPlainClick(event)) onRowClick(row)
+                }
+              : undefined
+          }
           onKeyDown={interactive ? (event) => openRow(event, row) : undefined}
           className={cn(
             "h-11 border-(--pn-line) transition-[background-color] duration-120",

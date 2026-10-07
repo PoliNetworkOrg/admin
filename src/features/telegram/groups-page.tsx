@@ -18,6 +18,7 @@ import {
   GroupRowActions,
   groupKey,
   labelLink,
+  mobileGroupTableClasses,
   resolveLabels,
   useGroupActions,
   useLabelsByPath,
@@ -189,6 +190,7 @@ export function TelegramGroupsPage({
       />
       <PageContent width="wide">
         <DataTable
+          className={canWrite ? mobileGroupTableClasses : undefined}
           label="Telegram groups"
           columns={columns}
           rows={rows}
