@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { LogOut, Pencil, Tags, Trash2 } from "lucide-react"
 import { type ReactNode, useMemo, useRef, useState } from "react"
 
-import { IconButton, InviteLinkButton, VisibilityToggle } from "@/components/primitives"
+import { IconButton, InviteLinkActions, VisibilityToggle } from "@/components/primitives"
 import { appToast } from "@/components/shell"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { isCategoryLabel, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
@@ -43,12 +43,13 @@ export function resolveLabels(paths: string[], byPath: Map<string, GroupLabel>):
 }
 
 /**
- * Width the actions column needs: 36px per icon, 4px gaps, 8px before the destructive one, 36px cell padding.
- * Telegram rows have four icons, WhatsApp (and mixed) rows five; read-only rows only the invite link.
+ * Width the actions column needs, with 36px cell padding: the flush copy/open pair (72px) and 8px after it, then
+ * 4px + 36px per tinted icon and 8px before the destructive one. Telegram rows have three tinted icons, WhatsApp (and
+ * mixed) rows four; read-only rows only the invite link pair.
  */
-export function groupActionsWidth(icons: 4 | 5, canWrite: boolean) {
-  if (!canWrite) return 72
-  return icons * 36 + (icons - 1) * 4 + 8 + 36
+export function groupActionsWidth(tinted: 3 | 4, canWrite: boolean) {
+  if (!canWrite) return 72 + 8 + 36
+  return 72 + 8 + tinted * (4 + 36) + 8 + 36
 }
 
 export const mobileGroupTableClasses =
@@ -201,11 +202,11 @@ type GroupRowActionsProps = {
 }
 
 /**
- * Per-platform cluster (§7.6, §7.7): invite link · visibility · [edit] · edit labels · leave/delete.
+ * Per-platform cluster (§7.6, §7.7): copy/open invite link · visibility · [edit] · edit labels · leave/delete.
  * Without write access only the invite link remains.
  */
 export function GroupRowActions({ group, controller, canWrite, alignEdit = false }: GroupRowActionsProps) {
-  const invite = <InviteLinkButton link={group.link} name={group.title} />
+  const invite = <InviteLinkActions link={group.link} name={group.title} />
   if (!canWrite) return invite
 
   return (

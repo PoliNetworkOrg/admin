@@ -132,7 +132,7 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
         actions={(row) => (
           <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} alignEdit={mixed} />
         )}
-        actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 5 : 4, canWrite)}
+        actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 4 : 3, canWrite)}
         pagination={{
           page: current,
           pageSize,

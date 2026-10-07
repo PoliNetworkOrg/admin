@@ -175,7 +175,7 @@ export function WhatsappGroupsPage({
           sort={sort}
           onSort={list.setSort}
           actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
-          actionsWidth={groupActionsWidth(5, canWrite)}
+          actionsWidth={groupActionsWidth(4, canWrite)}
           pagination={pagination}
           empty={empty}
         />

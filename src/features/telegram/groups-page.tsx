@@ -198,7 +198,7 @@ export function TelegramGroupsPage({
           sort={sort}
           onSort={list.setSort}
           actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
-          actionsWidth={groupActionsWidth(4, canWrite)}
+          actionsWidth={groupActionsWidth(3, canWrite)}
           pagination={pagination}
           empty={empty}
         />
