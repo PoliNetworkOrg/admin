@@ -2,9 +2,10 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useNavigate } from "@tanstack/react-router"
 import { Command } from "cmdk"
 import { LogOut, type LucideIcon, Moon, Search, Sun, UserRound } from "lucide-react"
-import { type ReactNode, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog"
+import { suppressNextFocusTooltip } from "@/components/ui/tooltip"
 
 import { panelServices } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
@@ -42,6 +43,18 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
   const [query, setQuery] = useState("")
   // Set when an entry runs, so closing does not hand focus back to the trigger (see `finalFocus`).
   const ranEntry = useRef(false)
+  // The last element focused outside the palette: where a dismissal returns focus.
+  const returnTarget = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    function remember(event: FocusEvent) {
+      if (event.target instanceof HTMLElement && !event.target.closest("[data-command-palette]")) {
+        returnTarget.current = event.target
+      }
+    }
+    document.addEventListener("focusin", remember)
+    return () => document.removeEventListener("focusin", remember)
+  }, [])
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
 
@@ -91,14 +104,18 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
   }
 
   /**
-   * Dismissing (Esc, outside press) returns focus to where it was. After an entry ran, the user has moved on (a new
-   * page, a new theme): restoring focus to the trigger, often the rail's Search button, would light up its focus
-   * ring and tooltip on the next page, so focus is left alone.
+   * Dismissing (Esc, outside press) returns focus to where it was, without opening that element's tooltip (the rail
+   * Search button would otherwise announce "Search ⌘K" again). After an entry ran, the user has moved on (a new page,
+   * a new theme), so focus is left alone rather than lighting up the trigger on the next page.
    */
   function finalFocus() {
     const ran = ranEntry.current
     ranEntry.current = false
-    return !ran
+    if (ran) return false
+    const target = returnTarget.current
+    if (!target?.isConnected) return true
+    suppressNextFocusTooltip(target)
+    return target
   }
 
   return (
