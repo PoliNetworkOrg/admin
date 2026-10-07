@@ -184,7 +184,9 @@ export function TelegramGroupsPage({
                 />
               </>
             }
-            count={<Count value={matching.length} total={list.filtering ? all.length : undefined} noun="group" />}
+            // Segment counts already show each option's total; the count appears only when search or labels narrow
+            // the list further, and then just the matching number.
+            count={list.narrowed ? <Count value={matching.length} noun="group" /> : undefined}
           />
         }
       />

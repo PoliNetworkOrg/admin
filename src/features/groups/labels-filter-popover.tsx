@@ -68,6 +68,8 @@ export function useGroupListState({ defaultSort, urlQuery, visibility, onVisibil
 
   const deferredQuery = useDeferredValue(query).trim().toLocaleLowerCase()
   const filtering = deferredQuery !== "" || labelFilterCount(filter) > 0 || visibility !== "all"
+  /** Search or labels narrow the list beyond the visibility segment, whose own count already shows the rest. */
+  const narrowed = deferredQuery !== "" || labelFilterCount(filter) > 0
 
   /** The current page of `rows` (the page clamps when rows disappear) and the footer props. */
   function paginate<T>(rows: T[]) {
@@ -106,6 +108,7 @@ export function useGroupListState({ defaultSort, urlQuery, visibility, onVisibil
       setPage(1)
     },
     filtering,
+    narrowed,
     clear: () => {
       setQueryValue("")
       setFilterValue(EMPTY_LABEL_FILTER)

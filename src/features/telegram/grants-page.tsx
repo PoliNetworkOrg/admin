@@ -208,7 +208,6 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
   const currentPage = Math.min(page, pageCount)
   const rows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const searching = normalized !== ""
-  const narrowed = searching || tab !== "all"
 
   function updateQuery(value: string) {
     setQuery(value)
@@ -236,7 +235,9 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
                 }}
               />
             }
-            count={<Count value={filtered.length} total={narrowed ? current.length : undefined} noun="grant" />}
+            // Segment counts already show each option's total; the count appears only when search narrow
+            // the list further, and then just the matching number.
+            count={searching ? <Count value={filtered.length} noun="grant" /> : undefined}
           />
         }
         right={

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
 import { buttonMotion, EmptyState, SegmentedControl, useEditSlot } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { ProjectCard, type ProjectEditSession } from "./project-card"
@@ -327,15 +327,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
 
   return (
     <>
-      <PageBar
-        left={
-          <Toolbar
-            filters={segments}
-            count={<Count value={inCategory.length} total={projects.length} noun="project" />}
-          />
-        }
-        right={canWrite ? addButton : undefined}
-      />
+      <PageBar left={<Toolbar filters={segments} />} right={canWrite ? addButton : undefined} />
       <PageContent width="wide">
         {slot.discardDialog}
         {cards.length === 0 ? (

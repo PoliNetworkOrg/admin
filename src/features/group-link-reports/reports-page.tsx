@@ -318,12 +318,10 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
                 }}
               />
             }
+            // Segment counts already show each option's total; the count appears only when search narrow
+            // the list further, and then just the matching number.
             count={
-              <Count
-                value={reportCount}
-                total={filteredView ? visibleReports.length : undefined}
-                noun={open ? "open report" : "closed report"}
-              />
+              deferredQuery ? <Count value={reportCount} noun={open ? "open report" : "closed report"} /> : undefined
             }
           />
         }

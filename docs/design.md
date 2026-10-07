@@ -819,7 +819,7 @@ SectionCard  Audit log  4
 
 ### 7.5 Grants `/dashboard/telegram/grants`
 
-- Template: List. Header bar: search "Search users, authorizers or reasons…", segmented `All {n} | Ongoing {n} | Scheduled {n}` (`ToggleGroup`, counts tabular muted inside), `Count` "{n} grants"; right (canWrite) `New grant` (`default`).
+- Template: List. Header bar: search "Search users, authorizers or reasons…", segmented `All {n} | Ongoing {n} | Scheduled {n}` (`ToggleGroup`, counts tabular muted inside), `Count` "{n} grants" only while searching; right (canWrite) `New grant` (`default`).
 - Columns: User (name or "User {id}", secondary `@username` or mono `Telegram ID {id}`), Reason ("—" when null), Authorized by (name when the grantor is a known user, otherwise mono id — fixes inconsistency §6), Starts, Expires (sortable), Status (`StatusBadge`). Default sort Starts asc. Page 20.
 - Empty: filtered "No grants match" / "Try another user, authorizer or reason."; true "No grants in this view" / "Grants are board-authorized periods when a user may send links without automatic moderation."
 
@@ -855,7 +855,7 @@ SectionCard  Audit log  4
 
 ### 7.10 Projects `/dashboard/web/projects`
 
-- Template: Card-collection in a single column at every width, because the card order is the order on the website. Header bar: segmented `News {n} | General {n} | Deprecated {n}`, `Count` "{n} projects"; right `Add project`.
+- Template: Card-collection in a single column at every width, because the card order is the order on the website. Header bar: segmented `News {n} | General {n} | Deprecated {n}`, no `Count` (the segments carry the numbers); right `Add project`.
 - Card: drag handle, logo 40 (image or initials; fallback "PR"), title 14/500, actions move (`FolderInput`, tooltip "Move project"; menu: "Move to News/General/Deprecated" radio group), `✎`, `🗑`. Body (full card width, the actions sit beside the logo row only): link (13 `--pn-accent`, the full URL truncated to one line, external icon; `—` when missing), then IT/EN `TranslationPanel`s side by side (4-line clamp; §5.14).
 - Inline edit per §5.9: logo upload button over the logo (SVG/PNG/JPEG ≤ 1 MB; verbatim errors as field errors), Title (max 160), Link (placeholder `https://…`), IT/EN textareas (max 5000). Save disabled until title + both descriptions.
 - Drafts: `Add project` inserts a card at the top in edit mode with empty fields and placeholders "Project title" / "Descrizione in italiano" / "Description in English" (placeholders, not prefilled text) and a "Draft" badge.
@@ -918,7 +918,7 @@ SectionCard  Audit log  4
 
 ### 7.17 Reports `/dashboard/reports/group-links` → "Open", `/dashboard/reports/resolved` → "Closed"
 
-- Template: Queue (4.8). Header bar: segmented filter, search "Search by group, label or link…" (**added**), `Count` "{n} open reports" / "{n} closed reports". No primary action.
+- Template: Queue (4.8). Header bar: segmented filter, search "Search by group, label or link…" (**added**), `Count` "{n} open reports" / "{n} closed reports" only while searching. No primary action.
 - Columns: Reference (group title or label or `—`; `CountBadge ×n` for grouped duplicates), Issue (platform glyph + "Broken link" / "Missing group"), Details (reported link as host + path truncated, or details text; `—`), Status (Closed only, `StatusBadge`), Date (`d MMM yyyy`), actions (Open only): `X` "Dismiss", `Check` "Resolve".
 - Row click/Enter: broken link → the platform's groups list with `?q={groupTitle}`; missing → the category page. Row has `aria-label="Open {reference}"`.
 - Toasts "Report resolved." / "Report dismissed." / "Couldn't update the report. Check your permissions and try again."
@@ -973,7 +973,7 @@ Title: "No {things} yet" (true empty) or "No {things} match" (filtered). Text: o
 
 ### 8.5 Counts
 
-`Count` renders `{n} {noun}` or `{n} of {total} {noun}` with the noun pluralized by `Intl.PluralRules` ("1 group", "2 groups"). Multiple counts are joined with " · ". The word "results" is not used. Counts in segmented filters are bare tabular numbers after the label. Counts next to section titles are bare numbers in 13 muted tabular, 8px after the title.
+`Count` renders `{n} {noun}` or `{n} of {total} {noun}` with the noun pluralized by `Intl.PluralRules` ("1 group", "2 groups"). Multiple counts are joined with " · ". The word "results" is not used. Counts in segmented filters are bare tabular numbers after the label. Never repeat a number already on screen: next to a segmented filter with counts, the toolbar `Count` is shown only while search or another filter narrows the list beyond the selected segment, and then as `{n} {noun}` without "of {total}"; a page whose only filter is the segmented one (Projects) has no toolbar `Count`. Counts next to section titles are bare numbers in 13 muted tabular, 8px after the title.
 
 ### 8.6 Dates and times
 
