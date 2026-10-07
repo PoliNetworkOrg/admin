@@ -103,11 +103,12 @@ export function FaqRow({ faq, canWrite, onEdit, onDelete }: FaqRowProps) {
       <AccordionPrimitive.Panel className="grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] ease-(--pn-ease-move) [transition-duration:200ms,150ms] data-ending-style:grid-rows-[0fr] data-ending-style:opacity-0 data-starting-style:grid-rows-[0fr] data-starting-style:opacity-0">
         <div className="min-h-0 overflow-hidden">
           <div className="px-5 pt-1 pb-4">
+            {/* A card-colored border keeps the panels distinct when the hovered item takes their background. */}
             <TranslationGroup>
-              <TranslationPanel lang="it">
+              <TranslationPanel lang="it" className="border-(--pn-line)">
                 <TranslationText>{faq.descriptionIt}</TranslationText>
               </TranslationPanel>
-              <TranslationPanel lang="en">
+              <TranslationPanel lang="en" className="border-(--pn-line)">
                 <TranslationText>{faq.descriptionEn || <Unset />}</TranslationText>
               </TranslationPanel>
             </TranslationGroup>
