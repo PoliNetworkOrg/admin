@@ -419,7 +419,7 @@ Used by: Projects, Associations.
 ```
 PageBar  [left: Search / Segments][Count]                     [right: + Add …]
 ──────────────────────────────────────────────────────────────────────────────
-grid  gap 16   (2 columns ≥ 1024, 1 below)
+grid  gap 16   (2 columns ≥ 1024, 1 below; Projects: always 1)
   ┌ InlineEditCard ───────────────────────────────────────────────────────┐
   │ [logo 40] Title                                   [✎] [🗑] [⋮]         │
   │ link (muted, 13)                                                      │
@@ -840,7 +840,7 @@ SectionCard  Audit log  4
 
 ### 7.10 Projects `/dashboard/web/projects`
 
-- Template: Card-collection. Header bar: segmented `News {n} | General {n} | Deprecated {n}`, `Count` "{n} projects"; right `Add project`.
+- Template: Card-collection in a single column at every width, because the card order is the order on the website. Header bar: segmented `News {n} | General {n} | Deprecated {n}`, `Count` "{n} projects"; right `Add project`.
 - Card: drag handle, logo 40 (image or initials; fallback "PR"), title 14/500, actions `✎`, `🗑`, `⋮` (menu: "Move to News/General/Deprecated" radio group). Body: link (13 `--pn-accent`, host only, external icon; `—` when missing), then "IT" tiny chip + description (4-line clamp), "EN" tiny chip + description.
 - Inline edit per §5.9: logo upload button over the logo (SVG/PNG/JPEG ≤ 1 MB; verbatim errors as field errors), Title (max 160), Link (placeholder `https://…`), IT/EN textareas (max 5000). Save disabled until title + both descriptions.
 - Drafts: `Add project` inserts a card at the top in edit mode with empty fields and placeholders "Project title" / "Descrizione in italiano" / "Description in English" (placeholders, not prefilled text) and a "Draft" badge.

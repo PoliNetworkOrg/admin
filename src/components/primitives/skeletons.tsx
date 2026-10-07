@@ -72,13 +72,19 @@ export function TableSkeleton({ columns, rows = 8, label = "Loading…", classNa
   )
 }
 
-type CardsSkeletonProps = { count?: number; label?: string; className?: string }
+type CardsSkeletonProps = {
+  count?: number
+  /** Projects use 1: their order matters, so they read as one list. */
+  columns?: 1 | 2
+  label?: string
+  className?: string
+}
 
 /** Card-collection geometry: logo + title row, link line, two description blocks. */
-export function CardsSkeleton({ count = 4, label = "Loading…", className }: CardsSkeletonProps) {
+export function CardsSkeleton({ count = 4, columns = 2, label = "Loading…", className }: CardsSkeletonProps) {
   return (
     <Pulse label={label} className={className}>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={cn("grid gap-4", columns === 2 && "lg:grid-cols-2")}>
         {Array.from({ length: count }, (_, index) => (
           <div
             key={index}

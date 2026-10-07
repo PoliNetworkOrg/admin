@@ -9,7 +9,7 @@ export const Route = createFileRoute("/dashboard/web/projects")({
   loader: () => getProjects(),
   pendingComponent: () => (
     <PageContent width="wide">
-      <CardsSkeleton label="Loading projects…" />
+      <CardsSkeleton columns={1} label="Loading projects…" />
     </PageContent>
   ),
   component: ProjectsRoute,
