@@ -43,9 +43,9 @@ export function TranslationPanel({ lang, editing = false, children, className }:
       lang={lang}
       onMouseDown={editing ? focusFirstField : undefined}
       className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border bg-(--pn-muted)/60 p-3 transition-[border-color,background-color] duration-120",
+        "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border bg-(--pn-muted)/60 p-3 transition-[border-color,background-color,box-shadow] duration-120",
         editing
-          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-[color-mix(in_oklch,var(--pn-accent)_70%,var(--pn-line))] focus-within:bg-(--pn-muted) has-aria-invalid:border-(--pn-danger-solid)"
+          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-(--pn-focus) focus-within:bg-(--pn-muted) focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--pn-focus)_25%,transparent)] has-aria-invalid:border-(--pn-danger-solid)"
           : "border-transparent",
         className
       )}
