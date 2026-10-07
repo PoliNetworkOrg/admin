@@ -312,7 +312,9 @@ tr:focus-visible {
   box-shadow: none;
 }
 
-:is(input, textarea, [data-slot="combobox-input"])[aria-invalid="true"]:is(:focus-visible, :focus) {
+:is(input, textarea, [data-slot="combobox-input"])[aria-invalid="true"]:is(:focus-visible, :focus):not(
+    [data-focus-ring="none"]
+  ) {
   outline: none;
   border-color: var(--pn-danger-solid);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--pn-danger-solid) 25%, transparent);

@@ -262,6 +262,8 @@ export function InlineEditTextarea({
           value={value}
           maxLength={maxLength}
           rows={1}
+          // The panel's border shows focus; the global input focus ring would draw a box inside it.
+          data-focus-ring="none"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn(bareTextareaClasses, className)}

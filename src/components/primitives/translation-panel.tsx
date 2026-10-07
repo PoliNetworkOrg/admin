@@ -45,7 +45,7 @@ export function TranslationPanel({ lang, editing = false, children, className }:
       className={cn(
         "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border bg-(--pn-muted)/60 p-3 transition-[border-color,background-color] duration-120",
         editing
-          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-[color-mix(in_oklch,var(--pn-accent)_70%,var(--pn-line))] focus-within:bg-(--pn-muted)"
+          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-[color-mix(in_oklch,var(--pn-accent)_70%,var(--pn-line))] focus-within:bg-(--pn-muted) has-aria-invalid:border-(--pn-danger-solid)"
           : "border-transparent",
         className
       )}
@@ -67,8 +67,7 @@ export function TranslationPanel({ lang, editing = false, children, className }:
 
 /** A press on the panel's padding or header lands in its first field instead of doing nothing. */
 function focusFirstField(event: MouseEvent<HTMLDivElement>) {
-  const target = event.target as HTMLElement
-  if (target.closest("input, textarea, button, a, [role=button]")) return
+  if (event.target instanceof Element && event.target.closest("input, textarea, button, a, [role=button]")) return
   const field = event.currentTarget.querySelector<HTMLInputElement | HTMLTextAreaElement>("textarea, input")
   if (!field || field.disabled) return
   event.preventDefault()
