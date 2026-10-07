@@ -16,6 +16,7 @@ import {
 import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 import { PublishEditionDialog } from "./guide-dialogs"
 import { deleteGuide } from "./guides.functions"
@@ -86,7 +87,10 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
           nativeButton={false}
           aria-label={`Download version ${guide.version} PDF`}
           render={<a href={guide.file} target="_blank" rel="noreferrer" />}
-          className={buttonMotion}
+          className={cn(
+            buttonMotion,
+            "h-7 gap-1.5 rounded-(--pn-r-2) px-2.5 text-[13px] has-data-[icon=inline-start]:pl-2 [&_svg]:text-(--pn-fg-muted)"
+          )}
         >
           <Download aria-hidden data-icon="inline-start" />
           PDF

@@ -858,7 +858,7 @@ SectionCard  Audit log  4
 ### 7.12 Freshman guide `/dashboard/web/guides` (section title "Freshman guide")
 
 - Template: List (no pagination, no sort). Header bar: search "Search by version…", `Count` "{n} editions"; right `Publish edition` (`default`).
-- Columns: Edition ("Version {v}" 13/500, `StatusBadge tone=brand` "Latest" on the newest), Published (`d MMM yyyy`), File (`Download` outline-icon button with label "PDF", opens new tab), actions `🗑` → `ConfirmDialog` "Delete edition?" / "Version {v} is removed and its PDF is no longer linked. This cannot be undone." / `Delete edition`.
+- Columns: Edition ("Version {v}" 13/500, `StatusBadge tone=brand` "Latest" on the newest), Published (`d MMM yyyy`), File (28px `outline` button: muted `Download` 14px icon + "PDF" 13/500, 8px/10px padding, `--pn-r-2`; opens a new tab), actions `🗑` → `ConfirmDialog` "Delete edition?" / "Version {v} is removed and its PDF is no longer linked. This cannot be undone." / `Delete edition`.
 - `CreateGuideDialog` (`md`): title "Publish a new edition", description kept; Version (prefilled next; dup error verbatim), Date (calendar popover, shown `d MMM yyyy`), PDF file (file button, hint "PDF only, up to 2 MB."). Dirty close → shared `ConfirmDialog`. Footer `Cancel` / `Publish edition`. Toasts "Edition {v} published." / "Edition deleted."
 - Empty: filtered "No editions match" / "Try a different version number."; true "No editions yet" / "Upload the first PDF edition of the Guida della Matricola." + `Publish edition`.
 
