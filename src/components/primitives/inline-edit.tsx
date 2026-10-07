@@ -43,8 +43,6 @@ type InlineEditProps = {
   handle?: ReactNode
   /** Viewers without write access: only `view` renders; no edit, delete, `actions` or `handle`. */
   readOnly?: boolean
-  /** New, unsaved record: a dashed accent border sets it apart from saved cards. */
-  draft?: boolean
   className?: string
 }
 
@@ -152,7 +150,8 @@ export function InlineEditCard(props: InlineEditProps) {
       onKeyDown={onKeyDown}
       className={cn(
         "flex flex-col gap-3 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) p-4 text-(--pn-fg)",
-        props.draft && "border-dashed border-(--pn-accent)",
+        // Edit mode (drafts included): a dashed accent border sets the card being edited apart.
+        editing && "border-dashed border-(--pn-accent)",
         props.className
       )}
     >

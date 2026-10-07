@@ -429,8 +429,8 @@ grid  gap 16   (2 columns ≥ 1024, 1 below; Projects: always 1)
 ```
 
 - Cards: `--pn-surface`, 1px `--pn-line`, `--pn-r-4`, 16px padding, 12px internal gap. No hover elevation; hover shows nothing except on the action buttons. Cards in one grid row share its height; a card footer (Associations: links count + `Manage links`) sits at the bottom (`mt-auto`), so footers line up.
-- Edit mode replaces text with fields of identical line boxes (see §5.9); card width and position do not change.
-- Drafts (new, unsaved) get a dashed `--pn-accent` border (`InlineEditCard draft`, background unchanged) and a `StatusBadge tone=warning` "Draft" after the title and are inserted at the top of the grid.
+- Edit mode replaces text with fields of identical line boxes (see §5.9) and turns the border into a dashed `--pn-accent` one (background unchanged); card width and position do not change.
+- Drafts (new, unsaved) get a dashed `--pn-accent` border like any card in edit mode (background unchanged) and a `StatusBadge tone=warning` "Draft" after the title and are inserted at the top of the grid.
 - Drag (Projects): handle icon `GripVertical` 16px at the card's left edge, visible always in `--pn-fg-subtle`, `--pn-fg` when the handle itself is hovered or focused (not on card hover: only the handle drags). The dragged card becomes a ghost (`opacity .9`, `--pn-shadow-float`, `scale 1.01`); siblings translate with 160ms ease-in-out; on drop the ghost settles with 200ms ease-out. Reduced motion: siblings swap instantly.
 - Loading: 4 card skeletons with the card geometry. Empty: `EmptyState` centered in the content.
 
