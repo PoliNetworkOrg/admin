@@ -367,6 +367,26 @@ tr:focus-visible {
   z-index: 1;
 }
 
+/* The toggle the light comes from is lifted out of both snapshots and drawn live on top, so its icon follows every
+   press during a reveal. Only its live image shows: no cross-fade, no geometry animation. */
+::view-transition-group(pn-theme-toggle) {
+  animation: none;
+}
+
+::view-transition-old(pn-theme-toggle) {
+  display: none;
+}
+
+::view-transition-new(pn-theme-toggle) {
+  animation: none;
+}
+
+/* Hover during a reveal (`:hover` cannot match then). The live toggle is drawn in the new theme while the area
+   around it may still show the old one, so the tint is a neutral grey that reads on both. */
+:root[data-theme-switching] [data-theme-toggle][data-pointer-over] {
+  background-color: color-mix(in oklab, currentColor 16%, transparent);
+}
+
 /* Theme switches swap every color in one frame (§2.1). */
 
 :root[data-theme-switching] *,

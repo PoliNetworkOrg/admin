@@ -13,6 +13,7 @@ export function ThemeToggle() {
       size="icon"
       className="text-muted-foreground"
       onClick={toggleTheme}
+      data-theme-toggle=""
       aria-label={label}
       title={label}
     >

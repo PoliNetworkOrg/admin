@@ -151,7 +151,7 @@ export function PanelSheet({
             <Search aria-hidden className={glyphClass} strokeWidth={1.75} />
             Search
           </button>
-          <button type="button" className={rowClass} onClick={toggleTheme}>
+          <button type="button" data-theme-toggle="" className={rowClass} onClick={toggleTheme}>
             {theme === "dark" ? (
               <Sun aria-hidden className={glyphClass} strokeWidth={1.75} />
             ) : (

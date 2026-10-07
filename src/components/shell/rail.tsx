@@ -33,7 +33,7 @@ type RailItemProps = {
   active: boolean
   focusable: boolean
   target: RailItemTarget
-  /** Marks the theme toggle, where the command palette's theme switch starts its reveal. */
+  /** Marks the theme toggle: the palette's theme switch starts its reveal here, and presses during a reveal find it. */
   themeToggle?: boolean
   className?: string
   children: ReactNode
