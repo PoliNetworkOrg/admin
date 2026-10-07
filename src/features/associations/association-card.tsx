@@ -87,7 +87,8 @@ export function AssociationCard({
           {association.descriptionEn}
         </dd>
       </dl>
-      <div className="flex min-h-9 items-center gap-2">
+      {/* Pinned to the bottom so cards sharing a grid row line their footers up. */}
+      <div className="mt-auto flex min-h-9 items-center gap-2">
         <Count value={publicLinkCount(association)} noun="public link" className="text-xs" />
         {canWrite && (
           <Button variant="ghost" size="sm" onClick={onManageLinks} className={buttonMotion}>

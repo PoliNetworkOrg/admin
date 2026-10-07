@@ -138,8 +138,9 @@ export function InlineEditCard(props: InlineEditProps) {
           {props.handle}
         </span>
       )}
-      <div className="flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-3">{editing ? props.edit : props.view}</div>
+      {/* Grows with a stretched grid cell, so a view's last block can sit at the bottom with `mt-auto`. */}
+      <div className="flex flex-1 items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch">{editing ? props.edit : props.view}</div>
         {!editing && !props.readOnly && <ViewActions {...props} />}
       </div>
       {editing && <EditFooter {...props} />}

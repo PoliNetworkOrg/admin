@@ -172,7 +172,7 @@ export function AssociationsPage({ loadedAssociations: associations }: { loadedA
   let content
   if (cards.length > 0) {
     content = (
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {cards.map((association) => (
           <AssociationCard
             key={association.id}
