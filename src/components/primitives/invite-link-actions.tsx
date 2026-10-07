@@ -1,9 +1,9 @@
 import { CircleCheck, CircleX, Copy, ExternalLink, Link2Off } from "lucide-react"
+import { AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 
 import { appToast } from "@/components/shell/toast"
 import { copyText } from "@/lib/clipboard"
-import { cn } from "@/lib/utils"
 
 import { IconButton } from "./icon-button"
 
@@ -16,9 +16,36 @@ type InviteLinkActionsProps = {
 /** How long the copy button shows its result before returning to the copy icon. */
 const RESULT_MS = 1500
 
+const RESULT_ICONS = { idle: Copy, copied: CircleCheck, failed: CircleX }
+
+/** Icon swap: deep scale, fade and a little blur on a bounce-free spring; under reduced motion the icon just changes. */
+const swapTransition: Transition = { type: "spring", duration: 0.35, bounce: 0 }
+const swapHidden = { scale: 0.3, opacity: 0, filter: "blur(3px)" }
+const swapShown = { scale: 1, opacity: 1, filter: "blur(0px)" }
+
+function CopyResultIcon({ state }: { state: keyof typeof RESULT_ICONS }) {
+  const reduceMotion = useReducedMotion()
+  const Icon = RESULT_ICONS[state]
+  return (
+    <AnimatePresence initial={false} mode="popLayout">
+      <motion.span
+        key={state}
+        aria-hidden
+        className="grid size-4 place-items-center"
+        initial={swapHidden}
+        animate={swapShown}
+        exit={swapHidden}
+        transition={reduceMotion ? { duration: 0 } : swapTransition}
+      >
+        <Icon className="size-4" />
+      </motion.span>
+    </AnimatePresence>
+  )
+}
+
 /**
  * Copy and open the group's invite link: two ghost buttons, flush, with 8px before the actions that follow. Copy shows
- * its result in place (green check, red ✕) for 1.5s. Without a link, a disabled "Not shared" button (dimmed amber
+ * its result in place (circle-check, circle-x) for 1.5s. Without a link, a disabled "Not shared" button (dimmed amber
  * icon) takes Open's place and Copy's slot stays empty, so columns stay aligned.
  */
 export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
@@ -62,11 +89,10 @@ export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
           <IconButton
             label="Copy invite link"
             ariaLabel={name ? `Copy invite link for ${name}` : undefined}
-            icon={result === "copied" ? CircleCheck : result === "failed" ? CircleX : Copy}
-            iconClassName={cn(
-              result === "copied" && "text-(--pn-action-green)",
-              result === "failed" && "text-(--pn-action-red)"
-            )}
+            icon={Copy}
+            // The outgoing icon is lifted out of flow (`popLayout`) and positioned against the button.
+            className="relative"
+            iconNode={<CopyResultIcon state={result ?? "idle"} />}
             onClick={() => void copy(link)}
           />
           <IconButton

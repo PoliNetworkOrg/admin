@@ -18,6 +18,8 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
   appearance?: "ghost" | "tinted"
   pending?: boolean
   iconClassName?: string
+  /** Custom icon content, e.g. an animated icon swap; replaces `icon` (still required as the resting icon's type). */
+  iconNode?: React.ReactNode
   tooltipSide?: "top" | "bottom" | "left" | "right"
 }
 
@@ -48,6 +50,7 @@ export function IconButton({
   disabled,
   className,
   iconClassName,
+  iconNode,
   tooltipSide,
   ...props
 }: IconButtonProps) {
@@ -73,7 +76,7 @@ export function IconButton({
         )}
         {...props}
       >
-        {pending ? <Spinner /> : <Icon aria-hidden className={cn("size-4", iconClassName)} />}
+        {pending ? <Spinner /> : (iconNode ?? <Icon aria-hidden className={cn("size-4", iconClassName)} />)}
       </Button>
     </Hint>
   )
