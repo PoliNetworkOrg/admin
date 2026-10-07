@@ -107,7 +107,7 @@ export function ProjectCard({
       ref={handleRef}
       type="button"
       aria-label={`Reorder ${project.title}`}
-      className="absolute top-4 left-0 grid h-10 w-4 cursor-grab touch-none place-items-center rounded-(--pn-r-1) text-(--pn-fg-subtle) transition-[color] duration-120 group-hover/card:text-(--pn-fg-muted) after:absolute after:inset-y-0 after:left-0 after:w-9 active:cursor-grabbing"
+      className="absolute top-4 left-0 grid h-10 w-4 cursor-grab touch-none place-items-center rounded-(--pn-r-1) text-(--pn-fg-subtle) transition-[color] duration-120 hover:text-(--pn-fg) focus-visible:text-(--pn-fg) after:absolute after:inset-y-0 after:left-0 after:w-9 active:cursor-grabbing"
     >
       <GripVertical aria-hidden className="size-4" />
     </button>
@@ -252,7 +252,7 @@ export function ProjectCard({
     <div
       ref={ref}
       className={cn(
-        "group/card rounded-(--pn-r-4)",
+        "rounded-(--pn-r-4)",
         (isDragging || isDropping) && "z-10 scale-[1.01] opacity-90 shadow-(--pn-shadow-float)"
       )}
     >
