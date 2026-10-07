@@ -482,7 +482,7 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
               <RowActions className="shrink-0">
                 {/* Reserve Edit/Delete slots so ⋮ stays aligned at the far right. */}
                 <span aria-hidden className="size-9" />
-                <span aria-hidden className="ml-2 size-9" />
+                <span aria-hidden className="size-9" />
                 {menu}
               </RowActions>
             )

@@ -113,10 +113,21 @@ function SortIcon({ direction }: { direction: "asc" | "desc" | null }) {
   )
 }
 
-/** Right-aligned icon actions; a `data-tone="danger"` child gets 8px extra separation. */
+/**
+ * Right-aligned icon actions. Tinted buttons keep 4px apart, and a tinted danger button 8px more. Ghost buttons show no
+ * box, so their icons read as spaced by the padding alone: ghost groups have no gap. The gap is set on the group, not
+ * between siblings, because an open menu inserts focus-guard spans beside its trigger.
+ */
 export function RowActions({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-center justify-end gap-1 [&>[data-tone=danger]]:ml-2", className)}>{children}</div>
+    <div
+      className={cn(
+        "flex items-center justify-end has-[>[data-appearance=tinted]]:gap-1 [&>[data-tone=danger][data-appearance=tinted]]:ml-2",
+        className
+      )}
+    >
+      {children}
+    </div>
   )
 }
 

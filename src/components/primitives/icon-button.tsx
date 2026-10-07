@@ -59,6 +59,7 @@ export function IconButton({
         aria-label={ariaLabel ?? label}
         aria-busy={pending || undefined}
         data-tone={tone}
+        data-appearance={appearance}
         disabled={disabled || pending}
         className={cn(
           buttonMotion,
