@@ -22,7 +22,7 @@ async function copyLink(link: string) {
 
 /**
  * Copy and open the group's invite link: two ghost buttons, flush, with 8px before the actions that follow. Without a
- * link, a disabled "Not shared" button takes Open's place and Copy's slot stays empty, so columns stay aligned.
+ * link, a disabled "Not shared" button (dimmed amber icon) takes Open's place and Copy's slot stays empty, so columns stay aligned.
  */
 export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
   return (
@@ -34,6 +34,8 @@ export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
             label="Not shared"
             ariaLabel={name ? `${name} invite link not shared` : undefined}
             icon={Link2Off}
+            // Amber says "missing", dimmed says it can't be pressed.
+            iconClassName="text-(--pn-action-amber) opacity-55"
             disabled
             focusableWhenDisabled
           />
