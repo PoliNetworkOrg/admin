@@ -29,6 +29,12 @@ export type DataTableColumn<T> = {
    * `max-w-*` cap. Use on one column: the title, or the free-text column when the title is short (Grants › Reason).
    */
   fill?: boolean
+  /**
+   * Fixed width in px, cell padding included. Setting it on any column switches the table to `table-layout: fixed`,
+   * so column widths no longer follow the visible rows (search, filters, paging): the `fill` column takes what the
+   * others leave and the actions column uses `actionsWidth`. Cell content must truncate to fit.
+   */
+  width?: number
   className?: string
 }
 
@@ -80,12 +86,12 @@ function columnHideClasses<T>(columns: DataTableColumn<T>[], actionsWidth: numbe
     .filter((column, index) => index > 0 && column.priority !== undefined)
     .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
 
-  let width = fixed.reduce((sum, column) => sum + (column.minWidth ?? DEFAULT_MIN_WIDTH), 0)
+  let width = fixed.reduce((sum, column) => sum + (column.width ?? column.minWidth ?? DEFAULT_MIN_WIDTH), 0)
   width += actionsWidth
 
   const classes = new Map<string, string>()
   for (const column of ranked) {
-    width += column.minWidth ?? DEFAULT_MIN_WIDTH
+    width += column.width ?? column.minWidth ?? DEFAULT_MIN_WIDTH
     const hide = hideBelowClass(width)
     if (hide) classes.set(column.id, hide)
   }
@@ -143,6 +149,9 @@ export function DataTable<T>({
   const hasActions = actions !== undefined
   const cellCount = columns.length + (hasActions ? 1 : 0)
   const hideClasses = columnHideClasses(columns, hasActions ? actionsWidth : 0)
+  // In fixed layout the fill column simply gets no width; `w-full` would claim the whole table.
+  const fixedLayout = columns.some((column) => column.width !== undefined)
+  const fill = fixedLayout ? undefined : fillClass
   const showRows = !loading && !error && rows.length > 0
   const showPagination = showRows && pagination !== undefined && pagination.total > pagination.pageSize
 
@@ -248,7 +257,7 @@ export function DataTable<T>({
                 index === 0 && "font-medium",
                 column.mono && "font-mono tabular-nums",
                 column.align === "end" && "text-right tabular-nums",
-                column.fill && fillClass,
+                column.fill && fill,
                 hideClasses.get(column.id),
                 column.className
               )}
@@ -280,7 +289,7 @@ export function DataTable<T>({
       <span role="status" className="sr-only">
         {loading ? loadingLabel : ""}
       </span>
-      <Table aria-busy={loading || undefined}>
+      <Table aria-busy={loading || undefined} className={cn(fixedLayout && "table-fixed")}>
         <caption className="sr-only">{label}</caption>
         <TableHeader className="sticky top-0 z-[1] bg-(--pn-surface)">
           <TableRow className="border-(--pn-line) hover:bg-transparent">
@@ -290,12 +299,13 @@ export function DataTable<T>({
               return (
                 <TableHead
                   key={column.id}
+                  style={column.width === undefined ? undefined : { width: column.width }}
                   aria-sort={sortable ? (direction === null ? "none" : `${direction}ending`) : undefined}
                   className={cn(
                     "h-9 text-xs font-medium text-(--pn-fg-muted)",
                     sortable ? "p-0" : edgePadding(index, cellCount),
                     column.align === "end" && "text-right",
-                    column.fill && fillClass,
+                    column.fill && fill,
                     hideClasses.get(column.id),
                     column.className
                   )}
@@ -321,7 +331,7 @@ export function DataTable<T>({
               )
             })}
             {hasActions && (
-              <TableHead className="h-9 w-px pr-5 pl-4">
+              <TableHead className="h-9 w-px pr-5 pl-4" style={fixedLayout ? { width: actionsWidth } : undefined}>
                 <span className="sr-only">Actions</span>
               </TableHead>
             )}

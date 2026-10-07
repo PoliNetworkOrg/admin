@@ -24,7 +24,7 @@ export function ChipOverflow<T>({ items, max = 2, renderItem, itemLabel, classNa
   const shown = items.slice(0, max)
   const rest = items.slice(max).map(itemLabel)
   return (
-    <div className={cn("flex flex-nowrap items-center gap-1", className)} {...props}>
+    <div className={cn("flex min-w-0 flex-nowrap items-center gap-1 [&>*]:min-w-0", className)} {...props}>
       {shown.map(renderItem)}
       {rest.length > 0 && (
         <Hint label={rest.join(", ")}>
@@ -33,7 +33,7 @@ export function ChipOverflow<T>({ items, max = 2, renderItem, itemLabel, classNa
             prefix="+"
             label={`${rest.length} more: ${rest.join(", ")}`}
             tabIndex={0}
-            className="h-[22px] min-w-[22px]"
+            className="h-[22px] min-w-[22px] shrink-0"
           />
         </Hint>
       )}

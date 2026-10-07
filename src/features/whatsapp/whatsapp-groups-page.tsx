@@ -110,7 +110,7 @@ export function WhatsappGroupsPage({
       id: "labels",
       label: "Labels",
       priority: 1,
-      minWidth: 290,
+      width: 320,
       cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
     },
   ]
