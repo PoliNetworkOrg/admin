@@ -60,8 +60,23 @@ function useEditKeys({ editing, readOnly, saving, valid, dirty, onCancel, onSave
     const inInput = event.target instanceof HTMLInputElement
     if (!(inInput || (inTextarea && (event.metaKey || event.ctrlKey)))) return
     event.preventDefault()
-    if (valid && dirty && !saving) onSave()
+    if (saving) return
+    if (valid && dirty) onSave()
+    // Nothing to save on an unchanged record: the shortcut means "done", so it closes the editor.
+    else if (valid) onCancel()
+    // Never a silent no-op: show what blocks the save.
+    else focusBlockingField(event.currentTarget)
   }
+}
+
+/** The first field marked invalid, else the first empty one: what keeps Save disabled. */
+function focusBlockingField(container: HTMLElement) {
+  const fields = Array.from(container.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea"))
+  const editable = fields.filter((field) => !field.disabled && field.type !== "file" && field.type !== "hidden")
+  const blocking =
+    editable.find((field) => field.getAttribute("aria-invalid") === "true") ??
+    editable.find((field) => field.value.trim() === "")
+  blocking?.focus()
 }
 
 function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: InlineEditProps) {
