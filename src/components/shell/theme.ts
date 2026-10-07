@@ -89,6 +89,9 @@ function switchTheme(theme: Theme, source?: ThemeToggleSource) {
         {
           ...(lightOn ? LIGHT_ON : LIGHT_OFF),
           pseudoElement: lightOn ? "::view-transition-new(root)" : "::view-transition-old(root)",
+          // Hold the end state until the snapshots are removed: without it the clip is dropped for one frame first,
+          // and the old light snapshot, stacked on top while turning off, flashed across the whole screen.
+          fill: "forwards",
         }
       )
     })
