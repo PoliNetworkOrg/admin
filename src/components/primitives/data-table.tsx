@@ -9,7 +9,7 @@ import { hideBelowClass } from "./container-hide"
 import { InlineAlert } from "./inline-alert"
 import { buttonMotion } from "./motion"
 import { SkeletonRows } from "./skeletons"
-import { type TablePagination, TablePaginationBar } from "./table-pagination"
+import { PAGE_SIZES, type TablePagination, TablePaginationBar } from "./table-pagination"
 
 export type DataTableColumn<T> = {
   id: string
@@ -164,7 +164,9 @@ export function DataTable<T>({
   const fixedLayout = columns.some((column) => column.width !== undefined)
   const fill = fixedLayout ? undefined : fillClass
   const showRows = !loading && !error && rows.length > 0
-  const showPagination = showRows && pagination !== undefined && pagination.total > pagination.pageSize
+  // Hidden only when no page size would split the rows: keyed on the current size, a larger size picked to fit every
+  // row on one page would hide the footer with the very control that changes it back.
+  const showPagination = showRows && pagination !== undefined && pagination.total > Math.min(...PAGE_SIZES)
 
   function toggleSort(column: string) {
     if (!onSort) return
