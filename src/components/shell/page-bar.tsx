@@ -75,7 +75,7 @@ export function PageContent({ width = "wide", children }: { width?: ContentWidth
       key={pathname}
       ref={setMain}
       data-scroll-restoration-id={`dashboard-main:${pathname}`}
-      className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
     >
       <div className={cn("px-6 pb-12 min-[1440px]:px-8", width === "settings" ? "pt-5" : "pt-3")}>
         <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
