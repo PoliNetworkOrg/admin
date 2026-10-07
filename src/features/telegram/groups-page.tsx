@@ -30,7 +30,7 @@ import {
   sortRows,
   useGroupListState,
 } from "@/features/groups/labels-filter-popover"
-import { matchesVisibility, VISIBILITY_FILTERS, type VisibilityFilter } from "@/features/groups/visibility"
+import { matchesVisibility, type VisibilityFilter, visibilityItems } from "@/features/groups/visibility"
 import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
 
 type TelegramGroupRow = GroupWithLabels & { tag: string | null }
@@ -178,7 +178,7 @@ export function TelegramGroupsPage({
                 <LabelsFilterPopover labels={labels} value={filter} onChange={list.setFilter} />
                 <SegmentedControl
                   label="Visibility"
-                  items={VISIBILITY_FILTERS}
+                  items={visibilityItems(all)}
                   value={visibility}
                   onValueChange={list.setVisibility}
                 />

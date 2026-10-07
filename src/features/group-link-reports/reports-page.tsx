@@ -162,12 +162,17 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
     })
   // Counts individual reports so it matches the panel badge; the ×n badges explain the grouped rows.
   const reportCount = groups.reduce((sum, group) => sum + group.ids.length, 0)
-  const totalReports = reports.filter((report) => !removed.has(groupKey(report))).length
   const pageCount = Math.max(1, Math.ceil(groups.length / pageSize))
   // Removing the last row of the last page moves back a page.
   const currentPage = Math.min(page, pageCount)
   const rows = groups.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const filteredView = deferredQuery !== "" || segment !== "all"
+  // Each segment's total ignores the search, like every segmented filter, so the counts stay put while typing.
+  const visibleReports = reports.filter((report) => !removed.has(groupKey(report)))
+  const segmentItems = segments[status].map((item) => ({
+    ...item,
+    count: visibleReports.filter((report) => inSegment(report, item.value)).length,
+  }))
 
   function setKey(setter: typeof setLeaving, key: string, present: boolean) {
     setter((current) => {
@@ -305,7 +310,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
             filters={
               <SegmentedControl
                 label={open ? "Filter by issue" : "Filter by status"}
-                items={segments[status]}
+                items={segmentItems}
                 value={segment}
                 onValueChange={(next) => {
                   setSegment(next)
@@ -316,7 +321,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
             count={
               <Count
                 value={reportCount}
-                total={filteredView ? totalReports : undefined}
+                total={filteredView ? visibleReports.length : undefined}
                 noun={open ? "open report" : "closed report"}
               />
             }

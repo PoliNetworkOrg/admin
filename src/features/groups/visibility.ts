@@ -16,3 +16,13 @@ export function parseVisibility(value: string | undefined): VisibilityFilter | u
 export function matchesVisibility(hide: boolean, visibility: VisibilityFilter) {
   return visibility === "all" || hide === (visibility === "hidden")
 }
+
+/**
+ * The visibility segments with each option's total, like every segmented filter (Grants, Projects, Reports): counts
+ * cover all groups, ignoring search and label filters, so they stay put while the list narrows.
+ */
+export function visibilityItems(groups: readonly { hide: boolean }[]) {
+  const hidden = groups.filter((group) => group.hide).length
+  const counts = { all: groups.length, visible: groups.length - hidden, hidden }
+  return VISIBILITY_FILTERS.map((item) => ({ ...item, count: counts[item.value] }))
+}

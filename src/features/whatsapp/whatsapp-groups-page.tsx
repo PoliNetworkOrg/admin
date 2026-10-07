@@ -30,7 +30,7 @@ import {
   sortRows,
   useGroupListState,
 } from "@/features/groups/labels-filter-popover"
-import { matchesVisibility, VISIBILITY_FILTERS, type VisibilityFilter } from "@/features/groups/visibility"
+import { matchesVisibility, type VisibilityFilter, visibilityItems } from "@/features/groups/visibility"
 import { WhatsappGroupDialog } from "@/features/whatsapp/whatsapp-group-dialog"
 import type { GroupWithLabels, WaGroup } from "@/lib/api/types"
 
@@ -154,7 +154,7 @@ export function WhatsappGroupsPage({
                 <LabelsFilterPopover labels={labels} value={filter} onChange={list.setFilter} />
                 <SegmentedControl
                   label="Visibility"
-                  items={VISIBILITY_FILTERS}
+                  items={visibilityItems(all)}
                   value={visibility}
                   onValueChange={list.setVisibility}
                 />
