@@ -216,12 +216,44 @@ type InlineEditInputProps = Omit<React.ComponentProps<"input">, "value"> & {
   value: string
   /** Field error shown under the input; also sets `aria-invalid` and `aria-describedby`. */
   error?: string | null
+  /** No box of its own, inside an edit-mode `TranslationPanel` (see `InlineEditTextarea`'s `bare`). */
+  bare?: boolean
 }
 
+const bareInputClasses =
+  "h-5 rounded-none border-0 bg-transparent p-0 text-[13px] leading-5 text-(--pn-fg) shadow-none placeholder:text-(--pn-fg-subtle) focus-visible:border-0 focus-visible:ring-0 aria-invalid:ring-0 pointer-coarse:h-6 pointer-coarse:text-base md:text-[13px] dark:bg-transparent"
+
 /** 36px input: a 20px line box + 16px padding. Shows the counter in the last 20% of `maxLength`. */
-export function InlineEditInput({ label, value, maxLength, error, className, ...props }: InlineEditInputProps) {
+export function InlineEditInput({
+  label,
+  value,
+  maxLength,
+  error,
+  bare = false,
+  className,
+  ...props
+}: InlineEditInputProps) {
   const errorId = useId()
   const counting = maxLength !== undefined && isCounterVisible(value.length, maxLength)
+  if (bare) {
+    return (
+      <div className="flex min-w-0 flex-col">
+        <Input
+          aria-label={label}
+          value={value}
+          maxLength={maxLength}
+          // The panel's border shows focus; the global input focus ring would draw a box inside it.
+          data-focus-ring="none"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={cn(bareInputClasses, className)}
+          {...props}
+        />
+        {maxLength !== undefined && <FieldCounter length={value.length} max={maxLength} className="mt-1 self-end" />}
+        {error && <FieldError id={errorId}>{error}</FieldError>}
+      </div>
+    )
+  }
   return (
     <div className="min-w-0 flex-1">
       <div className="relative">

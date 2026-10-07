@@ -9,6 +9,10 @@ import {
   InlineEditRow,
   InlineEditTextarea,
   RowActions,
+  TranslationGroup,
+  TranslationPanel,
+  TranslationText,
+  Unset,
 } from "@/components/primitives"
 import { appToast } from "@/components/shell"
 import { AccordionItem } from "@/components/ui/accordion"
@@ -53,17 +57,6 @@ function LanguageLine({ lang, children, muted }: { lang: "IT" | "EN"; children: 
   )
 }
 
-function Answer({ lang, children }: { lang: "IT" | "EN"; children: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <Chip size="tiny" className="mt-px w-[26px] shrink-0 justify-center">
-        {lang}
-      </Chip>
-      <p className="max-w-[72ch] text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">{children}</p>
-    </div>
-  )
-}
-
 type FaqRowProps = {
   faq: FAQItem
   canWrite: boolean
@@ -105,14 +98,15 @@ export function FaqRow({ faq, canWrite, onEdit, onDelete }: FaqRowProps) {
       </AccordionPrimitive.Header>
       <AccordionPrimitive.Panel className="grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] ease-(--pn-ease-move) [transition-duration:200ms,150ms] data-ending-style:grid-rows-[0fr] data-ending-style:opacity-0 data-starting-style:grid-rows-[0fr] data-starting-style:opacity-0">
         <div className="min-h-0 overflow-hidden">
-          <div className="flex flex-col gap-3 px-5 pt-1 pb-4">
-            <Answer lang="IT">{faq.descriptionIt}</Answer>
-            {faq.descriptionEn && (
-              <>
-                <div className="border-t border-(--pn-line)" />
-                <Answer lang="EN">{faq.descriptionEn}</Answer>
-              </>
-            )}
+          <div className="px-5 pt-1 pb-4">
+            <TranslationGroup>
+              <TranslationPanel lang="it">
+                <TranslationText>{faq.descriptionIt}</TranslationText>
+              </TranslationPanel>
+              <TranslationPanel lang="en">
+                <TranslationText>{faq.descriptionEn || <Unset />}</TranslationText>
+              </TranslationPanel>
+            </TranslationGroup>
           </div>
         </div>
       </AccordionPrimitive.Panel>
@@ -181,7 +175,8 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
     return {
       label,
       value: values[field],
-      placeholder: `${label}…`,
+      // The panel header names the language; the accessible label keeps it.
+      placeholder: `${label.replace(/ \(.+\)$/, "")}…`,
       error: touched.has(field) && values[field].trim() === "" ? required : null,
       disabled: saving,
       onChange: (event: { target: { value: string } }) =>
@@ -193,23 +188,6 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
   const [questionIt, questionEn, answerIt, answerEn] = FIELDS.map(({ field, label, required }) =>
     fieldProps(field, label, required)
   )
-
-  function row(
-    lang: "IT" | "EN",
-    field: ReturnType<typeof fieldProps> | undefined,
-    control: "input" | "textarea",
-    ref?: RefObject<HTMLInputElement | null>
-  ) {
-    if (!field) return null
-    return (
-      <>
-        <Chip size="tiny" className="mt-[9px] w-[26px] justify-center">
-          {lang}
-        </Chip>
-        {control === "input" ? <InlineEditInput ref={ref} {...field} /> : <InlineEditTextarea {...field} />}
-      </>
-    )
-  }
 
   return (
     <AccordionItem value={faqId} className="border-(--pn-line) bg-(--pn-surface)">
@@ -224,15 +202,24 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
         error={error}
         view={null}
         edit={
-          <div
-            onKeyDown={revealErrors}
-            className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 pt-2"
-          >
-            {row("IT", questionIt, "input", firstField)}
-            {row("EN", questionEn, "input")}
-            <div className="col-span-2 my-1 border-t border-(--pn-line)" />
-            {row("IT", answerIt, "textarea")}
-            {row("EN", answerEn, "textarea")}
+          // One panel per language: its question, a hairline, its answer (§5.14).
+          <div onKeyDown={revealErrors} className="w-full pt-1">
+            <TranslationGroup>
+              {questionIt && answerIt && (
+                <TranslationPanel lang="it" editing>
+                  <InlineEditInput bare ref={firstField} {...questionIt} className="font-medium" />
+                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <InlineEditTextarea bare {...answerIt} />
+                </TranslationPanel>
+              )}
+              {questionEn && answerEn && (
+                <TranslationPanel lang="en" editing>
+                  <InlineEditInput bare {...questionEn} className="font-medium" />
+                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <InlineEditTextarea bare {...answerEn} />
+                </TranslationPanel>
+              )}
+            </TranslationGroup>
           </div>
         }
         className="px-5 py-3"
