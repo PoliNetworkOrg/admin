@@ -151,15 +151,32 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
   const left = (
     <Toolbar
       lead={
-        <>
-          <CategorySelect categories={categories} category={category} onSelect={selectCategory} />
+        // One surface for everything that acts on the category: its picker and its edit/delete actions.
+        <div
+          role="group"
+          aria-label="Category"
+          className="flex h-9 shrink-0 items-stretch rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface)"
+        >
+          <span
+            aria-hidden
+            className="flex items-center border-r border-(--pn-line) px-3 text-xs font-medium text-(--pn-fg-muted)"
+          >
+            Category
+          </span>
+          <CategorySelect
+            categories={categories}
+            category={category}
+            onSelect={selectCategory}
+            lastInGroup={!(canWrite && category)}
+          />
           {canWrite && category && (
-            <div className="flex shrink-0 items-center">
+            <div className="flex items-stretch border-l border-(--pn-line)">
               <IconButton
                 label="Edit category"
                 ariaLabel={`Edit ${category.titleIt}`}
                 icon={Pencil}
                 onClick={() => openCategoryDialog(category)}
+                className={groupedAction}
               />
               <IconButton
                 label="Delete category"
@@ -167,10 +184,11 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
                 icon={Trash2}
                 tone="danger"
                 onClick={() => setDeleteCategoryOpen(true)}
+                className={cn(groupedAction, "rounded-r-[calc(var(--pn-r-3)-1px)]")}
               />
             </div>
           )}
-        </>
+        </div>
       }
       search={
         category
@@ -336,14 +354,19 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
 const selectItemClasses =
   "h-9 gap-2 rounded-(--pn-r-2) pl-2 text-[13px] focus:bg-(--pn-muted) focus:text-(--pn-fg) not-data-[variant=destructive]:focus:**:text-(--pn-fg)"
 
+/** Icon buttons inside the category surface: as tall as it, square, no own rounding except at its right edge. */
+const groupedAction = "h-full w-9 rounded-none"
+
 type CategorySelectProps = {
   categories: FAQs
   category: FaqCategory | null
   onSelect: (categoryId: number) => void
+  /** Without edit/delete (read-only viewers, no category) the trigger ends the group and takes its right rounding. */
+  lastInGroup: boolean
 }
 
 /** The page-scoping category picker: icon + Italian title; items add the English title and the FAQ count. */
-function CategorySelect({ categories, category, onSelect }: CategorySelectProps) {
+function CategorySelect({ categories, category, onSelect, lastInGroup }: CategorySelectProps) {
   return (
     <Select
       value={category?.categoryId ?? null}
@@ -354,7 +377,10 @@ function CategorySelect({ categories, category, onSelect }: CategorySelectProps)
     >
       <SelectTrigger
         aria-label="Category"
-        className="max-w-60 min-w-36 shrink-0 gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-2.5 text-[13px] text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:bg-(--pn-muted) data-[size=default]:h-9 dark:bg-(--pn-surface) dark:hover:bg-(--pn-muted)"
+        className={cn(
+          "h-full max-w-60 min-w-36 shrink-0 gap-2 rounded-none border-0 bg-transparent px-2.5 text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) data-[size=default]:h-full dark:bg-transparent dark:hover:bg-(--pn-muted)",
+          lastInGroup && "rounded-r-[calc(var(--pn-r-3)-1px)]"
+        )}
       >
         <SelectValue className="min-w-0">
           {() =>
