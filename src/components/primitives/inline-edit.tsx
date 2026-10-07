@@ -1,19 +1,15 @@
-import { CircleAlert, Pencil } from "lucide-react"
+import { Check, CircleAlert, Pencil, X } from "lucide-react"
 import type * as React from "react"
 import { type KeyboardEvent, type ReactNode, useId } from "react"
 
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { RowActions } from "./data-table"
 import { FieldCounter, isCounterVisible } from "./field-counter"
-import { Hint } from "./hint"
 import { IconButton } from "./icon-button"
 import { InlineAlert } from "./inline-alert"
-import { LoadingButton } from "./loading-button"
-import { buttonMotion } from "./motion"
 import { useModifierKey } from "./use-modifier-key"
 
 type InlineEditProps = {
@@ -70,26 +66,48 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
       <div className="min-w-0 flex-1">
         {error ? (
           <InlineAlert className="py-2">{error}</InlineAlert>
+        ) : message ? (
+          <p role="alert" className="flex items-center gap-1.5 pt-2 text-xs text-(--pn-danger-fg)">
+            <CircleAlert aria-hidden className="size-3.5 shrink-0" />
+            {message}
+          </p>
         ) : (
-          message && (
-            <p role="alert" className="flex items-center gap-1.5 pt-2 text-xs text-(--pn-danger-fg)">
-              <CircleAlert aria-hidden className="size-3.5 shrink-0" />
-              {message}
-            </p>
-          )
+          <p className="flex min-h-9 flex-wrap items-center gap-1 text-xs text-(--pn-fg-muted) pointer-coarse:hidden">
+            Press <Kbd>{modifier} + Enter</Kbd> to save, <Kbd>Esc</Kbd> to cancel
+          </p>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={onCancel} className={buttonMotion}>
-          Cancel
-        </Button>
-        <Hint label={`Enter to save · ${modifier} Enter in text areas · Esc to cancel`}>
-          <LoadingButton type="button" pending={saving} disabled={!valid || !dirty} onClick={onSave}>
-            Save
-          </LoadingButton>
-        </Hint>
+        <IconButton
+          label="Cancel (Esc)"
+          ariaLabel="Cancel"
+          icon={X}
+          tone="danger"
+          appearance="tinted"
+          disabled={saving}
+          onClick={onCancel}
+        />
+        <IconButton
+          label={`Save (${modifier} + Enter)`}
+          ariaLabel="Save"
+          icon={Check}
+          tone="success"
+          appearance="tinted"
+          pending={saving}
+          disabled={!valid || !dirty}
+          focusableWhenDisabled
+          onClick={onSave}
+        />
       </div>
     </div>
+  )
+}
+
+function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="rounded-(--pn-r-1) border border-(--pn-line) bg-(--pn-muted) px-1 font-sans text-[11px] leading-4 text-(--pn-fg)">
+      {children}
+    </kbd>
   )
 }
 
