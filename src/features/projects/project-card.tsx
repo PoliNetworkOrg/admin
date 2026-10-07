@@ -22,7 +22,6 @@ import {
   TranslationText,
   Unset,
 } from "@/components/primitives"
-import { hostOf } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { WebLogo, WebLogoUpload } from "../web/logo-upload"
@@ -134,7 +133,7 @@ export function ProjectCard({
             title={project.link}
             className="inline-flex max-w-full items-center gap-1 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
           >
-            <span className="truncate">{hostOf(project.link)}</span>
+            <span className="truncate">{project.link}</span>
             <ExternalLink aria-hidden className="size-3 shrink-0" />
           </a>
         ) : (
