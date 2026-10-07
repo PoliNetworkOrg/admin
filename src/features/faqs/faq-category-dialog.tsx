@@ -1,9 +1,8 @@
 import { useServerFn } from "@tanstack/react-start"
 import { useId, useState } from "react"
 
-import { fieldControl, fieldHintId, FormDialog, FormField, Hint } from "@/components/primitives"
+import { FormDialog, Hint, InlineEditInput, TranslationGroup, TranslationPanel } from "@/components/primitives"
 import { appToast } from "@/components/shell"
-import { Input } from "@/components/ui/input"
 import type { FAQs } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
@@ -142,36 +141,42 @@ export function FaqCategoryDialog({ open, onOpenChange, category, onSaved }: Faq
           })}
         </div>
       </div>
-      <FormField label="Title (Italian)" htmlFor={itId} error={shown.titleIt}>
-        <Input
-          id={itId}
-          value={titleIt}
-          placeholder="e.g. Generali, Iscrizioni, Corsi…"
-          aria-invalid={shown.titleIt ? true : undefined}
-          aria-describedby={shown.titleIt ? fieldHintId(itId) : undefined}
-          onChange={(event) => {
-            setTitleIt(event.target.value)
-            revalidate("titleIt", event.target.value, titleEn)
-          }}
-          onBlur={() => revalidate("titleIt", titleIt, titleEn)}
-          className={cn("h-9 px-3", fieldControl)}
-        />
-      </FormField>
-      <FormField label="Title (English)" htmlFor={enId} error={shown.titleEn}>
-        <Input
-          id={enId}
-          value={titleEn}
-          placeholder="e.g. General, Enrollment…"
-          aria-invalid={shown.titleEn ? true : undefined}
-          aria-describedby={shown.titleEn ? fieldHintId(enId) : undefined}
-          onChange={(event) => {
-            setTitleEn(event.target.value)
-            revalidate("titleEn", titleIt, event.target.value)
-          }}
-          onBlur={() => revalidate("titleEn", titleIt, titleEn)}
-          className={cn("h-9 px-3", fieldControl)}
-        />
-      </FormField>
+      {/* One label for the pair; each language is its own panel (§5.14), errors under the field. */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[13px] leading-5 font-medium text-(--pn-fg)">Title</p>
+        <TranslationGroup>
+          <TranslationPanel lang="it" editing>
+            <InlineEditInput
+              bare
+              id={itId}
+              label="Title (Italian)"
+              value={titleIt}
+              placeholder="e.g. Generali, Iscrizioni, Corsi…"
+              error={shown.titleIt}
+              onChange={(event) => {
+                setTitleIt(event.target.value)
+                revalidate("titleIt", event.target.value, titleEn)
+              }}
+              onBlur={() => revalidate("titleIt", titleIt, titleEn)}
+            />
+          </TranslationPanel>
+          <TranslationPanel lang="en" editing>
+            <InlineEditInput
+              bare
+              id={enId}
+              label="Title (English)"
+              value={titleEn}
+              placeholder="e.g. General, Enrollment…"
+              error={shown.titleEn}
+              onChange={(event) => {
+                setTitleEn(event.target.value)
+                revalidate("titleEn", titleIt, event.target.value)
+              }}
+              onBlur={() => revalidate("titleEn", titleIt, titleEn)}
+            />
+          </TranslationPanel>
+        </TranslationGroup>
+      </div>
     </FormDialog>
   )
 }
