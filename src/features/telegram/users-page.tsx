@@ -20,7 +20,6 @@ const columns: DataTableColumn<TgUser>[] = [
     id: "name",
     label: "Name",
     minWidth: 220,
-    fill: true,
     cell: (user) => {
       const name = telegramUserName(user)
       return (
@@ -48,8 +47,9 @@ const columns: DataTableColumn<TgUser>[] = [
     // Signals that the row opens the user's detail; the row itself is the link target.
     id: "open",
     label: "",
-    minWidth: 44,
-    className: "w-px",
+    // A fixed width switches the table to fixed layout: Name, Username and Telegram ID (all short) share the rest
+    // equally instead of Name taking it all. 16px icon + 16px left and 20px right cell padding.
+    width: 52,
     cell: () => (
       <ChevronRight
         aria-hidden
