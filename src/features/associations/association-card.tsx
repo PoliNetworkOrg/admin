@@ -1,353 +1,183 @@
-import { CircleDashed, Languages, LinkIcon, LoaderCircle, Pencil, Save, Trash2, Upload, X } from "lucide-react"
-import { type ChangeEvent, useEffect, useId, useState } from "react"
-import { toast } from "sonner"
+import { Link2, Trash2 } from "lucide-react"
+import { useEffect, useRef } from "react"
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
+  buttonMotion,
+  ConfirmDialog,
+  IconButton,
+  InlineEditCard,
+  InlineEditInput,
+  InlineEditTextarea,
+  StatusBadge,
+} from "@/components/primitives"
+import { Count } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
 
-import { ASSOCIATION_LINK_FIELDS, getAssociationInitials, validateAssociationLogo } from "./associations.constants"
-import type { Association, AssociationFormValues } from "./types"
+import { WebLogo, WebLogoUpload } from "../web/logo-upload"
+import { focusOnFinePointer, LanguageChip, LanguageTerm } from "../web/web-card"
+import {
+  ASSOCIATION_DESCRIPTION_MAX_LENGTH,
+  ASSOCIATION_LINK_FIELDS,
+  ASSOCIATION_LOGO_RULES,
+  ASSOCIATION_NAME_MAX_LENGTH,
+} from "./associations.constants"
+import type { Association, AssociationForm } from "./types"
+
+/** The open inline edit, owned by the page so only one card edits at a time. */
+export type AssociationEditSession = {
+  values: AssociationForm
+  onChange: (values: AssociationForm) => void
+  dirty: boolean
+  valid: boolean
+  saving: boolean
+  error?: string
+  /** Logo validation message, shown in the card footer. */
+  message?: string
+  onSave: () => void
+  onCancel: () => void
+  onLogoError: (message: string | null) => void
+}
 
 type AssociationCardProps = {
   association: Association
-  draft: boolean
-  initialEditActive: boolean
-  onCancelDraft: () => void
-  onDelete: () => Promise<boolean>
-  onEditLinks: () => void
-  onSave: (values: AssociationFormValues) => Promise<boolean>
+  draft?: boolean
+  canWrite: boolean
+  session: AssociationEditSession | null
+  onEdit: () => void
+  /** Throws to keep the confirm dialog open with the error. */
+  onDelete: () => Promise<void>
+  onManageLinks: () => void
+}
+
+function publicLinkCount(association: Association) {
+  return ASSOCIATION_LINK_FIELDS.filter(({ key }) => association.links[key]?.trim()).length
 }
 
 export function AssociationCard({
   association,
-  draft,
-  initialEditActive,
-  onCancelDraft,
+  draft = false,
+  canWrite,
+  session,
+  onEdit,
   onDelete,
-  onEditLinks,
-  onSave,
+  onManageLinks,
 }: AssociationCardProps) {
-  const logoInputId = useId()
-  const [editing, setEditing] = useState(initialEditActive)
-  const [name, setName] = useState(association.name)
-  const [descriptionIt, setDescriptionIt] = useState(association.descriptionIt)
-  const [descriptionEn, setDescriptionEn] = useState(association.descriptionEn)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const canSave = Boolean(name.trim() && descriptionIt.trim() && descriptionEn.trim())
+  const editing = session !== null
+  const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    return () => {
-      if (logoPreview) URL.revokeObjectURL(logoPreview)
-    }
-  }, [logoPreview])
+    if (editing) focusOnFinePointer(nameRef.current)
+  }, [editing])
 
-  function resetFields() {
-    setName(association.name)
-    setDescriptionIt(association.descriptionIt)
-    setDescriptionEn(association.descriptionEn)
-    setLogoFile(null)
-    setLogoPreview(null)
-  }
-
-  function cancelEdit() {
-    if (draft) {
-      onCancelDraft()
-      return
-    }
-    resetFields()
-    setEditing(false)
-  }
-
-  function selectLogo(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const error = validateAssociationLogo(file)
-    if (error) {
-      toast.error(error)
-      event.target.value = ""
-      return
-    }
-    if (logoPreview) URL.revokeObjectURL(logoPreview)
-    setLogoFile(file)
-    setLogoPreview(URL.createObjectURL(file))
-  }
-
-  async function save() {
-    if (saving || !canSave) return
-    setSaving(true)
-    try {
-      const saved = await onSave({
-        name: name.trim(),
-        descriptionIt: descriptionIt.trim(),
-        descriptionEn: descriptionEn.trim(),
-        logo: association.logo,
-        logoFile,
-      })
-      if (saved) {
-        setLogoFile(null)
-        setLogoPreview(null)
-        setEditing(false)
-      }
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function remove() {
-    setDeleting(true)
-    try {
-      if (await onDelete()) setDeleteOpen(false)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  const logo = logoPreview ?? association.logo
-  const linkCount = ASSOCIATION_LINK_FIELDS.filter(({ key }) => association.links[key]).length
-
-  return (
+  const view = (
     <>
-      <Card
-        className={cn("h-full", draft && "border-dashed border-primary/60 bg-primary/[0.035] ring-1 ring-primary/10")}
-      >
-        <CardHeader
-          className={cn(
-            "grid-cols-[1fr_auto] gap-x-4",
-            editing && "border-b pb-(--card-spacing)",
-            draft && "border-primary/15"
-          )}
-        >
-          <CardTitle className={cn("flex min-w-0 gap-3 text-lg", editing ? "items-start" : "items-center")}>
-            {editing ? (
-              <>
-                <label
-                  htmlFor={logoInputId}
-                  className="group/logo relative grid size-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border border-input bg-background text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
-                >
-                  {logo ? (
-                    <img src={logo} alt="" className="size-full object-contain p-1" />
-                  ) : (
-                    getAssociationInitials(name) || "AS"
-                  )}
-                  <span className="absolute inset-0 grid place-items-center bg-background/85 opacity-0 transition-opacity group-hover/logo:opacity-100 group-focus-within/logo:opacity-100">
-                    <Upload className="size-4" />
-                  </span>
-                  <Input
-                    id={logoInputId}
-                    type="file"
-                    aria-label="Association logo"
-                    accept="image/jpeg,image/png,image/svg+xml"
-                    className="sr-only"
-                    onChange={selectLogo}
-                  />
-                </label>
-                <div className="min-w-0 flex-1 space-y-2">
-                  {draft && (
-                    <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                      <CircleDashed data-icon="inline-start" /> Unsaved draft
-                    </Badge>
-                  )}
-                  <Input
-                    aria-label="Association name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    className="bg-background text-base font-medium"
-                    maxLength={200}
-                    required
-                    autoFocus={draft}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-muted text-sm font-semibold text-muted-foreground">
-                  {association.logo ? (
-                    <img src={association.logo} alt="" className="size-full object-contain p-1" />
-                  ) : (
-                    getAssociationInitials(association.name)
-                  )}
-                </span>
-                <span className="truncate">{association.name}</span>
-              </>
-            )}
-          </CardTitle>
-          <CardAction className="flex items-center gap-1.5">
-            {editing ? (
-              <>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  disabled={saving || !canSave}
-                  onClick={() => void save()}
-                  aria-label={`Save ${name}`}
-                >
-                  {saving ? <LoaderCircle className="animate-spin-slow" /> : <Save />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={saving}
-                  onClick={cancelEdit}
-                  aria-label="Cancel editing"
-                >
-                  <X />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label={`Edit ${association.name}`}
-                  onClick={() => {
-                    resetFields()
-                    setEditing(true)
-                  }}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  aria-label={`Delete ${association.name}`}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 />
-                </Button>
-              </>
-            )}
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-1 flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {editing ? (
-              <>
-                <EditableDescription
-                  language="IT"
-                  ariaLabel="Italian association description"
-                  value={descriptionIt}
-                  onChange={setDescriptionIt}
-                  draft={draft}
-                />
-                <EditableDescription
-                  language="EN"
-                  ariaLabel="English association description"
-                  value={descriptionEn}
-                  onChange={setDescriptionEn}
-                  draft={draft}
-                />
-              </>
-            ) : (
-              <>
-                <Description language="IT" text={association.descriptionIt} />
-                <Description language="EN" text={association.descriptionEn} />
-              </>
-            )}
-          </div>
-          {!draft && (
-            <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4">
-              <Badge variant="secondary">
-                {linkCount} {linkCount === 1 ? "public link" : "public links"}
-              </Badge>
-              <Button type="button" variant="outline" size="sm" disabled={editing} onClick={onEditLinks}>
-                <LinkIcon data-icon="inline-start" /> Manage links
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <AlertDialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20">
-              <Trash2 />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Delete association</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{association.name}</strong>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={deleting} onClick={() => void remove()}>
-              {deleting && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <div className="flex h-10 min-w-0 items-center gap-3">
+        <WebLogo src={association.logo} name={association.name} fallback="AS" />
+        <p title={association.name} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
+          {association.name}
+        </p>
+      </div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
+        <LanguageTerm code="IT" name="Italian" />
+        <dd lang="it" className="line-clamp-5 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
+          {association.descriptionIt}
+        </dd>
+        <LanguageTerm code="EN" name="English" />
+        <dd lang="en" className="line-clamp-5 text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)">
+          {association.descriptionEn}
+        </dd>
+      </dl>
+      <div className="flex min-h-9 items-center gap-2">
+        <Count value={publicLinkCount(association)} noun="public link" className="text-xs" />
+        {canWrite && (
+          <Button variant="ghost" size="sm" onClick={onManageLinks} className={buttonMotion}>
+            <Link2 data-icon="inline-start" />
+            Manage links
+          </Button>
+        )}
+      </div>
     </>
   )
-}
 
-function EditableDescription({
-  language,
-  ariaLabel,
-  value,
-  onChange,
-  draft,
-}: {
-  language: string
-  ariaLabel: string
-  value: string
-  onChange: (value: string) => void
-  draft: boolean
-}) {
-  return (
-    <section
-      className={cn("min-w-0 rounded-lg border bg-background/75 p-3.5", draft ? "border-primary/15" : "border-border")}
-    >
-      <div
-        className={cn(
-          "mb-2 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase",
-          draft ? "text-primary" : "text-muted-foreground"
-        )}
-      >
-        <Languages className="size-3.5" /> {language}
+  const edit = session && (
+    <>
+      <div className="flex h-10 min-w-0 items-center gap-3">
+        <WebLogoUpload
+          src={session.values.logo}
+          name={session.values.name}
+          fallback="AS"
+          rules={ASSOCIATION_LOGO_RULES}
+          disabled={session.saving}
+          onChange={({ file, preview }) => session.onChange({ ...session.values, logo: preview, logoFile: file })}
+          onError={session.onLogoError}
+        />
+        <InlineEditInput
+          ref={nameRef}
+          label="Association name"
+          placeholder="Association name"
+          value={session.values.name}
+          maxLength={ASSOCIATION_NAME_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, name: event.target.value })}
+        />
+        {draft && <StatusBadge tone="warning">Draft</StatusBadge>}
       </div>
-      <Textarea
-        aria-label={ariaLabel}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-32 bg-background"
-        maxLength={20_000}
-        required
-      />
-    </section>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3">
+        <LanguageChip code="IT" className="mt-2.5" />
+        <InlineEditTextarea
+          label="Italian description"
+          lang="it"
+          placeholder="Descrizione in italiano"
+          value={session.values.descriptionIt}
+          maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
+        />
+        <LanguageChip code="EN" className="mt-2.5" />
+        <InlineEditTextarea
+          label="English description"
+          lang="en"
+          placeholder="Description in English"
+          value={session.values.descriptionEn}
+          maxLength={ASSOCIATION_DESCRIPTION_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
+        />
+      </div>
+    </>
+  )
+
+  return (
+    <InlineEditCard
+      readOnly={!canWrite}
+      editing={editing}
+      onEdit={onEdit}
+      onCancel={session?.onCancel ?? noop}
+      onSave={session?.onSave ?? noop}
+      dirty={session?.dirty ?? false}
+      valid={session?.valid ?? false}
+      saving={session?.saving ?? false}
+      error={session?.error}
+      message={session?.message}
+      editLabel="Edit association"
+      editAriaLabel={`Edit ${association.name}`}
+      deleteAction={
+        <ConfirmDialog
+          title="Delete association?"
+          description={`${association.name} is removed from the website. This cannot be undone.`}
+          confirmLabel="Delete association"
+          onConfirm={onDelete}
+          trigger={
+            <IconButton
+              label="Delete association"
+              ariaLabel={`Delete ${association.name}`}
+              icon={Trash2}
+              tone="danger"
+            />
+          }
+        />
+      }
+      view={view}
+      edit={edit}
+    />
   )
 }
 
-function Description({ language, text }: { language: string; text: string }) {
-  return (
-    <section className="min-w-0 rounded-lg bg-muted/45 p-3.5">
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-        <Languages className="size-3.5" /> {language}
-      </div>
-      <p className="line-clamp-5 text-sm leading-6 text-foreground/85">{text}</p>
-    </section>
-  )
-}
+function noop() {}

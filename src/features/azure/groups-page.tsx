@@ -1,218 +1,277 @@
-import { ChevronDown, Info, Mail, UsersRound } from "lucide-react"
-import { useMemo } from "react"
+import { ChevronRight, Database, UserMinus, UserPlus } from "lucide-react"
+import { type ReactNode, useDeferredValue, useId, useLayoutEffect, useMemo, useState } from "react"
 
-import { EmptyState } from "@/components/empty-state"
-import { PageHeader } from "@/components/page-header"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
+import { AvatarGroup, EmptyState, IconButton, Reveal, SectionEmpty, Unset } from "@/components/primitives"
+import { Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
-import { GroupMembership } from "./group-membership"
+import { MembershipDialog, type MembershipMode } from "./membership-dialog"
 
+type SectionId = "multi" | "single"
+type OpenState = { multi: boolean; single: boolean }
+
+const OPEN_STATE_KEY = "pn:m365-groups:open"
+const DEFAULT_OPEN: OpenState = { multi: true, single: false }
+
+function readOpenState(): OpenState {
+  const stored = window.sessionStorage.getItem(OPEN_STATE_KEY)
+  if (stored === null) return DEFAULT_OPEN
+  const [multi, single] = stored.split(",")
+  return { multi: multi === "1", single: single === "1" }
+}
+
+function writeOpenState(state: OpenState) {
+  window.sessionStorage.setItem(OPEN_STATE_KEY, `${state.multi ? 1 : 0},${state.single ? 1 : 0}`)
+}
+
+function matches(group: AzureGroup, query: string) {
+  if (query === "") return true
+  return `${group.displayName} ${group.mailAddress ?? ""}`.toLocaleLowerCase().includes(query)
+}
+
+type DialogTarget = { groupId: string; mode: MembershipMode }
+
+/** Microsoft 365 groups (docs/design.md §4.7, §7.8): groups with 2+ members and the rest, in two collapsibles. */
 export function AzureGroupsPage({
   groups,
   directoryMembers,
-  canWrite,
 }: {
   groups: AzureGroup[]
   directoryMembers: AzureMember[]
-  canWrite: boolean
 }) {
-  return (
-    <div className="animate-appear">
-      <GroupsHeader groups={groups} />
-      {groups.length ? (
-        <GroupsList groups={groups} directoryMembers={directoryMembers} canWrite={canWrite} />
-      ) : (
-        <EmptyState
-          icon={UsersRound}
-          title="No Microsoft 365 groups yet"
-          text="No groups were returned from Microsoft Entra."
-        />
-      )}
-    </div>
-  )
-}
+  const canWrite = useCanWrite()
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
+  const [openState, setOpenState] = useState(DEFAULT_OPEN)
+  // The stored state is applied without animating, before the first paint on client navigations.
+  const [restored, setRestored] = useState(false)
+  const [dialog, setDialog] = useState<DialogTarget | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
-function GroupsHeader({ groups }: { groups: AzureGroup[] }) {
-  const memberships = groups.reduce((count, group) => count + group.members.length, 0)
+  useLayoutEffect(() => {
+    setOpenState(readOpenState())
+    setRestored(true)
+  }, [])
+
+  const sorted = useMemo(() => groups.toSorted((a, b) => a.displayName.localeCompare(b.displayName)), [groups])
+  const visible = sorted.filter((group) => matches(group, deferredQuery))
+  const multi = visible.filter((group) => group.members.length > 1)
+  const single = visible.filter((group) => group.members.length <= 1)
+  const memberships = visible.reduce((sum, group) => sum + group.members.length, 0)
+  const searching = deferredQuery !== ""
+
+  function toggle(section: SectionId) {
+    setOpenState((current) => {
+      const next = { ...current, [section]: !current[section] }
+      writeOpenState(next)
+      return next
+    })
+  }
+
+  function openDialog(groupId: string, mode: MembershipMode) {
+    setDialog({ groupId, mode })
+    setDialogOpen(true)
+  }
+
+  const rowProps = { canWrite, onOpenDialog: openDialog }
+  const dialogGroup = dialog ? groups.find((group) => group.id === dialog.groupId) : undefined
+  const revealClass = restored ? undefined : "transition-none"
+
+  function renderContent() {
+    if (groups.length === 0) {
+      return (
+        <Surface>
+          <EmptyState
+            icon={Database}
+            title="No Microsoft 365 groups yet"
+            text="No groups were returned from Microsoft Entra."
+          />
+        </Surface>
+      )
+    }
+    if (visible.length === 0) {
+      return (
+        <Surface>
+          <EmptyState
+            icon={Database}
+            title="No groups match"
+            text="Try another group name or email address."
+            action={
+              <Button size="sm" variant="ghost" onClick={() => setQuery("")}>
+                Clear search
+              </Button>
+            }
+          />
+        </Surface>
+      )
+    }
+    return (
+      <div className="flex flex-col gap-4">
+        {multi.length > 0 || !searching ? (
+          <GroupSection
+            title="Groups with 2+ members"
+            emptyTitle="No groups with 2+ members"
+            groups={multi}
+            open={searching || openState.multi}
+            onToggle={() => toggle("multi")}
+            revealClassName={revealClass}
+            {...rowProps}
+          />
+        ) : null}
+        {single.length > 0 || !searching ? (
+          <GroupSection
+            title="Groups with 0–1 member"
+            emptyTitle="No groups with 0–1 member"
+            groups={single}
+            open={searching || openState.single}
+            onToggle={() => toggle("single")}
+            revealClassName={revealClass}
+            {...rowProps}
+          />
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <>
-      <PageHeader
-        eyebrow="Azure directory"
-        title="Microsoft 365 groups"
-        description="Review directory groups and manage the members who can access their shared Microsoft 365 resources."
-        action={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{groups.length} groups</Badge>
-            <Badge variant="secondary">{memberships} memberships</Badge>
-          </div>
+      <PageBar
+        left={
+          <Toolbar
+            search={{ value: query, onChange: setQuery }}
+            count={
+              <Count
+                value={visible.length}
+                total={searching ? groups.length : undefined}
+                noun="group"
+                parts={[{ value: memberships, noun: "membership" }]}
+              />
+            }
+          />
         }
       />
-      <Alert className="my-5">
-        <Info />
-        <AlertTitle>Looking for groups with zero or one member?</AlertTitle>
-        <AlertDescription>They are collected in the collapsed section at the bottom of the page.</AlertDescription>
-      </Alert>
+      <PageContent>{renderContent()}</PageContent>
+      {dialog && dialogGroup ? (
+        <MembershipDialog
+          key={`${dialog.groupId}:${dialog.mode}`}
+          group={dialogGroup}
+          directoryMembers={directoryMembers}
+          mode={dialog.mode}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
+      ) : null}
     </>
   )
 }
 
-function GroupsList({
-  groups,
-  directoryMembers,
-  canWrite,
-}: {
-  groups: AzureGroup[]
-  directoryMembers: AzureMember[]
-  canWrite: boolean
-}) {
-  const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.displayName.localeCompare(b.displayName)), [groups])
-  const multiMemberGroups = sortedGroups.filter((group) => group.members.length > 1)
-  const singleMemberGroups = sortedGroups.filter((group) => group.members.length <= 1)
-
-  return (
-    <div className="flex w-full flex-col gap-5">
-      {multiMemberGroups.length > 0 && (
-        <GroupSection
-          title="Groups with 2+ members"
-          groups={multiMemberGroups}
-          directoryMembers={directoryMembers}
-          canWrite={canWrite}
-          defaultOpen
-        />
-      )}
-      {singleMemberGroups.length > 0 && (
-        <GroupSection
-          title="Groups with 0–1 member"
-          groups={singleMemberGroups}
-          directoryMembers={directoryMembers}
-          canWrite={canWrite}
-        />
-      )}
-    </div>
-  )
+function Surface({ children }: { children: ReactNode }) {
+  return <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">{children}</div>
 }
 
-function GroupSection({
-  title,
-  groups,
-  directoryMembers,
-  canWrite,
-  defaultOpen = false,
-}: {
+type RowActionsProps = {
+  canWrite: boolean
+  onOpenDialog: (groupId: string, mode: MembershipMode) => void
+}
+
+type GroupSectionProps = RowActionsProps & {
   title: string
+  emptyTitle: string
   groups: AzureGroup[]
-  directoryMembers: AzureMember[]
-  canWrite: boolean
-  defaultOpen?: boolean
-}) {
-  return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <Card className="w-full gap-0 p-0">
-        <CardHeader className="px-0">
-          <CollapsibleTrigger
-            render={<Button variant="ghost" className="group h-auto w-full justify-between rounded-none px-4 py-4" />}
-          >
-            <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
-              <span>{title}</span>
-              <span className="font-normal text-muted-foreground">
-                {groups.length} {groups.length === 1 ? "group" : "groups"}
-              </span>
-            </span>
-            <ChevronDown className="transition-transform group-aria-expanded:rotate-180" />
-          </CollapsibleTrigger>
-        </CardHeader>
-        <CollapsibleContent render={<CardContent className="px-0" />}>
-          {groups.map((group) => (
-            <div key={group.id}>
-              <Separator />
-              <GroupRow group={group} directoryMembers={directoryMembers} canWrite={canWrite} />
-            </div>
-          ))}
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
-  )
+  open: boolean
+  onToggle: () => void
+  revealClassName?: string
 }
 
-function GroupRow({
-  group,
-  directoryMembers,
-  canWrite,
-}: {
-  group: AzureGroup
-  directoryMembers: AzureMember[]
-  canWrite: boolean
-}) {
+function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassName, ...rowProps }: GroupSectionProps) {
+  const contentId = useId()
   return (
-    <section className="grid gap-5 px-4 py-5 lg:grid-cols-[minmax(14rem,0.75fr)_minmax(0,1.25fr)] lg:items-center">
-      <div className="flex min-w-0 flex-col gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="truncate text-base font-medium">{group.displayName}</h2>
-          {group.mailAddress && (
-            <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-              <Mail className="size-3.5 shrink-0" />
-              <span className="truncate">{group.mailAddress}</span>
-            </div>
+    <section className="overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={contentId}
+          onClick={onToggle}
+          className="flex h-12 w-full items-center gap-2 px-5 text-left transition-[background-color] duration-120 hover:bg-(--pn-muted)"
+        >
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-(--pn-fg-muted) transition-transform duration-150 ease-(--pn-ease-out)",
+              open && "rotate-90",
+              revealClassName
+            )}
+          />
+          <span className="text-[14px] leading-5 font-medium text-(--pn-fg)">{title}</span>
+          <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">{groups.length}</span>
+        </button>
+      </h2>
+      <Reveal open={open} className={revealClassName}>
+        <ul id={contentId} aria-label={title} className="border-t border-(--pn-line)">
+          {groups.length === 0 ? (
+            <li>
+              <SectionEmpty title={emptyTitle} />
+            </li>
+          ) : (
+            groups.map((group) => <GroupRow key={group.id} group={group} {...rowProps} />)
           )}
-        </div>
-        <Badge variant="secondary">
-          {group.members.length} {group.members.length === 1 ? "member" : "members"}
-        </Badge>
-      </div>
-
-      <GroupMembership group={group} directoryMembers={directoryMembers} canWrite={canWrite} />
+        </ul>
+      </Reveal>
     </section>
   )
 }
 
-export function AzureGroupsSkeleton() {
+function GroupRow({ group, canWrite, onOpenDialog }: RowActionsProps & { group: AzureGroup }) {
+  const people = useMemo(
+    () =>
+      group.members
+        .map((member) => ({ id: member.id, name: member.displayName || "Unnamed user" }))
+        .toSorted((a, b) => a.name.localeCompare(b.name)),
+    [group.members]
+  )
+  const empty = group.members.length === 0
   return (
-    <div className="flex flex-col gap-5" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading Microsoft 365 groups</span>
-      <div className="flex items-start justify-between gap-8 max-[640px]:flex-col">
-        <div className="flex flex-col gap-2.5">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-9 w-72 max-w-full" />
-          <Skeleton className="h-4 w-112 max-w-full" />
-        </div>
-        <Skeleton className="h-6 w-48" />
+    <li className="@container flex h-14 items-center gap-4 border-b border-(--pn-line) px-5 transition-[background-color] duration-120 last:border-b-0 hover:bg-(--pn-muted)">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span title={group.displayName} className="truncate text-[13px] leading-5 font-medium text-(--pn-fg)">
+          {group.displayName}
+        </span>
+        {group.mailAddress ? (
+          <span title={group.mailAddress} className="truncate text-xs leading-4 text-(--pn-fg-muted)">
+            {group.mailAddress}
+          </span>
+        ) : (
+          <Unset className="text-xs leading-4" />
+        )}
       </div>
-      <Skeleton className="h-16 w-full rounded-lg" />
-      <Card className="w-full gap-0 p-0">
-        <CardHeader className="flex flex-col gap-2 py-4">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-4 w-20" />
-        </CardHeader>
-        <CardContent className="px-0">
-          {Array.from({ length: 4 }, (_, index) => (
-            <div key={index}>
-              <Separator />
-              <div className="grid gap-5 px-4 py-5 lg:grid-cols-2 lg:items-center">
-                <div className="flex flex-col gap-2">
-                  <Skeleton className="h-5 w-48 max-w-full" />
-                  <Skeleton className="h-4 w-56 max-w-full" />
-                  <Skeleton className="h-5 w-20" />
-                </div>
-                <div className="flex items-center gap-2 lg:justify-end">
-                  {Array.from({ length: 5 }, (_, avatarIndex) => (
-                    <Skeleton key={avatarIndex} className="size-9 rounded-full" />
-                  ))}
-                  <Skeleton className="size-10" />
-                  <Skeleton className="size-10" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+      <span className="w-24 shrink-0 text-right text-xs whitespace-nowrap text-(--pn-fg-muted) tabular-nums">
+        {pluralize(group.members.length, "member")}
+      </span>
+      <div className="hidden w-[212px] justify-end @min-[520px]:flex">
+        <AvatarGroup people={people} />
+      </div>
+      {canWrite ? (
+        <div className="flex items-center gap-1">
+          <IconButton
+            label="Add member"
+            ariaLabel={`Add a member to ${group.displayName}`}
+            icon={UserPlus}
+            onClick={() => onOpenDialog(group.id, "add")}
+          />
+          <IconButton
+            label={empty ? "No members to remove" : "Remove member"}
+            ariaLabel={empty ? "No members to remove" : `Remove a member from ${group.displayName}`}
+            icon={UserMinus}
+            disabled={empty}
+            focusableWhenDisabled
+            onClick={() => onOpenDialog(group.id, "remove")}
+          />
+        </div>
+      ) : null}
+    </li>
   )
 }

@@ -1,254 +1,192 @@
 import { useServerFn } from "@tanstack/react-start"
-import { format } from "date-fns"
-import { ChevronDownIcon, LoaderCircle, OctagonX, Upload } from "lucide-react"
-import { useRef, useState } from "react"
-import { toast } from "sonner"
+import { isSameDay } from "date-fns"
+import { CalendarDays, ChevronDown } from "lucide-react"
+import { useId, useState } from "react"
 
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  buttonMotion,
+  fieldControl,
+  fieldHintId,
+  FileButton,
+  floatingMotion,
+  FormDialog,
+  FormField,
+  raisedSurface,
+} from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { errorHasCode } from "@/lib/errors"
+import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
-import { createGuide, deleteGuide } from "./guides.functions"
+import { createGuide } from "./guides.functions"
+import { isValidGuideFile } from "./guides.validation"
 import type { Guide } from "./types"
 
-export function CreateGuideDialog({
-  existingVersions,
-  suggestedVersion,
-  onClose,
-  onCreated,
-}: {
+const DUPLICATE_VERSION = "This version already exists."
+
+type PublishEditionDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   existingVersions: string[]
-  suggestedVersion?: string
-  onClose: () => void
-  onCreated: (guide: Guide) => void
-}) {
-  const [version, setVersion] = useState(suggestedVersion ?? "")
-  const [date, setDate] = useState(new Date())
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
-  const [confirmDiscard, setConfirmDiscard] = useState(false)
-  const fileInput = useRef<HTMLInputElement>(null)
-  const initialVersion = useRef(suggestedVersion ?? "")
-  const initialDate = useRef(date)
-  const createGuideFn = useServerFn(createGuide)
-  const trimmedVersion = version.trim()
-  const duplicate = Boolean(trimmedVersion && existingVersions.includes(trimmedVersion))
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
-    if (!file || duplicate) return
-    if (file.type !== "application/pdf" || file.size > 2 * 1024 * 1024) {
-      setError("Choose a PDF file no larger than 2 MB.")
-      return
-    }
-
-    setPending(true)
-    setError("")
-    try {
-      const formData = new FormData()
-      formData.set("version", trimmedVersion)
-      formData.set("date", date.toISOString())
-      formData.set("file", file)
-
-      onCreated(await createGuideFn({ data: formData }))
-    } catch (cause) {
-      console.error(cause)
-      setError(
-        errorHasCode(cause, "DUPLICATE_VERSION")
-          ? "This version already exists."
-          : errorHasCode(cause, "UNAUTHORIZED")
-            ? "You do not have permission to publish guides."
-            : "The guide could not be published. Check the file and try again."
-      )
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const dirty = version !== initialVersion.current || Boolean(file) || date.getTime() !== initialDate.current.getTime()
-
-  function requestClose() {
-    if (pending) return
-    if (dirty) setConfirmDiscard(true)
-    else onClose()
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && requestClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto border-border p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
-          <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">WEB · GUIDES</p>
-          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">Publish a new edition</DialogTitle>
-          <DialogDescription>Upload a dated PDF version of the Guida della Matricola.</DialogDescription>
-        </DialogHeader>
-        <form className="px-6 py-5" onSubmit={(event) => void submit(event)}>
-          <FieldGroup>
-            <Field data-invalid={duplicate || undefined}>
-              <FieldLabel htmlFor="guide-version">Version</FieldLabel>
-              <Input
-                id="guide-version"
-                value={version}
-                onChange={(event) => setVersion(event.target.value)}
-                placeholder="e.g. 2.0"
-                aria-invalid={duplicate}
-                required
-                autoFocus
-              />
-              <FieldError>{duplicate ? "This version already exists." : undefined}</FieldError>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="date-picker">Date</FieldLabel>
-              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                <PopoverTrigger
-                  render={
-                    <Button variant="outline" id="date-picker" className="w-full justify-between font-normal">
-                      {date ? format(date, "dd/MM/yyyy") : "Select date"}
-                      <ChevronDownIcon data-icon="inline-end" />
-                    </Button>
-                  }
-                />
-                <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    captionLayout="dropdown"
-                    defaultMonth={date}
-                    required
-                    onSelect={(selectedDate) => {
-                      setDate(selectedDate)
-                      setDatePickerOpen(false)
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="guide-file">PDF file</FieldLabel>
-              <Input
-                ref={fileInput}
-                id="guide-file"
-                type="file"
-                accept="application/pdf"
-                className="sr-only"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start font-normal"
-                onClick={() => fileInput.current?.click()}
-              >
-                <Upload data-icon="inline-start" />{" "}
-                <span className="truncate">{file?.name ?? "Choose a PDF file…"}</span>
-              </Button>
-              <FieldDescription>PDF only, up to 2 MB.</FieldDescription>
-            </Field>
-            {error && <FieldError>{error}</FieldError>}
-          </FieldGroup>
-          {confirmDiscard && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertTitle>Discard guide changes?</AlertTitle>
-              <AlertDescription>Your unsaved edition details and selected file will be lost.</AlertDescription>
-              <AlertAction className="mt-3 flex gap-2 sm:mt-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>
-                  Keep editing
-                </Button>
-                <Button type="button" variant="destructive" size="sm" onClick={onClose}>
-                  Discard changes
-                </Button>
-              </AlertAction>
-            </Alert>
-          )}
-          <DialogFooter className="-mx-6 -mb-5 mt-5 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" onClick={requestClose} disabled={confirmDiscard}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={confirmDiscard || pending || duplicate || !trimmedVersion || !date || !file}
-            >
-              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Publish guide
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
+  /** Prefilled version: the latest edition's version with its last number incremented. */
+  suggestedVersion: string
+  /** Runs after the dialog closed on success. */
+  onPublished: (guide: Guide) => void
 }
 
-export function DeleteGuideDialog({
-  guide,
-  onClose,
-  onDeleted,
-}: {
-  guide: Guide
-  onClose: () => void
-  onDeleted: (id: number) => void
-}) {
-  const [pending, setPending] = useState(false)
-  const deleteGuideFn = useServerFn(deleteGuide)
+type Errors = { version?: string; file?: string }
 
-  async function remove() {
-    setPending(true)
+function validate(version: string, file: File | null, existingVersions: string[]): Errors {
+  const errors: Errors = {}
+  const trimmed = version.trim()
+  if (trimmed === "") errors.version = "Enter a version number."
+  else if (existingVersions.includes(trimmed)) errors.version = DUPLICATE_VERSION
+  if (!file) errors.file = "Choose a PDF file."
+  else if (!isValidGuideFile(file)) errors.file = "Choose a PDF file no larger than 2 MB."
+  return errors
+}
+
+/** "Publish a new edition" (§7.12). Mount with a fresh `key` per opening so the fields start from the suggestion. */
+export function PublishEditionDialog({
+  open,
+  onOpenChange,
+  existingVersions,
+  suggestedVersion,
+  onPublished,
+}: PublishEditionDialogProps) {
+  const createGuideFn = useServerFn(createGuide)
+  const [initialDate] = useState(() => new Date())
+  const [version, setVersion] = useState(suggestedVersion)
+  const [date, setDate] = useState(initialDate)
+  const [file, setFile] = useState<File | null>(null)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [shown, setShown] = useState<Errors>({})
+  const versionId = useId()
+  const dateId = useId()
+  const fileId = useId()
+
+  const dirty = version !== suggestedVersion || file !== null || !isSameDay(date, initialDate)
+
+  /** After a field has errored, its message tracks the value on blur and change. */
+  function revalidate(field: keyof Errors, nextVersion = version, nextFile = file) {
+    if (!shown[field]) return
+    setShown((current) => ({ ...current, [field]: validate(nextVersion, nextFile, existingVersions)[field] }))
+  }
+
+  async function submit() {
+    const errors = validate(version, file, existingVersions)
+    setShown(errors)
+    if (errors.version || errors.file || !file) return
+    const formData = new FormData()
+    formData.set("version", version.trim())
+    formData.set("date", date.toISOString())
+    formData.set("file", file)
+    let guide: Guide
     try {
-      await deleteGuideFn({ data: { id: guide.id } })
-      onDeleted(guide.id)
-    } catch (error) {
-      console.error(error)
-      toast.error("The guide could not be deleted. Check your permissions and try again.")
-    } finally {
-      setPending(false)
+      guide = await createGuideFn({ data: formData })
+    } catch (cause) {
+      console.error(cause)
+      if (errorHasCode(cause, "DUPLICATE_VERSION")) {
+        setShown((current) => ({ ...current, version: DUPLICATE_VERSION }))
+        return
+      }
+      throw new Error(
+        errorHasCode(cause, "UNAUTHORIZED")
+          ? "You do not have permission to publish guides."
+          : "Couldn't publish the edition. Check the file and try again."
+      )
     }
+    onOpenChange(false)
+    onPublished(guide)
   }
 
   return (
-    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-            <OctagonX />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Delete Guide</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete version <strong>{guide.version}</strong>? <br />
-            This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending} variant="outline" onClick={onClose}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={pending} onClick={() => void remove()}>
-            {pending ? <LoaderCircle data-icon="inline-start" className="animate-spin-slow" /> : "Confirm"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Publish a new edition"
+      description="Upload a dated PDF version of the Guida della Matricola."
+      noun="edition"
+      dirty={dirty}
+      submitLabel="Publish edition"
+      onSubmit={submit}
+    >
+      <FormField label="Version" htmlFor={versionId} error={shown.version}>
+        <Input
+          id={versionId}
+          value={version}
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder="e.g. 2.0"
+          aria-invalid={shown.version ? true : undefined}
+          aria-describedby={shown.version ? fieldHintId(versionId) : undefined}
+          onChange={(event) => {
+            setVersion(event.target.value)
+            revalidate("version", event.target.value)
+          }}
+          onBlur={() => {
+            const error = validate(version, file, existingVersions).version
+            if (shown.version || error === DUPLICATE_VERSION) {
+              setShown((current) => ({ ...current, version: error }))
+            }
+          }}
+          className={cn("h-9 px-3 font-mono tabular-nums", fieldControl)}
+        />
+      </FormField>
+      <FormField label="Date" htmlFor={dateId}>
+        <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+          <PopoverTrigger
+            render={
+              <Button
+                id={dateId}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  buttonMotion,
+                  "w-full justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-muted) dark:bg-(--pn-surface)"
+                )}
+              />
+            }
+          >
+            <CalendarDays aria-hidden className="text-(--pn-fg-muted)" />
+            <span className="tabular-nums">{formatDate(date)}</span>
+            <ChevronDown aria-hidden className="ml-auto text-(--pn-fg-muted)" />
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className={cn(raisedSurface, floatingMotion, "w-auto overflow-hidden rounded-(--pn-r-4) p-0")}
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              defaultMonth={date}
+              captionLayout="dropdown"
+              weekStartsOn={1}
+              required
+              onSelect={(selected) => {
+                setDate(selected)
+                setDatePickerOpen(false)
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </FormField>
+      <FormField label="PDF file" htmlFor={fileId} hint="PDF only, up to 2 MB." error={shown.file}>
+        <FileButton
+          id={fileId}
+          file={file}
+          accept="application/pdf"
+          label="Choose PDF"
+          invalid={Boolean(shown.file)}
+          onChange={(next) => {
+            setFile(next)
+            revalidate("file", version, next)
+          }}
+        />
+      </FormField>
+    </FormDialog>
   )
 }

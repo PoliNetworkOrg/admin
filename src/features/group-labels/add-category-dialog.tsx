@@ -1,148 +1,118 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ArrowLeft, LoaderCircle } from "lucide-react"
-import { useId, useState } from "react"
-import { toast } from "sonner"
+import { ArrowLeft } from "lucide-react"
+import { useId, useMemo, useState } from "react"
 
+import { buttonMotion, FormDialog, NavCard } from "@/components/primitives"
+import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { errorMessage } from "@/lib/errors"
 
-import { DEFAULT_GROUP_LABEL_COLOR, GROUP_LABEL_MAX } from "./group-labels.constants"
+import { DEFAULT_GROUP_LABEL_COLOR } from "./group-labels.constants"
 import { createGroupLabel } from "./group-labels.functions"
-import { CATEGORY_ROOTS, formatLabelSegment, isValidLabelSegment, labelPathToUrlSegments } from "./label-tree"
+import { groupLabelSaveErrorMessage } from "./group-labels.validation"
+import { focusFieldSoon, LabelNameField, useLabelName, useResetOnOpen } from "./label-name-field"
+import {
+  buildCategoryRootTree,
+  countCategoryDescendants,
+  formatLabelSegment,
+  isCategoryLabel,
+  labelPathToUrlSegments,
+} from "./label-tree"
+import type { GroupLabel } from "./types"
 
-/** Creates a new category nested under one of the two fixed roots (Didattica, Extra) — there's no "add a new
- * root" action, since only a code change (adding to `CATEGORY_ROOTS`) can introduce a new one. */
-export function AddCategoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+type AddCategoryDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  labels: GroupLabel[]
+}
+
+/**
+ * Two steps: pick the fixed root (Didattica / Extra), then name the new category; navigates to it on success.
+ * There is no "add a root" action: only a code change (`CATEGORY_ROOTS`) can introduce one.
+ */
+export function AddCategoryDialog({ open, onOpenChange, labels }: AddCategoryDialogProps) {
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
+  const nameId = useId()
   const [root, setRoot] = useState<string | null>(null)
-  const [segment, setSegment] = useState("")
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
-  const segmentId = useId()
+  const name = useLabelName("category")
+  const roots = useMemo(() => buildCategoryRootTree(labels.filter((label) => isCategoryLabel(label.label))), [labels])
 
-  const trimmed = segment.trim()
-  const canSave = Boolean(root) && isValidLabelSegment(trimmed)
-
-  function reset() {
+  useResetOnOpen(open, () => {
     setRoot(null)
-    setSegment("")
-    setError("")
-  }
+    name.reset()
+  })
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
-    if (!root || !canSave || pending) return
-    setPending(true)
-    setError("")
-    const childPath = `${root}.${trimmed}`
+  const rootTitle = root === null ? "" : formatLabelSegment(root)
+
+  async function submit() {
+    if (root === null || !name.check()) return
+    const path = `${root}.${name.trimmed}`
     try {
-      await createGroupLabelFn({ data: { label: childPath, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
-      toast.success(`"${formatLabelSegment(trimmed)}" created under ${formatLabelSegment(root)}.`)
-      onOpenChange(false)
-      reset()
-      await router.navigate({ to: `/dashboard/web/groups-by-label/${labelPathToUrlSegments(childPath).join("/")}` })
-      // The sidebar's label list is loaded by the persistent dashboard shell route, which doesn't
-      // re-run its loader on a navigate within its own subtree — force a refresh so it shows the new node.
-      await router.invalidate({ sync: true })
+      await createGroupLabelFn({ data: { label: path, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
     } catch (cause) {
       console.error(cause)
-      setError(errorMessage(cause, `"${trimmed}" could not be created. Try a different name.`))
-    } finally {
-      setPending(false)
+      throw new Error(groupLabelSaveErrorMessage(cause))
     }
+    appToast.success(`${formatLabelSegment(name.trimmed)} created under ${rootTitle}.`)
+    onOpenChange(false)
+    await router.navigate({
+      to: "/dashboard/web/groups-by-label/$",
+      params: { _splat: labelPathToUrlSegments(path).join("/") },
+    })
+    await router.invalidate({ sync: true })
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (pending) return
-        onOpenChange(nextOpen)
-        if (!nextOpen) reset()
-      }}
+      onOpenChange={onOpenChange}
+      title="Add category"
+      description={
+        root === null
+          ? "Which top-level category does this belong under?"
+          : `Creates a new category under ${rootTitle}.`
+      }
+      noun="category"
+      dirty={name.trimmed !== ""}
+      submitLabel={root === null ? undefined : "Add category"}
+      canSubmit={root !== null && name.trimmed !== ""}
+      onSubmit={submit}
+      footerStart={
+        root === null ? undefined : (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setRoot(null)
+              name.reset()
+            }}
+            className={buttonMotion}
+          >
+            <ArrowLeft aria-hidden data-icon="inline-start" />
+            Back
+          </Button>
+        )
+      }
     >
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Add category</DialogTitle>
-          <DialogDescription>
-            {root
-              ? `Creates a new category nested under ${formatLabelSegment(root)}.`
-              : "Which top-level category does this belong under?"}
-          </DialogDescription>
-        </DialogHeader>
-
-        {!root ? (
-          <div className="grid grid-cols-2 gap-3">
-            {CATEGORY_ROOTS.map((candidate) => (
-              <button
-                key={candidate}
-                type="button"
-                onClick={() => setRoot(candidate)}
-                className="rounded-lg border border-border p-4 text-center text-sm font-medium hover:border-primary/50 hover:bg-accent"
-              >
-                {formatLabelSegment(candidate)}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <form className="flex flex-col gap-3" onSubmit={(event) => void submit(event)}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2 w-fit gap-1 text-muted-foreground"
-              onClick={() => setRoot(null)}
-            >
-              <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
-            </Button>
-            <Field>
-              <FieldLabel htmlFor={segmentId}>Name</FieldLabel>
-              <Input
-                id={segmentId}
-                value={segment}
-                onChange={(event) => setSegment(event.target.value)}
-                placeholder="sub-category"
-                maxLength={GROUP_LABEL_MAX}
-                autoFocus
-                required
-              />
-            </Field>
-            {!isValidLabelSegment(trimmed) && trimmed && (
-              <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
-            )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={() => {
-                  reset()
-                  onOpenChange(false)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={pending || !canSave}>
-                {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-                Add category
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+      {root === null ? (
+        <div className="grid gap-3 min-[480px]:grid-cols-2">
+          {roots.map((candidate) => (
+            <NavCard
+              key={candidate.path}
+              title={formatLabelSegment(candidate.segment)}
+              count={countCategoryDescendants(candidate)}
+              noun="category"
+              onClick={() => {
+                setRoot(candidate.path)
+                focusFieldSoon(nameId)
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <LabelNameField id={nameId} field={name} placeholder="sub-category" />
+      )}
+    </FormDialog>
   )
 }

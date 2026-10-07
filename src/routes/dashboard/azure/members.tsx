@@ -1,18 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { TableSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { getAzureMembers } from "@/features/azure/azure.functions"
 import { AzureMembersPage } from "@/features/azure/members-page"
-import { hasWriteAdminRole } from "@/server/authorization"
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   loader: () => getAzureMembers(),
-  pendingComponent: () => <DataPageSkeleton columns={5} />,
+  pendingComponent: () => (
+    <PageContent>
+      <TableSkeleton columns={5} label="Loading members…" />
+    </PageContent>
+  ),
   component: AzureMembersRoute,
 })
 
 function AzureMembersRoute() {
-  const members = Route.useLoaderData()
-  const { roles } = Route.useRouteContext()
-  return <AzureMembersPage initialMembers={members} canWrite={hasWriteAdminRole(roles)} />
+  return <AzureMembersPage members={Route.useLoaderData()} />
 }

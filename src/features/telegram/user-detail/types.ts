@@ -1,13 +1,3 @@
-import type { ApiOutput, TgGrant, TgUser, TgUserRole } from "@/lib/api/types"
+import type { getTelegramUserDetails } from "@/features/telegram/users.functions"
 
-export type TelegramUserDetail = {
-  user: TgUser
-  roles: NonNullable<ApiOutput["tg"]["permissions"]["getRoles"]["roles"]>
-  configuredRoles: TgUserRole[]
-  groupAdmin: ApiOutput["tg"]["permissions"]["getRoles"]["groupAdmin"]
-  groups: ApiOutput["tg"]["groups"]["getAll"]
-  messages: NonNullable<ApiOutput["tg"]["messages"]["getLastByUser"]["messages"]>
-  audits: ApiOutput["tg"]["auditLog"]["getById"]
-  ongoingGrant: TgGrant | null
-  scheduledGrants: TgGrant[]
-}
+export type TelegramUserDetail = Awaited<ReturnType<typeof getTelegramUserDetails>>

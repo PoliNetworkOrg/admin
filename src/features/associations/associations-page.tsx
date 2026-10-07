@@ -1,197 +1,256 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Plus, UsersRound } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { toast } from "sonner"
+import { Plus, Users } from "lucide-react"
+import { useDeferredValue, useState } from "react"
 
-import { DataToolbar } from "@/components/data-toolbar"
-import { EmptyState } from "@/components/empty-state"
+import { buttonMotion, EmptyState, useEditSlot } from "@/components/primitives"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { errorHasCode } from "@/lib/errors"
 
-import { AssociationCard } from "./association-card"
+import { AssociationCard, type AssociationEditSession } from "./association-card"
 import { AssociationLinksDialog } from "./association-links-dialog"
 import { EMPTY_ASSOCIATION_LINKS } from "./associations.constants"
 import { createAssociation, deleteAssociation, editAssociation } from "./associations.functions"
 import { associationSaveErrorMessage } from "./associations.validation"
-import type { Association, AssociationFormValues } from "./types"
+import type { Association, AssociationForm } from "./types"
 
-export function AssociationsPage({ loadedAssociations }: { loadedAssociations: Association[] }) {
+const DRAFT_ID = -1
+const EMPTY_FORM: AssociationForm = { name: "", descriptionIt: "", descriptionEn: "", logo: null, logoFile: null }
+const DRAFT: Association = {
+  id: DRAFT_ID,
+  name: "",
+  descriptionIt: "",
+  descriptionEn: "",
+  logo: null,
+  links: EMPTY_ASSOCIATION_LINKS,
+}
+
+function formOf({ name, descriptionIt, descriptionEn, logo }: Association): AssociationForm {
+  return { name, descriptionIt, descriptionEn, logo, logoFile: null }
+}
+
+function sameForm(a: AssociationForm, b: AssociationForm) {
+  return (
+    a.name === b.name && a.descriptionIt === b.descriptionIt && a.descriptionEn === b.descriptionEn && a.logo === b.logo
+  )
+}
+
+function normalize(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+}
+
+/** The multipart body `createAssociation`/`editAssociation` validate; the logo is sent only when a new file was chosen. */
+function associationFormData(values: AssociationForm, id?: number) {
+  const data = new FormData()
+  if (id !== undefined) data.set("id", String(id))
+  data.set("name", values.name.trim())
+  data.set("descriptionIt", values.descriptionIt.trim())
+  data.set("descriptionEn", values.descriptionEn.trim())
+  if (values.logoFile) data.set("logo", values.logoFile)
+  return data
+}
+
+/** Associations (docs/design.md §7.11): searchable inline-edit cards, a draft on top, links in a dialog. */
+export function AssociationsPage({ loadedAssociations: associations }: { loadedAssociations: Association[] }) {
   const router = useRouter()
+  const canWrite = useCanWrite("web")
   const createAssociationFn = useServerFn(createAssociation)
   const editAssociationFn = useServerFn(editAssociation)
   const deleteAssociationFn = useServerFn(deleteAssociation)
-  const [associations, setAssociations] = useState(loadedAssociations)
+
   const [query, setQuery] = useState("")
-  const [draftAssociationIds, setDraftAssociationIds] = useState<Set<number>>(new Set())
-  const [linksDialog, setLinksDialog] = useState<Association | null>(null)
-  const draftAssociationIdsRef = useRef(draftAssociationIds)
+  const deferredQuery = useDeferredValue(query)
+  const [links, setLinks] = useState<{ id: number; open: boolean; opened: number }>({ id: 0, open: false, opened: 0 })
 
-  useEffect(() => {
-    setAssociations((current) => {
-      const drafts = current.filter((association) => draftAssociationIdsRef.current.has(association.id))
-      return drafts.length ? [...drafts, ...loadedAssociations] : loadedAssociations
-    })
-  }, [loadedAssociations])
+  const slot = useEditSlot<number>("association")
+  const [form, setForm] = useState<AssociationForm | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | undefined>(undefined)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const [sessionFor, setSessionFor] = useState<number | null>(null)
+  if (sessionFor !== slot.editingId) {
+    setSessionFor(slot.editingId)
+    setForm(null)
+    setSaveError(undefined)
+    setLogoError(null)
+  }
 
-  const filteredAssociations = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase()
-    if (!normalized) return associations
-    return associations.filter(
-      (association) =>
-        draftAssociationIds.has(association.id) ||
-        [association.name, association.descriptionIt, association.descriptionEn].some((value) =>
-          value.toLocaleLowerCase().includes(normalized)
+  const editingDraft = slot.editingId === DRAFT_ID
+  const editingAssociation = associations.find((association) => association.id === slot.editingId)
+  const initial = editingAssociation ? formOf(editingAssociation) : EMPTY_FORM
+  const values = form ?? initial
+  const dirty = slot.editingId !== null && !sameForm(values, initial)
+  const valid =
+    values.name.trim() !== "" &&
+    values.descriptionIt.trim() !== "" &&
+    values.descriptionEn.trim() !== "" &&
+    logoError === null
+
+  const needle = normalize(deferredQuery.trim())
+  const matches = needle
+    ? associations.filter((association) =>
+        [association.name, association.descriptionIt, association.descriptionEn].some((text) =>
+          normalize(text).includes(needle)
         )
-    )
-  }, [associations, draftAssociationIds, query])
+      )
+    : associations
+  const cards = editingDraft ? [DRAFT, ...matches] : matches
 
   async function refresh() {
     try {
       await router.invalidate({ sync: true })
     } catch (error) {
       console.error(error)
-      toast.warning("Your change was saved, but the association list could not be refreshed.")
+      appToast.warning("Your change was saved, but the association list could not be refreshed.")
     }
   }
 
-  function replaceAssociation(association: Association) {
-    setAssociations((current) => current.map((item) => (item.id === association.id ? association : item)))
+  async function saveEdit() {
+    if (!valid || saving || slot.editingId === null) return
+    setSaving(true)
+    setSaveError(undefined)
+    try {
+      if (editingDraft) await createAssociationFn({ data: associationFormData(values) })
+      else if (editingAssociation) {
+        await editAssociationFn({ data: associationFormData(values, editingAssociation.id) })
+      }
+      await refresh()
+      appToast.success(editingDraft ? "Association added." : "Association updated.")
+      slot.stop()
+    } catch (error) {
+      console.error(error)
+      setSaveError(associationSaveErrorMessage(error))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function removeDraftAssociationId(id: number) {
-    const nextDraftIds = new Set(draftAssociationIdsRef.current)
-    nextDraftIds.delete(id)
-    draftAssociationIdsRef.current = nextDraftIds
-    setDraftAssociationIds(nextDraftIds)
+  const session: AssociationEditSession = {
+    values,
+    onChange: setForm,
+    dirty,
+    valid,
+    saving,
+    error: saveError,
+    message: logoError ?? undefined,
+    onSave: () => void saveEdit(),
+    onCancel: slot.stop,
+    onLogoError: setLogoError,
+  }
+
+  async function removeAssociation(association: Association) {
+    try {
+      await deleteAssociationFn({ data: { id: association.id } })
+    } catch (error) {
+      console.error(error)
+      // Already gone: the outcome the user asked for.
+      if (!errorHasCode(error, "NOT_FOUND")) {
+        throw new Error("Couldn't delete the association. Check your permissions and try again.", { cause: error })
+      }
+    }
+    await refresh()
+    appToast.success("Association deleted.")
   }
 
   function addAssociation() {
-    const draft: Association = {
-      id: -Date.now(),
-      name: "New association",
-      descriptionIt: "",
-      descriptionEn: "",
-      logo: null,
-      links: { ...EMPTY_ASSOCIATION_LINKS },
-    }
-    setAssociations((current) => [draft, ...current])
-    const nextDraftIds = new Set(draftAssociationIdsRef.current).add(draft.id)
-    draftAssociationIdsRef.current = nextDraftIds
-    setDraftAssociationIds(nextDraftIds)
+    if (!editingDraft) slot.start(DRAFT_ID, dirty)
   }
 
-  function cancelDraft(id: number) {
-    setAssociations((current) => current.filter((association) => association.id !== id))
-    removeDraftAssociationId(id)
-  }
+  const linksAssociation = associations.find((association) => association.id === links.id) ?? null
 
-  async function saveAssociation(id: number, values: AssociationFormValues) {
-    const draft = draftAssociationIdsRef.current.has(id)
-    const data = new FormData()
-    if (!draft) data.set("id", String(id))
-    data.set("name", values.name)
-    data.set("descriptionIt", values.descriptionIt)
-    data.set("descriptionEn", values.descriptionEn)
-    data.set("logo", values.logo ?? "")
-    if (values.logoFile) data.set("logo", values.logoFile)
+  const addButton = (
+    <Button size="sm" onClick={addAssociation} className={buttonMotion}>
+      <Plus data-icon="inline-start" />
+      Add association
+    </Button>
+  )
 
-    try {
-      const saved = draft ? await createAssociationFn({ data }) : await editAssociationFn({ data })
-      setAssociations((current) => current.map((association) => (association.id === id ? saved : association)))
-      if (draft) removeDraftAssociationId(id)
-      toast.success(`Association ${draft ? "created" : "updated"}`)
-      void refresh()
-      return true
-    } catch (cause) {
-      console.error(cause)
-      toast.error(associationSaveErrorMessage(cause))
-      return false
-    }
-  }
-
-  async function removeAssociation(id: number) {
-    if (draftAssociationIdsRef.current.has(id)) {
-      cancelDraft(id)
-      return true
-    }
-
-    try {
-      await deleteAssociationFn({ data: { id } })
-      setAssociations((current) => current.filter((association) => association.id !== id))
-      toast.success("Association deleted")
-      void refresh()
-      return true
-    } catch (cause) {
-      console.error(cause)
-      if (errorHasCode(cause, "NOT_FOUND")) {
-        setAssociations((current) => current.filter((association) => association.id !== id))
-        toast.success("Association deleted")
-        void refresh()
-        return true
-      }
-      toast.error("The association could not be deleted. Check your permissions and try again.")
-      return false
-    }
-  }
-
-  return (
-    <div className="animate-appear">
-      <DataToolbar
-        eyebrow="Web"
-        title="Associations"
-        description="Manage the associations and public information displayed on the PoliNetwork website."
-        count={filteredAssociations.length}
-        total={associations.length}
-        searchPlaceholder="Search associations…"
-        onSearch={setQuery}
+  let content
+  if (cards.length > 0) {
+    content = (
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {cards.map((association) => (
+          <AssociationCard
+            key={association.id}
+            association={association}
+            draft={association.id === DRAFT_ID}
+            canWrite={canWrite}
+            session={slot.editingId === association.id ? session : null}
+            onEdit={() => slot.start(association.id, dirty)}
+            onDelete={() => removeAssociation(association)}
+            onManageLinks={() =>
+              setLinks((current) => ({ id: association.id, open: true, opened: current.opened + 1 }))
+            }
+          />
+        ))}
+      </div>
+    )
+  } else if (needle) {
+    content = (
+      <EmptyState
+        icon={Users}
+        title="No associations match"
+        text="Try a different name or description."
         action={
-          <Button onClick={addAssociation}>
-            <Plus data-icon="inline-start" /> Add association
+          <Button size="sm" variant="ghost" onClick={() => setQuery("")} className={buttonMotion}>
+            Clear search
           </Button>
         }
       />
+    )
+  } else {
+    content = (
+      <EmptyState
+        icon={Users}
+        title="No associations yet"
+        text="Add the first association shown on the public website."
+        action={
+          canWrite ? (
+            <Button size="sm" variant="outline" onClick={addAssociation} className={buttonMotion}>
+              <Plus data-icon="inline-start" />
+              Add association
+            </Button>
+          ) : undefined
+        }
+      />
+    )
+  }
 
-      {filteredAssociations.length ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {filteredAssociations.map((association) => (
-            <AssociationCard
-              key={association.id}
-              association={association}
-              draft={draftAssociationIds.has(association.id)}
-              initialEditActive={draftAssociationIds.has(association.id)}
-              onCancelDraft={() => cancelDraft(association.id)}
-              onDelete={() => removeAssociation(association.id)}
-              onEditLinks={() => setLinksDialog(association)}
-              onSave={(values) => saveAssociation(association.id, values)}
-            />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={UsersRound}
-          title={associations.length ? "No association matches this search" : "No associations yet"}
-          text={
-            associations.length
-              ? "Try a different name or description."
-              : "Add the first association shown on the public website."
-          }
-          action={!associations.length ? <Button onClick={addAssociation}>Add first association</Button> : undefined}
-        />
-      )}
-
-      {linksDialog && (
+  return (
+    <>
+      <PageBar
+        left={
+          <Toolbar
+            search={{ value: query, onChange: setQuery, placeholder: "Search associations…" }}
+            count={
+              needle ? (
+                <Count value={matches.length} total={associations.length} noun="association" />
+              ) : (
+                <Count value={associations.length} noun="association" />
+              )
+            }
+          />
+        }
+        right={canWrite ? addButton : undefined}
+      />
+      <PageContent width="wide">
+        {slot.discardDialog}
+        {content}
         <AssociationLinksDialog
-          association={linksDialog}
-          onClose={() => setLinksDialog(null)}
-          onSaved={(association) => {
-            replaceAssociation(association)
-            setLinksDialog(null)
-            toast.success("Association links updated")
-            void refresh()
+          key={links.opened}
+          association={linksAssociation}
+          open={links.open && linksAssociation !== null}
+          onOpenChange={(open) => setLinks((current) => ({ ...current, open }))}
+          onSaved={async () => {
+            await refresh()
+            appToast.success("Links updated.")
           }}
         />
-      )}
-    </div>
+      </PageContent>
+    </>
   )
 }

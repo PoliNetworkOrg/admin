@@ -1,153 +1,209 @@
-import { Tag } from "lucide-react"
-import { useMemo, useState } from "react"
+import { Database } from "lucide-react"
+import { useMemo } from "react"
 
-import { DataToolbar } from "@/components/data-toolbar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
-import { buildLabelsByGroupId } from "@/features/group-labels/label-tree"
-import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
-import { GroupsTable } from "@/features/telegram/groups-table"
-import type { GroupWithLabels, TgGroup, TgGroupLabel } from "@/lib/api/types"
+  buttonMotion,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  GroupLabelBadges,
+  SegmentedControl,
+  Unset,
+} from "@/components/primitives"
+import { Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { Button } from "@/components/ui/button"
+import type { GroupLabel } from "@/features/group-labels/types"
+import {
+  groupActionsWidth,
+  GroupRowActions,
+  groupKey,
+  labelLink,
+  resolveLabels,
+  useGroupActions,
+  useLabelsByPath,
+} from "@/features/groups/group-row-actions"
+import {
+  compareText,
+  LabelsFilterPopover,
+  matchesLabelFilter,
+  matchesVisibility,
+  sortRows,
+  useGroupListState,
+  VISIBILITY_FILTERS,
+  type VisibilityFilter,
+} from "@/features/groups/labels-filter-popover"
+import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
 
-function setManyGroupLabels(current: TgGroupLabel[], labels: TgGroupLabel[], select: boolean): TgGroupLabel[] {
-  if (select) {
-    const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
-    return [...current, ...toAdd]
-  }
-  return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
+type TelegramGroupRow = GroupWithLabels & { tag: string | null }
+
+function comparatorFor(column: string): (a: TelegramGroupRow, b: TelegramGroupRow) => number {
+  if (column === "telegramId") return (a, b) => a.id - b.id
+  if (column === "tag") return (a, b) => compareText(a.tag ?? "", b.tag ?? "")
+  return (a, b) => compareText(a.title, b.title)
 }
 
-export function TelegramGroupsPage({
-  loadedGroups,
-  loadedGroupLabels,
-  loadedGroupsWithLabels,
-  initialQuery,
-}: {
-  loadedGroups: TgGroup[]
-  loadedGroupLabels: TgGroupLabel[]
-  loadedGroupsWithLabels: GroupWithLabels[]
-  initialQuery?: string
-}) {
-  const [query, setQuery] = useState(initialQuery ?? "")
-  const [requiredLabels, setRequiredLabels] = useState<TgGroupLabel[]>([])
-  const [excludedLabels, setExcludedLabels] = useState<TgGroupLabel[]>([])
+type TelegramGroupsPageProps = {
+  groups: TgGroup[]
+  labels: GroupLabel[]
+  groupsWithLabels: GroupWithLabels[]
+  initialQuery: string
+  visibility: VisibilityFilter
+  onVisibilityChange: (visibility: VisibilityFilter) => void
+}
 
-  const labelsByGroupId = useMemo(
-    () => buildLabelsByGroupId(loadedGroupLabels, loadedGroupsWithLabels, "tg"),
-    [loadedGroupLabels, loadedGroupsWithLabels]
+/** Telegram › Groups (§7.6): bot-managed groups with visibility, labels and leave. */
+export function TelegramGroupsPage({
+  groups,
+  labels,
+  groupsWithLabels,
+  initialQuery,
+  visibility,
+  onVisibilityChange,
+}: TelegramGroupsPageProps) {
+  const canWrite = useCanWrite("web")
+  const labelsByPath = useLabelsByPath(labels)
+  const list = useGroupListState({
+    defaultSort: { column: "title", direction: "asc" },
+    urlQuery: initialQuery,
+    visibility,
+    onVisibilityChange,
+  })
+
+  // `tg.groups.getAll` is the list; the cross-platform search adds each group's label paths.
+  const all = useMemo(() => {
+    const labelsById = new Map(
+      groupsWithLabels.filter((group) => group.type === "tg").map((group) => [group.id, group.labels])
+    )
+    return groups.map((group): TelegramGroupRow => ({
+      type: "tg",
+      id: group.telegramId,
+      title: group.title,
+      link: group.link,
+      hide: group.hide,
+      labels: labelsById.get(group.telegramId) ?? [],
+      tag: group.tag,
+    }))
+  }, [groups, groupsWithLabels])
+  const groupActions = useGroupActions(labels, all)
+
+  const { deferredQuery, filter, sort } = list
+  const matching = useMemo(() => {
+    const query = deferredQuery.replace(/^@/, "")
+    const filtered = all.filter(
+      (group) =>
+        [group.title, group.tag].join(" ").toLocaleLowerCase().includes(query) &&
+        matchesVisibility(group.hide, visibility) &&
+        matchesLabelFilter(group.labels, filter)
+    )
+    return sortRows(
+      filtered,
+      comparatorFor(sort.column),
+      sort.direction,
+      (row) => sort.column === "tag" && row.tag === null
+    )
+  }, [all, deferredQuery, filter, sort, visibility])
+
+  const { rows, pagination } = list.paginate(matching)
+
+  const columns: DataTableColumn<TelegramGroupRow>[] = [
+    {
+      id: "title",
+      label: "Group",
+      sortable: true,
+      // 208px of title plus cell padding.
+      minWidth: 244,
+      fill: true,
+      cell: (row) => (
+        <span title={row.title} className="block truncate">
+          {row.title}
+        </span>
+      ),
+    },
+    {
+      id: "telegramId",
+      label: "Telegram ID",
+      sortable: true,
+      mono: true,
+      priority: 2,
+      minWidth: 146,
+      cell: (row) => row.id,
+    },
+    {
+      id: "tag",
+      label: "Tag",
+      sortable: true,
+      mono: true,
+      priority: 3,
+      minWidth: 176,
+      cell: (row) =>
+        row.tag ? (
+          <span title={`@${row.tag}`} className="block truncate">
+            @{row.tag}
+          </span>
+        ) : (
+          <Unset />
+        ),
+    },
+    {
+      id: "labels",
+      label: "Labels",
+      priority: 1,
+      minWidth: 290,
+      cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
+    },
+  ]
+
+  const empty = list.filtering ? (
+    <EmptyState
+      icon={Database}
+      title="No groups match"
+      text="Clear the search or filters and try again."
+      action={
+        <Button variant="ghost" size="sm" onClick={list.clear} className={buttonMotion}>
+          Clear filters
+        </Button>
+      }
+    />
+  ) : (
+    <EmptyState icon={Database} title="No Telegram groups yet" text="Groups appear here once the bot joins them." />
   )
 
-  const visibleGroups = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase().replace(/^@/, "")
-    return loadedGroups.filter((group) => {
-      const matchesText =
-        !normalizedQuery ||
-        [group.title, group.tag].filter(Boolean).join(" ").toLocaleLowerCase().includes(normalizedQuery)
-      if (!matchesText) return false
-
-      const groupLabels = labelsByGroupId.get(group.telegramId) ?? []
-      const matchesRequired = requiredLabels.every((label) => groupLabels.some((gl) => gl.label === label.label))
-      const matchesExcluded = excludedLabels.every((label) => !groupLabels.some((gl) => gl.label === label.label))
-      return matchesRequired && matchesExcluded
-    })
-  }, [loadedGroups, query, requiredLabels, excludedLabels, labelsByGroupId])
-
-  const activeLabelFilterCount = requiredLabels.length + excludedLabels.length
-  const hasFilters = Boolean(query.trim()) || activeLabelFilterCount > 0
-
   return (
-    <div className="animate-appear">
-      <DataToolbar
-        eyebrow="Telegram"
-        title="Telegram groups"
-        description="Maintain the community groups connected to PoliNetwork."
-        count={visibleGroups.length}
-        total={loadedGroups.length}
-        searchPlaceholder="Search by group name or tag…"
-        defaultSearchValue={initialQuery}
-        onSearch={setQuery}
-      >
-        <Popover>
-          <PopoverTrigger
-            render={
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Tag className="size-4" />
-                Labels
-                {activeLabelFilterCount > 0 && (
-                  <Badge variant="secondary" className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
-                    {activeLabelFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            }
-          />
-          <PopoverContent align="start" className="w-80">
-            <PopoverHeader>
-              <PopoverTitle>Filter by label</PopoverTitle>
-              <PopoverDescription>Show groups that must, or must not, have specific labels.</PopoverDescription>
-            </PopoverHeader>
-            {loadedGroupLabels.length ? (
+    <>
+      <PageBar
+        left={
+          <Toolbar
+            search={{ value: list.query, onChange: list.setQuery, placeholder: "Search by group name or tag…" }}
+            filters={
               <>
-                <div>
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Must have</p>
-                  <LabelTreeSelector
-                    allLabels={loadedGroupLabels.filter(
-                      (label) => !excludedLabels.some((excluded) => isSameGroupLabel(excluded, label))
-                    )}
-                    selected={requiredLabels}
-                    onToggleMany={(labels, select) =>
-                      setRequiredLabels((current) => setManyGroupLabels(current, labels, select))
-                    }
-                  />
-                </div>
-                <div>
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Must not have</p>
-                  <LabelTreeSelector
-                    allLabels={loadedGroupLabels.filter(
-                      (label) => !requiredLabels.some((required) => isSameGroupLabel(required, label))
-                    )}
-                    selected={excludedLabels}
-                    onToggleMany={(labels, select) =>
-                      setExcludedLabels((current) => setManyGroupLabels(current, labels, select))
-                    }
-                  />
-                </div>
-                {activeLabelFilterCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="self-start text-muted-foreground"
-                    onClick={() => {
-                      setRequiredLabels([])
-                      setExcludedLabels([])
-                    }}
-                  >
-                    Clear label filters
-                  </Button>
-                )}
+                <LabelsFilterPopover labels={labels} value={filter} onChange={list.setFilter} />
+                <SegmentedControl
+                  label="Visibility"
+                  items={VISIBILITY_FILTERS}
+                  value={visibility}
+                  onValueChange={list.setVisibility}
+                />
               </>
-            ) : (
-              <p className="text-sm text-muted-foreground">No labels have been created yet.</p>
-            )}
-          </PopoverContent>
-        </Popover>
-      </DataToolbar>
-      <GroupsTable
-        groups={visibleGroups}
-        allLabels={loadedGroupLabels}
-        labelsByGroupId={labelsByGroupId}
-        emptyTitle={hasFilters ? "No groups match this search" : "No Telegram groups yet"}
-        emptyText={hasFilters ? "Clear the search or filters and try again." : "No Telegram groups were returned."}
+            }
+            count={<Count value={matching.length} total={list.filtering ? all.length : undefined} noun="group" />}
+          />
+        }
       />
-    </div>
+      <PageContent width="wide">
+        <DataTable
+          label="Telegram groups"
+          columns={columns}
+          rows={rows}
+          getRowId={groupKey}
+          sort={sort}
+          onSort={list.setSort}
+          actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
+          actionsWidth={groupActionsWidth(4, canWrite)}
+          pagination={pagination}
+          empty={empty}
+        />
+        {groupActions.dialogs}
+      </PageContent>
+    </>
   )
 }

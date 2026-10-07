@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { RecordSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import {
   listGroupLabels,
   listGroupsForLabels,
@@ -11,11 +12,13 @@ import { TagGroupsPage } from "@/features/groups-by-label/tag-groups-page"
 
 export const Route = createFileRoute("/dashboard/web/tags/$tag")({
   beforeLoad: ({ params }) => {
-    // A category already has a browsable page of its own — routing it here too would be a second, competing view
+    // A category already has a browsable page of its own; routing it here too would be a second, competing view
     // of the same label, reachable by hand-typing a URL.
     if (isCategoryLabel(params.tag)) {
-      const to: string = `/dashboard/web/groups-by-label/${labelPathToUrlSegments(params.tag).map(encodeURIComponent).join("/")}`
-      throw redirect({ to })
+      throw redirect({
+        to: "/dashboard/web/groups-by-label/$",
+        params: { _splat: labelPathToUrlSegments(params.tag).join("/") },
+      })
     }
   },
   loader: async () => {
@@ -26,21 +29,21 @@ export const Route = createFileRoute("/dashboard/web/tags/$tag")({
     ])
     return { ...groups, groupLabels, groupsWithLabels }
   },
-  pendingComponent: () => <DataPageSkeleton columns={5} />,
+  pendingComponent: TagPending,
   component: TagGroupsRoute,
 })
 
+function TagPending() {
+  return (
+    <PageContent width="wide">
+      <RecordSkeleton label="Loading tag…" />
+    </PageContent>
+  )
+}
+
 function TagGroupsRoute() {
   const { tag } = Route.useParams()
-  const { tgGroups, groupLabels, groupsWithLabels, waGroups } = Route.useLoaderData()
+  const { tgGroups, groupLabels, groupsWithLabels } = Route.useLoaderData()
 
-  return (
-    <TagGroupsPage
-      tag={tag}
-      loadedTgGroups={tgGroups}
-      loadedGroupLabels={groupLabels}
-      loadedGroupsWithLabels={groupsWithLabels}
-      loadedWaGroups={waGroups}
-    />
-  )
+  return <TagGroupsPage key={tag} tag={tag} labels={groupLabels} groups={groupsWithLabels} tgGroups={tgGroups} />
 }

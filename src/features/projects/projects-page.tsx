@@ -1,359 +1,356 @@
-import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react"
+import { DragDropProvider, type DragEndEvent, useDragDropManager } from "@dnd-kit/react"
+import { isSortable } from "@dnd-kit/react/sortable"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { FolderKanban, Plus } from "lucide-react"
+import { useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
-import { toast } from "sonner"
-import { z } from "zod"
 
-import { DataToolbar } from "@/components/data-toolbar"
-import { EmptyState } from "@/components/empty-state"
+import { buttonMotion, EmptyState, SegmentedControl, useEditSlot } from "@/components/primitives"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
-import { ProjectCard } from "./project-card"
-import { DEFAULT_PROJECT, getProjectCategoryLabel, PROJECT_CATEGORIES } from "./projects.constants"
+import { ProjectCard, type ProjectEditSession } from "./project-card"
+import { getProjectCategoryLabel, PROJECT_CATEGORIES } from "./projects.constants"
 import { createProject, deleteProject, editProject, reorderProjects } from "./projects.functions"
 import { projectSaveErrorMessage } from "./projects.validation"
-import type { Project, ProjectCategory, ProjectFormValues, ProjectReorder } from "./types"
+import type { Project, ProjectCategory, ProjectForm } from "./types"
 
-const dragIndicesSchema = z.object({ initialIndex: z.number().int(), index: z.number().int() })
+const DRAFT_ID = -1
+const EMPTY_FORM: ProjectForm = {
+  title: "",
+  link: "",
+  descriptionIt: "",
+  descriptionEn: "",
+  logo: null,
+  logoFile: null,
+}
+const LINK_ERROR = "Enter a valid HTTP or HTTPS project URL."
+const ORDER_ERROR = "Couldn't save the project order."
 
-function formDataForProject(values: ProjectFormValues, id?: number) {
+function formOf({ title, descriptionIt, descriptionEn, logo, link }: Project): ProjectForm {
+  return { title, descriptionIt, descriptionEn, logo, link: link ?? "", logoFile: null }
+}
+
+function sameForm(a: ProjectForm, b: ProjectForm) {
+  return (
+    a.title === b.title &&
+    a.link === b.link &&
+    a.descriptionIt === b.descriptionIt &&
+    a.descriptionEn === b.descriptionEn &&
+    a.logo === b.logo
+  )
+}
+
+function isHttpUrl(value: string) {
+  if (!URL.canParse(value)) return false
+  const { protocol } = new URL(value)
+  return protocol === "http:" || protocol === "https:"
+}
+
+/** The multipart body `createProject`/`editProject` validate; the logo is sent only when a new file was chosen. */
+function projectFormData(values: ProjectForm, category: ProjectCategory, id?: number) {
   const data = new FormData()
   if (id !== undefined) data.set("id", String(id))
-  data.set("title", values.title)
-  data.set("descriptionIt", values.descriptionIt)
-  data.set("descriptionEn", values.descriptionEn)
-  data.set("link", values.link ?? "")
-  data.set("logo", values.logo ?? "")
-  data.set("category", values.category)
+  data.set("title", values.title.trim())
+  data.set("descriptionIt", values.descriptionIt.trim())
+  data.set("descriptionEn", values.descriptionEn.trim())
+  data.set("link", values.link.trim())
+  data.set("category", category)
   if (values.logoFile) data.set("logoFile", values.logoFile)
   return data
 }
 
-function moveProjectInCategory(items: Project[], category: ProjectCategory, sourceIndex: number, targetIndex: number) {
-  const categoryProjects = items.filter((project) => project.category === category)
-  if (
-    sourceIndex === targetIndex ||
-    sourceIndex < 0 ||
-    targetIndex < 0 ||
-    sourceIndex >= categoryProjects.length ||
-    targetIndex >= categoryProjects.length
-  ) {
-    return null
-  }
-
-  const reorderedCategory = [...categoryProjects]
-  const [movedProject] = reorderedCategory.splice(sourceIndex, 1)
-  if (!movedProject) return null
-  reorderedCategory.splice(targetIndex, 0, movedProject)
-
-  let categoryIndex = 0
-  const nextProjects = items.map((project) => {
-    if (project.category !== category) return project
-    return reorderedCategory[categoryIndex++] ?? project
-  })
-
-  return { nextProjects, orderedIds: reorderedCategory.map((project) => project.id) }
+/** `projects` with the active category's cards in `ordered`'s order, everything else in place. */
+function withCategoryOrder(projects: Project[], category: ProjectCategory, ordered: Project[]) {
+  let next = 0
+  return projects.map((project) => (project.category === category ? (ordered[next++] ?? project) : project))
 }
 
+function noop() {}
+
+/** Settles the drop with 200ms ease-out (§6); reduced motion drops in place. */
+function DropSettle() {
+  const manager = useDragDropManager()
+  const reduceMotion = useReducedMotion()
+  useEffect(() => {
+    for (const plugin of manager?.plugins ?? []) {
+      if ("dropAnimation" in plugin) {
+        plugin.dropAnimation = reduceMotion ? null : { duration: 200, easing: "cubic-bezier(0.32, 0.72, 0, 1)" }
+      }
+    }
+  }, [manager, reduceMotion])
+  return null
+}
+
+/** Projects (docs/design.md §7.10): category segments, sortable inline-edit cards, drafts on top. */
 export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) {
   const router = useRouter()
+  const canWrite = useCanWrite("web")
   const createProjectFn = useServerFn(createProject)
   const editProjectFn = useServerFn(editProject)
   const deleteProjectFn = useServerFn(deleteProject)
   const reorderProjectsFn = useServerFn(reorderProjects)
-  const [projects, setProjects] = useState(loadedProjects)
-  const [activeCategory, setActiveCategory] = useState<ProjectCategory>(DEFAULT_PROJECT.category)
-  const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
-  const [draftProjectIds, setDraftProjectIds] = useState<Set<number>>(new Set())
-  const draftProjectIdsRef = useRef(draftProjectIds)
-  const reorderRequestId = useRef(0)
-  const reorderQueue = useRef<Promise<void>>(Promise.resolve())
-  draftProjectIdsRef.current = draftProjectIds
 
-  useEffect(() => {
-    setProjects((current) => {
-      const drafts = current.filter((project) => draftProjectIdsRef.current.has(project.id))
-      return drafts.length ? [...drafts, ...loadedProjects] : loadedProjects
-    })
-  }, [loadedProjects])
+  const [category, setCategory] = useState<ProjectCategory>("general")
+  const [draftCategory, setDraftCategory] = useState<ProjectCategory>("general")
+  // Order shown while a reorder is saving; cleared (back to the loader data) once it settles.
+  const [optimistic, setOptimistic] = useState<Project[] | null>(null)
+  const reorderRequest = useRef(0)
+  const reorderQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const projects = optimistic ?? loadedProjects
 
-  const visibleProjects = projects.filter((project) => project.category === activeCategory)
+  const slot = useEditSlot<number>("project")
+  const [form, setForm] = useState<ProjectForm | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | undefined>(undefined)
+  // §5.10: the link is validated on the first Save attempt, then again on blur once it has errored.
+  const [linkErrored, setLinkErrored] = useState(false)
+  const [linkError, setLinkError] = useState<string | undefined>(undefined)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const [sessionFor, setSessionFor] = useState<number | null>(null)
+  if (sessionFor !== slot.editingId) {
+    setSessionFor(slot.editingId)
+    setForm(null)
+    setSaveError(undefined)
+    setLinkErrored(false)
+    setLinkError(undefined)
+    setLogoError(null)
+  }
+
+  const editingDraft = slot.editingId === DRAFT_ID
+  const editingProject = projects.find((project) => project.id === slot.editingId)
+  const initial = editingProject ? formOf(editingProject) : EMPTY_FORM
+  const values = form ?? initial
+  const dirty = slot.editingId !== null && !sameForm(values, initial)
+  const linkInvalid = values.link.trim() !== "" && !isHttpUrl(values.link.trim())
+  const valid =
+    values.title.trim() !== "" &&
+    values.descriptionIt.trim() !== "" &&
+    values.descriptionEn.trim() !== "" &&
+    logoError === null
+
+  const draft: Project = { id: DRAFT_ID, ...EMPTY_FORM, link: null, category: draftCategory }
+  const inCategory = projects.filter((project) => project.category === category)
+  const cards = editingDraft && draftCategory === category ? [draft, ...inCategory] : inCategory
 
   async function refresh() {
     try {
       await router.invalidate({ sync: true })
     } catch (error) {
       console.error(error)
-      toast.warning("Your change was saved, but the latest project list could not be refreshed.")
+      appToast.warning("Your change was saved, but the latest project list could not be refreshed.")
     }
   }
 
-  function persistedIds(items: Project[], category: ProjectCategory, draftIds = draftProjectIdsRef.current) {
-    return items
-      .filter((project) => project.category === category && !draftIds.has(project.id))
-      .map((project) => project.id)
+  /** Reorders run one at a time, in the order they were made. */
+  function enqueueReorder(projectIds: number[]) {
+    const operation = reorderQueue.current.then(() => reorderProjectsFn({ data: { projectIds } }))
+    // The caller handles the failure; the queue only needs to know it settled.
+    reorderQueue.current = operation.then(noop, noop)
+    return operation
   }
 
-  async function persistOrders(projectIdGroups: number[][], rollback: Project[], requestId: number) {
-    const groups = projectIdGroups.filter((projectIds) => projectIds.length > 1)
-    if (!groups.length) {
-      if (reorderRequestId.current === requestId) void refresh()
-      return true
-    }
-
-    const operation = reorderQueue.current.then(async () => {
-      for (const projectIds of groups) await reorderProjectsFn({ data: { projectIds } })
-    })
-    reorderQueue.current = operation.then(
-      () => undefined,
-      () => undefined
-    )
-
-    try {
-      await operation
-      if (reorderRequestId.current === requestId) void refresh()
-      return true
-    } catch (error) {
-      console.error(error)
-      if (reorderRequestId.current === requestId) {
-        setProjects(rollback)
-        toast.error("The project order could not be saved.")
-      }
-      return false
-    }
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    if (event.canceled) return
-    const source = event.operation.source
-    const indices = dragIndicesSchema.safeParse(source)
-    if (!indices.success) return
-
-    const reordered = moveProjectInCategory(projects, activeCategory, indices.data.initialIndex, indices.data.index)
-    if (!reordered) return
-    const change: ProjectReorder = { ...reordered, previousProjects: projects }
-    const requestId = reorderRequestId.current + 1
-    reorderRequestId.current = requestId
-
-    flushSync(() => setProjects(change.nextProjects))
-    const ids = change.orderedIds.filter((id) => !draftProjectIds.has(id))
-    void persistOrders([ids], change.previousProjects, requestId)
+  function startEdit(id: number) {
+    slot.start(id, dirty)
   }
 
   function addProject() {
-    const draft: Project = { ...DEFAULT_PROJECT, id: -Date.now(), category: activeCategory }
-    setProjects((current) => [draft, ...current])
-    setDraftProjectIds((current) => {
-      const next = new Set(current).add(draft.id)
-      draftProjectIdsRef.current = next
-      return next
-    })
-    setEditingProjectId(draft.id)
+    setDraftCategory(category)
+    if (!editingDraft) startEdit(DRAFT_ID)
   }
 
-  function cancelDraft(id: number) {
-    setProjects((current) => current.filter((project) => project.id !== id))
-    setDraftProjectIds((current) => {
-      const next = new Set(current)
-      next.delete(id)
-      draftProjectIdsRef.current = next
-      return next
-    })
-    setEditingProjectId((current) => (current === id ? null : current))
-  }
-
-  async function saveProject(id: number, values: ProjectFormValues) {
-    const draft = draftProjectIdsRef.current.has(id)
+  /** Creates the draft, then keeps it first in its category, where it was shown while editing. */
+  async function create() {
+    const saved = await createProjectFn({ data: projectFormData(values, draftCategory) })
+    const below = projects.filter((project) => project.category === saved.category && project.id !== saved.id)
+    if (below.length === 0) return true
     try {
-      const saved = draft
-        ? await createProjectFn({ data: formDataForProject(values) })
-        : await editProjectFn({ data: formDataForProject(values, id) })
-
-      let nextProjects: Project[] = []
-      let nextDraftIds = new Set<number>()
-      flushSync(() => {
-        setProjects((current) => {
-          nextProjects = current.map((project) => (project.id === id ? saved : project))
-          return nextProjects
-        })
-        setDraftProjectIds((current) => {
-          nextDraftIds = new Set(current)
-          nextDraftIds.delete(id)
-          draftProjectIdsRef.current = nextDraftIds
-          return nextDraftIds
-        })
-      })
-      setEditingProjectId((current) => (current === id ? null : current))
-      toast.success(`Project ${draft ? "created" : "updated"}.`)
-
-      if (draft) {
-        const requestId = reorderRequestId.current + 1
-        reorderRequestId.current = requestId
-        const ids = persistedIds(nextProjects, saved.category, nextDraftIds)
-        await persistOrders([ids], nextProjects, requestId)
-      } else {
-        void refresh()
-      }
+      await enqueueReorder([saved.id, ...below.map((project) => project.id)])
       return true
-    } catch (cause) {
-      console.error(cause)
-      toast.error(projectSaveErrorMessage(cause))
+    } catch (error) {
+      console.error(error)
       return false
     }
   }
 
-  async function removeProject(id: number) {
-    if (draftProjectIdsRef.current.has(id)) {
-      cancelDraft(id)
-      return true
+  async function saveEdit() {
+    if (!valid || saving || slot.editingId === null) return
+    if (linkInvalid) {
+      setLinkErrored(true)
+      setLinkError(LINK_ERROR)
+      return
     }
-
-    let previousProjects: Project[] = []
-    let nextProjects: Project[] = []
-    let project: Project | undefined
-    flushSync(() => {
-      setProjects((current) => {
-        previousProjects = current
-        project = current.find((item) => item.id === id)
-        nextProjects = current.filter((item) => item.id !== id)
-        return project ? nextProjects : current
-      })
-    })
-    if (!project) return false
-    const removedProject = project
-    const requestId = reorderRequestId.current + 1
-    reorderRequestId.current = requestId
-
+    setSaving(true)
+    setSaveError(undefined)
     try {
-      await deleteProjectFn({ data: { id } })
-      toast.success("Project deleted.")
-      const ids = persistedIds(nextProjects, removedProject.category)
-      await persistOrders([ids], nextProjects, requestId)
-      return true
+      if (editingDraft) {
+        const ordered = await create()
+        await refresh()
+        if (ordered) appToast.success("Project added.")
+        else appToast.warning("Project added, but its position couldn't be saved.")
+      } else if (editingProject) {
+        await editProjectFn({ data: projectFormData(values, editingProject.category, editingProject.id) })
+        await refresh()
+        appToast.success("Project updated.")
+      }
+      slot.stop()
     } catch (error) {
       console.error(error)
-      if (reorderRequestId.current === requestId) {
-        setProjects((current) => {
-          if (current.some((item) => item.id === id)) return current
-          const restored = [...current]
-          const previousIndex = previousProjects.findIndex((item) => item.id === id)
-          restored.splice(Math.min(Math.max(previousIndex, 0), restored.length), 0, removedProject)
-          return restored
-        })
-      }
-      toast.error("The project could not be deleted. Check your permissions and try again.")
-      return false
+      setSaveError(projectSaveErrorMessage(error))
+    } finally {
+      setSaving(false)
     }
   }
 
-  async function changeCategory(id: number, category: ProjectCategory) {
-    let project: Project | undefined
-    flushSync(() => {
-      setProjects((current) => {
-        const foundProject = current.find((item) => item.id === id)
-        project = foundProject
-        if (!foundProject || foundProject.category === category) return current
-        return current.map((item) => (item.id === id ? { ...foundProject, category } : item))
-      })
-    })
-    if (!project || project.category === category) return
+  const session: ProjectEditSession = {
+    values,
+    onChange: setForm,
+    dirty,
+    valid,
+    saving,
+    error: saveError,
+    message: logoError ?? undefined,
+    linkError,
+    onSave: () => void saveEdit(),
+    onCancel: slot.stop,
+    onLinkBlur: () => {
+      if (linkErrored) setLinkError(linkInvalid ? LINK_ERROR : undefined)
+    },
+    onLogoError: setLogoError,
+  }
 
-    const originalProject = project
-    const movedProject = { ...originalProject, category }
-    const requestId = reorderRequestId.current + 1
-    reorderRequestId.current = requestId
-    setActiveCategory(category)
-
-    if (draftProjectIdsRef.current.has(id)) return
-
+  async function moveProject(project: Project, target: ProjectCategory) {
     try {
-      const saved = await editProjectFn({ data: formDataForProject(movedProject, id) })
-      let savedProjects: Project[] = []
-      flushSync(() => {
-        setProjects((current) => {
-          savedProjects = current.map((item) => (item.id === id ? saved : item))
-          return savedProjects
-        })
-      })
-      toast.success("Project moved.")
-      const sourceIds = persistedIds(savedProjects, originalProject.category)
-      const destinationIds = persistedIds(savedProjects, category)
-      await persistOrders([sourceIds, destinationIds], savedProjects, requestId)
+      await editProjectFn({ data: projectFormData(formOf(project), target, project.id) })
     } catch (error) {
       console.error(error)
-      if (reorderRequestId.current === requestId) {
-        setProjects((current) =>
-          current.map((item) => (item.id === id && item.category === category ? originalProject : item))
-        )
-        setActiveCategory((current) => (current === category ? originalProject.category : current))
-      }
-      toast.error("The project could not be moved.")
+      appToast.error("Couldn't move the project.")
+      return
     }
+    await refresh()
+    appToast.success(`Project moved to ${getProjectCategoryLabel(target)}.`)
   }
+
+  async function removeProject(project: Project) {
+    try {
+      await deleteProjectFn({ data: { id: project.id } })
+    } catch (error) {
+      console.error(error)
+      throw new Error("Couldn't delete the project. Check your permissions and try again.", { cause: error })
+    }
+    await refresh()
+    appToast.success("Project deleted.")
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { source } = event.operation
+    if (event.canceled || !source || !isSortable(source)) return
+    const { initialIndex, index } = source
+    if (initialIndex === index) return
+
+    const ordered = [...cards]
+    const [moved] = ordered.splice(initialIndex, 1)
+    if (!moved) return
+    ordered.splice(index, 0, moved)
+    const saved = ordered.filter((project) => project.id !== DRAFT_ID)
+    if (saved.length < 2) return
+
+    const request = reorderRequest.current + 1
+    reorderRequest.current = request
+    flushSync(() => setOptimistic(withCategoryOrder(projects, category, saved)))
+    void saveOrder(
+      saved.map((project) => project.id),
+      request
+    )
+  }
+
+  /** Persists a dragged order; only the latest drag clears the optimistic order or reverts it. */
+  async function saveOrder(projectIds: number[], request: number) {
+    try {
+      await enqueueReorder(projectIds)
+    } catch (error) {
+      console.error(error)
+      if (reorderRequest.current !== request) return
+      setOptimistic(null)
+      appToast.error(ORDER_ERROR)
+      void refresh()
+      return
+    }
+    if (reorderRequest.current !== request) return
+    await refresh()
+    if (reorderRequest.current === request) setOptimistic(null)
+  }
+
+  const segments = (
+    <SegmentedControl
+      label="Project category"
+      items={PROJECT_CATEGORIES.map((item) => ({
+        value: item.value,
+        label: item.label,
+        count: projects.filter((project) => project.category === item.value).length,
+      }))}
+      value={category}
+      onValueChange={setCategory}
+    />
+  )
+
+  const addButton = (
+    <Button size="sm" onClick={addProject} className={buttonMotion}>
+      <Plus data-icon="inline-start" />
+      Add project
+    </Button>
+  )
 
   return (
-    <div className="animate-appear">
-      <DataToolbar
-        eyebrow="Web"
-        title="Projects"
-        description="Manage the projects displayed across the public web platform."
-        count={visibleProjects.length}
-        total={projects.length}
-        action={
-          <Button onClick={addProject}>
-            <Plus data-icon="inline-start" /> Add project
-          </Button>
+    <>
+      <PageBar
+        left={
+          <Toolbar
+            filters={segments}
+            count={<Count value={inCategory.length} total={projects.length} noun="project" />}
+          />
         }
-      >
-        <fieldset className="flex flex-wrap gap-1.5">
-          <legend className="sr-only">Project categories</legend>
-          {PROJECT_CATEGORIES.map((category) => (
-            <Button
-              key={category.value}
-              type="button"
-              size="sm"
-              variant={activeCategory === category.value ? "secondary" : "ghost"}
-              aria-pressed={activeCategory === category.value}
-              onClick={() => setActiveCategory(category.value)}
-            >
-              {category.label}
-              <span className="ml-1 text-xs text-muted-foreground">
-                {projects.filter((project) => project.category === category.value).length}
-              </span>
-            </Button>
-          ))}
-        </fieldset>
-      </DataToolbar>
-
-      {visibleProjects.length ? (
-        <DragDropProvider onDragEnd={handleDragEnd}>
-          <div className="space-y-4">
-            {visibleProjects.map((project, index) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                draft={draftProjectIds.has(project.id)}
-                initialEditActive={editingProjectId === project.id}
-                sortableIndex={index}
-                onCancelDraft={() => cancelDraft(project.id)}
-                onDelete={() => removeProject(project.id)}
-                onCategoryChange={(category) => changeCategory(project.id, category)}
-                onSave={(values) => saveProject(project.id, values)}
-              />
-            ))}
-          </div>
-        </DragDropProvider>
-      ) : (
-        <EmptyState
-          icon={FolderKanban}
-          title={`No ${getProjectCategoryLabel(activeCategory)} projects yet`}
-          text="Add the first project in this category, or choose another category above."
-          action={<Button onClick={addProject}>Add project</Button>}
-        />
-      )}
-    </div>
+        right={canWrite ? addButton : undefined}
+      />
+      <PageContent width="wide">
+        {slot.discardDialog}
+        {cards.length === 0 ? (
+          <EmptyState
+            icon={FolderKanban}
+            title={`No ${getProjectCategoryLabel(category).toLowerCase()} projects yet`}
+            text="Add a project here or pick another category."
+            action={
+              canWrite ? (
+                <Button size="sm" variant="outline" onClick={addProject} className={buttonMotion}>
+                  <Plus data-icon="inline-start" />
+                  Add project
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <DragDropProvider onDragEnd={handleDragEnd}>
+            <DropSettle />
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              {cards.map((project, index) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  index={index}
+                  draft={project.id === DRAFT_ID}
+                  canWrite={canWrite}
+                  session={slot.editingId === project.id ? session : null}
+                  onEdit={() => startEdit(project.id)}
+                  onMove={(target) => moveProject(project, target)}
+                  onDelete={() => removeProject(project)}
+                />
+              ))}
+            </div>
+          </DragDropProvider>
+        )}
+      </PageContent>
+    </>
   )
 }

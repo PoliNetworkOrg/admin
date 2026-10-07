@@ -1,365 +1,384 @@
-"use client"
-
+import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import type React from "react"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
+import { CircleQuestionMark, FolderPlus, Pencil, Plus, Trash2 } from "lucide-react"
+import { useDeferredValue, useRef, useState } from "react"
 
-import type { FAQItem, FAQs } from "@/lib/api/types.ts"
+import {
+  buttonMotion,
+  ConfirmDialog,
+  EmptyState,
+  floatingMotion,
+  Hint,
+  IconButton,
+  raisedSurface,
+  useEditSlot,
+  useFocusAfterRemoval,
+} from "@/components/primitives"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { Accordion } from "@/components/ui/accordion"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { FAQItem, FAQs } from "@/lib/api/types"
+import { formatNumber } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
-import { AddCategoryDialog } from "./components/add-category-dialog"
-import { CategorySwitcher } from "./components/category-switcher"
-import { FAQAccordionList } from "./components/faq-accordion-list"
-import { FAQPageHeader } from "./components/faq-page-header"
-import { addFAQ, addFAQCategory, deleteFAQ, deleteFAQCategory, editFAQ, editFAQCategory } from "./faqs.functions"
+import { FaqCategoryDialog } from "./faq-category-dialog"
+import { FAQCategoryIcon } from "./faq-icon"
+import { EditableFaq, EMPTY_FAQ, type FaqInput, FaqRow, toFaqInput } from "./faq-items"
+import { addFAQ, deleteFAQ, deleteFAQCategory, editFAQ } from "./faqs.functions"
 
-export default function FAQsPage({ initFAQs }: { initFAQs: FAQs }) {
+type FaqCategory = FAQs[number]
+
+/** `faqId` of the unsaved item appended by "Add FAQ". */
+const DRAFT_ID = -1
+
+function matches(faq: FAQItem, query: string) {
+  const needle = query.toLocaleLowerCase()
+  return [faq.titleIt, faq.titleEn, faq.descriptionIt, faq.descriptionEn].some((text) =>
+    text.toLocaleLowerCase().includes(needle)
+  )
+}
+
+type CategoryDialogState = { key: number; category: FaqCategory | null }
+
+/** FAQs (docs/design.md §7.13): one category at a time, an accordion of IT/EN questions edited inline. */
+export function FAQsPage({ categories }: { categories: FAQs }) {
+  const router = useRouter()
   const addFAQFn = useServerFn(addFAQ)
-  const addFAQCategoryFn = useServerFn(addFAQCategory)
   const editFAQFn = useServerFn(editFAQ)
-  const editFAQCategoryFn = useServerFn(editFAQCategory)
   const deleteFAQFn = useServerFn(deleteFAQ)
-  const deleteFAQCategoryFn = useServerFn(deleteFAQCategory)
+  const deleteCategoryFn = useServerFn(deleteFAQCategory)
+  const canWrite = useCanWrite("web")
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query.trim())
+  const [openIds, setOpenIds] = useState<number[]>([])
+  const edit = useEditSlot<number>("FAQ")
+  const editDirty = useRef(false)
+  const [categoryDialog, setCategoryDialog] = useState<CategoryDialogState>({ key: 0, category: null })
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false)
+  const [deletingFaq, setDeletingFaq] = useState<FAQItem | null>(null)
+  const [deleteFaqOpen, setDeleteFaqOpen] = useState(false)
+  const faqFocus = useFocusAfterRemoval<HTMLDivElement>("[data-slot=accordion-item]")
 
-  const [faqs, setFAQs] = useState<FAQs>([])
-  const [categoryId, setCategoryId] = useState<number | null>(null)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const category = categories.find((item) => item.categoryId === selectedId) ?? categories[0] ?? null
+  const faqs = category?.faqs ?? []
+  const visible = deferredQuery
+    ? faqs.filter((faq) => faq.faqId === edit.editingId || matches(faq, deferredQuery))
+    : faqs
+  const drafting = edit.editingId === DRAFT_ID && category !== null
 
-  const [editQuestionIt, setEditQuestionIt] = useState("")
-  const [editQuestionEn, setEditQuestionEn] = useState("")
-  const [editAnswerIt, setEditAnswerIt] = useState("")
-  const [editAnswerEn, setEditAnswerEn] = useState("")
+  function selectCategory(categoryId: number) {
+    if (categoryId === category?.categoryId) return
+    // A dirty edit asks "Discard changes?" first; the category switches only once the user discards.
+    edit.start(null, editDirty.current, () => {
+      editDirty.current = false
+      setSelectedId(categoryId)
+      setOpenIds([])
+    })
+  }
 
-  const [openItems, setOpenItems] = useState<number[]>([])
-  const [unsavedIds, setUnsavedIds] = useState<number[]>([])
+  function openCategoryDialog(target: FaqCategory | null) {
+    setCategoryDialog((current) => ({ key: current.key + 1, category: target }))
+    setCategoryDialogOpen(true)
+  }
 
-  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
-  const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<FAQs[number] | null>(null)
+  function startEdit(faqId: number) {
+    edit.start(faqId, editDirty.current)
+  }
 
-  useEffect(() => {
-    setFAQs(initFAQs)
-    if (initFAQs.length > 0 && initFAQs[0]) {
-      const firstId = initFAQs[0].categoryId
-      setCategoryId((prev) => (prev && initFAQs.some((c: FAQs[0]) => c.categoryId === prev) ? prev : firstId))
-    }
-  }, [initFAQs])
+  function finishEdit(savedId: number | null) {
+    edit.stop()
+    editDirty.current = false
+    if (savedId !== null) setOpenIds((current) => (current.includes(savedId) ? current : [...current, savedId]))
+  }
 
-  const handleAddCategory = async (titleIt: string, titleEn: string, icon?: string) => {
+  async function saveFaq(faqId: number, categoryId: number, input: FaqInput) {
+    let savedId = faqId
     try {
-      const res = await addFAQCategoryFn({
-        data: {
-          titleIt: titleIt,
-          titleEn: titleEn,
-          icon: icon,
-        },
-      })
-
-      const newCat = {
-        categoryId: res.id,
-        titleIt: res.titleIt,
-        titleEn: res.titleEn,
-        icon: res.icon ?? null,
-        faqs: [],
+      if (faqId === DRAFT_ID) {
+        savedId = (await addFAQFn({ data: { ...input, categoryId } })).id
+      } else {
+        await editFAQFn({ data: { id: faqId, ...input, categoryId } })
       }
-
-      setFAQs((prev) => [...prev, newCat])
-      setCategoryId(res.id)
-      toast.success("Category created successfully!")
-    } catch (e: unknown) {
-      console.error(e)
-      const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Failed to create category: ${errorMessage}`)
-      throw e
+    } catch (error) {
+      console.error(error)
+      throw new Error("Couldn't save the FAQ.")
     }
+    await router.invalidate({ sync: true })
+    finishEdit(savedId)
   }
 
-  const handleUpdateCategory = async (catId: number, titleIt: string, titleEn: string, icon?: string | null) => {
-    try {
-      const res = await editFAQCategoryFn({
-        data: {
-          id: catId,
-          titleIt: titleIt,
-          titleEn: titleEn,
-          icon: icon ?? null,
-        },
-      })
-
-      setFAQs((prev) =>
-        prev.map((c) =>
-          c.categoryId === catId ? { ...c, titleIt: res.titleIt, titleEn: res.titleEn, icon: res.icon ?? null } : c
-        )
-      )
-      toast.success("Category updated successfully!")
-    } catch (e: unknown) {
-      console.error(e)
-      const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Failed to update category: ${errorMessage}`)
-      throw e
-    }
-  }
-
-  const handleDeleteCategory = async (catId: number) => {
-    try {
-      await deleteFAQCategoryFn({ data: { id: catId } })
-      setFAQs((prev) => {
-        const next = prev.filter((c) => c.categoryId !== catId)
-        if (categoryId === catId) {
-          setCategoryId(next[0]?.categoryId ?? null)
-        }
-        return next
-      })
-      toast.success("Category deleted successfully.")
-    } catch (e: unknown) {
-      console.error(e)
-      const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Failed to delete category: ${errorMessage}`)
-    }
-  }
-
-  const handleAdd = () => {
-    if (!categoryId) {
-      toast.error("Please select or create a category first.")
-      setIsAddCategoryOpen(true)
-      return
-    }
-
-    if (editingId) {
-      handleCancel(editingId)
-    }
-
-    const newId = Math.max(0, ...faqs.flatMap((faq) => faq.faqs.map((item) => item.faqId))) + 1
-    const newItem: FAQItem = {
-      faqId: newId,
-      titleIt: "",
-      titleEn: "",
-      descriptionIt: "",
-      descriptionEn: "",
-    }
-
-    setFAQs((prev) =>
-      prev.map((faq) => {
-        if (faq.categoryId === categoryId) {
-          return {
-            ...faq,
-            faqs: [...faq.faqs, newItem],
-          }
-        }
-        return faq
-      })
+  const addFaqButton =
+    categories.length === 0 ? (
+      <Hint label="Create a category first">
+        <span tabIndex={0} aria-label="Add FAQ (create a category first)" className="inline-flex rounded-(--pn-r-3)">
+          <Button size="sm" disabled className={buttonMotion}>
+            <Plus aria-hidden data-icon="inline-start" />
+            Add FAQ
+          </Button>
+        </span>
+      </Hint>
+    ) : (
+      <Button size="sm" className={buttonMotion} onClick={() => startEdit(DRAFT_ID)}>
+        <Plus aria-hidden data-icon="inline-start" />
+        Add FAQ
+      </Button>
     )
 
-    setUnsavedIds((prev) => [...prev, newId])
-    setEditingId(newId)
-    setEditQuestionIt("")
-    setEditQuestionEn("")
-    setEditAnswerIt("")
-    setEditAnswerEn("")
-    setOpenItems((prev) => [...prev, newId])
-  }
+  // The page primary stays in the header bar; the empty state repeats it as outline (§8.4).
+  const emptyAddFaqButton = (
+    <Button variant="outline" size="sm" className={buttonMotion} onClick={() => startEdit(DRAFT_ID)}>
+      <Plus aria-hidden data-icon="inline-start" />
+      Add FAQ
+    </Button>
+  )
 
-  const handleEdit = (e: React.MouseEvent, item: FAQItem) => {
-    e.stopPropagation()
-    if (editingId && editingId !== item.faqId) {
-      handleCancel(editingId)
-    }
-    setEditingId(item.faqId)
-    setEditQuestionIt(item.titleIt)
-    setEditQuestionEn(item.titleEn ?? "")
-    setEditAnswerIt(item.descriptionIt)
-    setEditAnswerEn(item.descriptionEn ?? "")
-    setOpenItems((prev) => (prev.includes(item.faqId) ? prev : [...prev, item.faqId]))
-  }
+  const addCategoryButton = (
+    <Button variant="outline" size="sm" className={buttonMotion} onClick={() => openCategoryDialog(null)}>
+      <FolderPlus aria-hidden data-icon="inline-start" />
+      Add category
+    </Button>
+  )
 
-  const handleSave = async (id: number) => {
-    if (!categoryId) return
-    const qIt = editQuestionIt.trim()
-    const qEn = editQuestionEn.trim()
-    const aIt = editAnswerIt.trim()
-    const aEn = editAnswerEn.trim()
-
-    if (!qIt) return toast.error("Question (Italian) is required.")
-    if (!aIt) return toast.error("Answer (Italian) is required.")
-    if (!qEn) return toast.error("Question (English) is required.")
-    if (!aEn) return toast.error("Answer (English) is required.")
-
-    const isNew = unsavedIds.includes(id)
-    const savePromise = isNew
-      ? addFAQFn({ data: { titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
-      : editFAQFn({ data: { id, titleIt: qIt, titleEn: qEn, descriptionIt: aIt, descriptionEn: aEn, categoryId } })
-
-    try {
-      const res = await savePromise
-      const savedId = isNew ? res.id : id
-
-      setFAQs((prev) =>
-        prev.map((faq) => {
-          if (faq.categoryId === categoryId) {
-            return {
-              ...faq,
-              faqs: faq.faqs.map((item) => {
-                if (item.faqId === id) {
-                  return {
-                    ...item,
-                    faqId: savedId,
-                    titleIt: qIt,
-                    titleEn: qEn,
-                    descriptionIt: aIt,
-                    descriptionEn: aEn,
-                  }
-                }
-                return item
-              }),
-            }
-          }
-          return faq
-        })
-      )
-
-      setUnsavedIds((prev) => prev.filter((x) => x !== id))
-      if (isNew) {
-        setOpenItems((prev) => prev.map((item) => (item === id ? savedId : item)))
+  const left = (
+    <Toolbar
+      lead={
+        <>
+          <CategorySelect categories={categories} category={category} onSelect={selectCategory} />
+          {canWrite && category && (
+            <div className="flex shrink-0 items-center">
+              <IconButton
+                label="Edit category"
+                ariaLabel={`Edit ${category.titleIt}`}
+                icon={Pencil}
+                onClick={() => openCategoryDialog(category)}
+              />
+              <IconButton
+                label="Delete category"
+                ariaLabel={`Delete ${category.titleIt}`}
+                icon={Trash2}
+                tone="danger"
+                onClick={() => setDeleteCategoryOpen(true)}
+              />
+            </div>
+          )}
+        </>
       }
-      setEditingId(null)
-      setEditQuestionIt("")
-      setEditQuestionEn("")
-      setEditAnswerIt("")
-      setEditAnswerEn("")
-      toast.success("FAQ saved successfully.")
-    } catch (e: unknown) {
-      console.error(e)
-      const errorMessage = e instanceof Error ? e.message : String(e)
-      toast.error(`Failed to save FAQ: ${errorMessage}`)
-    }
-  }
-
-  const handleDelete = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation()
-
-    const isNew = unsavedIds.includes(id)
-    const deletePromise = isNew ? Promise.resolve() : deleteFAQFn({ data: { id } })
-
-    deletePromise
-      .then(() => {
-        setFAQs((prev) =>
-          prev.map((faq) => {
-            if (faq.categoryId === categoryId) {
-              return {
-                ...faq,
-                faqs: faq.faqs.filter((item) => item.faqId !== id),
-              }
+      search={
+        category
+          ? {
+              value: query,
+              onChange: setQuery,
+              placeholder: "Search questions…",
+              className: "min-w-28 lg:flex-[0_1_auto]",
             }
-            return faq
-          })
-        )
-
-        setUnsavedIds((prev) => prev.filter((x) => x !== id))
-        setOpenItems((prev) => prev.filter((v) => v !== id))
-        if (editingId === id) {
-          setEditingId(null)
-          setEditQuestionIt("")
-          setEditQuestionEn("")
-          setEditAnswerIt("")
-          setEditAnswerEn("")
-        }
-        toast.success("FAQ deleted successfully.")
-      })
-      .catch((e: string) => {
-        console.error(e)
-        toast.error(`Failed to delete FAQ: ${e}`)
-      })
-  }
-
-  const handleCancel = (id: number) => {
-    if (unsavedIds.includes(id)) {
-      setFAQs((prev) =>
-        prev.map((faq) => {
-          if (faq.categoryId === categoryId) {
-            return {
-              ...faq,
-              faqs: faq.faqs.filter((item) => item.faqId !== id),
-            }
-          }
-          return faq
-        })
-      )
-      setUnsavedIds((prev) => prev.filter((x) => x !== id))
-      setOpenItems((prev) => prev.filter((v) => v !== id))
-    }
-    setEditingId(null)
-    setEditQuestionIt("")
-    setEditQuestionEn("")
-    setEditAnswerIt("")
-    setEditAnswerEn("")
-  }
-
-  const activeCategory = faqs.find((c) => c.categoryId === categoryId)
-  const currentCategoryFAQs = activeCategory?.faqs ?? []
+          : undefined
+      }
+      count={category && <Count value={visible.length} total={deferredQuery ? faqs.length : undefined} noun="FAQ" />}
+    />
+  )
 
   return (
-    <div className="animate-appear space-y-6">
-      <FAQPageHeader
-        onOpenAddCategory={() => setIsAddCategoryOpen(true)}
-        onAddFAQ={handleAdd}
-        hasCategory={!!categoryId}
+    <>
+      <PageBar
+        left={left}
+        right={
+          canWrite ? (
+            <>
+              {addCategoryButton}
+              {addFaqButton}
+            </>
+          ) : undefined
+        }
       />
+      <PageContent>
+        <div
+          ref={faqFocus.surfaceRef}
+          tabIndex={-1}
+          className="overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)"
+        >
+          {category === null ? (
+            <EmptyState
+              icon={CircleQuestionMark}
+              title="No categories yet"
+              text="Create a category to start adding FAQs."
+              action={canWrite ? addCategoryButton : undefined}
+            />
+          ) : visible.length === 0 && !drafting ? (
+            deferredQuery ? (
+              <EmptyState
+                icon={CircleQuestionMark}
+                title="No FAQs match"
+                text="Try a different question or keyword."
+                action={
+                  <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => setQuery("")}>
+                    Clear search
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={CircleQuestionMark}
+                title="No FAQs in this category"
+                text="Add the first question and answer."
+                action={canWrite ? emptyAddFaqButton : undefined}
+              />
+            )
+          ) : (
+            <Accordion multiple value={openIds} onValueChange={(next) => setOpenIds(next.map(Number))}>
+              {visible.map((faq) =>
+                faq.faqId === edit.editingId ? (
+                  <EditableFaq
+                    key={faq.faqId}
+                    faqId={faq.faqId}
+                    initial={toFaqInput(faq)}
+                    dirtyRef={editDirty}
+                    onCancel={() => finishEdit(null)}
+                    onSave={(input) => saveFaq(faq.faqId, category.categoryId, input)}
+                  />
+                ) : (
+                  <FaqRow
+                    key={faq.faqId}
+                    faq={faq}
+                    canWrite={canWrite}
+                    onEdit={() => startEdit(faq.faqId)}
+                    onDelete={(trigger) => {
+                      faqFocus.capture(trigger)
+                      setDeletingFaq(faq)
+                      setDeleteFaqOpen(true)
+                    }}
+                  />
+                )
+              )}
+              {drafting && (
+                <EditableFaq
+                  key={`draft-${category.categoryId}`}
+                  faqId={DRAFT_ID}
+                  initial={EMPTY_FAQ}
+                  dirtyRef={editDirty}
+                  onCancel={() => finishEdit(null)}
+                  onSave={(input) => saveFaq(DRAFT_ID, category.categoryId, input)}
+                />
+              )}
+            </Accordion>
+          )}
+        </div>
+      </PageContent>
 
-      <CategorySwitcher
-        categories={faqs}
-        activeCategoryId={categoryId || null}
-        onSelectCategory={(id: React.SetStateAction<number | null>) => {
-          if (editingId) {
-            handleCancel(editingId)
-          }
-          setCategoryId(id)
-        }}
-        onDeleteCategory={handleDeleteCategory}
-        onEditCategory={(cat) => {
-          setEditingCategory(cat)
-          setIsEditCategoryOpen(true)
-        }}
-      />
-
-      <FAQAccordionList
-        items={currentCategoryFAQs}
-        editingId={editingId}
-        openItems={openItems}
-        setOpenItems={setOpenItems}
-        editQuestionIt={editQuestionIt}
-        editQuestionEn={editQuestionEn}
-        editAnswerIt={editAnswerIt}
-        editAnswerEn={editAnswerEn}
-        setEditQuestionIt={setEditQuestionIt}
-        setEditQuestionEn={setEditQuestionEn}
-        setEditAnswerIt={setEditAnswerIt}
-        setEditAnswerEn={setEditAnswerEn}
-        handleSave={handleSave}
-        handleCancel={handleCancel}
-        handleEdit={handleEdit}
-        handleDelete={handleDelete}
-        handleAdd={handleAdd}
-        hasCategory={!!categoryId}
-      />
-
-      <AddCategoryDialog
-        open={isAddCategoryOpen}
-        onOpenChange={setIsAddCategoryOpen}
-        onAddCategory={handleAddCategory}
-      />
-
-      {editingCategory && (
-        <AddCategoryDialog
-          open={isEditCategoryOpen}
-          onOpenChange={setIsEditCategoryOpen}
-          mode="edit"
-          initialTitleIt={editingCategory.titleIt}
-          initialTitleEn={editingCategory.titleEn ?? ""}
-          initialIcon={editingCategory.icon}
-          onAddCategory={async (titleIt, titleEn, icon) => {
-            await handleUpdateCategory(editingCategory.categoryId, titleIt, titleEn, icon)
+      {edit.discardDialog}
+      {canWrite && (
+        <FaqCategoryDialog
+          key={categoryDialog.key}
+          open={categoryDialogOpen}
+          onOpenChange={setCategoryDialogOpen}
+          category={categoryDialog.category}
+          onSaved={async (categoryId) => {
+            await router.invalidate({ sync: true })
+            // A new category opens unless that would drop an edit in progress.
+            if (edit.editingId === null) setSelectedId(categoryId)
           }}
         />
       )}
-    </div>
+      <ConfirmDialog
+        open={deleteCategoryOpen}
+        onOpenChange={setDeleteCategoryOpen}
+        title="Delete category?"
+        description={`${category?.titleIt ?? "This category"} and all its FAQs are deleted. This cannot be undone.`}
+        confirmLabel="Delete category"
+        onConfirm={async () => {
+          if (!category) return
+          try {
+            await deleteCategoryFn({ data: { id: category.categoryId } })
+          } catch (error) {
+            console.error(error)
+            throw new Error("Couldn't delete the category.")
+          }
+          edit.stop()
+          editDirty.current = false
+          setSelectedId(null)
+          setOpenIds([])
+          await router.invalidate({ sync: true })
+          appToast.success("Category deleted.")
+        }}
+      />
+      <ConfirmDialog
+        open={deleteFaqOpen}
+        onOpenChange={setDeleteFaqOpen}
+        title="Delete FAQ?"
+        description="The question and both answers are deleted."
+        finalFocus={faqFocus.target}
+        confirmLabel="Delete FAQ"
+        onConfirm={async () => {
+          if (!deletingFaq) return
+          try {
+            await deleteFAQFn({ data: { id: deletingFaq.faqId } })
+          } catch (error) {
+            console.error(error)
+            throw new Error("Couldn't delete the FAQ.")
+          }
+          await router.invalidate({ sync: true })
+          setOpenIds((current) => current.filter((id) => id !== deletingFaq.faqId))
+          appToast.success("FAQ deleted.")
+        }}
+      />
+    </>
+  )
+}
+
+const selectItemClasses =
+  "h-9 gap-2 rounded-(--pn-r-2) pl-2 text-[13px] focus:bg-(--pn-muted) focus:text-(--pn-fg) not-data-[variant=destructive]:focus:**:text-(--pn-fg)"
+
+type CategorySelectProps = {
+  categories: FAQs
+  category: FaqCategory | null
+  onSelect: (categoryId: number) => void
+}
+
+/** The page-scoping category picker: icon + Italian title; items add the English title and the FAQ count. */
+function CategorySelect({ categories, category, onSelect }: CategorySelectProps) {
+  return (
+    <Select
+      value={category?.categoryId ?? null}
+      disabled={categories.length === 0}
+      onValueChange={(value) => {
+        if (value !== null) onSelect(Number(value))
+      }}
+    >
+      <SelectTrigger
+        aria-label="Category"
+        className="max-w-60 min-w-36 shrink-0 gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-2.5 text-[13px] text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:bg-(--pn-muted) data-[size=default]:h-9 dark:bg-(--pn-surface) dark:hover:bg-(--pn-muted)"
+      >
+        <SelectValue className="min-w-0">
+          {() =>
+            category ? (
+              <>
+                <FAQCategoryIcon icon={category.icon} aria-hidden className="size-4 text-(--pn-fg-muted)" />
+                <span className="truncate">{category.titleIt}</span>
+              </>
+            ) : (
+              <span className="text-(--pn-fg-subtle)">No categories</span>
+            )
+          }
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent
+        align="start"
+        alignItemWithTrigger={false}
+        className={cn(raisedSurface, floatingMotion, "w-auto min-w-72 rounded-(--pn-r-4) p-1")}
+      >
+        {categories.map((item) => (
+          <SelectItem key={item.categoryId} value={item.categoryId} className={selectItemClasses}>
+            <FAQCategoryIcon icon={item.icon} aria-hidden className="size-4 text-(--pn-fg-muted)" />
+            <span>{item.titleIt}</span>
+            <span className="text-(--pn-fg-muted)">{item.titleEn}</span>
+            <span className="ml-auto pl-4 text-xs leading-5 text-(--pn-fg-muted) tabular-nums">
+              {formatNumber(item.faqs.length)}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

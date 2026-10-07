@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { CardsSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { ProjectsPage } from "@/features/projects/projects-page"
 import { getProjects } from "@/features/projects/projects.functions"
 
 export const Route = createFileRoute("/dashboard/web/projects")({
   loader: () => getProjects(),
-  pendingComponent: () => <DataPageSkeleton columns={2} rows={3} withTabs />,
+  pendingComponent: () => (
+    <PageContent width="wide">
+      <CardsSkeleton label="Loading projects…" />
+    </PageContent>
+  ),
   component: ProjectsRoute,
 })
 

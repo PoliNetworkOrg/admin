@@ -1,52 +1,44 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ArrowLeft, CalendarPlus, LoaderCircle, Search, UserRound, X } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
+import { ArrowLeft, Search, X } from "lucide-react"
+import { type KeyboardEvent, useState } from "react"
 
 import {
-  Stepper,
-  StepperIndicator,
-  StepperItem,
-  StepperNav,
-  StepperTitle,
-  StepperTrigger,
-} from "@/components/reui/stepper"
+  buttonMotion,
+  fieldControl,
+  fieldHintId,
+  FormDialog,
+  FormField,
+  IconButton,
+  InlineAlert,
+  LoadingButton,
+  SegmentedControl,
+  useOpenGeneration,
+} from "@/components/primitives"
+import { appToast } from "@/components/shell"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { createTelegramGrant } from "@/features/telegram/grants.functions"
 import { findTelegramUser } from "@/features/telegram/users.functions"
 import type { TgUser } from "@/lib/api/types"
+import { cn } from "@/lib/utils"
 
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "../ui/alert"
-import { Button } from "../ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
-import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field"
-import { Input } from "../ui/input"
-import { Textarea } from "../ui/textarea"
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group"
-import { GrantDateTimeFields } from "./grant-date-time-fields"
+import { earliestGrantStart, GrantDateTimeFields, parseLocalDateTime } from "./grant-date-time-fields"
+import { failWith, refreshAfterMutation, telegramUserName } from "./telegram-user"
 
 export type GrantDialogUser = Pick<TgUser, "id" | "firstName" | "lastName" | "username">
 
-type CreateGrantDialogProps = {
-  user?: GrantDialogUser
-}
+type Step = "user" | "details"
+type LookupBy = "username" | "id"
+type LookupResult = { kind: "idle" } | { kind: "invalid"; message: string } | { kind: "not-found"; message: string }
 
-const DISCARD_TOAST_ID = "discard-grant-dialog-changes"
+const REASON_MAX = 500
 
-function toDateTimeInput(date: Date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
-}
-
-function earliestGrantStart() {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  return start
-}
-
-function displayName(user: GrantDialogUser) {
-  return [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
-}
+const LOOKUP_METHODS = [
+  { value: "username", label: "Username" },
+  { value: "id", label: "Telegram ID" },
+] as const satisfies readonly { value: LookupBy; label: string }[]
 
 function grantMutationError(error: string) {
   if (error === "UNAUTHORIZED") return "You do not have permission to create grants."
@@ -54,413 +46,309 @@ function grantMutationError(error: string) {
   return "The grant could not be created."
 }
 
-function UserInformation({
-  user,
-  clearable,
-  onClear,
-}: {
-  user: GrantDialogUser
-  clearable?: boolean
-  onClear?: () => void
-}) {
-  return (
-    <Alert>
-      <UserRound />
-      <AlertTitle>{displayName(user)}</AlertTitle>
-      <AlertDescription>
-        {user.username ? `@${user.username}` : "No Telegram username"} · Telegram ID {user.id}
-      </AlertDescription>
-      {clearable && onClear && (
-        <AlertAction>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onClear}
-            aria-label={`Clear selected user ${displayName(user)}`}
-          >
-            <X />
-          </Button>
-        </AlertAction>
-      )}
-    </Alert>
-  )
+type CreateGrantDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Fixed target (user detail page): no stepper, straight to the details. */
+  user?: GrantDialogUser
 }
 
-function GrantStepper({
-  step,
-  canOpenDetails,
-  onStepChange,
-}: {
-  step: "user" | "details"
-  canOpenDetails: boolean
-  onStepChange: (step: "user" | "details") => void
-}) {
-  const steps = [
-    { title: "Target user", value: 1 },
-    { title: "Details", value: 2 },
-  ]
-
-  return (
-    <Stepper
-      value={step === "user" ? 1 : 2}
-      onValueChange={(value) => {
-        if (value === 1) onStepChange("user")
-        if (value === 2 && canOpenDetails) onStepChange("details")
-      }}
-      className="p-5"
-      aria-label="Grant creation progress"
-    >
-      <StepperNav className="gap-5">
-        {steps.map((item) => (
-          <StepperItem key={item.value} step={item.value} className="relative flex-1 items-start">
-            <StepperTrigger
-              className="flex grow flex-col justify-center gap-3.5"
-              disabled={item.value === 2 && !canOpenDetails}
-            >
-              <StepperIndicator className="h-1 w-full rounded-full bg-border data-[state=active]:bg-primary data-[state=completed]:bg-primary">
-                <span className="sr-only">Step {item.value}</span>
-              </StepperIndicator>
-              <StepperTitle className="text-center font-semibold group-data-[state=inactive]/step:text-muted-foreground">
-                {item.title}
-              </StepperTitle>
-            </StepperTrigger>
-          </StepperItem>
-        ))}
-      </StepperNav>
-    </Stepper>
-  )
+/** "New grant" (§7.4): find the user, then the validity window and an optional motivation. */
+export function CreateGrantDialog(props: CreateGrantDialogProps) {
+  const generation = useOpenGeneration(props.open)
+  return <CreateGrantDialogBody key={generation} {...props} />
 }
 
-export function CreateGrantDialog({ user: fixedUser }: CreateGrantDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<"user" | "details">(fixedUser ? "details" : "user")
-  const [lookupBy, setLookupBy] = useState<"username" | "id">("username")
+function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGrantDialogProps) {
+  const router = useRouter()
+  const createGrant = useServerFn(createTelegramGrant)
+  const lookupUser = useServerFn(findTelegramUser)
+  const [step, setStep] = useState<Step>(fixedUser ? "details" : "user")
+  const [lookupBy, setLookupBy] = useState<LookupBy>("username")
   const [query, setQuery] = useState("")
   const [selectedUser, setSelectedUser] = useState<GrantDialogUser | null>(fixedUser ?? null)
-  const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "not-found" | "error">("idle")
-  const [lookupMessage, setLookupMessage] = useState("")
+  const [lookupResult, setLookupResult] = useState<LookupResult>({ kind: "idle" })
+  const [lookupPending, setLookupPending] = useState(false)
   const [validSince, setValidSince] = useState("")
   const [validUntil, setValidUntil] = useState("")
   const [reason, setReason] = useState("")
-  const [dirty, setDirty] = useState(false)
-  const [pending, setPending] = useState(false)
-  const router = useRouter()
-  const createGrant = useServerFn(createTelegramGrant)
-  const findUser = useServerFn(findTelegramUser)
 
-  const resetForm = () => {
-    setStep(fixedUser ? "details" : "user")
-    setLookupBy("username")
-    setQuery("")
-    setSelectedUser(fixedUser ?? null)
-    setLookupStatus("idle")
-    setLookupMessage("")
-    setValidSince("")
-    setValidUntil("")
-    setReason("")
-    setDirty(false)
-  }
+  const minimumSince = earliestGrantStart()
+  const since = parseLocalDateTime(validSince)
+  const until = parseLocalDateTime(validUntil)
+  const invalidStart = validSince !== "" && (!since || since < minimumSince)
+  const invalidEnd = validUntil !== "" && (!until || (since !== undefined && until <= since))
+  const detailsValid = Boolean(selectedUser && since && until) && !invalidStart && !invalidEnd
 
-  const closeAndReset = () => {
-    toast.dismiss(DISCARD_TOAST_ID)
-    setOpen(false)
-    resetForm()
-  }
+  const dirty =
+    query !== "" ||
+    (!fixedUser && selectedUser !== null) ||
+    validSince !== "" ||
+    validUntil !== "" ||
+    reason.trim() !== ""
 
-  const requestClose = () => {
-    if (pending) return
-    if (!dirty) {
-      closeAndReset()
-      return
-    }
-
-    toast.warning("Discard grant changes?", {
-      id: DISCARD_TOAST_ID,
-      description: "Your edits will be lost.",
-      position: "bottom-center",
-      duration: Number.POSITIVE_INFINITY,
-      className: "grant-discard-toast",
-      action: {
-        label: "Discard",
-        onClick: closeAndReset,
-      },
-      cancel: {
-        label: "Keep editing",
-        onClick: () => undefined,
-      },
-    })
-  }
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      resetForm()
-      setOpen(true)
-      return
-    }
-    requestClose()
-  }
-
-  const changeLookupBy = (value: string[]) => {
-    const next = value[0]
-    if (next !== "username" && next !== "id") return
+  function changeLookupBy(next: LookupBy) {
     setLookupBy(next)
     setQuery("")
     setSelectedUser(null)
-    setLookupStatus("idle")
-    setLookupMessage("")
-    setDirty(true)
+    setLookupResult({ kind: "idle" })
   }
 
-  const lookup = async () => {
+  async function findUser() {
+    if (lookupPending) return
     const normalized = query.trim()
     const numericId = Number(normalized)
     if (!normalized || (lookupBy === "id" && (!Number.isInteger(numericId) || numericId <= 0))) {
-      setLookupStatus("error")
-      setLookupMessage(lookupBy === "id" ? "Enter a positive numeric Telegram ID." : "Enter a Telegram username.")
+      setLookupResult({
+        kind: "invalid",
+        message: lookupBy === "id" ? "Enter a positive numeric Telegram ID." : "Enter a Telegram username.",
+      })
       return
     }
-
     setSelectedUser(null)
-    setLookupStatus("loading")
-    setLookupMessage("")
+    setLookupResult({ kind: "idle" })
+    setLookupPending(true)
     try {
-      const result = await findUser({
+      const result = await lookupUser({
         data: lookupBy === "username" ? { by: "username", username: normalized } : { by: "id", userId: numericId },
       })
       if (result.status === "found" && result.user) {
         setSelectedUser(result.user)
-        setLookupStatus("idle")
+      } else if (result.status === "not-found") {
+        setLookupResult({
+          kind: "not-found",
+          message: `No Telegram user was found for this ${lookupBy === "id" ? "ID" : "username"}.`,
+        })
       } else {
-        setLookupStatus(result.status === "not-found" ? "not-found" : "error")
-        setLookupMessage(
-          result.status === "not-found"
-            ? `No Telegram user was found for this ${lookupBy === "id" ? "ID" : "username"}.`
-            : (result.message ?? "Telegram user lookup failed.")
-        )
+        setLookupResult({ kind: "invalid", message: result.message ?? "Telegram user lookup failed." })
       }
     } catch (error) {
       console.error(error)
-      setLookupStatus("error")
-      setLookupMessage("Telegram user lookup failed. Check your connection and try again.")
-    }
-  }
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    const since = new Date(validSince)
-    const until = new Date(validUntil)
-    if (
-      !selectedUser ||
-      !validSince ||
-      !validUntil ||
-      Number.isNaN(since.getTime()) ||
-      Number.isNaN(until.getTime()) ||
-      since < earliestGrantStart() ||
-      until <= since ||
-      pending
-    )
-      return
-
-    setPending(true)
-    try {
-      const result = await createGrant({
-        data: { userId: selectedUser.id, since, until, reason: reason.trim() || undefined },
+      setLookupResult({
+        kind: "invalid",
+        message: "Telegram user lookup failed. Check your connection and try again.",
       })
-      if (result.error) {
-        console.error(result.error)
-        toast.error(grantMutationError(result.error))
-        return
-      }
-      toast.success(`Grant created for ${displayName(selectedUser)}.`)
-      closeAndReset()
-      try {
-        await router.invalidate({ sync: true })
-      } catch (error) {
-        console.error(error)
-        toast.warning("The grant was created, but the latest grants could not be refreshed.")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("The grant could not be created. Check your permissions and try again.")
     } finally {
-      setPending(false)
+      setLookupPending(false)
     }
   }
 
-  const sinceTime = new Date(validSince).getTime()
-  const untilTime = new Date(validUntil).getTime()
-  const minimumSince = toDateTimeInput(earliestGrantStart())
-  const invalidStart = Boolean(validSince) && (Number.isNaN(sinceTime) || sinceTime < earliestGrantStart().getTime())
-  const invalidEnd = Boolean(validUntil) && (Number.isNaN(untilTime) || (Boolean(validSince) && untilTime <= sinceTime))
-  const detailsUser = fixedUser ?? selectedUser
+  function onQueryKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") void findUser()
+  }
+
+  async function submit() {
+    if (step === "user") {
+      if (selectedUser) setStep("details")
+      return
+    }
+    if (!selectedUser || !since || !until) return
+    const result = await failWith(
+      createGrant({ data: { userId: selectedUser.id, since, until, reason: reason.trim() || undefined } }),
+      "The grant could not be created. Check your permissions and try again."
+    )
+    if (result.error) {
+      console.error(result.error)
+      throw new Error(grantMutationError(result.error))
+    }
+    appToast.success(`Grant created for ${telegramUserName(selectedUser)}.`)
+    onOpenChange(false)
+    await refreshAfterMutation(router, "The grant was created, but the latest grants could not be refreshed.")
+  }
+
+  const queryError = lookupResult.kind === "invalid" ? lookupResult.message : undefined
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        <CalendarPlus data-icon="inline-start" /> Add grant
-      </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg gap-0 overflow-y-auto border-border p-0">
-        <DialogHeader className="gap-5 border-b border-border py-5 pr-16 pl-6">
-          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">New Grant</DialogTitle>
-        </DialogHeader>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title="New grant"
+      noun="grant"
+      dirty={dirty}
+      submitLabel={step === "user" ? "Continue" : "Create grant"}
+      canSubmit={step === "user" ? selectedUser !== null : detailsValid}
+      submitOnEnter={step !== "user"}
+      onSubmit={submit}
+      footerStart={
+        !fixedUser && step === "details" ? (
+          <Button type="button" variant="ghost" className={buttonMotion} onClick={() => setStep("user")}>
+            <ArrowLeft aria-hidden data-icon="inline-start" />
+            Change user
+          </Button>
+        ) : undefined
+      }
+    >
+      {!fixedUser && <GrantStepper step={step} canOpenDetails={selectedUser !== null} onStepChange={setStep} />}
 
-        {!fixedUser && <GrantStepper step={step} canOpenDetails={Boolean(selectedUser)} onStepChange={setStep} />}
-
-        {step === "user" ? (
-          <form
-            id="stepper-panel-1"
-            role="tabpanel"
-            aria-labelledby="stepper-tab-1"
-            className="flex flex-col gap-4 px-6 pb-5"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void lookup()
-            }}
+      {step === "user" ? (
+        <>
+          <FormField label="Find Telegram user" htmlFor="grant-lookup-method">
+            <SegmentedControl
+              id="grant-lookup-method"
+              label="Telegram user lookup method"
+              items={LOOKUP_METHODS}
+              value={lookupBy}
+              onValueChange={changeLookupBy}
+              disabled={lookupPending}
+            />
+          </FormField>
+          <FormField
+            label={lookupBy === "username" ? "Telegram username" : "Numeric Telegram ID"}
+            htmlFor="grant-user-query"
+            error={queryError}
           >
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="grant-user-lookup-method">Find Telegram user</FieldLabel>
-                <ToggleGroup
-                  id="grant-user-lookup-method"
-                  variant="outline"
-                  size="sm"
-                  value={[lookupBy]}
-                  onValueChange={changeLookupBy}
-                  disabled={lookupStatus === "loading"}
-                  aria-label="Telegram user lookup method"
-                >
-                  <ToggleGroupItem value="username">Username</ToggleGroupItem>
-                  <ToggleGroupItem value="id">Telegram ID</ToggleGroupItem>
-                </ToggleGroup>
-              </Field>
-              <Field data-invalid={lookupStatus === "error" || undefined}>
-                <FieldLabel htmlFor="grant-user-query">
-                  {lookupBy === "username" ? "Telegram username" : "Numeric Telegram ID"}
-                </FieldLabel>
-                <div className="flex gap-2">
-                  <Input
-                    id="grant-user-query"
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value)
-                      setSelectedUser(null)
-                      setLookupStatus("idle")
-                      setLookupMessage("")
-                      setDirty(true)
-                    }}
-                    type={lookupBy === "id" ? "text" : "search"}
-                    inputMode={lookupBy === "id" ? "numeric" : undefined}
-                    placeholder={lookupBy === "username" ? "@username" : "123456789"}
-                    autoComplete="off"
-                    disabled={lookupStatus === "loading"}
-                    aria-invalid={lookupStatus === "error"}
-                    aria-describedby="grant-user-status"
-                  />
-                  <Button type="submit" variant="secondary" disabled={!query.trim() || lookupStatus === "loading"}>
-                    {lookupStatus === "loading" ? (
-                      <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />
-                    ) : (
-                      <Search data-icon="inline-start" />
-                    )}
-                    {lookupStatus === "loading" ? "Looking up" : "Find user"}
-                  </Button>
-                </div>
-                {lookupStatus === "error" && <FieldError id="grant-user-status">{lookupMessage}</FieldError>}
-              </Field>
-            </FieldGroup>
-            {(lookupStatus === "not-found" || selectedUser) && (
-              <div aria-live="polite">
-                {lookupStatus === "not-found" && (
-                  <Alert id="grant-user-status">
-                    <UserRound />
-                    <AlertTitle>User not found</AlertTitle>
-                    <AlertDescription>{lookupMessage}</AlertDescription>
-                  </Alert>
-                )}
-                {selectedUser && (
-                  <UserInformation
-                    user={selectedUser}
-                    clearable
-                    onClear={() => {
+            <div className="flex gap-2">
+              <Input
+                id="grant-user-query"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setSelectedUser(null)
+                  setLookupResult({ kind: "idle" })
+                }}
+                onKeyDown={onQueryKeyDown}
+                inputMode={lookupBy === "id" ? "numeric" : undefined}
+                placeholder={lookupBy === "username" ? "@username" : "123456789"}
+                autoComplete="off"
+                spellCheck={false}
+                readOnly={lookupPending}
+                aria-invalid={queryError !== undefined || undefined}
+                aria-describedby={queryError ? fieldHintId("grant-user-query") : undefined}
+                className={cn("h-9 flex-1", fieldControl, lookupBy === "id" && "font-mono tabular-nums")}
+              />
+              <LoadingButton
+                type="button"
+                variant="outline"
+                icon={Search}
+                pending={lookupPending}
+                onClick={() => void findUser()}
+                className="min-w-[112px]"
+              >
+                {lookupPending ? "Looking up…" : "Find user"}
+              </LoadingButton>
+            </div>
+          </FormField>
+          <div aria-live="polite" className="empty:hidden">
+            {lookupResult.kind === "not-found" && (
+              <InlineAlert tone="neutral">
+                <p className="font-medium">User not found</p>
+                <p className="text-(--pn-fg-muted)">{lookupResult.message}</p>
+              </InlineAlert>
+            )}
+            {selectedUser && (
+              <InlineAlert
+                tone="success"
+                action={
+                  <IconButton
+                    label={`Clear selected user ${telegramUserName(selectedUser)}`}
+                    icon={X}
+                    onClick={() => {
                       setSelectedUser(null)
                       setQuery("")
-                      setDirty(true)
                     }}
                   />
-                )}
-              </div>
-            )}
-            <DialogFooter className="-mx-6 -mb-5 mt-1 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-              <Button type="button" variant="outline" size="sm" onClick={requestClose}>
-                Cancel
-              </Button>
-              <Button type="button" size="sm" disabled={!selectedUser} onClick={() => setStep("details")}>
-                Continue
-              </Button>
-            </DialogFooter>
-          </form>
-        ) : (
-          <form
-            id="stepper-panel-2"
-            role="tabpanel"
-            aria-labelledby="stepper-tab-2"
-            className="flex flex-col gap-3 px-6 py-4"
-            onSubmit={(event) => void submit(event)}
-          >
-            {!fixedUser && (
-              <Button type="button" variant="ghost" size="xs" className="-ml-2 w-fit" onClick={() => setStep("user")}>
-                <ArrowLeft data-icon="inline-start" /> Change user
-              </Button>
-            )}
-            {detailsUser && <UserInformation user={detailsUser} />}
-            <GrantDateTimeFields
-              validSince={validSince}
-              validUntil={validUntil}
-              onValidSinceChange={(value) => {
-                setValidSince(value)
-                setDirty(true)
-              }}
-              onValidUntilChange={(value) => {
-                setValidUntil(value)
-                setDirty(true)
-              }}
-              minimumSince={minimumSince}
-              minimumUntil={validSince || minimumSince}
-              invalidStart={invalidStart}
-              invalidEnd={invalidEnd}
-            />
-            <Field>
-              <FieldLabel htmlFor="grant-reason">
-                Motivation <span className="font-normal text-muted-foreground">(optional)</span>
-              </FieldLabel>
-              <Textarea
-                id="grant-reason"
-                value={reason}
-                onChange={(event) => {
-                  setReason(event.target.value)
-                  setDirty(true)
-                }}
-                placeholder="Why is this grant authorized?"
-                maxLength={500}
-              />
-            </Field>
-            <DialogFooter className="-mx-6 -mb-5 mt-1 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-              <Button type="button" variant="outline" size="sm" onClick={requestClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!detailsUser || !validSince || !validUntil || invalidStart || invalidEnd || pending}
+                }
               >
-                {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-                Create grant
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+                <SelectedUser user={selectedUser} />
+              </InlineAlert>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          {selectedUser && (
+            <div className="rounded-(--pn-r-3) bg-(--pn-muted) p-3 text-[13px] leading-5">
+              <SelectedUser user={selectedUser} />
+            </div>
+          )}
+          <GrantDateTimeFields
+            validSince={validSince}
+            validUntil={validUntil}
+            onValidSinceChange={setValidSince}
+            onValidUntilChange={setValidUntil}
+            minimumSince={minimumSince}
+            minimumUntil={since ?? minimumSince}
+            invalidStart={invalidStart}
+            invalidEnd={invalidEnd}
+          />
+          <FormField
+            label="Motivation"
+            htmlFor="grant-reason"
+            optional
+            counter={{ length: reason.length, max: REASON_MAX }}
+          >
+            <Textarea
+              id="grant-reason"
+              value={reason}
+              maxLength={REASON_MAX}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Why is this grant authorized?"
+              className={cn("min-h-[76px]", fieldControl)}
+            />
+          </FormField>
+        </>
+      )}
+    </FormDialog>
+  )
+}
+
+function SelectedUser({ user }: { user: GrantDialogUser }) {
+  return (
+    <>
+      <p className="font-medium text-(--pn-fg)">{telegramUserName(user)}</p>
+      <p className="text-(--pn-fg-muted)">
+        {user.username && `@${user.username} · `}Telegram ID <span className="font-mono tabular-nums">{user.id}</span>
+      </p>
+    </>
+  )
+}
+
+type GrantStepperProps = {
+  step: Step
+  canOpenDetails: boolean
+  onStepChange: (step: Step) => void
+}
+
+const STEPS: { value: Step; title: string }[] = [
+  { value: "user", title: "Target user" },
+  { value: "details", title: "Details" },
+]
+
+/** Two 4px progress bars with 12px labels; the second step opens once a user is selected. */
+function GrantStepper({ step, canOpenDetails, onStepChange }: GrantStepperProps) {
+  const currentIndex = STEPS.findIndex((item) => item.value === step)
+  return (
+    <ol aria-label="Grant creation progress" className="grid grid-cols-2 gap-4">
+      {STEPS.map((item, index) => {
+        const reached = index <= currentIndex
+        const disabled = item.value === "details" && !canOpenDetails
+        return (
+          <li key={item.value}>
+            <button
+              type="button"
+              disabled={disabled}
+              aria-current={item.value === step ? "step" : undefined}
+              onClick={() => onStepChange(item.value)}
+              className="group/step flex w-full flex-col gap-2 rounded-(--pn-r-1) text-left disabled:cursor-not-allowed"
+            >
+              <span
+                aria-hidden
+                className={cn("h-1 w-full rounded-full", reached ? "bg-(--pn-accent-solid)" : "bg-(--pn-muted)")}
+              />
+              <span
+                className={cn(
+                  "text-xs transition-[color] duration-120",
+                  reached ? "text-(--pn-fg)" : "text-(--pn-fg-muted) group-enabled/step:group-hover/step:text-(--pn-fg)"
+                )}
+              >
+                <span className="sr-only">Step {index + 1}: </span>
+                {item.title}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
   )
 }

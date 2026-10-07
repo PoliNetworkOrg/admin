@@ -207,3 +207,13 @@ export function filterFlatLabels(labels: GroupLabel[], query: string): GroupLabe
     [label.label, label.description ?? ""].some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
   )
 }
+
+/** Every category below `node`, grouping nodes included: each one is a page you can browse to. */
+export function countCategoryDescendants(node: LabelTreeNode): number {
+  return node.children.reduce((sum, child) => sum + 1 + countCategoryDescendants(child), 0)
+}
+
+/** Groups whose labels include `path` or anything nested under it (the counts on sub-category cards). */
+export function countBranchGroups(groupLabels: string[][], path: string): number {
+  return groupLabels.filter((labels) => labels.some((label) => label === path || label.startsWith(`${path}.`))).length
+}

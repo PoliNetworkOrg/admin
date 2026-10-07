@@ -72,10 +72,6 @@ export function isGroupLabelHexColor(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value)
 }
 
-export function isSameGroupLabel(a: { label: string }, b: { label: string }): boolean {
-  return a.label === b.label
-}
-
 type GroupLabelSwatch = {
   hex: string
   label: string

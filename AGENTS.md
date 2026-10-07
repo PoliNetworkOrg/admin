@@ -26,6 +26,23 @@ always verify that normal behavior still works with `AGENT_MODE=false`.
 > Do not run destructive actions across multiple rows, unless specific prompt indication or
 > ask for user confirmation ALWAYS.
 
+## Design system
+
+UI work follows [`docs/design.md`](docs/design.md): tokens, shell, page templates, component rules and copy.
+Build pages from the shell (`@/components/shell`: `PageBar`, `Toolbar`, `PageContent`, `appToast`,
+`useCanWrite`) and the primitives (`@/components/primitives`); use the `--pn-*` tokens, never raw colors.
+
+Data and error conventions (details in `docs/design.md` §9.1):
+
+- Call mutation server functions from event handlers through `useServerFn(fn)`, and add each new POST
+  server function with its consumer file to the map in `tests/server-security.test.mjs`.
+- After a mutation, `await router.invalidate({ sync: true })` so loaders have reloaded before the UI settles.
+- Every `catch` block and `.catch(handler)` logs the caught error with `console.error(error)` (enforced by `pnpm test`).
+- Toasts go through `appToast`; route errors and not-found states come from the router defaults
+  (`RouteError`, `RouteNotFound`), so routes do not declare `errorComponent`.
+
+Before handing work back run `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`.
+
 ## Git commits
 
 Use Conventional Commits for every commit message:

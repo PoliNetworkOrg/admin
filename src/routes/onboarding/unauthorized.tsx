@@ -37,7 +37,7 @@ function Unauthorized() {
       await router.navigate({ to: "/login", replace: true })
     } catch (error) {
       console.error(error)
-      setError("Could not sign out. Please try again.")
+      setError("Couldn't sign out. Try again.")
       setPending(false)
     }
   }

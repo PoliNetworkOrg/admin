@@ -35,7 +35,7 @@ export function LoginPage() {
       }
     } catch (error) {
       console.error(error)
-      setNotice("We could not reach the authentication service. Please try again.")
+      setNotice("Couldn't reach the authentication service. Try again.")
     } finally {
       setBusy(false)
     }
@@ -49,7 +49,7 @@ export function LoginPage() {
       if (data) await router.navigate({ to: "/dashboard" })
       else {
         if (error) console.error(error)
-        setNotice(error?.message ?? "That code is not valid. Please try again.")
+        setNotice(error?.message ?? "That code isn't valid. Try again.")
       }
     } catch (error) {
       console.error(error)
@@ -71,7 +71,7 @@ export function LoginPage() {
       }
     } catch (error) {
       console.error(error)
-      setNotice("Passkey sign in is unavailable right now. Please try again.")
+      setNotice("Passkey sign-in is unavailable right now. Try again.")
     } finally {
       setBusy(false)
     }
@@ -88,9 +88,7 @@ export function LoginPage() {
       <section className="flex min-h-dvh flex-col bg-primary p-10 text-primary-foreground max-[820px]:hidden">
         <AppMark />
         <div className="my-auto max-w-md">
-          <p className="text-[10px] font-semibold tracking-[0.12em] text-primary-foreground/65 uppercase">
-            Internal operations
-          </p>
+          <p className="text-xs font-semibold text-primary-foreground/65">Internal operations</p>
           <h1 className="mt-4 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.98] font-semibold tracking-[-0.065em]">
             The work behind the network.
           </h1>

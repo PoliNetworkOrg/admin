@@ -1,143 +1,88 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { LoaderCircle } from "lucide-react"
-import { useId, useState } from "react"
-import { toast } from "sonner"
+import { useId } from "react"
 
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { errorMessage } from "@/lib/errors"
+import { FormDialog } from "@/components/primitives"
+import { appToast } from "@/components/shell"
 
 import { DEFAULT_GROUP_LABEL_COLOR, GROUP_LABEL_MAX } from "./group-labels.constants"
 import { createGroupLabel, createReleaseLabel } from "./group-labels.functions"
-import { hasReleaseLabelPrefix, isReservedCategoryRoot, isValidLabelSegment, RELEASE_LABEL_PREFIX } from "./label-tree"
+import { groupLabelSaveErrorMessage } from "./group-labels.validation"
+import { LabelNameField, useLabelName, useResetOnOpen } from "./label-name-field"
+import { RELEASE_LABEL_PREFIX } from "./label-tree"
 
-/** Separate entry points for persistent attributes and temporary publication batches. */
-export function AddTagDialog({
-  open,
-  onOpenChange,
-  publication = false,
-}: {
+export type TagKind = "attribute" | "publication"
+
+const copy = {
+  attribute: {
+    title: "Add attribute",
+    description:
+      "A permanent attribute, like a language or campus. Use Publications to prepare a batch for publishing.",
+    placeholder: "e.g. Italian, Bovisa",
+    toast: (name: string) => `Attribute ${name} created.`,
+  },
+  publication: {
+    title: "Create publication",
+    description:
+      "Create a batch of groups to publish together. Publishing makes its groups visible and clears only the batch label; categories and attributes remain.",
+    placeholder: "e.g. 2026-27",
+    toast: (name: string) => `Publication ${name} created.`,
+  },
+} satisfies Record<
+  TagKind,
+  { title: string; description: string; placeholder: string; toast: (name: string) => string }
+>
+
+type AddTagDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  publication?: boolean
-}) {
+  kind: TagKind
+}
+
+/** Flat tags: a permanent attribute, or a `release-` publication batch. */
+export function AddTagDialog({ open, onOpenChange, kind }: AddTagDialogProps) {
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
   const createReleaseLabelFn = useServerFn(createReleaseLabel)
-  const [name, setName] = useState("")
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
   const nameId = useId()
+  const name = useLabelName(kind)
+  const text = copy[kind]
 
-  const trimmed = name.trim()
-  const reserved = !publication && isReservedCategoryRoot(trimmed)
-  const reservedRelease = hasReleaseLabelPrefix(trimmed)
-  const canSave =
-    isValidLabelSegment(trimmed) &&
-    !reserved &&
-    !reservedRelease &&
-    trimmed.length <= GROUP_LABEL_MAX - (publication ? RELEASE_LABEL_PREFIX.length : 0)
+  useResetOnOpen(open, () => name.reset())
 
-  function reset() {
-    setName("")
-    setError("")
-  }
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
-    if (!canSave || pending) return
-    setPending(true)
-    setError("")
+  async function submit() {
+    if (!name.check()) return
+    const values = { color: DEFAULT_GROUP_LABEL_COLOR, description: "" }
     try {
-      if (publication) {
-        await createReleaseLabelFn({ data: { name: trimmed, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
-      } else {
-        await createGroupLabelFn({ data: { label: trimmed, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
-      }
-      toast.success(`${publication ? "Publication" : "Tag"} "${trimmed}" created.`)
-      onOpenChange(false)
-      reset()
-      await router.invalidate({ sync: true })
+      if (kind === "publication") await createReleaseLabelFn({ data: { name: name.trimmed, ...values } })
+      else await createGroupLabelFn({ data: { label: name.trimmed, ...values } })
     } catch (cause) {
       console.error(cause)
-      setError(errorMessage(cause, `"${trimmed}" could not be created. Try a different name.`))
-    } finally {
-      setPending(false)
+      throw new Error(groupLabelSaveErrorMessage(cause))
     }
+    appToast.success(text.toast(name.trimmed))
+    onOpenChange(false)
+    await router.invalidate({ sync: true })
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (pending) return
-        onOpenChange(nextOpen)
-        if (!nextOpen) reset()
-      }}
+      onOpenChange={onOpenChange}
+      title={text.title}
+      description={text.description}
+      noun={kind}
+      dirty={name.trimmed !== ""}
+      submitLabel={text.title}
+      canSubmit={name.trimmed !== ""}
+      onSubmit={submit}
     >
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{publication ? "Create publication" : "Add tag"}</DialogTitle>
-          <DialogDescription>
-            {publication
-              ? "Create a batch of groups to publish together. Publishing makes its groups visible and clears only the batch label; categories and attributes remain."
-              : "A permanent attribute, like a language or campus. Use Publications to prepare a batch for publishing."}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="flex flex-col gap-3" onSubmit={(event) => void submit(event)}>
-          <Field>
-            <FieldLabel htmlFor={nameId}>Name</FieldLabel>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={publication ? "e.g. 2026-27" : "e.g. Italian, Bovisa"}
-              maxLength={GROUP_LABEL_MAX - (publication ? RELEASE_LABEL_PREFIX.length : 0)}
-              autoFocus
-              required
-            />
-          </Field>
-          {!isValidLabelSegment(trimmed) && trimmed && (
-            <p className="text-xs text-destructive">Use a plain name, without dots or URL separators.</p>
-          )}
-          {reservedRelease && (
-            <p className="text-xs text-destructive">
-              {publication
-                ? "Enter the name without the release- prefix."
-                : "The release- prefix is reserved. Use Create publication instead."}
-            </p>
-          )}
-          {reserved && <p className="text-xs text-destructive">This name is reserved for a category.</p>}
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                reset()
-                onOpenChange(false)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending || !canSave}>
-              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-              {publication ? "Create publication" : "Add tag"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <LabelNameField
+        id={nameId}
+        field={name}
+        placeholder={text.placeholder}
+        maxLength={kind === "publication" ? GROUP_LABEL_MAX - RELEASE_LABEL_PREFIX.length : GROUP_LABEL_MAX}
+      />
+    </FormDialog>
   )
 }

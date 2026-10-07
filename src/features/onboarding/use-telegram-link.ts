@@ -210,7 +210,7 @@ export function useTelegramLink(initialSession: AdminSession) {
       await router.navigate({ to: "/login", replace: true })
     } catch (error) {
       console.error(error)
-      setNotice({ kind: "error", text: "Could not sign out. Please try again." })
+      setNotice({ kind: "error", text: "Couldn't sign out. Try again." })
       setLoggingOut(false)
     }
   }

@@ -1,290 +1,294 @@
 import { useRouter } from "@tanstack/react-router"
-import type { Column } from "@tanstack/react-table"
-import { ArrowDown, ArrowUp, Building2, Check, ChevronsUpDown, Plus, UsersRound } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
-import { z } from "zod"
+import { Pencil, Plus, UsersRound } from "lucide-react"
+import { useCallback, useDeferredValue, useMemo, useState } from "react"
 
-import { DataToolbar } from "@/components/data-toolbar"
-import { EmptyState } from "@/components/empty-state"
-import { Pagination } from "@/components/pagination"
-import { Badge } from "@/components/ui/badge"
+import {
+  buttonMotion,
+  Chip,
+  ChipOverflow,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  IconButton,
+  type TableSort,
+  Unset,
+} from "@/components/primitives"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { Toggle } from "@/components/ui/toggle"
 import type { AzureMember } from "@/lib/api/types"
-import { createAppColumnHelper, type dashboardFeatures, useAppTable } from "@/lib/table"
-import { cn } from "@/lib/utils"
+import { formatLicense } from "@/lib/format"
 
-import { MemberDialog, type MemberDialogState } from "./member-dialog"
+import { MemberDialog, type MemberDialogTarget } from "./member-dialog"
 
-const memberColumnHelper = createAppColumnHelper<AzureMember>()
+const DEFAULT_SORT: TableSort = { column: "employeeId", direction: "asc" }
 
-type MemberFilter = { query: string; membersOnly: boolean }
-const memberFilterSchema = z.object({ query: z.string(), membersOnly: z.boolean() })
-
-function memberFilterFrom<Value>(value: Value): MemberFilter {
-  const result = memberFilterSchema.safeParse(value)
-  return result.success ? result.data : { query: "", membersOnly: false }
+function memberName(member: AzureMember) {
+  return member.displayName ?? "Unnamed member"
 }
 
-export function AzureMembersPage({ initialMembers, canWrite }: { initialMembers: AzureMember[]; canWrite: boolean }) {
+function matches(member: AzureMember, query: string) {
+  if (query === "") return true
+  return `${member.displayName ?? ""} ${member.mail ?? ""} ${member.employeeId ?? ""}`
+    .toLocaleLowerCase()
+    .includes(query)
+}
+
+/** Missing values sort last in both directions. */
+function compareMembers(a: AzureMember, b: AzureMember, sort: TableSort) {
+  const sign = sort.direction === "asc" ? 1 : -1
+  if (sort.column === "employeeId") {
+    if (a.employeeId === null || b.employeeId === null) return a.employeeId === b.employeeId ? 0 : a.employeeId ? -1 : 1
+    return (Number(a.employeeId) - Number(b.employeeId)) * sign
+  }
+  const left = sort.column === "mail" ? a.mail : a.displayName
+  const right = sort.column === "mail" ? b.mail : b.displayName
+  if (left === null || right === null) return left === right ? 0 : left ? -1 : 1
+  return left.localeCompare(right) * sign
+}
+
+const columns: DataTableColumn<AzureMember>[] = [
+  {
+    id: "employeeId",
+    label: "Member ID",
+    sortable: true,
+    align: "end",
+    minWidth: 120,
+    className: "w-[120px]",
+    cell: (member) => member.employeeId ?? <Unset />,
+  },
+  {
+    id: "displayName",
+    label: "Member",
+    sortable: true,
+    minWidth: 180,
+    fill: true,
+    cell: (member) => (
+      <span title={memberName(member)} className="block truncate">
+        {memberName(member)}
+      </span>
+    ),
+  },
+  {
+    id: "mail",
+    label: "Email",
+    sortable: true,
+    priority: 1,
+    minWidth: 220,
+    cell: (member) =>
+      member.mail ? (
+        <span title={member.mail} className="block max-w-[280px] truncate">
+          {member.mail}
+        </span>
+      ) : (
+        <Unset />
+      ),
+  },
+  {
+    id: "licenses",
+    label: "Licenses",
+    priority: 2,
+    minWidth: 260,
+    cell: (member) =>
+      member.assignedLicensesIds.length ? (
+        <ChipOverflow
+          items={member.assignedLicensesIds}
+          itemLabel={formatLicense}
+          renderItem={(license) => <Chip key={license}>{formatLicense(license)}</Chip>}
+        />
+      ) : (
+        <Unset />
+      ),
+  },
+]
+
+/** Microsoft 365 members (docs/design.md §7.9): the directory with member IDs and licenses. */
+export function AzureMembersPage({ members }: { members: AzureMember[] }) {
   const router = useRouter()
-  const [dialog, setDialog] = useState<MemberDialogState | null>(null)
-  const [members, setMembers] = useState(initialMembers)
+  const canWrite = useCanWrite()
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
+  const [membersOnly, setMembersOnly] = useState(false)
+  const [sort, setSort] = useState(DEFAULT_SORT)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  /** Member IDs saved in this session, shown until the reloaded directory has them. */
+  const [optimisticIds, setOptimisticIds] = useState<ReadonlyMap<string, string>>(new Map())
+  const [dialog, setDialog] = useState<MemberDialogTarget | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  /** Remounts the dialog on every open, so a create form starts empty. */
+  const [dialogKey, setDialogKey] = useState(0)
 
-  useEffect(() => setMembers(initialMembers), [initialMembers])
+  const shown = useMemo(
+    () =>
+      members.map((member) => {
+        const employeeId = optimisticIds.get(member.id)
+        return employeeId === undefined ? member : { ...member, employeeId, isMember: true }
+      }),
+    [members, optimisticIds]
+  )
+  const filtered = shown.filter((member) => (!membersOnly || member.isMember) && matches(member, deferredQuery))
+  const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
+  const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
+  const licenses = filtered.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
+  const filteredView = deferredQuery !== "" || membersOnly
 
-  const columns = useMemo(() => {
-    const header = (
-      label: string,
-      column: Pick<Column<typeof dashboardFeatures, AzureMember>, "getIsSorted" | "getToggleSortingHandler">
-    ) => {
-      const sorted = column.getIsSorted()
-      const Icon = !sorted ? ChevronsUpDown : sorted === "asc" ? ArrowUp : ArrowDown
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={column.getToggleSortingHandler()}
-          aria-label={`${label}, ${sorted ? `sorted ${sorted === "asc" ? "ascending" : "descending"}` : "not sorted"}`}
-        >
-          {label}
-          <Icon data-icon="inline-end" />
-        </Button>
+  const dropOptimistic = useCallback((memberId: string) => {
+    setOptimisticIds((current) => {
+      const next = new Map(current)
+      next.delete(memberId)
+      return next
+    })
+  }, [])
+
+  const applyOptimistic = useCallback(
+    (memberId: string, employeeId: string) => {
+      setOptimisticIds((current) => new Map(current).set(memberId, employeeId))
+      return () => dropOptimistic(memberId)
+    },
+    [dropOptimistic]
+  )
+
+  async function onSaved(target: MemberDialogTarget) {
+    appToast.success(target.mode === "create" ? "Member created." : "Member ID updated.")
+    try {
+      await router.invalidate({ sync: true })
+    } catch (caught) {
+      console.error(caught)
+      // The saved member ID stays on screen; only the rest of the directory is stale.
+      appToast.warning(
+        target.mode === "create"
+          ? "The member was created, but the latest directory data could not be refreshed."
+          : "The member ID was updated, but the latest directory data could not be refreshed."
       )
+      return
     }
-    return memberColumnHelper.columns([
-      memberColumnHelper.accessor((member) => member.employeeId ?? undefined, {
-        id: "employeeId",
-        header: ({ column }) => header("Member ID", column),
-        sortUndefined: "last",
-        sortFn: (rowA, rowB, columnId) => {
-          const a = Number(rowA.getValue(columnId))
-          const b = Number(rowB.getValue(columnId))
-          return a - b
-        },
-        cell: ({ getValue }) => getValue() ?? "—",
-      }),
-      memberColumnHelper.accessor("displayName", {
-        header: ({ column }) => header("Member", column),
-        cell: ({ row }) => {
-          const member = row.original
-          return (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent font-mono text-[10px] font-medium text-accent-foreground">
-                {member.displayName?.[0] ?? "?"}
-              </span>
-              <span>
-                <b className="block text-xs">{member.displayName ?? "Unnamed member"}</b>
-                {member.isMember && (
-                  <small className="mt-0.5 block text-[9px] text-muted-foreground">Association member</small>
-                )}
-              </span>
-            </div>
-          )
-        },
-      }),
-      memberColumnHelper.accessor("mail", {
-        header: ({ column }) => header("Email", column),
-        cell: ({ getValue }) =>
-          getValue() ?? <span className="text-[11px] italic text-muted-foreground">Not assigned</span>,
-      }),
-      memberColumnHelper.accessor((member) => member.assignedLicensesIds?.length ?? 0, {
-        id: "licenses",
-        header: ({ column }) => header("Licenses", column),
-        cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            {row.original.assignedLicensesIds?.length ? (
-              row.original.assignedLicensesIds.map((license) => (
-                <Badge className="h-5 bg-accent px-1.5 font-mono text-[9px] text-accent-foreground" key={license}>
-                  {license.replaceAll("_", " ")}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-[11px] italic text-muted-foreground">No licenses</span>
-            )}
-          </div>
-        ),
-      }),
-      ...(canWrite
-        ? [
-            memberColumnHelper.display({
-              id: "actions",
-              header: "",
-              cell: ({ row }) => (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-primary"
-                  onClick={() => setDialog({ mode: "edit", member: row.original })}
-                >
-                  Manage
-                </Button>
-              ),
-            }),
-          ]
-        : []),
-    ])
-  }, [canWrite])
-  const table = useAppTable({
-    key: "azure-members",
-    columns,
-    data: members,
-    initialState: {
-      sorting: [{ id: "employeeId", desc: false }],
-      pagination: { pageIndex: 0, pageSize: 25 },
-      globalFilter: { query: "", membersOnly: false },
-    },
-    autoResetPageIndex: false,
-    globalFilterFn: (row, _columnId, value) => {
-      const filter = memberFilterFrom(value)
-      const member = row.original
-      return (
-        (!filter.membersOnly || !!member.isMember) &&
-        `${member.displayName ?? ""} ${member.mail ?? ""} ${member.employeeId ?? ""}`
-          .toLocaleLowerCase()
-          .includes(filter.query.toLocaleLowerCase())
-      )
-    },
-  })
-  const memberFilter = memberFilterFrom(table.state.globalFilter)
-  const membersOnly = memberFilter.membersOnly
-  const filteredRows = table.getFilteredRowModel().rows
+    if (target.mode === "edit") dropOptimistic(target.member.id)
+  }
+
+  function openDialog(target: MemberDialogTarget) {
+    setDialog(target)
+    setDialogKey((key) => key + 1)
+    setDialogOpen(true)
+  }
+
+  function changeQuery(value: string) {
+    setQuery(value)
+    setPage(1)
+  }
+
+  function clearFilters() {
+    changeQuery("")
+    setMembersOnly(false)
+  }
+
+  // The empty state repeats the header primary as outline (§8.4).
+  const addMember = (variant: "default" | "outline") => (
+    <Button variant={variant} size="sm" className={buttonMotion} onClick={() => openDialog({ mode: "create" })}>
+      <Plus data-icon="inline-start" />
+      Add member
+    </Button>
+  )
 
   return (
-    <div className="animate-appear">
-      <DataToolbar
-        eyebrow="Azure"
-        title="Azure members"
-        description="Association membership and Microsoft 365 license information."
-        count={filteredRows.length}
-        total={members.length}
-        searchPlaceholder="Search by name, email, or member ID…"
-        onSearch={(value) => {
-          table.setGlobalFilter({ ...memberFilter, query: value })
-          table.setPageIndex(0)
-        }}
-        action={
-          canWrite ? (
-            <Button onClick={() => setDialog({ mode: "create" })}>
-              <Plus data-icon="inline-start" /> Add member
-            </Button>
-          ) : undefined
+    <>
+      <PageBar
+        left={
+          <Toolbar
+            search={{ value: query, onChange: changeQuery, className: "xl:w-80" }}
+            filters={
+              <Toggle
+                variant="outline"
+                size="lg"
+                pressed={membersOnly}
+                onPressedChange={(pressed) => {
+                  setMembersOnly(pressed)
+                  setPage(1)
+                }}
+                className="h-9 shrink-0 rounded-(--pn-r-3) border-(--pn-line-strong) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-muted) aria-pressed:border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+              >
+                Members only
+              </Toggle>
+            }
+            count={
+              <Count
+                value={filtered.length}
+                total={filteredView ? shown.length : undefined}
+                noun="member"
+                parts={[{ value: licenses, noun: "license" }]}
+              />
+            }
+          />
         }
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("text-[10px] text-muted-foreground", membersOnly && "border-primary bg-accent text-primary")}
-          aria-pressed={membersOnly}
-          onClick={() => {
-            table.setGlobalFilter({ ...memberFilter, membersOnly: !membersOnly })
-            table.setPageIndex(0)
+        right={canWrite ? addMember("default") : undefined}
+      />
+      <PageContent>
+        <DataTable
+          label="Microsoft 365 members"
+          columns={columns}
+          rows={rows}
+          getRowId={(member) => member.id}
+          sort={sort}
+          onSort={(next) => {
+            setSort(next)
+            setPage(1)
           }}
-        >
-          {membersOnly && <Check data-icon="inline-start" />} Members only
-        </Button>
-      </DataToolbar>
-      <section className="mb-4 flex flex-wrap gap-6 rounded-xl border border-border bg-card px-4 py-3.5 text-xs text-muted-foreground shadow-[0_1px_2px_rgb(15_23_42/4%)] max-[600px]:grid max-[600px]:gap-2 dark:shadow-none">
-        <div className="flex items-center gap-2">
-          <Building2 className="size-6 text-primary" />
-          <span>
-            <b className="text-primary">{members.filter((member) => member.isMember).length}</b> association members
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <UsersRound className="size-6 text-primary" />
-          <span>
-            <b className="text-primary">
-              {members.filter((member) => member.assignedLicensesIds?.includes("OFFICE_365")).length}
-            </b>{" "}
-            Office 365 licenses
-          </span>
-        </div>
-      </section>
-      {filteredRows.length ? (
-        <TableSurface>
-          <Table className="min-w-[800px] text-left">
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-0">
-                  {headerGroup.headers.map((header) => (
-                    <DataTableHead
-                      key={header.id}
-                      aria-sort={
-                        header.column.getIsSorted() === "asc"
-                          ? "ascending"
-                          : header.column.getIsSorted() === "desc"
-                            ? "descending"
-                            : undefined
-                      }
-                    >
-                      {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                    </DataTableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-4 py-3 text-sm">
-                      <table.FlexRender cell={cell} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSurface>
-      ) : (
-        <EmptyState
-          icon={UsersRound}
-          title={members.length ? "No members match these filters" : "No Azure members yet"}
-          text={
-            members.length
-              ? "Clear the search or turn off the members-only filter."
-              : "No members were returned from Microsoft Entra."
+          actions={
+            canWrite
+              ? (member) => (
+                  <IconButton
+                    label="Set member ID"
+                    ariaLabel={`Set member ID for ${memberName(member)}`}
+                    icon={Pencil}
+                    onClick={() => openDialog({ mode: "edit", member })}
+                  />
+                )
+              : undefined
+          }
+          actionsWidth={76}
+          pagination={{
+            page,
+            pageSize,
+            total: sorted.length,
+            onPage: setPage,
+            onPageSize: (size) => {
+              setPageSize(size)
+              setPage(1)
+            },
+          }}
+          empty={
+            filteredView ? (
+              <EmptyState
+                icon={UsersRound}
+                title="No members match"
+                text="Clear the search or turn off Members only."
+                action={
+                  <Button size="sm" variant="ghost" className={buttonMotion} onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={UsersRound}
+                title="No members yet"
+                text="No members were returned from Microsoft Entra."
+                action={canWrite ? addMember("outline") : undefined}
+              />
+            )
           }
         />
-      )}
-      {filteredRows.length > 0 && (
-        <Pagination
-          page={table.state.pagination.pageIndex + 1}
-          pageCount={table.getPageCount()}
-          pageSize={table.state.pagination.pageSize}
-          total={filteredRows.length}
-          onPageChange={(page) => table.setPageIndex(page - 1)}
-          onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
-        />
-      )}
-      {canWrite && dialog && (
+      </PageContent>
+      {dialog ? (
         <MemberDialog
-          dialog={dialog}
-          onClose={() => setDialog(null)}
-          onOptimisticUpdate={(member) => {
-            const previous = members.find((current) => current.id === member.id)
-            setMembers((current) => current.map((item) => (item.id === member.id ? member : item)))
-            return () => {
-              if (previous) setMembers((current) => current.map((item) => (item.id === member.id ? previous : item)))
-            }
-          }}
-          onSaved={async (mode) => {
-            setDialog(null)
-            toast.success(mode === "create" ? "Member created." : "Member ID updated.")
-            if (mode === "create") {
-              try {
-                await router.invalidate({ sync: true })
-              } catch (error) {
-                console.error(error)
-                toast.warning("The member was created, but the latest directory data could not be refreshed.")
-              }
-            }
-          }}
+          key={dialogKey}
+          target={dialog}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onOptimisticUpdate={applyOptimistic}
+          onSaved={(target) => void onSaved(target)}
         />
-      )}
-    </div>
+      ) : null}
+    </>
   )
 }
