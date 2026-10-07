@@ -12,14 +12,14 @@ type VisibilityToggleProps = {
   className?: string
 }
 
-/** `aria-pressed` reflects "visible on the site"; hidden shows `EyeOff` in the warning color. */
+/** `aria-pressed` reflects "visible on the site"; hidden shows `EyeOff` in neutral gray, apart from the amber labels button. */
 export function VisibilityToggle({ visible, pending, onToggle, disabled, name, className }: VisibilityToggleProps) {
   return (
     <IconButton
       label="Visible on the site"
       ariaLabel={name ? `${name} visible on the site` : undefined}
       icon={visible ? Eye : EyeOff}
-      tone={visible ? "info" : "warning"}
+      tone={visible ? "info" : "default"}
       appearance="tinted"
       aria-pressed={visible}
       pending={pending}
