@@ -29,37 +29,55 @@ type WebLogoProps = {
   className?: string
 }
 
+/**
+ * Load results by URL, kept across remounts: switching category tabs or reloading the route remounts every tile,
+ * and a known result shows at once instead of loading (or failing) again.
+ */
+const logoStatus = new Map<string, "loaded" | "failed">()
+
 /** 40px logo tile: the image, or initials when there is none or it fails to load. */
 export function WebLogo({ src, name, fallback, className }: WebLogoProps) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const showImage = src !== null && src !== failedSrc
+  const [status, setStatus] = useState(() => (src === null ? undefined : logoStatus.get(src)))
+  const [statusSrc, setStatusSrc] = useState(src)
+  if (statusSrc !== src) {
+    setStatusSrc(src)
+    setStatus(src === null ? undefined : logoStatus.get(src))
+  }
+  const loaded = status === "loaded"
 
-  // A server-rendered image can fail before hydration attaches `onError`; `decode()` rejects for those.
+  function settle(result: "loaded" | "failed") {
+    if (src === null) return
+    // Upload previews are data URLs: large and never seen again, so not worth keeping.
+    if (!src.startsWith("data:")) logoStatus.set(src, result)
+    setStatus(result)
+  }
+
+  // A server-rendered or cached image can settle before hydration attaches `onLoad`/`onError`; `decode()` reports it.
   function checkLoaded(image: HTMLImageElement | null) {
-    if (!image?.complete || image.naturalWidth > 0 || src === null) return
-    image.decode().then(noop, () => setFailedSrc(src))
+    if (!image?.complete || status !== undefined) return
+    image.decode().then(
+      () => settle("loaded"),
+      () => settle("failed")
+    )
   }
 
   return (
-    <span aria-hidden className={cn(tile, showImage && "bg-(--pn-surface)", className)}>
-      {showImage ? (
+    <span aria-hidden className={cn(tile, loaded && "bg-(--pn-surface)", className)}>
+      {!loaded && (name.trim() ? initialsOf(name) : fallback)}
+      {/* Hidden until decoded, so a slow or broken image never shows the browser's broken-image icon. */}
+      {src !== null && status !== "failed" && (
         <img
           ref={checkLoaded}
           src={src}
           alt=""
-          className="size-full object-contain"
-          onError={() => setFailedSrc(src)}
+          className={cn("absolute inset-0 size-full object-contain", !loaded && "invisible")}
+          onLoad={() => settle("loaded")}
+          onError={() => settle("failed")}
         />
-      ) : name.trim() ? (
-        initialsOf(name)
-      ) : (
-        fallback
       )}
     </span>
   )
 }
-
-function noop() {}
 
 /** A chosen logo: the file to upload and its data URL preview. */
 type ChosenLogo = { file: File; preview: string }
