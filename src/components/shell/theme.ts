@@ -46,6 +46,13 @@ export type ThemeToggleSource = { currentTarget: EventTarget | null }
 const LIGHT_ON = { duration: 700, easing: "cubic-bezier(0.32, 0.72, 0, 1)" } as const
 const LIGHT_OFF = { duration: 520, easing: "cubic-bezier(0.55, 0.085, 0.68, 0.53)" } as const
 
+/**
+ * The running reveal. It holds its end state (`fill: "forwards"`) so the clip is not dropped a frame before the
+ * snapshots go, and a held animation never ends on its own: it is cancelled once the transition has finished (the
+ * snapshots are gone by then) and before the next reveal starts, or it would clip the next run's snapshots too.
+ */
+let activeReveal: Animation | null = null
+
 function iconCenter(element: Element | null): Point | null {
   const icon = element?.querySelector("svg") ?? element
   const box = icon?.getBoundingClientRect()
@@ -74,6 +81,8 @@ function switchTheme(theme: Theme, source?: ThemeToggleSource) {
   }
 
   const root = document.documentElement
+  activeReveal?.cancel()
+  activeReveal = null
   const { x, y } = revealOrigin(source)
   const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
   const lightOn = theme === "light"
@@ -82,23 +91,27 @@ function switchTheme(theme: Theme, source?: ThemeToggleSource) {
   root.setAttribute("data-theme-switching", "")
   root.setAttribute("data-theme-reveal", lightOn ? "on" : "off")
   const transition = document.startViewTransition(() => commitTheme(theme))
+  let reveal: Animation | null = null
   transition.ready
     .then(() => {
-      root.animate(
+      reveal = root.animate(
         { clipPath: lightOn ? [bulb(0), bulb(radius)] : [bulb(radius), bulb(0)] },
         {
           ...(lightOn ? LIGHT_ON : LIGHT_OFF),
           pseudoElement: lightOn ? "::view-transition-new(root)" : "::view-transition-old(root)",
-          // Hold the end state until the snapshots are removed: without it the clip is dropped for one frame first,
-          // and the old light snapshot, stacked on top while turning off, flashed across the whole screen.
+          // Without the hold the clip is dropped one frame before the snapshots go, and the old light snapshot,
+          // stacked on top while turning off, flashed across the whole screen.
           fill: "forwards",
         }
       )
+      activeReveal = reveal
     })
     .catch((error) => console.error(error))
   transition.finished
     .catch((error) => console.error(error))
     .finally(() => {
+      if (reveal && activeReveal === reveal) activeReveal = null
+      reveal?.cancel()
       root.removeAttribute("data-theme-switching")
       root.removeAttribute("data-theme-reveal")
     })
