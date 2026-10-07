@@ -425,13 +425,17 @@ export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
           {search ? (
             <SearchField
               {...search}
-              className={cn("flex-1 max-lg:w-full max-lg:flex-none lg:w-60 lg:flex-none xl:w-70", search.className)}
+              // From 1024px the search gives way (down to 96px) when the row is tight, rather than overflowing the count.
+              className={cn(
+                "flex-1 max-lg:w-full max-lg:flex-none lg:w-60 lg:min-w-24 lg:flex-[0_1_auto] xl:w-70",
+                search.className
+              )}
             />
           ) : null}
           {filters}
         </div>
       ) : null}
-      {count ? <div className="contents max-lg:ml-auto max-lg:flex max-lg:shrink-0 max-lg:pl-2">{count}</div> : null}
+      {count ? <div className="flex shrink-0 max-lg:ml-auto max-lg:pl-2">{count}</div> : null}
     </div>
   )
 }
