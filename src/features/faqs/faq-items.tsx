@@ -67,8 +67,12 @@ type FaqRowProps = {
 /** One accordion item in view mode: IT/EN questions, chevron, edit and delete. */
 export function FaqRow({ faq, canWrite, onEdit, onDelete }: FaqRowProps) {
   return (
-    <AccordionItem value={faq.faqId} className="border-(--pn-line)">
-      <AccordionPrimitive.Header className="flex min-h-12 items-center gap-3 pr-3 pl-5 transition-[background-color] duration-120 hover:bg-(--pn-muted)">
+    // Hovering the header (the clickable part) tints the whole item, so an open item's answers are not left out.
+    <AccordionItem
+      value={faq.faqId}
+      className="border-(--pn-line) transition-[background-color] duration-120 pointer-fine:has-[>h3:hover]:bg-(--pn-muted)"
+    >
+      <AccordionPrimitive.Header className="flex min-h-12 items-center gap-3 pr-3 pl-5">
         <AccordionPrimitive.Trigger className="group/trigger flex min-w-0 flex-1 items-center gap-3 self-stretch py-2 text-left outline-offset-[-2px]">
           <span className="flex min-w-0 flex-1 flex-col">
             <LanguageLine lang="IT">{faq.titleIt}</LanguageLine>
