@@ -116,8 +116,12 @@ export type PageBarProps<TRouter extends AnyRouter = RegisteredRouter, TOptions 
 
 const barRow = "h-[51px]"
 
-/** No bottom rule: the bar sits inset like the content below it rather than lining up with the panel header. */
-export const pageBarFrame = "min-h-13 shrink-0 bg-(--pn-bg) lg:pt-4"
+/**
+ * No bottom rule: the bar sits inset like the content below it rather than lining up with the panel header. It
+ * reserves the same scrollbar gutter as `main` (gutters apply to clipping boxes, hence `overflow-hidden`; menus and
+ * tooltips render in portals), so toolbar and content share one width and their edges line up.
+ */
+export const pageBarFrame = "min-h-13 shrink-0 overflow-hidden bg-(--pn-bg) [scrollbar-gutter:stable] lg:pt-4"
 const titleText = "truncate text-[15px]/[22px] font-semibold tracking-[-0.005em] text-(--pn-fg)"
 
 /** The header bar above `main`, rendered before PageContent on the server and client. */
