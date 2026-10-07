@@ -194,7 +194,7 @@ It exists. One dialog, `cmdk` inside `Dialog`, 560px wide, top-aligned at 15vh, 
 
 The Records group is not built yet: it needs a client-side search source over users, groups, labels and Microsoft 365 groups. Until then the palette lists Sections and Actions only.
 
-Keyboard: `⌘K`/`Ctrl+K` toggles; `↑/↓` move; `Enter` runs; `Esc` closes; typing filters. Row 40px, 14px text, meta 12px muted on the right, selected row `--pn-muted` background. Empty: "Nothing matches “{q}”." in 13px muted, 32px padding.
+Keyboard: `⌘K`/`Ctrl+K` toggles; `↑/↓` move; `Enter` runs; `Esc` closes; typing filters. Dismissing (`Esc`, outside press) returns focus to where it was; running an entry does not (the user has moved to a new page or theme, and focusing the trigger would light up the rail Search button and its tooltip). Row 40px, 14px text, meta 12px muted on the right, selected row `--pn-muted` background. Empty: "Nothing matches “{q}”." in 13px muted, 32px padding.
 
 ---
 

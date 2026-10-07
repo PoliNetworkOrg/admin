@@ -2,7 +2,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useNavigate } from "@tanstack/react-router"
 import { Command } from "cmdk"
 import { LogOut, type LucideIcon, Moon, Search, Sun, UserRound } from "lucide-react"
-import { type ReactNode, useMemo, useState } from "react"
+import { type ReactNode, useMemo, useRef, useState } from "react"
 
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog"
 
@@ -40,6 +40,8 @@ export type CommandPaletteProps = {
 /** ⌘K palette (docs/design.md §2.5): every section and the shell actions. No animation. */
 export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPaletteProps) {
   const [query, setQuery] = useState("")
+  // Set when an entry runs, so closing does not hand focus back to the trigger (see `finalFocus`).
+  const ranEntry = useRef(false)
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
 
@@ -83,8 +85,20 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
   }, [normalizedQuery, navigate, theme, toggleTheme, onSignOut])
 
   function run(entry: PaletteEntry) {
+    ranEntry.current = true
     setOpen(false)
     entry.run()
+  }
+
+  /**
+   * Dismissing (Esc, outside press) returns focus to where it was. After an entry ran, the user has moved on (a new
+   * page, a new theme): restoring focus to the trigger, often the rail's Search button, would light up its focus
+   * ring and tooltip on the next page, so focus is left alone.
+   */
+  function finalFocus() {
+    const ran = ranEntry.current
+    ranEntry.current = false
+    return !ran
   }
 
   return (
@@ -93,6 +107,7 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
         <DialogOverlay className="duration-0 data-closed:animate-none data-open:animate-none" />
         <DialogPrimitive.Popup
           data-command-palette=""
+          finalFocus={finalFocus}
           className="fixed top-[15vh] left-1/2 z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-(--pn-r-5) bg-(--pn-surface-raised) text-(--pn-fg) shadow-(--pn-shadow-modal) outline-none"
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
