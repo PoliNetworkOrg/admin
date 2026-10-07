@@ -69,16 +69,11 @@ export function PanelSheet({
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="flex h-13 shrink-0 items-center justify-between border-b border-(--pn-line) pr-2 pl-4">
-          <Link
-            to={overview.path}
-            activeOptions={{ exact: true }}
-            onClick={close}
-            aria-label="PoliNetwork Admin — Overview"
-            className="flex items-center gap-2 rounded-(--pn-r-2) text-[14px] font-semibold"
-          >
+          {/* Brand only: the Overview row below is the one link to it. */}
+          <div className="flex items-center gap-2 text-[14px] font-semibold">
             <img src={logoUrl} alt="" width={28} height={28} className="size-7 rounded-full" />
             PoliNetwork Admin
-          </Link>
+          </div>
           <SheetClose
             render={
               <Button

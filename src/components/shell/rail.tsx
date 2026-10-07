@@ -107,13 +107,13 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
   const overview = serviceById("overview")
   const account = serviceById("account")
 
-  // Item order: logo, overview, search, services…, theme, account.
-  const serviceStart = 3
+  // Item order (the logo is not an item): overview, search, services…, theme, account.
+  const serviceStart = 2
   const themeIndex = serviceStart + panelServices.length
   const accountIndex = themeIndex + 1
   const activeIndex =
     activeId === "overview"
-      ? 1
+      ? 0
       : activeId === "account"
         ? accountIndex
         : serviceStart + panelServices.findIndex((service) => service.id === activeId)
@@ -165,20 +165,15 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
         className
       )}
     >
-      <RailItem
-        label="PoliNetwork Admin — Overview"
-        active={false}
-        focusable={tabStop === 0}
-        target={{ kind: "link", to: overview.path }}
-        className="mb-1"
-      >
+      {/* Brand mark only: Overview is the next item, so the logo is not a second link to it. */}
+      <div aria-hidden className="mb-1 grid size-10 shrink-0 place-items-center">
         <img src={logoUrl} alt="" width={28} height={28} className="size-7 rounded-full" />
-      </RailItem>
+      </div>
 
       <RailItem
         label={overview.title}
         active={activeId === "overview"}
-        focusable={tabStop === 1}
+        focusable={tabStop === 0}
         target={{ kind: "link", to: overview.path }}
       >
         <overview.icon {...iconProps} />
@@ -192,7 +187,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
           </kbd>
         }
         active={false}
-        focusable={tabStop === 2}
+        focusable={tabStop === 1}
         target={{ kind: "button", onClick: onOpenPalette }}
       >
         <Search {...iconProps} />
