@@ -67,7 +67,7 @@ export function IconButton({
           appearance === "tinted" && ["border-(--pn-line-strong)", tintedToneClasses[tone]],
           appearance === "tinted" &&
             tone !== "default" &&
-            "text-(--pn-icon-fg) hover:border-[color-mix(in_oklch,var(--pn-icon-fg)_30%,transparent)] hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_12%,transparent)] hover:text-(--pn-icon-fg) dark:hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_16%,transparent)]",
+            "border-[color-mix(in_oklch,var(--pn-icon-fg)_18%,var(--pn-line-strong))] bg-[color-mix(in_oklch,var(--pn-icon-tint)_5%,transparent)] text-(--pn-icon-fg) hover:border-[color-mix(in_oklch,var(--pn-icon-fg)_30%,transparent)] hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_14%,transparent)] hover:text-(--pn-icon-fg) dark:hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_16%,transparent)]",
           className
         )}
         {...props}
