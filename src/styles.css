@@ -354,12 +354,17 @@ tr:focus-visible {
   color: var(--pn-accent-solid-fg);
 }
 
-/* Theme switches: the circular reveal is driven from theme.ts on ::view-transition-new(root); the default cross-fade
-   of the root snapshots is turned off so only the bubble moves (§6). */
+/* Theme switches: the light-bulb reveal is driven from theme.ts (§6). The default cross-fade of the root snapshots
+   is turned off so only the clip edge moves; turning the light off clips the old (light) snapshot, so it must sit
+   above the new one. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+
+:root[data-theme-reveal="off"]::view-transition-old(root) {
+  z-index: 1;
 }
 
 /* Theme switches swap every color in one frame (§2.1). */
