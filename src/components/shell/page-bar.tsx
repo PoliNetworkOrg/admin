@@ -187,19 +187,11 @@ export function PageBarContent({
     )
   } else {
     // Section page: one row at >= 1024 (toolbar | actions); below, "{Service} › {Section}" and actions on
-    // row 1 (the panel that names both is hidden) and the toolbar alone on row 2. A single-section service has no
-    // panel at all, so at >= 1024 its title stays in front of the toolbar on the one row.
-    const named = section !== null && !hasPanel
+    // row 1 (the panel that names both is hidden) and the toolbar alone on row 2. At >= 1024 the rail and panel
+    // already name the page, so no title is repeated there, even for single-section services without a panel.
     bar = (
-      <div
-        className={cn(
-          "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [grid-template-areas:'lead_right'_'tool_tool']",
-          named
-            ? "lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:[grid-template-areas:'lead_tool_right']"
-            : "lg:[grid-template-areas:'tool_right']"
-        )}
-      >
-        <div className={cn("flex min-w-0 items-center gap-2 [grid-area:lead]", !named && "lg:hidden", barRow)}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 [grid-template-areas:'lead_right'_'tool_tool'] lg:[grid-template-areas:'tool_right']">
+        <div className={cn("flex min-w-0 items-center gap-2 [grid-area:lead] lg:hidden", barRow)}>
           {/* Without a panel the sheet adds nothing to the rail, so the toggle only shows where the rail is hidden. */}
           <NavigationToggle className={hasPanel ? "lg:hidden" : "sm:hidden"} />
           {section ? (
