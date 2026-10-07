@@ -56,10 +56,19 @@ function useShellFrame() {
   return frame
 }
 
+/**
+ * The pathname of the page `<Outlet>` is rendering. `location` switches as soon as a navigation starts, while the
+ * previous page stays on screen until the next route's loader resolves (or its pending skeleton shows); reading the
+ * deepest rendered match keeps the panel and page keys in step with what is actually visible.
+ */
+export function useRenderedPathname() {
+  return useRouterState({ select: (state) => state.matches.at(-1)?.pathname ?? state.location.pathname })
+}
+
 /** Centers the page content at the template width with the shell's side padding (§2.4). */
 export function PageContent({ width = "wide", children }: { width?: ContentWidth; children: ReactNode }) {
   const { setMain } = useShellFrame()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRenderedPathname()
 
   return (
     <main

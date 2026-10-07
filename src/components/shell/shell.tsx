@@ -1,4 +1,4 @@
-import { Outlet, useRouterState } from "@tanstack/react-router"
+import { Outlet } from "@tanstack/react-router"
 import { type MouseEvent, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 
 import { TOOLTIP_DELAY } from "@/components/primitives/hint"
@@ -17,7 +17,7 @@ import {
   serviceFor,
   services,
 } from "./nav"
-import { PageBarContent, pageBarFrame, type ShellFrame, ShellFrameContext } from "./page-bar"
+import { PageBarContent, pageBarFrame, type ShellFrame, ShellFrameContext, useRenderedPathname } from "./page-bar"
 import { Panel } from "./panel"
 import { PanelSheet } from "./panel-sheet"
 import { Rail } from "./rail"
@@ -92,7 +92,7 @@ export function DashboardShell({ initialSession, pendingReports }: DashboardShel
 }
 
 function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRenderedPathname()
   const match = matchPath(pathname)
   const service = serviceFor(match)
   const section = sectionFor(match)
