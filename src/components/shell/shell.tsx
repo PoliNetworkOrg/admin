@@ -1,4 +1,5 @@
 import { Outlet } from "@tanstack/react-router"
+import { AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react"
 import { type MouseEvent, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 
 import { TOOLTIP_DELAY } from "@/components/primitives/hint"
@@ -25,6 +26,14 @@ import { useKeyboardShortcuts } from "./use-keyboard-shortcuts"
 import { SignOutProvider, useSignOut } from "./use-sign-out"
 
 const DESKTOP_QUERY = "(min-width: 1024px)"
+
+/**
+ * The panel slides in from under the rail when a service page follows Overview/Account and back out the other way;
+ * the content column moves with it as a transform (`layout="position"`), so its edge stays locked to the panel's.
+ * Exits run faster than enters (§6).
+ */
+const panelEnter: Transition = { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
+const panelExit: Transition = { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
 
 function subscribeDesktop(onChange: () => void) {
   const query = window.matchMedia(DESKTOP_QUERY)
@@ -129,6 +138,9 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
     setSheetOpen(true)
   }
 
+  const reduceMotion = useReducedMotion()
+  const panelTransition = reduceMotion ? { duration: 0 } : hasPanel ? panelEnter : panelExit
+
   const frame = useMemo(
     (): ShellFrame => ({ main, setMain, service, section, openNavigation }),
     [main, service, section, openNavigation]
@@ -137,26 +149,42 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
   return (
     <ShellFrameContext.Provider value={frame}>
       <TooltipProvider delay={TOOLTIP_DELAY} closeDelay={0} timeout={300}>
-        <div className="flex h-dvh overflow-hidden bg-(--pn-bg) text-[14px] leading-5 text-(--pn-fg)">
+        <div className="relative flex h-dvh overflow-hidden bg-(--pn-bg) text-[14px] leading-5 text-(--pn-fg)">
           <Rail
             match={match}
             serviceHref={serviceHref}
             onServiceClick={onServiceClick}
             onOpenPalette={openPalette}
             user={user}
-            className="max-sm:hidden"
+            className="relative z-10 max-sm:hidden"
           />
-          {hasPanel ? (
-            <Panel service={service} match={match} pendingReports={pendingReports} className="max-lg:hidden" />
-          ) : null}
+          {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. */}
+          <AnimatePresence initial={false} mode="popLayout">
+            {hasPanel ? (
+              <motion.div
+                key="panel"
+                initial={reduceMotion ? false : { x: "-100%" }}
+                animate={{ x: 0, transition: panelTransition }}
+                exit={{ x: "-100%", transition: panelTransition }}
+                className="flex h-full shrink-0 max-lg:hidden"
+              >
+                <Panel service={service} match={match} pendingReports={pendingReports} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-          <div className="flex min-w-0 flex-1 flex-col [&:has([data-page-bar])>[data-shell-fallback]]:hidden">
+          <motion.div
+            layout="position"
+            layoutDependency={hasPanel}
+            transition={{ layout: panelTransition }}
+            className="flex min-w-0 flex-1 flex-col [&:has([data-page-bar])>[data-shell-fallback]]:hidden"
+          >
             <header data-shell-fallback="" className={pageBarFrame}>
               <PageBarContent />
             </header>
             {section && !isDeepPage(match) ? <h1 className="sr-only">{section.title}</h1> : null}
             <Outlet />
-          </div>
+          </motion.div>
 
           <PanelSheet
             open={sheetOpen}
