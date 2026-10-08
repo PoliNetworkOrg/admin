@@ -65,7 +65,7 @@ export function TelegramUserNotFound({ userId }: { userId: string }) {
 
 type OpenDialog = "none" | "grant" | "end-grant" | "role" | "add-group" | "remove-group"
 
-/** Telegram user detail (docs/design.md §7.4): roles in the header, then grants, groups, messages, audit log. */
+/** Telegram user detail: roles in the header, then grants, groups, messages, audit log. */
 export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
   const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, ongoingGrant, scheduledGrants } = data
   const canWrite = useCanWrite()

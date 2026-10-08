@@ -85,7 +85,7 @@ export type PanelProps = {
   className?: string
 }
 
-/** The 224px section panel (docs/design.md §2.2). States the service name once, in its header. */
+/** The 224px section panel. States the service name once, in its header. */
 export function Panel({ service, match, pendingReports, className }: PanelProps) {
   return (
     <aside

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 export type SegmentedItem<T extends string> = {
   value: T
   label: ReactNode
-  /** Bare tabular number after the label (§8.5). */
+  /** Bare tabular number after the label. */
   count?: number
   /** Leading glyph, e.g. a `PlatformGlyph`. */
   icon?: ReactNode
@@ -30,7 +30,7 @@ type SegmentedControlProps<T extends string> = {
 }
 
 /**
- * 36px segmented control (§2.3) on Base UI `ToggleGroup`: a `--pn-muted` track with 32px segments of equal width
+ * 36px segmented control on Base UI `ToggleGroup`: a `--pn-muted` track with 32px segments of equal width
  * from 1024px (each as wide as the widest label); the pressed one sits on the surface with a 1px line. Pressing the active
  * segment again keeps it selected.
  */

@@ -213,7 +213,7 @@ export function InlineEditRow(props: InlineEditProps) {
 const fieldClasses =
   "border-(--pn-line-strong) bg-(--pn-surface) text-sm leading-5 text-(--pn-fg) shadow-none placeholder:text-(--pn-fg-subtle) aria-invalid:border-(--pn-danger-solid) pointer-coarse:text-base dark:bg-(--pn-surface)"
 
-/** §5.10 error line under an inline field: 12px danger text with a 14px icon. */
+/** Error line under an inline field: 12px danger text with a 14px icon. */
 function FieldError({ id, children }: { id: string; children: ReactNode }) {
   return (
     <p id={id} className="mt-1.5 flex items-center gap-1.5 text-xs text-(--pn-danger-fg)">

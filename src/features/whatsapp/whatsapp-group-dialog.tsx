@@ -33,7 +33,7 @@ function validate(title: string, link: string): Errors {
   }
 }
 
-/** "Add WhatsApp group" / "Edit WhatsApp group" (§7.7). */
+/** "Add WhatsApp group" / "Edit WhatsApp group". */
 export function WhatsappGroupDialog({ open, onOpenChange, group, onSaved }: WhatsappGroupDialogProps) {
   const createGroupFn = useServerFn(createWhatsappGroup)
   const editGroupFn = useServerFn(editWhatsappGroup)

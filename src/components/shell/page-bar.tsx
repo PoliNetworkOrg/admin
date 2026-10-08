@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 
 import type { Section, Service } from "./nav"
 
-/** Content widths per template (docs/design.md §2.4). The header bar follows the same width. */
+/** Content widths per template. The header bar follows the same width. */
 export type ContentWidth = "wide" | "tree" | "record" | "settings" | "overview"
 
 const widthClass = {
@@ -65,7 +65,7 @@ export function useRenderedPathname() {
   return useRouterState({ select: (state) => state.matches.at(-1)?.pathname ?? state.location.pathname })
 }
 
-/** Centers the page content at the template width with the shell's side padding (§2.4). */
+/** Centers the page content at the template width with the shell's side padding. */
 export function PageContent({ width = "wide", children }: { width?: ContentWidth; children: ReactNode }) {
   const { setMain } = useShellFrame()
   const pathname = useRenderedPathname()
@@ -268,8 +268,8 @@ export function BackButton({ label, link }: PageBarBack) {
 }
 
 /**
- * Fades the record name into the header bar once the content `h1` has scrolled above the top of `main`
- * (docs/design.md §1.5). The bar sits outside the scroller, so the observer needs no root margin.
+ * Fades the record name into the header bar once the content `h1` has scrolled above the top of `main`. The bar
+ * sits outside the scroller, so the observer needs no root margin.
  */
 export function ScrollTitle({ targetRef, title }: { targetRef: RefObject<HTMLElement | null>; title?: string }) {
   const { main } = useShellFrame()
@@ -326,7 +326,7 @@ function formatCountPart({ value, total, noun, plural }: CountPart) {
 
 /**
  * "{n} {noun}" or "{n} of {total} {noun}", pluralized with Intl.PluralRules; `parts` append
- * " · {n} {noun}" segments (§8.5). Pass the singular noun: `<Count value={42} noun="group" />`.
+ * " · {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
  */
 export function Count({ parts = [], className, ...first }: CountProps) {
   const text = [first, ...parts].map(formatCountPart).join(" · ")
@@ -352,7 +352,7 @@ export type SearchFieldProps = {
 }
 
 /**
- * 36px search input (§2.3): `/` focuses it from anywhere, Esc clears it while it has a value, the clear
+ * 36px search input: `/` focuses it from anywhere, Esc clears it while it has a value, the clear
  * button shows only with a value. The page defers the value and resets its pagination.
  */
 export function SearchField({ value, onChange, placeholder, label, inputRef, className }: SearchFieldProps) {
@@ -410,7 +410,7 @@ export type ToolbarProps = {
   count?: ReactNode
 }
 
-/** The section-page left slot: lead → search → filters → count (§1.2, §2.3). */
+/** The section-page left slot: lead → search → filters → count. */
 export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
   return (
     <div className="flex w-full min-w-0 items-center gap-4 max-lg:flex-wrap max-lg:gap-2 max-lg:[&_[role=group]]:h-auto max-lg:[&_[role=group]]:max-w-full max-lg:[&_[role=group]]:flex-wrap">

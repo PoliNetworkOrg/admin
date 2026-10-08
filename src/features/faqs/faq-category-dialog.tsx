@@ -43,7 +43,7 @@ type FaqCategoryDialogProps = {
   onSaved: (categoryId: number) => Promise<void>
 }
 
-/** "Add category" / "Edit category" (§7.13): icon grid plus both titles, all validated inline. */
+/** "Add category" / "Edit category": icon grid plus both titles, all validated inline. */
 export function FaqCategoryDialog({ open, onOpenChange, category, onSaved }: FaqCategoryDialogProps) {
   const addCategoryFn = useServerFn(addFAQCategory)
   const editCategoryFn = useServerFn(editFAQCategory)
@@ -141,7 +141,7 @@ export function FaqCategoryDialog({ open, onOpenChange, category, onSaved }: Faq
           })}
         </div>
       </div>
-      {/* One label for the pair; each language is its own panel (§5.14), errors under the field. */}
+      {/* One label for the pair; each language is its own panel, errors under the field. */}
       <div className="flex flex-col gap-1.5">
         <p className="text-[13px] leading-5 font-medium text-(--pn-fg)">Title</p>
         <TranslationGroup>

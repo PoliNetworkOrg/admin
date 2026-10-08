@@ -20,7 +20,7 @@ type ComboboxInputProps = ComboboxPrimitive.Input.Props & {
   listLabel: string
 }
 
-/** §5.8 combobox input: 36px field with a chevron trigger named after the list. */
+/** Combobox input: 36px field with a chevron trigger named after the list. */
 export function ComboboxInput({ listLabel, disabled = false, className, ...props }: ComboboxInputProps) {
   return (
     <InputGroup className={cn("h-9 w-full rounded-(--pn-r-3)", fieldControl, className)}>

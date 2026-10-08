@@ -355,7 +355,7 @@ export function sectionFor(match: PageMatch): Section | null {
   }
 }
 
-/** Deep pages are reached from a section but are not themselves in the panel (§1.1). */
+/** Deep pages are reached from a section but are not themselves in the panel. */
 export function isDeepPage(match: PageMatch): boolean {
   return match.kind === "telegram-user" || match.kind === "web-category" || match.kind === "web-tag"
 }

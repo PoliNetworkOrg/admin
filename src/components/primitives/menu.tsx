@@ -18,7 +18,7 @@ import { floatingMotion, raisedSurface } from "./motion"
 const itemClasses =
   "h-9 gap-2 rounded-(--pn-r-2) px-2 text-[13px] text-(--pn-fg) focus:bg-(--pn-muted) focus:text-(--pn-fg) not-data-[variant=destructive]:focus:**:text-(--pn-fg) data-[variant=destructive]:text-(--pn-danger-fg) data-[variant=destructive]:focus:bg-(--pn-danger-bg) data-[variant=destructive]:focus:text-(--pn-danger-fg) [&_svg]:text-(--pn-fg-muted)"
 
-/** Raised menu surface (§3.4): `--pn-r-4`, floating shadow, 160/120ms scale from the trigger. Aligns end by default. */
+/** Raised menu surface: `--pn-r-4`, floating shadow, 160/120ms scale from the trigger. Aligns end by default. */
 export function MenuContent({ className, align = "end", ...props }: React.ComponentProps<typeof DropdownMenuContent>) {
   return (
     <DropdownMenuContent

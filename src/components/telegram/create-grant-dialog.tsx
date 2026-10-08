@@ -53,7 +53,7 @@ type CreateGrantDialogProps = {
   user?: GrantDialogUser
 }
 
-/** "New grant" (§7.4): find the user, then the validity window and an optional motivation. */
+/** "New grant": find the user, then the validity window and an optional motivation. */
 export function CreateGrantDialog(props: CreateGrantDialogProps) {
   const generation = useOpenGeneration(props.open)
   return <CreateGrantDialogBody key={generation} {...props} />

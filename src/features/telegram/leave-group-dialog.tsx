@@ -19,7 +19,7 @@ function leaveErrorText(error: string) {
   return "The group could not be left."
 }
 
-/** "Leave {title}?" (§7.6, §8.2): the bot leaves the Telegram group and its record is deleted. */
+/** "Leave {title}?": the bot leaves the Telegram group and its record is deleted. */
 export function LeaveGroupDialog({ open, onOpenChange, group, onLeft }: LeaveGroupDialogProps) {
   const leaveTelegramGroupFn = useServerFn(leaveTelegramGroup)
 

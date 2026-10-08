@@ -87,7 +87,7 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
   // Sub-category cards count their whole branch; the meta states both rules so the numbers add up.
   const nestedCount = groupLabels.filter((paths) => paths.some((label) => label.startsWith(`${path}.`))).length
 
-  // The empty state repeats the header primary as outline (§8.4).
+  // The empty state repeats the header primary as outline.
   const addGroupButton = (variant: "default" | "outline") => (
     <Button variant={variant} size="sm" onClick={() => setGroupOpen(true)} className={buttonMotion}>
       <Plus aria-hidden data-icon="inline-start" />

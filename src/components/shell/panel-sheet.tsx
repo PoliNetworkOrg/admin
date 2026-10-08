@@ -40,7 +40,7 @@ export type PanelSheetProps = {
 }
 
 /**
- * Navigation below 1024px (docs/design.md §2.2): the services as 56px rows, the expanded one showing its
+ * Navigation below 1024px: the services as 56px rows, the expanded one showing its
  * sections. Below 640px the rail is gone too, so Overview, Search, Theme and Account join the list.
  */
 export function PanelSheet({

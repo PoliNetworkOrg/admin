@@ -272,7 +272,7 @@ export type GrantDateTimeFieldsProps = {
   invalidEnd: boolean
 }
 
-/** "Valid from" with a Now shortcut and "Valid until" with duration shortcuts (§7.4). */
+/** "Valid from" with a Now shortcut and "Valid until" with duration shortcuts. */
 export function GrantDateTimeFields({
   validSince,
   validUntil,

@@ -34,7 +34,7 @@ function matches(group: AzureGroup, query: string) {
 
 type DialogTarget = { groupId: string; mode: MembershipMode }
 
-/** Microsoft 365 groups (docs/design.md §4.7, §7.8): groups with 2+ members and the rest, in two collapsibles. */
+/** Microsoft 365 groups: groups with 2+ members and the rest, in two collapsibles. */
 export function AzureGroupsPage({
   groups,
   directoryMembers,

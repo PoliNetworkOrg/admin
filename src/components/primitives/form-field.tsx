@@ -51,9 +51,9 @@ export function fieldHintId(id: string): string {
   return `${id}-description`
 }
 
-/** Checkbox in a §5.10 checkbox row; checked colours come from the remapped `--primary`. */
+/** Checkbox in a checkbox row (label wraps the control); checked colours come from the remapped `--primary`. */
 export const checkboxControl = "mt-0.5 border-(--pn-line-strong) shadow-none"
 
-/** Input/textarea classes for §5.10: 36px, 14px (16px on coarse pointers), strong border, surface background. */
+/** Input/textarea classes: 36px, 14px (16px on coarse pointers), strong border, surface background. */
 export const fieldControl =
   "border-(--pn-line-strong) bg-(--pn-surface) text-sm text-(--pn-fg) shadow-none placeholder:text-(--pn-fg-subtle) aria-invalid:border-(--pn-danger-solid) pointer-coarse:text-base dark:bg-(--pn-surface)"

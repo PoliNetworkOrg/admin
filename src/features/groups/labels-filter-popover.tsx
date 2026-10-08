@@ -155,7 +155,7 @@ type LabelsFilterPopoverProps = {
 }
 
 /**
- * The `Labels` toolbar filter (§2.3, §7.6): an outline button showing "Labels · n" when active and a 320px
+ * The `Labels` toolbar filter: an outline button showing "Labels · n" when active and a 320px
  * popover with "Must have" / "Must not have" pickers. A label picked on one side is hidden on the other.
  */
 export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPopoverProps) {

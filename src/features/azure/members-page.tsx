@@ -102,7 +102,7 @@ const columns: DataTableColumn<AzureMember>[] = [
   },
 ]
 
-/** Microsoft 365 members (docs/design.md §7.9): the directory with member IDs and licenses. */
+/** Microsoft 365 members: the directory with member IDs and licenses. */
 export function AzureMembersPage({ members }: { members: AzureMember[] }) {
   const router = useRouter()
   const canWrite = useCanWrite()
@@ -181,7 +181,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] }) {
     setMembersOnly(false)
   }
 
-  // The empty state repeats the header primary as outline (§8.4).
+  // The empty state repeats the header primary as outline.
   const addMember = (variant: "default" | "outline") => (
     <Button variant={variant} size="sm" className={buttonMotion} onClick={() => openDialog({ mode: "create" })}>
       <Plus data-icon="inline-start" />

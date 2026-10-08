@@ -54,7 +54,7 @@ function associationFormData(values: AssociationForm, id?: number) {
   return data
 }
 
-/** Associations (docs/design.md §7.11): searchable inline-edit cards, a draft on top, links in a dialog. */
+/** Associations: searchable inline-edit cards, a draft on top, links in a dialog. */
 export function AssociationsPage({ loadedAssociations: associations }: { loadedAssociations: Association[] }) {
   const router = useRouter()
   const canWrite = useCanWrite("web")

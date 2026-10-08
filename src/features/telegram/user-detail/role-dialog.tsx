@@ -43,7 +43,7 @@ function roleMutationError(error: string, adding: boolean) {
   return "The role update could not be completed."
 }
 
-/** Assign or remove one Telegram role (§7.4). Backend errors show inside the dialog verbatim. */
+/** Assign or remove one Telegram role. Backend errors show inside the dialog verbatim. */
 export function RoleDialog(props: RoleDialogProps) {
   const generation = useOpenGeneration(props.open)
   return <RoleDialogBody key={generation} {...props} />

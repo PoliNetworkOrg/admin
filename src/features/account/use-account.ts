@@ -57,7 +57,7 @@ function useSecurityData() {
 }
 
 /**
- * Account data and mutations. Each mutation throws an `Error` carrying the §7.2 failure copy, so confirm dialogs
+ * Account data and mutations. Each mutation throws an `Error` carrying its failure copy, so confirm dialogs
  * can show it inline and the page can toast it.
  */
 export function useAccount(initialSession: AdminSession) {

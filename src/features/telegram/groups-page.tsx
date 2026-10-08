@@ -51,7 +51,7 @@ type TelegramGroupsPageProps = {
   onVisibilityChange: (visibility: VisibilityFilter) => void
 }
 
-/** Telegram › Groups (§7.6): bot-managed groups with visibility, labels and leave. */
+/** Telegram › Groups: bot-managed groups with visibility, labels and leave. */
 export function TelegramGroupsPage({
   groups,
   labels,

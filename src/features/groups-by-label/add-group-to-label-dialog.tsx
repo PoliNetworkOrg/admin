@@ -68,7 +68,7 @@ type AddGroupToLabelDialogProps = {
   allowCreate?: boolean
 }
 
-/** AddGroupToLabelDialog (§7.15): create a WhatsApp group with this label, or label existing groups. */
+/** AddGroupToLabelDialog: create a WhatsApp group with this label, or label existing groups. */
 export function AddGroupToLabelDialog({
   open,
   onOpenChange,

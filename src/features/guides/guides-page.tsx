@@ -30,7 +30,7 @@ function nextVersion(version: string | undefined) {
   return `${match[1]}${Number(match[2]) + 1}`
 }
 
-/** Freshman guide (docs/design.md §7.12): the PDF editions, newest first. */
+/** Freshman guide: the PDF editions, newest first. */
 export function GuidesPage({ guides }: { guides: Guide[] }) {
   const router = useRouter()
   const deleteGuideFn = useServerFn(deleteGuide)
@@ -52,7 +52,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
     setPublishOpen(true)
   }
 
-  // The empty state repeats the header primary as outline (§8.4).
+  // The empty state repeats the header primary as outline.
   const publishButton = (variant: "default" | "outline") => (
     <Button variant={variant} size="sm" className={buttonMotion} onClick={openPublish}>
       <Plus aria-hidden data-icon="inline-start" />

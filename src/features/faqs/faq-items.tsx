@@ -129,7 +129,7 @@ type EditableFaqProps = {
   onSave: (input: FaqInput) => Promise<void>
 }
 
-/** One accordion item in edit mode (§5.9): both questions and both answers, validated under each field. */
+/** One accordion item in edit mode: both questions and both answers, validated under each field. */
 export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: EditableFaqProps) {
   const [values, setValues] = useState(initial)
   const [touched, setTouched] = useState<Set<FaqField>>(() => new Set())
@@ -207,7 +207,7 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
         error={error}
         view={null}
         edit={
-          // One panel per language: its question, a hairline, its answer (§5.14).
+          // One panel per language: its question, a hairline, its answer.
           <div onKeyDown={revealErrors} className="w-full pt-1">
             <TranslationGroup>
               {questionIt && answerIt && (

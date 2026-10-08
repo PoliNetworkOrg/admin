@@ -164,7 +164,7 @@ const columns: DataTableColumn<Row>[] = [
 
 const PAGE_SIZE = 20
 
-/** Grants (docs/design.md §7.5): ongoing and scheduled grants with a status filter; a row opens the grantee. */
+/** Grants: ongoing and scheduled grants with a status filter; a row opens the grantee. */
 export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }: { grants: TelegramGrants }) {
   const navigate = useNavigate()
   const canWrite = useCanWrite()

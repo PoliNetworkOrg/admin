@@ -23,7 +23,7 @@ function labelNameError(name: string, kind: LabelNameKind): string | null {
 }
 
 /**
- * Name field state with the §5.10 timing: validated on submit, then re-validated on blur once it has errored.
+ * Name field state with the form validation timing: validated on submit, then re-validated on blur once it has errored.
  * `check()` runs the submit-time validation and returns whether the value may be saved.
  */
 export function useLabelName(kind: LabelNameKind, initial = "") {

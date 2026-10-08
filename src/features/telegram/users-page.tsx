@@ -61,7 +61,7 @@ const columns: DataTableColumn<TgUser>[] = [
 
 const PAGE_SIZE = 20
 
-/** Telegram users (docs/design.md §7.3): searchable list; a row opens the user's detail. */
+/** Telegram users: searchable list; a row opens the user's detail. */
 export function TelegramUsersPage({ users }: { users: TgUser[] }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState("")

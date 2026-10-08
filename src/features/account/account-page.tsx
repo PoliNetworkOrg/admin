@@ -8,7 +8,7 @@ import { ProfileCard } from "./profile-card"
 import { PasskeysCard, SessionsCard } from "./security-cards"
 import { useAccount } from "./use-account"
 
-/** Account (docs/design.md §7.2): profile, Telegram identity, passkeys, sessions, sign out. */
+/** Account: profile, Telegram identity, passkeys, sessions, sign out. */
 export function AccountPage({ initialSession, roles }: { initialSession: AdminSession; roles: readonly string[] }) {
   const account = useAccount(initialSession)
 

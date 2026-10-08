@@ -31,7 +31,7 @@ type ProfileCardProps = {
   onRename: (name: string) => Promise<void>
 }
 
-/** Avatar with change/remove, the name form and the read-only email (docs/design.md §7.2). */
+/** Avatar with change/remove, the name form and the read-only email. */
 export function ProfileCard({ user, onUpload, onRemove, onRename }: ProfileCardProps) {
   const [pictureError, setPictureError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -93,7 +93,7 @@ export function ProfileCard({ user, onUpload, onRemove, onRename }: ProfileCardP
               Change picture
             </LoadingButton>
           </div>
-          {/* The error takes the hint's line, so nothing below moves (§7.2). */}
+          {/* The error takes the hint's line, so nothing below moves. */}
           {pictureError ? (
             <p
               id="profile-picture-hint"

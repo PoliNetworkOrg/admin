@@ -33,7 +33,7 @@ function subscribe(onChange: () => void) {
 
 /**
  * Applies the theme with every transition suppressed: `data-theme-switching` stays on <html> until the
- * frame painted with the new colors is done, so nothing cross-fades (docs/design.md §2.1, §6).
+ * frame painted with the new colors is done, so nothing cross-fades.
  */
 function applyTheme(theme: Theme) {
   const root = document.documentElement
@@ -55,7 +55,7 @@ type Point = { x: number; y: number }
 export type ThemeToggleSource = { currentTarget: EventTarget | null }
 
 /**
- * Light-bulb timing (§6). Turning on is an entrance: light floods out of the toggle fast and settles (ease-out).
+ * Light-bulb timing. Turning on is an entrance: light floods out of the toggle fast and settles (ease-out).
  * Turning off is the exit half of that pair: light retreats into the toggle, starting slow and gathering speed
  * (ease-in), ~25% shorter. Full-screen travel earns more than a dialog's 300ms. A reversal replays the elapsed part
  * of the same curve backwards, from wherever the light is.

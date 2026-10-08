@@ -53,7 +53,7 @@ function attentionItems(counts: OverviewCounts): AttentionItem[] {
   ]
 }
 
-/** Overview (docs/design.md §7.1): four stat tiles, what needs attention, and every service's sections. */
+/** Overview: four stat tiles, what needs attention, and every service's sections. */
 export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
   const router = useRouter()
   const [retrying, setRetrying] = useState(false)

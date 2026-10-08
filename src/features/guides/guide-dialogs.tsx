@@ -49,7 +49,7 @@ function validate(version: string, file: File | null, existingVersions: string[]
   return errors
 }
 
-/** "Publish a new edition" (§7.12). Mount with a fresh `key` per opening so the fields start from the suggestion. */
+/** "Publish a new edition". Mount with a fresh `key` per opening so the fields start from the suggestion. */
 export function PublishEditionDialog({
   open,
   onOpenChange,

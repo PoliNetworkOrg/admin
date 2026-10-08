@@ -36,7 +36,7 @@ function saveError(caught: Error) {
   return caught.message === "" || caught.message === "UNAUTHORIZED" ? SAVE_ERROR : caught.message
 }
 
-/** Create a member, or set the member ID of an existing one (§7.9). */
+/** Create a member, or set the member ID of an existing one. */
 export function MemberDialog({ target, open, onOpenChange, onOptimisticUpdate, onSaved }: MemberDialogProps) {
   const createMember = useServerFn(createAzureMember)
   const setMemberNumber = useServerFn(setAzureMemberNumber)

@@ -5,7 +5,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Design tokens (docs/design.md §3). Components use the --pn-* variables or the utilities mapped to them. */
+/* Design tokens (docs/design.md). Components use the --pn-* variables or the utilities mapped to them. */
 
 :root {
   /* Brand scale, hue 257.4 */
@@ -76,7 +76,7 @@
   --pn-action-red: oklch(0.545 0.15 33.74);
   --pn-scrim: oklch(0.16 0.02 250 / 0.4);
 
-  /* Elevation (§3.4). Dark mode swaps these for a ring plus a deeper shadow. */
+  /* Elevation. Dark mode swaps these for a ring plus a deeper shadow. */
   --pn-shadow-float:
     0 0 0 1px oklch(0.22 0.024 250 / 0.06), 0 2px 4px oklch(0.22 0.024 250 / 0.04),
     0 8px 24px oklch(0.22 0.024 250 / 0.08);
@@ -85,7 +85,7 @@
     0 24px 48px oklch(0.22 0.024 250 / 0.12);
   --pn-media-ring: inset 0 0 0 1px oklch(0 0 0 / 0.1);
 
-  /* Radii (§3.5) */
+  /* Radii */
   --pn-r-1: 4px;
   --pn-r-2: 6px;
   --pn-r-3: 8px;
@@ -93,7 +93,7 @@
   --pn-r-5: 12px;
   --pn-r-full: 999px;
 
-  /* Type scale (§3.7): size / line height pairs */
+  /* Type scale: size / line height pairs */
   --pn-text-xs: 12px;
   --pn-leading-xs: 16px;
   --pn-text-sm: 13px;
@@ -109,12 +109,12 @@
   --pn-text-2xl: 28px;
   --pn-leading-2xl: 32px;
 
-  /* Motion (§6) */
+  /* Motion */
   --pn-ease-out: cubic-bezier(0.32, 0.72, 0, 1);
   --pn-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --pn-ease-move: cubic-bezier(0.45, 0, 0.2, 1);
 
-  /* shadcn variables (§3.9), so every @/components/ui/* component re-themes without edits */
+  /* shadcn variables, so every @/components/ui/* component re-themes without edits */
   --background: var(--pn-bg);
   --foreground: var(--pn-fg);
   --card: var(--pn-surface);
@@ -282,7 +282,7 @@ p {
 }
 
 /*
- * Focus (§3.8). Clearing --tw-ring-shadow drops the components' own focus ring so only one shows.
+ * Focus. Clearing --tw-ring-shadow drops the components' own focus ring so only one shows.
  * `data-focus-ring="none"` opts out, for inputs whose container already shows focus (the palette input).
  */
 
@@ -303,7 +303,7 @@ tr:focus-visible {
 }
 
 /*
- * Invalid fields (§5.10): danger border only, without the `ui` Input's always-on ring. Invalid wins over focus:
+ * Invalid fields: danger border only, without the `ui` Input's always-on ring. Invalid wins over focus:
  * a focused field with an error keeps the danger border and gets a danger-tinted ring.
  */
 
@@ -326,7 +326,7 @@ tr:focus-visible {
   outline: none;
 }
 
-/* Motion: the `ui` Button ships `transition-all`; only its colors and ring may transition (§6). */
+/* Motion: the `ui` Button ships `transition-all`; only its colors and ring may transition. */
 
 [data-slot="button"] {
   transition-property: background-color, color, border-color, box-shadow;
@@ -334,7 +334,7 @@ tr:focus-visible {
 }
 
 /*
- * Disabled text buttons (§5.3): subtle text on the muted fill, no opacity. Primary keeps its color mixed 50%
+ * Disabled text buttons: subtle text on the muted fill, no opacity. Primary keeps its color mixed 50%
  * with the surface. Icon buttons (`data-tone`) keep their transparent background and only dim the glyph.
  */
 
@@ -354,7 +354,7 @@ tr:focus-visible {
   color: var(--pn-accent-solid-fg);
 }
 
-/* Theme switches: the light-bulb reveal is driven from theme.ts (§6). The default cross-fade of the root snapshots
+/* Theme switches: the light-bulb reveal is driven from theme.ts. The default cross-fade of the root snapshots
    is turned off so only the clip edge moves; turning the light off clips the old (light) snapshot, so it must sit
    above the new one. */
 ::view-transition-old(root),
@@ -387,7 +387,7 @@ tr:focus-visible {
   background-color: color-mix(in oklab, currentColor 16%, transparent);
 }
 
-/* Theme switches swap every color in one frame (§2.1). */
+/* Theme switches swap every color in one frame. */
 
 :root[data-theme-switching] *,
 :root[data-theme-switching] *::before,
@@ -395,7 +395,7 @@ tr:focus-visible {
   transition: none !important;
 }
 
-/* Modal layers: scrim without blur, raised surface, modal elevation (§3.3, §3.4). */
+/* Modal layers: scrim without blur, raised surface, modal elevation. */
 
 :is([data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="alert-dialog-overlay"]) {
   background: var(--pn-scrim);
@@ -407,7 +407,7 @@ tr:focus-visible {
   box-shadow: var(--pn-shadow-modal);
 }
 
-/* Toasts (§5.7): raised surface, untinted, tone only on the icon. */
+/* Toasts: raised surface, untinted, tone only on the icon. */
 
 [data-sonner-toast].app-toast {
   gap: 10px;

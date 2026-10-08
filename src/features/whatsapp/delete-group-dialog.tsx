@@ -13,7 +13,7 @@ type DeleteWhatsappGroupDialogProps = {
   onDeleted: () => Promise<void>
 }
 
-/** "Delete {title}?" (§7.7, §8.2). */
+/** "Delete {title}?". */
 export function DeleteWhatsappGroupDialog({ open, onOpenChange, group, onDeleted }: DeleteWhatsappGroupDialogProps) {
   const deleteGroupFn = useServerFn(deleteWhatsappGroup)
 

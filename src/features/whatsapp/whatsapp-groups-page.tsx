@@ -43,7 +43,7 @@ type WhatsappGroupsPageProps = {
   onVisibilityChange: (visibility: VisibilityFilter) => void
 }
 
-/** WhatsApp › Groups (§7.7): manually registered groups with visibility, labels, edit and delete. */
+/** WhatsApp › Groups: manually registered groups with visibility, labels, edit and delete. */
 export function WhatsappGroupsPage({
   groups,
   labels,
@@ -115,7 +115,7 @@ export function WhatsappGroupsPage({
     },
   ]
 
-  // The empty state repeats the header primary as outline (§8.4).
+  // The empty state repeats the header primary as outline.
   const addGroup = (variant: "default" | "outline") => (
     <Button variant={variant} size="sm" onClick={() => setCreating(true)} className={buttonMotion}>
       <Plus aria-hidden data-icon="inline-start" />

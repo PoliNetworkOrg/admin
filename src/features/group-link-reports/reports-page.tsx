@@ -133,7 +133,7 @@ function reportTarget(report: GroupLinkReport) {
 
 const LEAVE_MS = 120
 
-/** Reports › Open and Reports › Closed (docs/design.md §4.8, §7.17). */
+/** Reports › Open and Reports › Closed. */
 export function ReportsPage({ status, reports }: { status: ReportStatus; reports: GroupLinkReport[] }) {
   const open = status === "open"
   const router = useRouter()

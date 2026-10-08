@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 
 type SectionEmptyProps = {
-  /** "No {things}" (§8.4 title formula, no trailing period). */
+  /** "No {things}" (empty-state title formula, no trailing period). */
   title: string
   /** One sentence: what appears here and how it gets there. */
   hint?: string

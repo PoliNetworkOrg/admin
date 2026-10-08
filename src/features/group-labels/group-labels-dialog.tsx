@@ -19,7 +19,7 @@ type GroupLabelsDialogProps = {
   onSaved: () => Promise<void>
 }
 
-/** "Edit labels" (§7.6): picks the group's labels; Save is enabled only once the set changes. */
+/** "Edit labels": picks the group's labels; Save is enabled only once the set changes. */
 export function GroupLabelsDialog({
   open,
   onOpenChange,

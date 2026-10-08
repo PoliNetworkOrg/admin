@@ -38,7 +38,7 @@ type CombinedGroupsTableProps = {
 }
 
 /**
- * Telegram + WhatsApp groups in one table with the per-platform row actions (docs/design.md §7.15). The
+ * Telegram + WhatsApp groups in one table with the per-platform row actions. The
  * categories and tag pages pass rows and an empty state; mutations reload the route through `router.invalidate()`.
  */
 export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, search }: CombinedGroupsTableProps) {

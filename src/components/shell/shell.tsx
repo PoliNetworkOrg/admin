@@ -46,7 +46,7 @@ const DESKTOP_QUERY = "(min-width: 1024px)"
 /**
  * The panel slides in from under the rail when a service page follows Overview/Account and back out the other way;
  * the content column follows with the same transform, so its edge stays locked to the panel's. Exits run faster than
- * enters (§6). Both slides animate `transform` strings, which Motion hands to WAAPI: they start in the commit that
+ * enters. Both slides animate `transform` strings, which Motion hands to WAAPI: they start in the commit that
  * mounts the next page and keep running off the main thread while it renders (an `x` or `layout` animation is
  * driven per frame from JS and stalls behind that commit).
  */
@@ -61,7 +61,7 @@ function subscribeDesktop(onChange: () => void) {
   return () => query.removeEventListener("change", onChange)
 }
 
-/** True at >= 1024px, where the panel is in the layout (§1.4). */
+/** True at >= 1024px, where the panel is in the layout. */
 function useIsDesktop() {
   return useSyncExternalStore(
     subscribeDesktop,
@@ -73,7 +73,7 @@ function useIsDesktop() {
 const sectionMemoryKey = (id: ServiceId) => `polinetwork-last-section:${id}`
 
 /**
- * The last section visited per service this session (§2.1), so the rail returns to it. Read after hydration: the
+ * The last section visited per service this session, so the rail returns to it. Read after hydration: the
  * server renders every service's first section.
  */
 function useRememberedSections(service: Service, sectionPath: DashboardPath | undefined) {
@@ -109,7 +109,7 @@ export type DashboardShellProps = {
 }
 
 /**
- * The dashboard frame (docs/design.md §1, §2): rail · panel · column(header bar + scrolling main). Pages render
+ * The dashboard frame: rail · panel · column(header bar + scrolling main). Pages render
  * their header content through `PageBar` and their body inside `PageContent`.
  */
 export function DashboardShell({ initialSession, pendingReports }: DashboardShellProps) {

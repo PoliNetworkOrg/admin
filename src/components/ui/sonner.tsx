@@ -9,7 +9,7 @@ const icons = {
   error: <CircleX className="size-4" />,
 }
 
-/** The app's one Toaster (docs/design.md §5.7): bottom-right, three visible, untinted `app-toast` surfaces. */
+/** The app's one Toaster: bottom-right, three visible, untinted `app-toast` surfaces. */
 const Toaster = ({ ...props }: ToasterProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light")
 

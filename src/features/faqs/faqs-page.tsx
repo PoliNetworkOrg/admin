@@ -41,7 +41,7 @@ function matches(faq: FAQItem, query: string) {
 
 type CategoryDialogState = { key: number; category: FaqCategory | null }
 
-/** FAQs (docs/design.md §7.13): one category at a time, an accordion of IT/EN questions edited inline. */
+/** FAQs: one category at a time, an accordion of IT/EN questions edited inline. */
 export function FAQsPage({ categories }: { categories: FAQs }) {
   const router = useRouter()
   const addFAQFn = useServerFn(addFAQ)
@@ -133,7 +133,7 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
       </Button>
     )
 
-  // The page primary stays in the header bar; the empty state repeats it as outline (§8.4).
+  // The page primary stays in the header bar; the empty state repeats it as outline.
   const emptyAddFaqButton = (
     <Button variant="outline" size="sm" className={buttonMotion} onClick={() => startEdit(DRAFT_ID)}>
       <Plus aria-hidden data-icon="inline-start" />

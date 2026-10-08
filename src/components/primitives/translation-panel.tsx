@@ -32,7 +32,7 @@ type TranslationPanelProps = {
 }
 
 /**
- * One language of a bilingual text (§5.14): a `Languages` icon + "IT"/"EN" header over the content. `lang` is set on
+ * One language of a bilingual text: a `Languages` icon + "IT"/"EN" header over the content. `lang` is set on
  * the panel, so screen readers and the textarea spellchecker use the right language.
  */
 export function TranslationPanel({ lang, editing = false, children, className }: TranslationPanelProps) {

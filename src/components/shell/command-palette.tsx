@@ -38,7 +38,7 @@ export type CommandPaletteProps = {
   onSignOut: () => void
 }
 
-/** ⌘K palette (docs/design.md §2.5): every section and the shell actions. No animation. */
+/** ⌘K palette: every section and the shell actions. No animation. */
 export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPaletteProps) {
   const [query, setQuery] = useState("")
   // Set when an entry runs, so closing does not hand focus back to the trigger (see `finalFocus`).

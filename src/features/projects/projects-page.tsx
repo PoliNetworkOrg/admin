@@ -70,7 +70,7 @@ function withCategoryOrder(projects: Project[], category: ProjectCategory, order
 
 function noop() {}
 
-/** Settles the drop with 200ms ease-out (§6); reduced motion drops in place. */
+/** Settles the drop with 200ms ease-out; reduced motion drops in place. */
 function DropSettle() {
   const manager = useDragDropManager()
   const reduceMotion = useReducedMotion()
@@ -84,7 +84,7 @@ function DropSettle() {
   return null
 }
 
-/** Projects (docs/design.md §7.10): category segments, sortable inline-edit cards, drafts on top. */
+/** Projects: category segments, sortable inline-edit cards, drafts on top. */
 export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) {
   const router = useRouter()
   const canWrite = useCanWrite("web")
@@ -105,7 +105,7 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
   const slot = useEditSlot<number>("project", saving)
   const [form, setForm] = useState<ProjectForm | null>(null)
   const [saveError, setSaveError] = useState<string | undefined>(undefined)
-  // §5.10: the link is validated on the first Save attempt, then again on blur once it has errored.
+  // The link is validated on the first Save attempt, then again on blur once it has errored.
   const [linkErrored, setLinkErrored] = useState(false)
   const [linkError, setLinkError] = useState<string | undefined>(undefined)
   const [logoError, setLogoError] = useState<string | null>(null)

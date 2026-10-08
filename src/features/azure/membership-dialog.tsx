@@ -56,7 +56,7 @@ const copy = {
 
 const PERMISSION_ERROR = "You don't have permission to manage this group."
 
-/** Add or remove one Microsoft 365 group member (§7.8); removal swaps to a confirmation before it runs. */
+/** Add or remove one Microsoft 365 group member; removal swaps to a confirmation before it runs. */
 export function MembershipDialog({ group, directoryMembers, mode, open, onOpenChange }: MembershipDialogProps) {
   const router = useRouter()
   const addMember = useServerFn(addAzureGroupMember)

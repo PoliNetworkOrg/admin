@@ -28,7 +28,7 @@ type AddGroupAdminDialogProps = {
   administeredGroupIds: ReadonlySet<number>
 }
 
-/** Pick one Telegram group for this user to administer (§7.4). */
+/** Pick one Telegram group for this user to administer. */
 export function AddGroupAdminDialog(props: AddGroupAdminDialogProps) {
   const generation = useOpenGeneration(props.open)
   return <AddGroupAdminDialogBody key={generation} {...props} />

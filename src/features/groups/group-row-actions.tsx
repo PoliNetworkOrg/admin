@@ -202,7 +202,7 @@ type GroupRowActionsProps = {
 }
 
 /**
- * Per-platform cluster (§7.6, §7.7): copy/open invite link · visibility · edit labels · [edit] · leave/delete (other actions, then edit, then the destructive one).
+ * Per-platform cluster: copy/open invite link · visibility · edit labels · [edit] · leave/delete (other actions, then edit, then the destructive one).
  * Without write access only the invite link remains.
  */
 export function GroupRowActions({ group, controller, canWrite, alignEdit = false }: GroupRowActionsProps) {

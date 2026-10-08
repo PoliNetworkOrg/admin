@@ -96,7 +96,7 @@ export type RailProps = {
 
 const iconProps = { className: "size-5", strokeWidth: 1.75 } as const
 
-/** The 56px service rail (docs/design.md §2.1). One tab stop; ↑/↓, Home and End move between items. */
+/** The 56px service rail. One tab stop; ↑/↓, Home and End move between items. */
 export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, className }: RailProps) {
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
