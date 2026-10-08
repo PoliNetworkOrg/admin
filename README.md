@@ -1,29 +1,33 @@
 # PoliNetwork Admin
 
-The PoliNetwork operations console, rebuilt with TanStack Start, React 19, Vite+, Nitro, Tailwind CSS v4, and shadcn/ui.
+The dashboard PoliNetwork administrators use to manage Telegram and WhatsApp groups, group labels, Telegram users and
+grants, Microsoft 365 groups and members, the website's content (projects, associations, freshman guide, FAQs) and
+student reports.
+
+Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The app has no database: it
+reads and writes everything through the [PoliNetwork backend](https://github.com/PoliNetworkOrg/backend) over tRPC,
+and signs users in through the backend's Better Auth.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev        # http://localhost:3001 (PORT overrides)
 ```
 
-Open `http://localhost:3001`. The production server is generated with `pnpm build` and starts with `pnpm start`.
+| Variable      | Meaning                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| `BACKEND_URL` | Backend origin. Defaults to `http://localhost:3000` in development; required in production.              |
+| `AGENT_MODE`  | `true` signs in a fake administrator so the dashboard opens without a login. Ignored outside `pnpm dev`. |
 
-The UI uses shadcn's base components with a custom semantic theme in `src/styles.css`. The theme preserves the console's paper canvas, dark navy shell, cobalt `#1156ae` primary, DM Sans body copy, Libre Baskerville headings, and DM Mono metadata while keeping page layout in Tailwind utilities.
+Before opening a pull request run `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`.
 
-## Environment
+## Production
 
-Set `BACKEND_URL` to the PoliNetwork backend origin. TanStack Start proxies Better Auth at `/api/auth/*`, and each server-function request creates its own tRPC client with that request's session cookie. Private dashboard functions also verify the linked Telegram identity and an administrator role before contacting the backend.
+`pnpm build` writes the server to `.output/`; `pnpm start` runs it. Every push to `main` publishes the Docker image
+`ghcr.io/polinetworkorg/admin:latest`.
 
-`AGENT_MODE=true` provides a fake administrator only while the app runs in development. Production ignores the flag.
+## Documentation
 
-## Checks
-
-```bash
-pnpm typecheck
-pnpm test
-pnpm check
-pnpm build
-```
+- [`AGENTS.md`](AGENTS.md): architecture and code conventions (for humans and coding agents alike).
+- [`docs/design.md`](docs/design.md): the UI design system.
