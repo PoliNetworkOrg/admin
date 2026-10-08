@@ -1,6 +1,15 @@
 import { Outlet } from "@tanstack/react-router"
-import { AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react"
-import { type MouseEvent, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { animate, AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react"
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 import { TOOLTIP_DELAY } from "@/components/primitives/hint"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -36,11 +45,15 @@ const DESKTOP_QUERY = "(min-width: 1024px)"
 
 /**
  * The panel slides in from under the rail when a service page follows Overview/Account and back out the other way;
- * the content column moves with it as a transform (`layout="position"`), so its edge stays locked to the panel's.
- * Exits run faster than enters (§6).
+ * the content column follows with the same transform, so its edge stays locked to the panel's. Exits run faster than
+ * enters (§6). Both slides animate `transform` strings, which Motion hands to WAAPI: they start in the commit that
+ * mounts the next page and keep running off the main thread while it renders (an `x` or `layout` animation is
+ * driven per frame from JS and stalls behind that commit).
  */
 const panelEnter: Transition = { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
 const panelExit: Transition = { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
+/** The panel's `w-56`: how far the column moves. */
+const PANEL_WIDTH = 224
 
 function subscribeDesktop(onChange: () => void) {
   const query = window.matchMedia(DESKTOP_QUERY)
@@ -146,7 +159,25 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
   }
 
   const reduceMotion = useReducedMotion()
-  const panelTransition = reduceMotion ? { duration: 0 } : hasPanel ? panelEnter : panelExit
+
+  // The column is laid out at its new place already: start it where it was drawn (mid-slide too) and slide home.
+  // The start is set inline first so the commit's paint never shows it at the end.
+  const columnRef = useRef<HTMLDivElement>(null)
+  const columnHadPanel = useRef(hasPanel)
+  useLayoutEffect(() => {
+    const column = columnRef.current
+    if (!column || columnHadPanel.current === hasPanel) return
+    columnHadPanel.current = hasPanel
+    if (reduceMotion || !isDesktop) return
+    const offset = new DOMMatrixReadOnly(getComputedStyle(column).transform).m41
+    const from = `translateX(${offset + (hasPanel ? -PANEL_WIDTH : PANEL_WIDTH)}px)`
+    column.style.transform = from
+    animate(
+      column,
+      { transform: [from, "translateX(0px)"], transitionEnd: { transform: "none" } },
+      hasPanel ? panelEnter : panelExit
+    )
+  }, [hasPanel, isDesktop, reduceMotion])
 
   const frame = useMemo(
     (): ShellFrame => ({ main, setMain, service, section, openNavigation }),
@@ -165,14 +196,19 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
             user={user}
             className="relative z-10 max-sm:hidden"
           />
-          {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. */}
+          {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. The leaving panel
+              keeps the props it last rendered with, so `exit` names its own transition. */}
           <AnimatePresence initial={false} mode="popLayout">
             {hasPanel ? (
               <motion.div
                 key="panel"
-                initial={reduceMotion ? false : { x: "-100%" }}
-                animate={{ x: 0, transition: panelTransition }}
-                exit={{ x: "-100%", transition: panelTransition }}
+                initial={reduceMotion ? false : { transform: "translateX(-100%)" }}
+                animate={{
+                  transform: "translateX(0%)",
+                  transitionEnd: { transform: "none" },
+                  transition: reduceMotion ? { duration: 0 } : panelEnter,
+                }}
+                exit={{ transform: "translateX(-100%)", transition: reduceMotion ? { duration: 0 } : panelExit }}
                 className="flex h-full shrink-0 max-lg:hidden"
               >
                 <Panel service={service} match={match} pendingReports={pendingReports} />
@@ -180,10 +216,8 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
             ) : null}
           </AnimatePresence>
 
-          <motion.div
-            layout="position"
-            layoutDependency={hasPanel}
-            transition={{ layout: panelTransition }}
+          <div
+            ref={columnRef}
             className="flex min-w-0 flex-1 flex-col [&:has([data-page-bar])>[data-shell-fallback]]:hidden"
           >
             <header data-shell-fallback="" className={pageBarFrame}>
@@ -191,7 +225,7 @@ function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps)
             </header>
             {section && !isDeepPage(match) ? <h1 className="sr-only">{section.title}</h1> : null}
             <Outlet />
-          </motion.div>
+          </div>
 
           <PanelSheet
             open={sheetOpen}
