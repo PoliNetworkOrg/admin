@@ -1,8 +1,14 @@
-Dockerfile
-.dockerignore
 node_modules
 npm-debug.log
-README.md
 .output
 .tanstack
 .git
+.github
+.env
+.env.*
+!.env.example
+docs
+tests
+*.md
+Dockerfile
+.dockerignore
