@@ -44,7 +44,7 @@ export function LabelChip({ label, href, render, className }: LabelChipProps) {
 
   if (isCategoryLabel(label.label)) {
     return (
-      <Chip render={link} title={title} className={cn("max-w-56", className)}>
+      <Chip render={link} title={title} className={cn("max-w-56 min-w-0 shrink", className)}>
         <LabelDot color={label.color} />
         <span className="truncate">{formatLabelCompact(label.label)}</span>
       </Chip>
@@ -58,7 +58,7 @@ export function LabelChip({ label, href, render, className }: LabelChipProps) {
       render={link}
       title={title}
       className={cn(
-        "h-[22px] max-w-56 rounded-(--pn-r-full) px-2 text-xs font-medium underline-offset-2 transition-none",
+        "h-[22px] max-w-56 min-w-0 shrink rounded-(--pn-r-full) px-2 text-xs font-medium underline-offset-2 transition-none",
         swatch.badgeClassName,
         TEXT_CONTRAST_FIXES.get(swatch.label),
         className
