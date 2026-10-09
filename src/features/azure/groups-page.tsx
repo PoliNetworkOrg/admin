@@ -210,7 +210,7 @@ function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassNa
           <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">{groups.length}</span>
         </button>
       </h2>
-      <Reveal open={open} className={revealClassName}>
+      <Reveal open={open} lazy className={revealClassName}>
         <ul id={contentId} aria-label={title} className="border-t border-(--pn-line)">
           {groups.length === 0 ? (
             <li>
