@@ -82,14 +82,15 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const reduceMotion = useReducedMotion()
   const editing = session !== null
+  // A move writes the whole record with its old values, so edit, delete and drag wait for it to finish.
+  const [moving, setMoving] = useState(false)
   const { ref, handleRef, isDragging, isDropping } = useSortable({
     id: project.id,
     index,
     group: project.category,
-    disabled: draft || editing || !canWrite,
+    disabled: draft || editing || moving || !canWrite,
     transition: reduceMotion ? null : SORT_TRANSITION,
   })
-  const [moving, setMoving] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -244,7 +245,15 @@ export function ProjectCard({
       description={`${project.title} is removed from the website. This cannot be undone.`}
       confirmLabel="Delete project"
       onConfirm={onDelete}
-      trigger={<IconButton label="Delete project" ariaLabel={`Delete ${project.title}`} icon={Trash2} tone="danger" />}
+      trigger={
+        <IconButton
+          label="Delete project"
+          ariaLabel={`Delete ${project.title}`}
+          icon={Trash2}
+          tone="danger"
+          disabled={moving}
+        />
+      }
     />
   )
 
@@ -270,6 +279,7 @@ export function ProjectCard({
         message={session?.message}
         editLabel="Edit project"
         editAriaLabel={`Edit ${project.title}`}
+        editDisabled={moving}
         handle={handle}
         leadingActions={moveMenu}
         deleteAction={deleteButton}

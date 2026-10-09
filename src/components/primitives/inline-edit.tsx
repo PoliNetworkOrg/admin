@@ -47,6 +47,8 @@ type InlineEditProps = {
   editLabel?: string
   /** Accessible label naming the record, e.g. "Edit PoliNetwork". */
   editAriaLabel?: string
+  /** Disables Edit while another write to the record runs (a move), so the edit can't carry stale values. */
+  editDisabled?: boolean
   /** Drag handle for sortable cards, positioned by the caller against the card (`relative`). */
   handle?: ReactNode
   /** Viewers without write access: only `view` renders; no edit, delete, `actions` or `handle`. */
@@ -146,11 +148,12 @@ function ViewActions({
   deleteAction,
   editLabel = "Edit",
   editAriaLabel,
+  editDisabled,
 }: InlineEditProps) {
   return (
     <RowActions className="shrink-0">
       {leadingActions}
-      <IconButton label={editLabel} ariaLabel={editAriaLabel} icon={Pencil} onClick={onEdit} />
+      <IconButton label={editLabel} ariaLabel={editAriaLabel} icon={Pencil} disabled={editDisabled} onClick={onEdit} />
       {deleteAction}
       {actions}
     </RowActions>
