@@ -1,14 +1,14 @@
 import { useServerFn } from "@tanstack/react-start"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { appToast } from "@/components/shell"
 import { type AdminSession, auth, useSession } from "@/lib/auth"
 
 import { uploadProfilePicture } from "./account.functions"
 import { isValidProfilePicture } from "./account.validation"
 import type { ActiveSession, Passkey } from "./types"
 
-export type SecurityState = "loading" | "ready" | "error"
+/** `stale` keeps the last loaded lists on screen after a failed refresh; `error` means nothing has loaded yet. */
+export type SecurityState = "loading" | "ready" | "stale" | "error"
 
 /** better-auth client results carry failures in `error` instead of throwing. */
 function assertOk<Failure>(result: { error: Failure | null }, message: string) {
@@ -20,26 +20,30 @@ function assertOk<Failure>(result: { error: Failure | null }, message: string) {
 
 /**
  * Passkeys and sessions from the better-auth client. The first load shows a skeleton; `reload` after a mutation
- * keeps the list on screen; `retry` keeps the error on screen with a pending Retry until it settles.
+ * keeps the list on screen; `retry` keeps the error on screen with a pending Retry until it settles. Only the latest
+ * load publishes, so an older response settling last can't overwrite a newer list.
  */
 function useSecurityData() {
   const [state, setState] = useState<SecurityState>("loading")
   const [retrying, setRetrying] = useState(false)
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [sessions, setSessions] = useState<ActiveSession[]>([])
+  const latestLoad = useRef(0)
 
   const reload = useCallback(async () => {
+    const load = ++latestLoad.current
     try {
       const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
       assertOk(passkeyResult, "Couldn't load passkeys.")
       assertOk(sessionResult, "Couldn't load sessions.")
+      if (load !== latestLoad.current) return
       setPasskeys(passkeyResult.data ?? [])
       setSessions(sessionResult.data ?? [])
       setState("ready")
     } catch (error) {
       console.error(error)
-      setState((current) => (current === "loading" ? "error" : current))
-      appToast.warning("Passkeys and sessions could not be refreshed. Try again.")
+      if (load !== latestLoad.current) return
+      setState((current) => (current === "ready" || current === "stale" ? "stale" : "error"))
     }
   }, [])
 

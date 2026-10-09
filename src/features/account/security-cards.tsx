@@ -33,8 +33,11 @@ function ListRow({ icon, title, meta, end }: { icon: ReactNode; title: ReactNode
   )
 }
 
-/** Shown once, in the Passkeys card; its Retry reloads passkeys and sessions together. */
-function SecurityError({ retrying, onRetry }: { retrying: boolean; onRetry: () => void }) {
+/**
+ * Shown once, in the Passkeys card; its Retry reloads passkeys and sessions together. After a failed refresh the last
+ * loaded lists stay below it.
+ */
+function SecurityError({ stale, retrying, onRetry }: { stale: boolean; retrying: boolean; onRetry: () => void }) {
   return (
     <div className="py-4">
       <InlineAlert
@@ -44,10 +47,15 @@ function SecurityError({ retrying, onRetry }: { retrying: boolean; onRetry: () =
           </LoadingButton>
         }
       >
-        Couldn't load passkeys and sessions.
+        {stale ? "Couldn't refresh passkeys and sessions." : "Couldn't load passkeys and sessions."}
       </InlineAlert>
     </div>
   )
+}
+
+/** Whether the lists have loaded at least once (they may be out of date after a failed refresh). */
+function hasLists(state: SecurityState) {
+  return state === "ready" || state === "stale"
 }
 
 function toDate(value: Date | string | undefined) {
@@ -104,15 +112,17 @@ export function PasskeysCard({ state, retrying, onRetry, passkeys, onAdd, onDele
       title="Passkeys"
       padding="flush"
       action={
-        <LoadingButton icon={Plus} pending={adding} onClick={() => void addPasskey()}>
+        <LoadingButton icon={Plus} pending={adding} disabled={!hasLists(state)} onClick={() => void addPasskey()}>
           Add passkey
         </LoadingButton>
       }
     >
       <div ref={focus.surfaceRef} tabIndex={-1} className="px-5">
         {state === "loading" && <SettingsListSkeleton rows={2} label="Loading passkeys…" />}
-        {state === "error" && <SecurityError retrying={retrying} onRetry={onRetry} />}
-        {state === "ready" &&
+        {(state === "error" || state === "stale") && (
+          <SecurityError stale={state === "stale"} retrying={retrying} onRetry={onRetry} />
+        )}
+        {hasLists(state) &&
           (passkeys.length === 0 ? (
             <SectionEmpty title="No passkeys yet" hint="Add one to sign in without a code." className="px-0" />
           ) : (
@@ -186,14 +196,14 @@ export function SessionsCard({ state, sessions, currentSessionId, onRevokeOthers
       title="Sessions"
       padding="flush"
       action={
-        state === "ready" && others === 0 ? (
+        hasLists(state) && others === 0 ? (
           // Keeps the header as tall as it is with the button.
           <span aria-hidden className="h-9" />
         ) : (
           <Button
             variant="outline"
             size="sm"
-            disabled={state !== "ready"}
+            disabled={!hasLists(state)}
             className={buttonMotion}
             onClick={() => setConfirmOpen(true)}
           >
@@ -207,7 +217,7 @@ export function SessionsCard({ state, sessions, currentSessionId, onRevokeOthers
         {state === "error" && (
           <p className="flex h-14 items-center text-[13px] text-(--pn-fg-muted)">Couldn't load sessions.</p>
         )}
-        {state === "ready" && (
+        {hasLists(state) && (
           <ul aria-label="Sessions">
             {sessions.map((session) => (
               <ListRow
