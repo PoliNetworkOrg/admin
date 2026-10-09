@@ -11,10 +11,18 @@ type DeleteWhatsappGroupDialogProps = {
   group: { id: number; title: string }
   /** Reloads the route data once the group is gone. */
   onDeleted: () => Promise<void>
+  /** Where focus goes once the dialog closes, as the trigger's row is gone after a delete. */
+  finalFocus?: () => HTMLElement | null
 }
 
 /** "Delete {title}?". */
-export function DeleteWhatsappGroupDialog({ open, onOpenChange, group, onDeleted }: DeleteWhatsappGroupDialogProps) {
+export function DeleteWhatsappGroupDialog({
+  open,
+  onOpenChange,
+  group,
+  onDeleted,
+  finalFocus,
+}: DeleteWhatsappGroupDialogProps) {
   const deleteGroupFn = useServerFn(deleteWhatsappGroup)
 
   async function remove() {
@@ -38,6 +46,7 @@ export function DeleteWhatsappGroupDialog({ open, onOpenChange, group, onDeleted
       description="The group record is removed. This cannot be undone."
       confirmLabel="Delete group"
       onConfirm={remove}
+      finalFocus={finalFocus}
     />
   )
 }

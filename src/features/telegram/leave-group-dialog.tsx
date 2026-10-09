@@ -11,6 +11,8 @@ type LeaveGroupDialogProps = {
   group: { telegramId: number; title: string }
   /** Reloads the route data once the group is gone. */
   onLeft: () => Promise<void>
+  /** Where focus goes once the dialog closes, as the trigger's row is gone after a leave. */
+  finalFocus?: () => HTMLElement | null
 }
 
 function leaveErrorText(error: string) {
@@ -20,7 +22,7 @@ function leaveErrorText(error: string) {
 }
 
 /** "Leave {title}?": the bot leaves the Telegram group and its record is deleted. */
-export function LeaveGroupDialog({ open, onOpenChange, group, onLeft }: LeaveGroupDialogProps) {
+export function LeaveGroupDialog({ open, onOpenChange, group, onLeft, finalFocus }: LeaveGroupDialogProps) {
   const leaveTelegramGroupFn = useServerFn(leaveTelegramGroup)
 
   async function leave() {
@@ -49,6 +51,7 @@ export function LeaveGroupDialog({ open, onOpenChange, group, onLeft }: LeaveGro
       description="The bot leaves this Telegram group and its record is deleted. This cannot be undone here."
       confirmLabel="Leave group"
       onConfirm={leave}
+      finalFocus={finalFocus}
     />
   )
 }

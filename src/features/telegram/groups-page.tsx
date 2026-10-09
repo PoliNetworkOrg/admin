@@ -192,19 +192,21 @@ export function TelegramGroupsPage({
         }
       />
       <PageContent width="wide">
-        <DataTable
-          className={canWrite ? mobileGroupTableClasses : undefined}
-          label="Telegram groups"
-          columns={columns}
-          rows={rows}
-          getRowId={groupKey}
-          sort={sort}
-          onSort={list.setSort}
-          actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
-          actionsWidth={groupActionsWidth(3, canWrite)}
-          pagination={pagination}
-          empty={empty}
-        />
+        <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
+          <DataTable
+            className={canWrite ? mobileGroupTableClasses : undefined}
+            label="Telegram groups"
+            columns={columns}
+            rows={rows}
+            getRowId={groupKey}
+            sort={sort}
+            onSort={list.setSort}
+            actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
+            actionsWidth={groupActionsWidth(3, canWrite)}
+            pagination={pagination}
+            empty={empty}
+          />
+        </div>
         {groupActions.dialogs}
       </PageContent>
     </>

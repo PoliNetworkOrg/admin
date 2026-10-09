@@ -120,32 +120,34 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
 
   return (
     <>
-      <DataTable
-        label="Groups"
-        columns={columns}
-        rows={visible}
-        getRowId={groupKey}
-        sort={sort}
-        onSort={(next) => {
-          setSort(next)
-          setPage(1)
-        }}
-        actions={(row) => (
-          <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} alignEdit={mixed} />
-        )}
-        actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 4 : 3, canWrite)}
-        pagination={{
-          page: current,
-          pageSize,
-          total: sorted.length,
-          onPage: setPage,
-          onPageSize: (size) => {
-            setPageSize(size)
+      <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
+        <DataTable
+          label="Groups"
+          columns={columns}
+          rows={visible}
+          getRowId={groupKey}
+          sort={sort}
+          onSort={(next) => {
+            setSort(next)
             setPage(1)
-          },
-        }}
-        empty={empty}
-      />
+          }}
+          actions={(row) => (
+            <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} alignEdit={mixed} />
+          )}
+          actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 4 : 3, canWrite)}
+          pagination={{
+            page: current,
+            pageSize,
+            total: sorted.length,
+            onPage: setPage,
+            onPageSize: (size) => {
+              setPageSize(size)
+              setPage(1)
+            },
+          }}
+          empty={empty}
+        />
+      </div>
       {groupActions.dialogs}
     </>
   )

@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { LogOut, Pencil, Tags, Trash2 } from "lucide-react"
 import { type ReactNode, useMemo, useRef, useState } from "react"
 
-import { IconButton, InviteLinkActions, VisibilityToggle } from "@/components/primitives"
+import { IconButton, InviteLinkActions, useFocusAfterRemoval, VisibilityToggle } from "@/components/primitives"
 import { appToast } from "@/components/shell"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { isCategoryLabel, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
@@ -72,7 +72,8 @@ type DialogKind = "labels" | "leave" | "edit" | "delete"
 
 /**
  * Row-action state for a groups table: the optimistic visibility toggle (one in flight at a time, reverted on
- * failure) and the labels / leave / edit / delete dialogs. Render `dialogs` once next to the table.
+ * failure) and the labels / leave / edit / delete dialogs. Render `dialogs` once next to the table, and wrap the table
+ * in an element with `surfaceRef` and `tabIndex={-1}` so focus stays in the list after a leave or delete.
  */
 export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[]) {
   const refresh = useRefreshGroups()
@@ -83,6 +84,7 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
   const inFlight = useRef(false)
   const [target, setTarget] = useState<{ kind: DialogKind; group: GroupWithLabels } | null>(null)
   const [open, setOpen] = useState(false)
+  const focus = useFocusAfterRemoval<HTMLDivElement>("tbody tr")
 
   function setOverride(key: string, hide: boolean | null) {
     setOverrides((current) => {
@@ -123,7 +125,9 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
     }
   }
 
-  function show(kind: DialogKind, group: GroupWithLabels) {
+  /** Pass the `trigger` of a leave or delete, whose row disappears once it is confirmed. */
+  function show(kind: DialogKind, group: GroupWithLabels, trigger?: HTMLElement) {
+    if (trigger) focus.capture(trigger)
     setTarget({ kind, group })
     setOpen(true)
   }
@@ -157,6 +161,7 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
           open={open}
           onOpenChange={setOpen}
           group={{ telegramId: leaveGroup.id, title: leaveGroup.title }}
+          finalFocus={focus.target}
           onLeft={() => refresh("The group was left, but the group list could not be refreshed.")}
         />
       )}
@@ -173,6 +178,7 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
           open={open}
           onOpenChange={setOpen}
           group={{ id: deleteGroup.id, title: deleteGroup.title }}
+          finalFocus={focus.target}
           onDeleted={() => refresh("The group was deleted, but the group list could not be refreshed.")}
         />
       )}
@@ -185,6 +191,7 @@ export function useGroupActions(labels: GroupLabel[], groups: GroupWithLabels[])
     toggleVisibility,
     show,
     dialogs,
+    surfaceRef: focus.surfaceRef,
   }
 }
 
@@ -245,7 +252,7 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
           icon={LogOut}
           tone="danger"
           appearance="tinted"
-          onClick={() => controller.show("leave", group)}
+          onClick={(event) => controller.show("leave", group, event.currentTarget)}
         />
       ) : (
         <IconButton
@@ -254,7 +261,7 @@ export function GroupRowActions({ group, controller, canWrite, alignEdit = false
           icon={Trash2}
           tone="danger"
           appearance="tinted"
-          onClick={() => controller.show("delete", group)}
+          onClick={(event) => controller.show("delete", group, event.currentTarget)}
         />
       )}
     </>
