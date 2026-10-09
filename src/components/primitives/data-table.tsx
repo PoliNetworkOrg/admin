@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react"
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react"
+import { type KeyboardEvent, type MouseEvent, type ReactNode, useLayoutEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -135,6 +135,28 @@ function isPlainClick(event: MouseEvent) {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
 }
 
+/**
+ * Whether the table fits its container. While it does, the container clips instead of scrolling: a scroll container
+ * would hold the sticky header, which then never sticks to the page's scroll area. A table wider than its container
+ * scrolls sideways instead, and its header scrolls away with it.
+ */
+function useTableFits() {
+  const tableRef = useRef<HTMLTableElement>(null)
+  const [fits, setFits] = useState(true)
+
+  useLayoutEffect(() => {
+    const table = tableRef.current
+    const container = table?.parentElement
+    if (!table || !container) return
+    const observer = new ResizeObserver(() => setFits(table.offsetWidth <= container.clientWidth))
+    observer.observe(table)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
+  return { tableRef, fits }
+}
+
 /** Surface, sortable 36px header, 44px rows, actions column, footer pagination, loading/empty/error slots. */
 export function DataTable<T>({
   label,
@@ -157,6 +179,7 @@ export function DataTable<T>({
   selectedRowId,
   className,
 }: DataTableProps<T>) {
+  const { tableRef, fits } = useTableFits()
   const hasActions = actions !== undefined
   const cellCount = columns.length + (hasActions ? 1 : 0)
   const hideClasses = columnHideClasses(columns, hasActions ? actionsWidth : 0)
@@ -295,16 +318,22 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        "@container overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
+        "@container overflow-clip rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
         className
       )}
     >
       <span role="status" className="sr-only">
         {loading ? loadingLabel : ""}
       </span>
-      <Table aria-busy={loading || undefined} className={cn(fixedLayout && "table-fixed")}>
+      <Table
+        ref={tableRef}
+        aria-busy={loading || undefined}
+        className={cn(fixedLayout && "table-fixed")}
+        containerClassName={fits ? "overflow-x-clip" : undefined}
+      >
         <caption className="sr-only">{label}</caption>
-        <TableHeader className="sticky top-0 z-[1] bg-(--pn-surface)">
+        {/* Collapsed borders stay behind when the header sticks, so its rule is a shadow on the cells. */}
+        <TableHeader className="sticky top-0 z-[1] bg-(--pn-surface) [&_th]:shadow-[inset_0_-1px_0_var(--pn-line)] [&_tr]:border-b-0">
           <TableRow className="border-(--pn-line) hover:bg-transparent">
             {columns.map((column, index) => {
               const direction = sort?.column === column.id ? sort.direction : null
