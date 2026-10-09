@@ -122,7 +122,7 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
                   value={query}
                   onChange={setQuery}
                   placeholder={GROUP_SEARCH_PLACEHOLDER}
-                  className="w-70"
+                  className="w-70 max-sm:w-40"
                 />
               }
             />

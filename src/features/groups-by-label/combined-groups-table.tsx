@@ -16,6 +16,7 @@ import {
   GroupRowActions,
   groupKey,
   labelLink,
+  mobileGroupTableClasses,
   resolveLabels,
   useGroupActions,
   useLabelsByPath,
@@ -122,6 +123,7 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
     <>
       <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
         <DataTable
+          className={canWrite ? mobileGroupTableClasses : undefined}
           label="Groups"
           columns={columns}
           rows={visible}
