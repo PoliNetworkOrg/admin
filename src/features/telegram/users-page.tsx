@@ -10,6 +10,7 @@ import type { TgUser } from "@/lib/api/types"
 
 function matchesUser(user: TgUser, query: string) {
   if (!query) return true
+  if (String(user.id).includes(query)) return true
   const haystack = [user.firstName, user.lastName, user.username].filter(Boolean).join(" ").toLocaleLowerCase()
   return haystack.includes(query)
 }
@@ -86,7 +87,7 @@ export function TelegramUsersPage({ users }: { users: TgUser[] }) {
       <PageBar
         left={
           <Toolbar
-            search={{ value: query, onChange: updateQuery, placeholder: "Search by name or username…" }}
+            search={{ value: query, onChange: updateQuery, placeholder: "Search by name, username or Telegram ID…" }}
             count={<Count value={filtered.length} total={searching ? users.length : undefined} noun="user" />}
           />
         }
