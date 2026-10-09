@@ -34,11 +34,18 @@ type ColorSwatchSelectProps = {
   value: string
   onChange: (hex: string) => void
   label?: string
+  disabled?: boolean
   className?: string
 }
 
 /** 20px swatch trigger opening the 10-color palette; colors outside it show as "Custom". */
-export function ColorSwatchSelect({ value, onChange, label = "Label color", className }: ColorSwatchSelectProps) {
+export function ColorSwatchSelect({
+  value,
+  onChange,
+  label = "Label color",
+  disabled,
+  className,
+}: ColorSwatchSelectProps) {
   const [open, setOpen] = useState(false)
   const custom = !isPaletteColor(value)
 
@@ -56,6 +63,7 @@ export function ColorSwatchSelect({ value, onChange, label = "Label color", clas
               variant="outline"
               size="sm"
               aria-label={label}
+              disabled={disabled}
               className={cn(
                 buttonMotion,
                 "gap-1.5 border-(--pn-line-strong) bg-(--pn-surface) px-2 shadow-none hover:bg-(--pn-muted)",

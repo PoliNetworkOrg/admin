@@ -183,7 +183,6 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
       // The panel header names the language; the accessible label keeps it.
       placeholder: `${label.replace(/ \(.+\)$/, "")}…`,
       error: touched.has(field) && values[field].trim() === "" ? required : null,
-      disabled: saving,
       onChange: (event: { target: { value: string } }) =>
         setValues((current) => ({ ...current, [field]: event.target.value })),
       onBlur: () => setTouched((current) => new Set(current).add(field)),

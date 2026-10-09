@@ -681,7 +681,11 @@ function LabelRow({
         draft && (
           <>
             <Indent depth={depth} />
-            <ColorSwatchSelect value={draft.color} onChange={(color) => ctx.setDraft({ ...draft, color })} />
+            <ColorSwatchSelect
+              value={draft.color}
+              disabled={ctx.saving}
+              onChange={(color) => ctx.setDraft({ ...draft, color })}
+            />
             <LabelChip label={{ ...label, color: draft.color }} className="shrink-0" />
             <InlineEditInput
               label={`Description for ${name}`}

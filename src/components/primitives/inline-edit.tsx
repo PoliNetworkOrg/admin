@@ -1,6 +1,6 @@
 import { Check, CircleAlert, Pencil, X } from "lucide-react"
 import type * as React from "react"
-import { type KeyboardEvent, type ReactNode, useId } from "react"
+import { createContext, type KeyboardEvent, type ReactNode, use, useId } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,6 +11,12 @@ import { FieldCounter, isCounterVisible } from "./field-counter"
 import { IconButton } from "./icon-button"
 import { InlineAlert } from "./inline-alert"
 import { useModifierKey } from "./use-modifier-key"
+
+/**
+ * True while the open editor saves: its fields turn read-only, so nothing typed after the save started is lost when
+ * the editor closes on success.
+ */
+const SavingContext = createContext(false)
 
 type InlineEditProps = {
   editing: boolean
@@ -181,7 +187,9 @@ export function InlineEditCard(props: InlineEditProps) {
         </>
       ) : (
         <div className="flex flex-1 items-start gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch">{editing ? props.edit : props.view}</div>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch">
+            {editing ? <SavingContext value={props.saving}>{props.edit}</SavingContext> : props.view}
+          </div>
           {!editing && !props.readOnly && <ViewActions {...props} />}
         </div>
       )}
@@ -204,7 +212,9 @@ export function InlineEditRow(props: InlineEditProps) {
   }
   return (
     <div onKeyDown={onKeyDown} className={cn("flex flex-col gap-3 px-4 py-2", props.className)}>
-      <div className="flex min-w-0 flex-wrap items-center gap-3">{props.edit}</div>
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <SavingContext value={props.saving}>{props.edit}</SavingContext>
+      </div>
       <EditFooter {...props} />
     </div>
   )
@@ -242,10 +252,12 @@ export function InlineEditInput({
   maxLength,
   error,
   bare = false,
+  readOnly,
   className,
   ...props
 }: InlineEditInputProps) {
   const errorId = useId()
+  const saving = use(SavingContext)
   const counting = maxLength !== undefined && isCounterVisible(value.length, maxLength)
   if (bare) {
     return (
@@ -256,6 +268,7 @@ export function InlineEditInput({
           maxLength={maxLength}
           // The panel's border shows focus; the global input focus ring would draw a box inside it.
           data-focus-ring="none"
+          readOnly={readOnly || saving}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn(bareInputClasses, className)}
@@ -273,6 +286,7 @@ export function InlineEditInput({
           aria-label={label}
           value={value}
           maxLength={maxLength}
+          readOnly={readOnly || saving}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn("h-9 px-2.5", fieldClasses, counting && "pr-20", className)}
@@ -309,10 +323,12 @@ export function InlineEditTextarea({
   maxLength,
   error,
   bare = false,
+  readOnly,
   className,
   ...props
 }: InlineEditTextareaProps) {
   const errorId = useId()
+  const saving = use(SavingContext)
   if (bare) {
     return (
       <div className="flex min-w-0 flex-col">
@@ -323,6 +339,7 @@ export function InlineEditTextarea({
           rows={1}
           // The panel's border shows focus; the global input focus ring would draw a box inside it.
           data-focus-ring="none"
+          readOnly={readOnly || saving}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn(bareTextareaClasses, className)}
@@ -341,6 +358,7 @@ export function InlineEditTextarea({
           value={value}
           maxLength={maxLength}
           rows={3}
+          readOnly={readOnly || saving}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn("min-h-[76px] px-2.5 pb-6", fieldClasses, className)}

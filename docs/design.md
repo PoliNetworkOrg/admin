@@ -231,7 +231,8 @@ and closing without acting is harmless. Otherwise a dialog. Every delete is a `C
 3. Footer: validation message or the shortcut hint (hidden on coarse pointers) left; tinted cancel (`X`) and save
    (`Check`, enabled when valid and dirty) right. `Esc` cancels, `Enter`/`⌘Enter` saves. A shortcut on an unchanged
    record closes the editor; on an invalid one it focuses the first invalid field.
-4. Saving shows the spinner in the save button; errors appear in the footer, success closes edit mode with a toast.
+4. Saving shows the spinner in the save button and makes the fields read-only; errors appear in the footer, success
+   closes edit mode with a toast.
 
 **Bilingual text** (`TranslationGroup`/`TranslationPanel`): one panel per language, Italian first, side by side from
 560px container width, stacked below; each panel sets `lang`. In edit mode the panel itself is the field (`bare` inputs
