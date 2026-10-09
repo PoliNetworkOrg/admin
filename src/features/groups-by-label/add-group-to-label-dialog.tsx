@@ -1,445 +1,454 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ArrowLeft, Check, LoaderCircle, Plus, Search, X } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
+import { ArrowLeft, Check, Search, X } from "lucide-react"
+import { type KeyboardEvent, useId, useState } from "react"
 
-import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  buttonMotion,
+  checkboxControl,
+  fieldControl,
+  fieldHintId,
+  FormDialog,
+  FormField,
+  LabelTreeSelector,
+  NavCard,
+  PlatformGlyph,
+  SectionEmpty,
+  SegmentedControl,
+} from "@/components/primitives"
+import { appToast } from "@/components/shell"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { DEFAULT_GROUP_LABEL_COLOR, isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { DEFAULT_GROUP_LABEL_COLOR } from "@/features/group-labels/group-labels.constants"
 import { createGroupLabel, tagGroup } from "@/features/group-labels/group-labels.functions"
+import { focusFieldSoon, useResetOnOpen } from "@/features/group-labels/label-name-field"
 import { formatLabelBreadcrumb } from "@/features/group-labels/label-tree"
-import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
 import type { GroupLabel } from "@/features/group-labels/types"
 import { createWhatsappGroup } from "@/features/whatsapp/groups.functions"
-import { WhatsappGroupFields } from "@/features/whatsapp/whatsapp-group-fields"
-import { isValidWhatsappInviteLink } from "@/features/whatsapp/whatsapp.validation"
-import type { TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
+import { isValidWhatsappInviteLink, WHATSAPP_INVITE_LINK_MAX } from "@/features/whatsapp/whatsapp.validation"
+import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-type Step = "choose" | "new" | "existing"
-type Platform = "telegram" | "whatsapp"
+import { groupSearchText, normalizeGroupQuery, useTelegramTags } from "./label-groups"
 
-export function AddGroupToLabelDialog({
-  path,
-  labelExists,
-  allowCreate = true,
-  allLabels,
-  tgGroups,
-  waGroups,
-  tgLabelsByGroupId,
-  waLabelsByGroupId,
-}: {
+type Step = "choose" | "new" | "existing"
+type GroupType = GroupWithLabels["type"]
+type GroupRef = { type: GroupType; id: number; title: string }
+
+const TITLE_MAX = 200
+const LINK_ERROR = "Enter a valid WhatsApp group invite link."
+const platformName = { tg: "Telegram", wa: "WhatsApp" } satisfies Record<GroupType, string>
+const PLATFORMS = ["tg", "wa"] as const satisfies readonly GroupType[]
+
+const descriptions = {
+  choose: "Create a brand new group, or categorize groups that already exist.",
+  new: "There's no bot managing WhatsApp groups yet, so this is just a manual record.",
+  existing: "Pick one or more groups to categorize.",
+} satisfies Record<Step, string>
+
+function refKey(ref: { type: GroupType; id: number }) {
+  return `${ref.type}:${ref.id}`
+}
+
+type AddGroupToLabelDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** The category path or tag the groups get. */
   path: string
-  labelExists: boolean
-  /** Off where a brand new group would end up filed under this label alone — the dialog then only labels existing groups. */
-  allowCreate?: boolean
-  allLabels: GroupLabel[]
+  labels: GroupLabel[]
+  groups: GroupWithLabels[]
   tgGroups: TgGroup[]
-  waGroups: WaGroup[]
-  tgLabelsByGroupId: Map<number, TgGroupLabel[]>
-  waLabelsByGroupId: Map<number, TgGroupLabel[]>
-}) {
+  /**
+   * Off on tag pages: a group created there would carry the tag and no category, so once published it would sit on
+   * the site uncategorized. The dialog then opens on the existing-groups step.
+   */
+  allowCreate?: boolean
+}
+
+/** AddGroupToLabelDialog: create a WhatsApp group with this label, or label existing groups. */
+export function AddGroupToLabelDialog({
+  open,
+  onOpenChange,
+  path,
+  labels,
+  groups,
+  tgGroups,
+  allowCreate = true,
+}: AddGroupToLabelDialogProps) {
   const router = useRouter()
   const createGroupLabelFn = useServerFn(createGroupLabel)
   const createWhatsappGroupFn = useServerFn(createWhatsappGroup)
   const tagGroupFn = useServerFn(tagGroup)
-
-  // With creation off there's nothing to choose between, so the dialog opens straight on the existing-groups step.
   const initialStep: Step = allowCreate ? "choose" : "existing"
+  const ids = { title: useId(), link: useId(), hide: useId(), tags: useId(), search: useId() }
 
-  const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>(initialStep)
-  const [platform, setPlatform] = useState<Platform | null>(null)
-  const [groupQuery, setGroupQuery] = useState("")
-  const [selectedTgGroups, setSelectedTgGroups] = useState<TgGroup[]>([])
-  const [selectedWaGroups, setSelectedWaGroups] = useState<WaGroup[]>([])
+  const [platform, setPlatform] = useState<GroupType>("tg")
+  const [query, setQuery] = useState("")
+  const [selected, setSelected] = useState<GroupRef[]>([])
+  const [submitting, setSubmitting] = useState(false)
   const [title, setTitle] = useState("")
   const [link, setLink] = useState("")
+  const [linkError, setLinkError] = useState<string | null>(null)
   const [hide, setHide] = useState(false)
-  const [selectedTags, setSelectedTags] = useState<GroupLabel[]>([])
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
+  const [tags, setTags] = useState<string[]>([])
+  const telegramTags = useTelegramTags(tgGroups)
 
-  const availableTgGroups = tgGroups.filter(
-    (g) => !(tgLabelsByGroupId.get(g.telegramId) ?? []).some((l) => l.label === path)
-  )
-  const availableWaGroups = waGroups.filter((g) => !(waLabelsByGroupId.get(g.id) ?? []).some((l) => l.label === path))
-  const normalizedGroupQuery = groupQuery.trim().toLocaleLowerCase()
-  const filteredTgGroups = normalizedGroupQuery
-    ? availableTgGroups.filter((g) => g.title.toLocaleLowerCase().includes(normalizedGroupQuery))
-    : availableTgGroups
-  const filteredWaGroups = normalizedGroupQuery
-    ? availableWaGroups.filter((g) => g.title.toLocaleLowerCase().includes(normalizedGroupQuery))
-    : availableWaGroups
-
-  function reset() {
+  useResetOnOpen(open, () => {
     setStep(initialStep)
-    setPlatform(null)
-    setGroupQuery("")
-    setSelectedTgGroups([])
-    setSelectedWaGroups([])
+    setPlatform("tg")
+    setQuery("")
+    setSelected([])
     setTitle("")
     setLink("")
+    setLinkError(null)
     setHide(false)
-    setSelectedTags([])
-    setError("")
-  }
+    setTags([])
+  })
 
-  function closeDialog() {
-    setOpen(false)
-    reset()
-  }
+  const breadcrumb = formatLabelBreadcrumb(path)
+  const selectedKeys = new Set(selected.map(refKey))
+  const normalizedQuery = normalizeGroupQuery(query)
+  const pickable = groups.filter((group) => {
+    if (group.type !== platform || group.labels.includes(path)) return false
+    return !normalizedQuery || groupSearchText(group, telegramTags).includes(normalizedQuery)
+  })
 
-  function toggleTgGroup(group: TgGroup) {
-    setSelectedTgGroups((current) =>
-      current.some((g) => g.telegramId === group.telegramId)
-        ? current.filter((g) => g.telegramId !== group.telegramId)
-        : [...current, group]
-    )
-  }
-
-  function toggleWaGroup(group: WaGroup) {
-    setSelectedWaGroups((current) =>
-      current.some((g) => g.id === group.id) ? current.filter((g) => g.id !== group.id) : [...current, group]
-    )
-  }
-
-  function toggleTags(labels: GroupLabel[], select: boolean) {
-    setSelectedTags((current) => {
-      if (select) {
-        const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
-        return [...current, ...toAdd]
-      }
-      return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
-    })
-  }
-
+  /** The first group filed under a new path (e.g. a bare root) also creates its label row. */
   async function ensureLabelExists() {
-    if (!labelExists) {
-      await createGroupLabelFn({ data: { label: path, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
-    }
+    if (labels.some((label) => label.label === path)) return
+    await createGroupLabelFn({ data: { label: path, color: DEFAULT_GROUP_LABEL_COLOR, description: "" } })
   }
 
-  async function submitNew(event: React.FormEvent) {
-    event.preventDefault()
-    if (!title.trim() || !isValidWhatsappInviteLink(link.trim()) || pending) return
-    setPending(true)
-    setError("")
+  async function submitNew() {
+    const trimmedLink = link.trim()
+    if (!isValidWhatsappInviteLink(trimmedLink)) {
+      setLinkError(LINK_ERROR)
+      return
+    }
+    const trimmedTitle = title.trim()
+    let created: { id: number }
     try {
       await ensureLabelExists()
-      const created = await createWhatsappGroupFn({ data: { title: title.trim(), link: link.trim(), hide } })
-      const labelsToApply = [{ label: path }, ...selectedTags]
-      const tagResults = await Promise.allSettled(
-        labelsToApply.map((label) => tagGroupFn({ data: { groupId: created.id, type: "wa", label: label.label } }))
-      )
-      const failedLabels = labelsToApply.filter((_, index) => tagResults[index]?.status === "rejected")
-      if (failedLabels.length > 0) {
-        for (const result of tagResults) {
-          if (result.status === "rejected") console.error(result.reason)
-        }
-        const failedLabelNames = failedLabels.map((label) => `"${formatLabelBreadcrumb(label.label)}"`).join(", ")
-        toast.warning(
-          `${title.trim()} was added, but could not be labeled ${failedLabelNames}. Assign ${failedLabels.length === 1 ? "it" : "them"} manually.`
-        )
-        closeDialog()
-        try {
-          await router.invalidate({ sync: true })
-        } catch (refreshCause) {
-          console.error(refreshCause)
-          toast.warning("The group was added, but the latest group data could not be refreshed.")
-        }
-        return
-      }
-      const extraTagCount = selectedTags.length
-      toast.success(
-        extraTagCount > 0
-          ? `${title.trim()} added to "${formatLabelBreadcrumb(path)}" with ${extraTagCount} additional tag${extraTagCount === 1 ? "" : "s"}.`
-          : `${title.trim()} added and labeled "${formatLabelBreadcrumb(path)}".`
-      )
-      closeDialog()
-      try {
-        await router.invalidate({ sync: true })
-      } catch (refreshCause) {
-        console.error(refreshCause)
-        toast.warning("The group was added and labeled, but the latest group data could not be refreshed.")
-      }
+      created = await createWhatsappGroupFn({ data: { title: trimmedTitle, link: trimmedLink, hide } })
     } catch (cause) {
       console.error(cause)
-      setError(errorMessage(cause, "The group could not be created. Check the details and try again."))
-    } finally {
-      setPending(false)
+      throw new Error(errorMessage(cause, "Couldn't add the group. Check the details and try again."))
+    }
+
+    const labelsToApply = [path, ...tags]
+    const results = await Promise.allSettled(
+      labelsToApply.map((label) => tagGroupFn({ data: { groupId: created.id, type: "wa", label } }))
+    )
+    const failed = labelsToApply.filter((_, index) => results[index]?.status === "rejected")
+    await router.invalidate({ sync: true })
+    onOpenChange(false)
+    if (failed.length > 0) {
+      console.error(results)
+      appToast.warning(
+        `${trimmedTitle} was added, but couldn't be labeled ${failed.map(formatLabelBreadcrumb).join(", ")}.`
+      )
+    } else {
+      appToast.success(`${trimmedTitle} added and labeled ${breadcrumb}.`)
     }
   }
 
   async function submitExisting() {
-    if (pending) return
-    const groupsToTag = platform === "telegram" ? selectedTgGroups : platform === "whatsapp" ? selectedWaGroups : []
-    if (!groupsToTag.length) return
-    setPending(true)
-    setError("")
+    const submitted = [...selected]
     try {
       await ensureLabelExists()
-      const results = await Promise.allSettled(
-        groupsToTag.map((group) =>
-          tagGroupFn({
-            data: {
-              groupId: "telegramId" in group ? group.telegramId : group.id,
-              type: "telegramId" in group ? "tg" : "wa",
-              label: path,
-            },
-          })
-        )
-      )
-      const failed = results.filter((result) => result.status === "rejected").length
-      if (failed > 0) {
-        // Some groups may have already been tagged even though others failed — refresh so the underlying
-        // data reflects what's actually saved, instead of silently implying nothing happened.
-        await router.invalidate({ sync: true })
-        setError(
-          failed === groupsToTag.length
-            ? "The groups could not be labeled. Check your permissions and try again."
-            : `${failed} of ${groupsToTag.length} group(s) couldn't be labeled — the rest were. Check your permissions and try again.`
-        )
-        return
-      }
-      toast.success(
-        groupsToTag.length === 1
-          ? `${groupsToTag[0].title} labeled "${formatLabelBreadcrumb(path)}".`
-          : `${groupsToTag.length} groups labeled "${formatLabelBreadcrumb(path)}".`
-      )
-      closeDialog()
-      await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
-      setError(errorMessage(cause, "The groups could not be labeled. Check your permissions and try again."))
-    } finally {
-      setPending(false)
+      throw new Error(errorMessage(cause, "Couldn't label the groups. Check your permissions and try again."))
     }
+    const results = await Promise.allSettled(
+      submitted.map((ref) => tagGroupFn({ data: { groupId: ref.id, type: ref.type, label: path } }))
+    )
+    const failed = results.filter((result) => result.status === "rejected").length
+    if (failed > 0) {
+      console.error(results)
+      // Some groups may already be labeled: refresh so the page shows what was saved, and keep only the rest.
+      setSelected(submitted.filter((_, index) => results[index]?.status === "rejected"))
+      await router.invalidate({ sync: true })
+      throw new Error(
+        failed === submitted.length
+          ? "Couldn't label the groups. Check your permissions and try again."
+          : `${failed} of ${pluralize(submitted.length, "group")} couldn't be labeled; the rest were. Try again.`
+      )
+    }
+    await router.invalidate({ sync: true })
+    const [only] = submitted
+    appToast.success(
+      submitted.length === 1 && only
+        ? `${only.title} labeled ${breadcrumb}.`
+        : `${submitted.length} groups labeled ${breadcrumb}.`
+    )
+    onOpenChange(false)
   }
 
-  const selectedExistingCount =
-    platform === "telegram" ? selectedTgGroups.length : platform === "whatsapp" ? selectedWaGroups.length : 0
-  const canSubmitExisting = selectedExistingCount > 0
+  function toggle(group: GroupRef) {
+    const key = refKey(group)
+    setSelected((current) =>
+      current.some((ref) => refKey(ref) === key)
+        ? current.filter((ref) => refKey(ref) !== key)
+        : [...current, { type: group.type, id: group.id, title: group.title }]
+    )
+  }
+
+  function toggleTags(changed: GroupLabel[], select: boolean) {
+    const names = changed.map((label) => label.label)
+    setTags((current) =>
+      select ? [...new Set([...current, ...names])] : current.filter((name) => !names.includes(name))
+    )
+  }
+
+  const back =
+    step === "choose" || !allowCreate ? undefined : (
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={submitting}
+        onClick={() => setStep("choose")}
+        className={buttonMotion}
+      >
+        <ArrowLeft aria-hidden data-icon="inline-start" />
+        Back
+      </Button>
+    )
+
+  const newReady = title.trim() !== "" && link.trim() !== ""
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (pending) return
-        if (nextOpen) setOpen(true)
-        else closeDialog()
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={`Add group to ${breadcrumb}`}
+      description={descriptions[step]}
+      noun="group"
+      dirty={step === "new" ? title !== "" || link !== "" || tags.length > 0 : selected.length > 0}
+      submitLabel={
+        step === "choose"
+          ? undefined
+          : step === "existing" && selected.length > 1
+            ? `Add ${selected.length} groups`
+            : "Add group"
+      }
+      canSubmit={step === "new" ? newReady : step === "existing" && selected.length > 0}
+      onSubmit={async () => {
+        setSubmitting(true)
+        try {
+          await (step === "new" ? submitNew() : submitExisting())
+        } finally {
+          setSubmitting(false)
+        }
       }}
+      submitOnEnter={step === "new"}
+      footerStart={back}
     >
-      <DialogTrigger render={<Button />}>
-        <Plus data-icon="inline-start" /> Add group
-      </DialogTrigger>
-      <DialogContent className="grid-cols-[minmax(0,1fr)] overflow-x-hidden sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Add group to "{formatLabelBreadcrumb(path)}"</DialogTitle>
-          <DialogDescription>
-            {step === "choose" && "Create a brand new group, or categorize groups that already exist."}
-            {step === "new" && "There's no bot managing WhatsApp groups yet, so this is just a manual record."}
-            {step === "existing" &&
-              (platform ? "Pick one or more groups to categorize." : "Which platform are the groups on?")}
-          </DialogDescription>
-        </DialogHeader>
-
+      <fieldset disabled={submitting} className="contents">
         {step === "choose" && (
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setStep("new")}
-              className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center hover:border-primary/50 hover:bg-accent"
-            >
-              <Plus className="size-5 text-primary" />
-              <span className="text-sm font-medium">New group</span>
-              <span className="text-xs text-muted-foreground">Create a group that doesn't exist yet.</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep("existing")}
-              className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center hover:border-primary/50 hover:bg-accent"
-            >
-              <Search className="size-5 text-primary" />
-              <span className="text-sm font-medium">Existing groups</span>
-              <span className="text-xs text-muted-foreground">Label groups you already have.</span>
-            </button>
+          <div className="grid gap-3 min-[480px]:grid-cols-2">
+            <NavCard
+              title="New group"
+              description="Create a group that doesn't exist yet."
+              onClick={() => {
+                setStep("new")
+                focusFieldSoon(ids.title)
+              }}
+            />
+            <NavCard
+              title="Existing groups"
+              description="Label groups you already have."
+              onClick={() => {
+                setStep("existing")
+                focusFieldSoon(ids.search)
+              }}
+            />
           </div>
         )}
 
         {step === "new" && (
-          <form className="flex flex-col gap-4" onSubmit={(event) => void submitNew(event)}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2 w-fit gap-1 text-muted-foreground"
-              onClick={() => setStep("choose")}
+          <>
+            <FormField label="Title" htmlFor={ids.title} counter={{ length: title.length, max: TITLE_MAX }}>
+              <Input
+                id={ids.title}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Gruppo Informatica 1"
+                maxLength={TITLE_MAX}
+                autoComplete="off"
+                className={cn("h-9", fieldControl)}
+              />
+            </FormField>
+            <FormField
+              label="Invite link"
+              htmlFor={ids.link}
+              hint="Must start with https://chat.whatsapp.com/"
+              error={linkError}
             >
-              <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
-            </Button>
-            <WhatsappGroupFields
-              title={title}
-              onTitleChange={setTitle}
-              link={link}
-              onLinkChange={setLink}
-              hide={hide}
-              onHideChange={setHide}
-            />
-            <div>
-              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Attributes and publications</p>
-              <LabelTreeSelector allLabels={allLabels} selected={selectedTags} onToggleMany={toggleTags} tagsOnly />
+              <Input
+                id={ids.link}
+                type="url"
+                value={link}
+                onChange={(event) => setLink(event.target.value)}
+                onBlur={() => {
+                  if (linkError !== null) setLinkError(isValidWhatsappInviteLink(link.trim()) ? null : LINK_ERROR)
+                }}
+                placeholder="https://chat.whatsapp.com/…"
+                maxLength={WHATSAPP_INVITE_LINK_MAX}
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={linkError !== null || undefined}
+                aria-describedby={fieldHintId(ids.link)}
+                className={cn("h-9", fieldControl)}
+              />
+            </FormField>
+            <label htmlFor={ids.hide} className="flex cursor-pointer items-start gap-3">
+              <Checkbox
+                id={ids.hide}
+                checked={hide}
+                onCheckedChange={(checked) => setHide(checked)}
+                className={checkboxControl}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-[13px] leading-5 font-medium text-(--pn-fg)">Hide until published</span>
+                <span className="text-xs text-(--pn-fg-muted)">
+                  Keeps this group off the site until you make it visible later.
+                </span>
+              </span>
+            </label>
+            <div className="flex flex-col gap-1.5">
+              <p id={ids.tags} className="text-[13px] leading-5 font-medium text-(--pn-fg)">
+                Attributes and publications <span className="font-normal text-(--pn-fg-muted)">(optional)</span>
+              </p>
+              <div role="group" aria-labelledby={ids.tags}>
+                <LabelTreeSelector allLabels={labels} selected={tags} onToggleMany={toggleTags} tagsOnly />
+              </div>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={pending || !title.trim() || !isValidWhatsappInviteLink(link.trim())}>
-                {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-                Add group
-              </Button>
-            </DialogFooter>
-          </form>
+          </>
         )}
 
         {step === "existing" && (
-          <div className="flex min-w-0 flex-col gap-4">
-            {(allowCreate || platform) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="-ml-2 w-fit gap-1 text-muted-foreground"
-                onClick={() => (platform ? setPlatform(null) : setStep("choose"))}
+          <>
+            <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center">
+              <SegmentedControl
+                label="Platform"
+                items={PLATFORMS.map((type) => ({
+                  value: type,
+                  label: platformName[type],
+                  icon: <PlatformGlyph platform={type} className="text-current" />,
+                }))}
+                value={platform}
+                onValueChange={setPlatform}
+              />
+              <PickSearch
+                id={ids.search}
+                value={query}
+                onChange={setQuery}
+                placeholder={`Search ${platformName[platform]} groups…`}
+              />
+            </div>
+
+            {selected.length > 0 && (
+              <section
+                aria-label={pluralize(selected.length, "selected group")}
+                className="flex max-h-[76px] min-w-0 items-start gap-2 overflow-y-auto"
               >
-                <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back
-              </Button>
-            )}
-
-            {!platform ? (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPlatform("telegram")}
-                  className="rounded-lg border border-border p-4 text-center text-sm font-medium hover:border-primary/50 hover:bg-accent"
-                >
-                  Telegram
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlatform("whatsapp")}
-                  className="rounded-lg border border-border p-4 text-center text-sm font-medium hover:border-primary/50 hover:bg-accent"
-                >
-                  WhatsApp
-                </button>
-              </div>
-            ) : (
-              <div className="flex min-w-0 flex-col gap-2">
-                <Input
-                  placeholder={`Search ${platform === "telegram" ? "Telegram" : "WhatsApp"} groups…`}
-                  value={groupQuery}
-                  onChange={(event) => setGroupQuery(event.target.value)}
-                  className="h-9"
-                />
-                {selectedExistingCount > 0 && (
-                  <section
-                    aria-label={`${selectedExistingCount} selected group${selectedExistingCount === 1 ? "" : "s"}`}
-                    className="flex min-w-0 items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2"
-                  >
-                    <span className="pt-0.5 text-xs font-medium whitespace-nowrap text-primary">
-                      {selectedExistingCount} selected
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-                      {(platform === "telegram" ? selectedTgGroups : selectedWaGroups).map((group) => (
-                        <button
-                          key={"telegramId" in group ? group.telegramId : group.id}
-                          type="button"
-                          title={`Remove ${group.title}`}
-                          onClick={() => ("telegramId" in group ? toggleTgGroup(group) : toggleWaGroup(group))}
-                          className="flex max-w-full min-w-0 items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/15"
-                        >
-                          <span className="truncate">{group.title}</span>
-                          <X className="size-3 shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
-                <div className="h-56 min-w-0 overflow-y-auto rounded-md border border-border p-1">
-                  {platform === "telegram" ? (
-                    filteredTgGroups.length ? (
-                      filteredTgGroups.map((group) => {
-                        const checked = selectedTgGroups.some((g) => g.telegramId === group.telegramId)
-                        return (
-                          <button
-                            key={group.telegramId}
-                            type="button"
-                            aria-pressed={checked}
-                            onClick={() => toggleTgGroup(group)}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
-                              checked && "bg-primary/10 font-medium text-primary"
-                            )}
-                          >
-                            <span className="truncate">{group.title}</span>
-                            {checked && <Check className="ml-auto size-4 shrink-0" />}
-                          </button>
-                        )
-                      })
-                    ) : (
-                      <p className="p-2 text-sm text-muted-foreground">No matching groups</p>
-                    )
-                  ) : filteredWaGroups.length ? (
-                    filteredWaGroups.map((group) => {
-                      const checked = selectedWaGroups.some((g) => g.id === group.id)
-                      return (
-                        <button
-                          key={group.id}
-                          type="button"
-                          aria-pressed={checked}
-                          onClick={() => toggleWaGroup(group)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
-                            checked && "bg-primary/10 font-medium text-primary"
-                          )}
-                        >
-                          <span className="truncate">{group.title}</span>
-                          {checked && <Check className="ml-auto size-4 shrink-0" />}
-                        </button>
-                      )
-                    })
-                  ) : (
-                    <p className="p-2 text-sm text-muted-foreground">No matching groups</p>
-                  )}
+                <span className="pt-0.5 text-xs font-medium whitespace-nowrap text-(--pn-fg-muted) tabular-nums">
+                  {selected.length} selected
+                </span>
+                <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                  {selected.map((ref) => (
+                    <button
+                      key={refKey(ref)}
+                      type="button"
+                      aria-label={`Remove ${ref.title}`}
+                      title={ref.title}
+                      onClick={() => toggle(ref)}
+                      className="inline-flex h-6 max-w-56 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
+                    >
+                      <PlatformGlyph platform={ref.type} className="size-3" />
+                      <span className="truncate">{ref.title}</span>
+                      <X aria-hidden className="size-3 shrink-0 text-(--pn-fg-muted)" />
+                    </button>
+                  ))}
                 </div>
-              </div>
+              </section>
             )}
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
-                Cancel
-              </Button>
-              <Button type="button" disabled={pending || !canSubmitExisting} onClick={() => void submitExisting()}>
-                {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-                {selectedExistingCount > 1 ? `Add ${selectedExistingCount} groups` : "Add group"}
-              </Button>
-            </DialogFooter>
-          </div>
+            <div
+              role="group"
+              aria-label={`${platformName[platform]} groups`}
+              className="h-64 min-w-0 shrink-0 overflow-y-auto rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-surface) p-1"
+            >
+              {pickable.length > 0 ? (
+                pickable.map((group) => {
+                  const pressed = selectedKeys.has(refKey(group))
+                  const tag = group.type === "tg" ? telegramTags.get(group.id) : null
+                  return (
+                    <button
+                      key={refKey(group)}
+                      type="button"
+                      aria-pressed={pressed}
+                      onClick={() => toggle(group)}
+                      className="flex h-10 w-full min-w-0 items-center gap-3 rounded-(--pn-r-2) px-3 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                    >
+                      <span className="min-w-0 flex-1 truncate" title={group.title}>
+                        {group.title}
+                      </span>
+                      {tag && <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted)">@{tag}</span>}
+                      <Check
+                        aria-hidden
+                        className={cn("size-4 shrink-0 text-(--pn-accent)", pressed ? "opacity-100" : "opacity-0")}
+                      />
+                    </button>
+                  )
+                })
+              ) : (
+                <SectionEmpty title="No matching groups" className="px-3" />
+              )}
+            </div>
+          </>
         )}
-      </DialogContent>
-    </Dialog>
+      </fieldset>
+    </FormDialog>
+  )
+}
+
+type PickSearchProps = { id: string; value: string; onChange: (value: string) => void; placeholder: string }
+
+/** Dialog-local search: not the page search, so no `/` shortcut; the dialog turns Enter-to-submit off on this step. */
+function PickSearch({ id, value, onChange, placeholder }: PickSearchProps) {
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape" && value !== "") {
+      event.preventDefault()
+      event.stopPropagation()
+      onChange("")
+    }
+  }
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
+      />
+      <Input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        aria-label={placeholder.replace(/…$/, "")}
+        autoComplete="off"
+        spellCheck={false}
+        className={cn("h-9 pl-8 [&::-webkit-search-cancel-button]:appearance-none", fieldControl)}
+      />
+    </div>
   )
 }

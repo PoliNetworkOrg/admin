@@ -1,148 +1,191 @@
 import { useRouter } from "@tanstack/react-router"
-import { BookOpen, Download, FileText, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
+import { useServerFn } from "@tanstack/react-start"
+import { parseISO } from "date-fns"
+import { BookOpen, Download, Plus, Trash2 } from "lucide-react"
+import { useDeferredValue, useState } from "react"
 
-import { DataToolbar } from "@/components/data-toolbar"
-import { EmptyState } from "@/components/empty-state"
-import { Badge } from "@/components/ui/badge"
+import {
+  buttonMotion,
+  ConfirmDialog,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  IconButton,
+  StatusBadge,
+} from "@/components/primitives"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { DataTableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableSurface } from "@/components/ui/table"
+import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
-import { CreateGuideDialog, DeleteGuideDialog } from "./guide-dialogs"
+import { PublishEditionDialog } from "./guide-dialogs"
+import { deleteGuide } from "./guides.functions"
 import type { Guide } from "./types"
 
-function displayDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
+/** "2.1" → "2.2"; falls back to the version itself when its last segment is not a number. */
+function nextVersion(version: string | undefined) {
+  if (!version) return "1.0"
+  const match = /^(.*?)(\d+)$/.exec(version)
+  if (!match) return version
+  return `${match[1]}${Number(match[2]) + 1}`
 }
 
-export function GuidesPage({ loadedGuides }: { loadedGuides: Guide[] }) {
+/** Freshman guide: the PDF editions, newest first. */
+export function GuidesPage({ guides }: { guides: Guide[] }) {
   const router = useRouter()
-  const [guides, setGuides] = useState(loadedGuides)
+  const deleteGuideFn = useServerFn(deleteGuide)
+  const canWrite = useCanWrite("web")
   const [query, setQuery] = useState("")
-  const [creating, setCreating] = useState(false)
+  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishKey, setPublishKey] = useState(0)
   const [deleting, setDeleting] = useState<Guide | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
-  useEffect(() => setGuides(loadedGuides), [loadedGuides])
+  const latestId = guides[0]?.id
+  const rows = deferredQuery
+    ? guides.filter((guide) => guide.version.toLocaleLowerCase().includes(deferredQuery))
+    : guides
 
-  const filteredGuides = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase()
-    return normalized ? guides.filter((guide) => guide.version.toLocaleLowerCase().includes(normalized)) : guides
-  }, [guides, query])
-
-  async function refresh() {
-    try {
-      await router.invalidate({ sync: true })
-    } catch (error) {
-      console.error(error)
-      toast.warning("Your change was saved, but the latest guide list could not be refreshed.")
-    }
+  function openPublish() {
+    setPublishKey((key) => key + 1)
+    setPublishOpen(true)
   }
 
+  // The empty state repeats the header primary as outline.
+  const publishButton = (variant: "default" | "outline") => (
+    <Button variant={variant} size="sm" className={buttonMotion} onClick={openPublish}>
+      <Plus aria-hidden data-icon="inline-start" />
+      Publish edition
+    </Button>
+  )
+
+  const columns: DataTableColumn<Guide>[] = [
+    {
+      id: "edition",
+      label: "Edition",
+      minWidth: 200,
+      cell: (guide) => (
+        <span className="flex items-center gap-2">
+          <span className="whitespace-nowrap">Version {guide.version}</span>
+          {guide.id === latestId && <StatusBadge tone="brand">Latest</StatusBadge>}
+        </span>
+      ),
+    },
+    {
+      id: "published",
+      label: "Published",
+      cell: (guide) => <span className="whitespace-nowrap tabular-nums">{formatDate(parseISO(guide.date))}</span>,
+    },
+    {
+      id: "file",
+      label: "File",
+      cell: (guide) => (
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          aria-label={`Download version ${guide.version} PDF`}
+          render={<a href={guide.file} target="_blank" rel="noreferrer" />}
+          className={cn(
+            buttonMotion,
+            "h-7 gap-1.5 rounded-(--pn-r-2) px-2.5 text-[13px] has-data-[icon=inline-start]:pl-2 [&_svg]:text-(--pn-fg-muted)"
+          )}
+        >
+          <Download aria-hidden data-icon="inline-start" />
+          PDF
+        </Button>
+      ),
+    },
+  ]
+
   return (
-    <div className="animate-appear">
-      <DataToolbar
-        eyebrow="Web"
-        title="Freshman guide"
-        description="Publish and maintain the PDF editions of the Guida della Matricola."
-        count={filteredGuides.length}
-        total={guides.length}
-        searchPlaceholder="Search by version…"
-        onSearch={setQuery}
-        action={
-          <Button onClick={() => setCreating(true)}>
-            <Plus data-icon="inline-start" /> Add guide
-          </Button>
+    <>
+      <PageBar
+        left={
+          <Toolbar
+            search={{ value: query, onChange: setQuery }}
+            count={<Count value={rows.length} total={deferredQuery ? guides.length : undefined} noun="edition" />}
+          />
         }
+        right={canWrite ? publishButton("default") : undefined}
       />
-      {filteredGuides.length ? (
-        <TableSurface>
-          <Table className="min-w-[640px] text-left">
-            <TableHeader>
-              <TableRow className="border-0 hover:bg-transparent">
-                <DataTableHead>Edition</DataTableHead>
-                <DataTableHead>Published</DataTableHead>
-                <DataTableHead>File</DataTableHead>
-                <DataTableHead className="text-right">Actions</DataTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredGuides.map((guide, index) => (
-                <TableRow key={guide.id}>
-                  <TableCell className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-9 place-items-center rounded-lg bg-accent text-primary">
-                        <FileText className="size-4" />
-                      </span>
-                      <span className="font-medium">Version {guide.version}</span>
-                      {index === 0 && !query && <Badge variant="secondary">Latest</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5 text-sm text-muted-foreground">
-                    <time dateTime={guide.date}>{displayDate(guide.date)}</time>
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5">
-                    <a
-                      href={guide.file}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Download guide version ${guide.version} as PDF`}
-                    >
-                      <Button className="flex items-center gap-2 px-3" size="sm" variant="outline">
-                        <Download /> Download
-                      </Button>
-                    </a>
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5 text-right">
-                    <Button
-                      variant="destructive"
-                      size="icon-sm"
-                      aria-label={`Delete version ${guide.version}`}
-                      onClick={() => setDeleting(guide)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSurface>
-      ) : (
-        <EmptyState
-          icon={BookOpen}
-          title={guides.length ? "No guide matches this search" : "No guides published yet"}
-          text={
-            guides.length ? "Try a different version number." : "Upload the first PDF edition of the freshman guide."
+      <PageContent>
+        <DataTable
+          label="Freshman guide editions"
+          columns={columns}
+          rows={rows}
+          getRowId={(guide) => String(guide.id)}
+          actions={
+            canWrite
+              ? (guide) => (
+                  <IconButton
+                    label="Delete edition"
+                    ariaLabel={`Delete version ${guide.version}`}
+                    icon={Trash2}
+                    tone="danger"
+                    onClick={() => {
+                      setDeleting(guide)
+                      setConfirmOpen(true)
+                    }}
+                  />
+                )
+              : undefined
           }
-          action={!guides.length ? <Button onClick={() => setCreating(true)}>Add first guide</Button> : undefined}
+          empty={
+            deferredQuery ? (
+              <EmptyState
+                icon={BookOpen}
+                title="No editions match"
+                text="Try a different version number."
+                action={
+                  <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => setQuery("")}>
+                    Clear search
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={BookOpen}
+                title="No editions yet"
+                text="Upload the first PDF edition of the Guida della Matricola."
+                action={canWrite ? publishButton("outline") : undefined}
+              />
+            )
+          }
         />
-      )}
-      {creating && (
-        <CreateGuideDialog
+      </PageContent>
+      {canWrite && (
+        <PublishEditionDialog
+          key={publishKey}
+          open={publishOpen}
+          onOpenChange={setPublishOpen}
           existingVersions={guides.map((guide) => guide.version)}
-          suggestedVersion={guides[0]?.version}
-          onClose={() => setCreating(false)}
-          onCreated={(guide) => {
-            setGuides((current) => [guide, ...current])
-            setCreating(false)
-            toast.success("Guide published successfully")
-            void refresh()
+          suggestedVersion={nextVersion(guides[0]?.version)}
+          onPublished={async (guide) => {
+            await router.invalidate({ sync: true })
+            appToast.success(`Edition ${guide.version} published.`)
           }}
         />
       )}
-      {deleting && (
-        <DeleteGuideDialog
-          guide={deleting}
-          onClose={() => setDeleting(null)}
-          onDeleted={(id) => {
-            setGuides((current) => current.filter((guide) => guide.id !== id))
-            setDeleting(null)
-            toast.success("Guide deleted")
-            void refresh()
-          }}
-        />
-      )}
-    </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete edition?"
+        description={`Version ${deleting?.version ?? ""} is removed and its PDF is no longer linked. This cannot be undone.`}
+        confirmLabel="Delete edition"
+        onConfirm={async () => {
+          if (!deleting) return
+          try {
+            await deleteGuideFn({ data: { id: deleting.id } })
+          } catch (error) {
+            console.error(error)
+            throw new Error("Couldn't delete the edition.")
+          }
+          await router.invalidate({ sync: true })
+          appToast.success("Edition deleted.")
+        }}
+      />
+    </>
   )
 }

@@ -1,18 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router"
 
+import { SettingsListSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { getAzureDirectory } from "@/features/azure/azure.functions"
-import { AzureGroupsPage, AzureGroupsSkeleton } from "@/features/azure/groups-page"
-import { hasWriteAdminRole } from "@/server/authorization"
+import { AzureGroupsPage } from "@/features/azure/groups-page"
 
 export const Route = createFileRoute("/dashboard/azure/groups")({
   loader: () => getAzureDirectory(),
-  head: () => ({ meta: [{ title: "Microsoft 365 Groups | PoliNetwork Admin" }] }),
-  pendingComponent: AzureGroupsSkeleton,
+  pendingComponent: AzureGroupsPending,
   component: AzureGroupsRoute,
 })
 
+function AzureGroupsPending() {
+  return (
+    <PageContent>
+      <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">
+        <SettingsListSkeleton rows={8} label="Loading Microsoft 365 groups…" className="px-5" />
+      </div>
+    </PageContent>
+  )
+}
+
 function AzureGroupsRoute() {
   const { groups, members } = Route.useLoaderData()
-  const { roles } = Route.useRouteContext()
-  return <AzureGroupsPage groups={groups} directoryMembers={members} canWrite={hasWriteAdminRole(roles)} />
+  return <AzureGroupsPage groups={groups} directoryMembers={members} />
 }

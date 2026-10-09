@@ -1,100 +1,179 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowLeft } from "lucide-react"
-import { useState } from "react"
+import { Plus, Tags } from "lucide-react"
+import { useRef, useState } from "react"
 
-import { DataToolbar } from "@/components/data-toolbar"
+import {
+  buttonMotion,
+  EmptyState,
+  labelDisplayName,
+  labelKind,
+  RecordHeader,
+  SectionHeading,
+} from "@/components/primitives"
+import { type PageBarBack, PageBar, PageContent, SearchField, useCanWrite } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { formatLabelSegment, isReleaseLabel } from "@/features/group-labels/label-tree"
-import { AddGroupToLabelDialog } from "@/features/groups-by-label/add-group-to-label-dialog"
-import { CombinedGroupsTable } from "@/features/groups-by-label/combined-groups-table"
-import { PublishTagGroupsDialog } from "@/features/groups-by-label/publish-tag-groups-dialog"
-import { useLabelGroupRows } from "@/features/groups-by-label/use-label-group-rows"
-import type { GroupWithLabels, TgGroup, TgGroupLabel, WaGroup } from "@/lib/api/types"
+import type { GroupLabel } from "@/features/group-labels/types"
+import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
 
-/**
- * One flat tag's groups. Tags sit outside the category hierarchy (see CATEGORY_ROOTS in label-tree.ts), so they
- * get a flat page of their own rather than a node in the browsable tree: no sub-categories to drill into, and no
- * "add sub-category", which the label validator would reject under a tag anyway.
- */
-export function TagGroupsPage({
-  tag,
-  loadedTgGroups,
-  loadedGroupLabels,
-  loadedGroupsWithLabels,
-  loadedWaGroups,
-}: {
+import { AddGroupToLabelDialog } from "./add-group-to-label-dialog"
+import { CombinedGroupsTable } from "./combined-groups-table"
+import { GROUP_SEARCH_PLACEHOLDER, useLabelGroups } from "./label-groups"
+import { PublishTagGroupsDialog } from "./publish-tag-groups-dialog"
+
+const back: PageBarBack = { label: "labels", link: { to: "/dashboard/web/group-labels" } }
+
+type TagGroupsPageProps = {
+  /** An attribute or a `release-` publication; categories redirect to their browser page in the route. */
   tag: string
-  loadedTgGroups: TgGroup[]
-  loadedGroupLabels: TgGroupLabel[]
-  loadedGroupsWithLabels: GroupWithLabels[]
-  loadedWaGroups: WaGroup[]
-}) {
+  labels: GroupLabel[]
+  groups: GroupWithLabels[]
+  tgGroups: TgGroup[]
+}
+
+/** One flat tag's groups: the category node layout without sub-categories. */
+export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPageProps) {
+  const canWrite = useCanWrite("web")
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState("")
+  const [addOpen, setAddOpen] = useState(false)
 
-  const { tgLabelsByGroupId, waLabelsByGroupId, branchRows, visibleRows } = useLabelGroupRows({
-    path: tag,
-    query,
-    loadedTgGroups,
-    loadedWaGroups,
-    loadedGroupLabels,
-    loadedGroupsWithLabels,
-  })
+  const label = labels.find((candidate) => candidate.label === tag) ?? null
+  const { rows, visible, searching } = useLabelGroups({ label: tag, query, groups, tgGroups })
+  const kind = labelKind(tag)
+  const title = labelDisplayName(tag)
 
-  const hasSearch = Boolean(query.trim())
-  const labelExists = loadedGroupLabels.some((label) => label.label === tag)
-  const publication = isReleaseLabel(tag)
-  const title = formatLabelSegment(tag)
-  const backUrl: string = "/dashboard/web/group-labels"
+  if (kind === "category" || (!label && rows.length === 0)) {
+    return (
+      <>
+        <PageBar back={back} context="Labels" />
+        <PageContent width="wide">
+          <h1 className="sr-only">Tag not found</h1>
+          <EmptyState
+            icon={Tags}
+            title="Tag not found"
+            text="It may have been published, renamed or deleted."
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<Link to="/dashboard/web/group-labels" />}
+                className={buttonMotion}
+              >
+                Go to labels
+              </Button>
+            }
+          />
+        </PageContent>
+      </>
+    )
+  }
+
+  const publication = kind === "publication"
+  const publishable = publication && rows.length > 0
 
   return (
-    <div className="animate-appear">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link to={backUrl} />}
-        nativeButton={false}
-        className="-ml-2 mb-2 w-fit gap-1 text-muted-foreground"
-      >
-        <ArrowLeft data-icon="inline-start" className="size-3.5" /> Back to Group labels
-      </Button>
-      <DataToolbar
-        eyebrow={publication ? "Publications" : "Attributes"}
-        title={title}
-        description={
-          publication
-            ? "Publishing this batch preserves all categories and attributes."
-            : `Groups with the permanent attribute "${title}".`
-        }
-        count={visibleRows.length}
-        total={branchRows.length}
-        searchPlaceholder="Search by group name or tag…"
-        onSearch={setQuery}
-        action={
-          <div className="flex items-center gap-2">
-            {/* Publishing acts on the whole tag, not on what the search box currently shows. */}
-            {publication && <PublishTagGroupsDialog tag={tag} rows={branchRows} />}
-            <AddGroupToLabelDialog
-              path={tag}
-              labelExists={labelExists}
-              // A group created here would carry this tag and no category, so after it's published — and the tag
-              // removed — it would sit on the site uncategorized. Groups are born on a category page instead.
-              allowCreate={false}
-              allLabels={loadedGroupLabels}
-              tgGroups={loadedTgGroups}
-              waGroups={loadedWaGroups}
-              tgLabelsByGroupId={tgLabelsByGroupId}
-              waLabelsByGroupId={waLabelsByGroupId}
-            />
-          </div>
+    <>
+      <PageBar
+        back={back}
+        context={publication ? "Publications" : "Attributes"}
+        scrollTitleRef={titleRef}
+        scrollTitle={title}
+        right={
+          canWrite && (
+            <>
+              <Button
+                variant={publishable ? "outline" : "default"}
+                size="sm"
+                onClick={() => setAddOpen(true)}
+                className={buttonMotion}
+              >
+                <Plus aria-hidden data-icon="inline-start" />
+                Add group
+              </Button>
+              {publication && <PublishTagGroupsDialog tag={tag} rows={rows} />}
+            </>
+          )
         }
       />
+      <PageContent width="wide">
+        <div className="flex flex-col gap-8">
+          <RecordHeader
+            titleRef={titleRef}
+            title={title}
+            dot={label?.color}
+            meta={
+              publication ? (
+                "Publishing makes these groups visible and clears this tag."
+              ) : (
+                <span className="tabular-nums">{pluralize(rows.length, "group")} with this attribute.</span>
+              )
+            }
+            description={label?.description}
+          />
 
-      <CombinedGroupsTable
-        rows={visibleRows}
-        allLabels={loadedGroupLabels}
-        emptyTitle={hasSearch ? "No groups match this search" : `No groups tagged "${title}"`}
-        emptyText={hasSearch ? "Clear the search and try again." : "Add existing groups to this tag to start using it."}
+          <section className="flex flex-col gap-3" aria-labelledby="tag-groups">
+            <SectionHeading
+              id="tag-groups"
+              title="Groups"
+              action={
+                <SearchField
+                  value={query}
+                  onChange={setQuery}
+                  placeholder={GROUP_SEARCH_PLACEHOLDER}
+                  className="w-70 max-sm:w-40"
+                />
+              }
+            />
+            <CombinedGroupsTable
+              search={query}
+              rows={visible}
+              labels={labels}
+              tgGroups={tgGroups}
+              canWrite={canWrite}
+              empty={
+                searching ? (
+                  <EmptyState
+                    icon={Tags}
+                    title="No groups match"
+                    text="Try a different group name or tag."
+                    action={
+                      <Button variant="ghost" size="sm" onClick={() => setQuery("")} className={buttonMotion}>
+                        Clear search
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Tags}
+                    title={`No groups tagged ${title}`}
+                    text="Add existing groups to this tag to start using it."
+                    action={
+                      canWrite && (
+                        <Button variant="outline" size="sm" onClick={() => setAddOpen(true)} className={buttonMotion}>
+                          <Plus aria-hidden data-icon="inline-start" />
+                          Add group
+                        </Button>
+                      )
+                    }
+                  />
+                )
+              }
+            />
+          </section>
+        </div>
+      </PageContent>
+
+      <AddGroupToLabelDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        path={tag}
+        labels={labels}
+        groups={groups}
+        tgGroups={tgGroups}
+        allowCreate={false}
       />
-    </div>
+    </>
   )
 }

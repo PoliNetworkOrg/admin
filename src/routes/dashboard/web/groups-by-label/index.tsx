@@ -1,37 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
-import {
-  listGroupLabels,
-  listGroupsForLabels,
-  listGroupsWithLabels,
-} from "@/features/group-labels/group-labels.functions"
-import { GroupsByLabelPage } from "@/features/groups-by-label/groups-by-label-page"
+import { CardsSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
+import { listGroupLabels } from "@/features/group-labels/group-labels.functions"
+import { CategoriesPage } from "@/features/groups-by-label/categories-page"
 
 export const Route = createFileRoute("/dashboard/web/groups-by-label/")({
-  loader: async () => {
-    const [groups, groupLabels, groupsWithLabels] = await Promise.all([
-      listGroupsForLabels(),
-      listGroupLabels(),
-      listGroupsWithLabels(),
-    ])
-    return { ...groups, groupLabels, groupsWithLabels }
-  },
-  pendingComponent: () => <DataPageSkeleton columns={5} />,
-  component: GroupsByLabelRoot,
+  loader: () => listGroupLabels(),
+  pendingComponent: CategoriesPending,
+  component: CategoriesRoute,
 })
 
-/** The top of the category tree — picks Didattica or Extra to drill into, no exact-match groups of its own. */
-function GroupsByLabelRoot() {
-  const { tgGroups, groupLabels, groupsWithLabels, waGroups } = Route.useLoaderData()
-
+function CategoriesPending() {
   return (
-    <GroupsByLabelPage
-      path=""
-      loadedTgGroups={tgGroups}
-      loadedGroupLabels={groupLabels}
-      loadedGroupsWithLabels={groupsWithLabels}
-      loadedWaGroups={waGroups}
-    />
+    <PageContent width="wide">
+      <CardsSkeleton count={2} label="Loading categories…" />
+    </PageContent>
   )
+}
+
+/** The top of the category tree: picks Didattica or Extra to drill into, no groups of its own. */
+function CategoriesRoute() {
+  return <CategoriesPage labels={Route.useLoaderData()} />
 }

@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { CardsSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { AssociationsPage } from "@/features/associations/associations-page"
 import { getAssociations } from "@/features/associations/associations.functions"
 
 export const Route = createFileRoute("/dashboard/web/associations")({
   loader: () => getAssociations(),
-  pendingComponent: () => <DataPageSkeleton columns={2} />,
+  pendingComponent: () => (
+    <PageContent width="wide">
+      <CardsSkeleton label="Loading associations…" />
+    </PageContent>
+  ),
   component: AssociationsRoute,
 })
 

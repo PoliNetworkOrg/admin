@@ -1,106 +1,148 @@
 import { useServerFn } from "@tanstack/react-start"
-import { LoaderCircle } from "lucide-react"
 import { useState } from "react"
+import { z } from "zod"
 
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { fieldControl, fieldHintId, FormDialog, FormField } from "@/components/primitives"
 import { Input } from "@/components/ui/input"
 import { errorHasCode } from "@/lib/errors"
+import { cn } from "@/lib/utils"
 
-import { ASSOCIATION_LINK_FIELDS } from "./associations.constants"
+import { ASSOCIATION_LINK_FIELDS, ASSOCIATION_LINK_MAX_LENGTH, EMPTY_ASSOCIATION_LINKS } from "./associations.constants"
 import { editAssociationLinks } from "./associations.functions"
-import type { Association, AssociationLinks } from "./types"
+import type { Association, AssociationLink, AssociationLinks } from "./types"
 
-function normalizeLinks(links: AssociationLinks): AssociationLinks {
-  const normalized = { ...links }
-  for (const { key } of ASSOCIATION_LINK_FIELDS) normalized[key] = links[key]?.trim() || null
-  return normalized
+type Values = Record<AssociationLink, string>
+type Errors = Partial<Record<AssociationLink, string>>
+
+// The server's rule (`associationLinksInput`), so a value that passes here is never rejected there.
+const emailSchema = z.email()
+
+function valuesOf(links: AssociationLinks) {
+  return {
+    email: links.email ?? "",
+    website: links.website ?? "",
+    facebook: links.facebook ?? "",
+    instagram: links.instagram ?? "",
+    tiktok: links.tiktok ?? "",
+    x: links.x ?? "",
+    youtube: links.youtube ?? "",
+    telegram: links.telegram ?? "",
+    linkedin: links.linkedin ?? "",
+    spotify: links.spotify ?? "",
+  } satisfies Values
 }
 
-export function AssociationLinksDialog({
-  association,
-  onClose,
-  onSaved,
-}: {
-  association: Association
-  onClose: () => void
-  onSaved: (association: Association) => void
-}) {
-  const [links, setLinks] = useState(association.links)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
-  const editLinksFn = useServerFn(editAssociationLinks)
+function errorFor(key: AssociationLink, raw: string) {
+  const value = raw.trim()
+  if (value === "") return undefined
+  if (key === "email") return emailSchema.safeParse(value).success ? undefined : "Enter a valid email address."
+  if (URL.canParse(value)) {
+    const { protocol } = new URL(value)
+    if (protocol === "http:" || protocol === "https:") return undefined
+  }
+  return "Enter a full URL starting with https://."
+}
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
-    setPending(true)
-    setError("")
-    try {
-      onSaved(await editLinksFn({ data: { id: association.id, links: normalizeLinks(links) } }))
-    } catch (cause) {
-      console.error(cause)
-      setError(
-        errorHasCode(cause, "NOT_FOUND")
-          ? "This association no longer exists."
-          : "The links could not be saved. Check the values and your permissions."
-      )
-    } finally {
-      setPending(false)
+function validate(values: Values) {
+  const errors: Errors = {}
+  for (const { key } of ASSOCIATION_LINK_FIELDS) {
+    const error = errorFor(key, values[key])
+    if (error) errors[key] = error
+  }
+  return errors
+}
+
+function fieldId(associationId: number, key: AssociationLink) {
+  return `association-${associationId}-${key}`
+}
+
+type AssociationLinksDialogProps = {
+  /** Kept while the dialog animates closed. */
+  association: Association | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Runs after the links are saved, before the dialog closes. */
+  onSaved: () => Promise<void>
+}
+
+/** Two-column form of the ten public links. Remount it (via `key`) each time it opens. */
+export function AssociationLinksDialog({ association, open, onOpenChange, onSaved }: AssociationLinksDialogProps) {
+  const editLinksFn = useServerFn(editAssociationLinks)
+  const [initial] = useState(() => valuesOf(association?.links ?? EMPTY_ASSOCIATION_LINKS))
+  const [values, setValues] = useState(initial)
+  const [errors, setErrors] = useState<Errors>({})
+  const dirty = ASSOCIATION_LINK_FIELDS.some(({ key }) => values[key].trim() !== initial[key].trim())
+
+  if (!association) return null
+  const { id, name } = association
+
+  function revalidate(key: AssociationLink) {
+    if (!errors[key]) return
+    setErrors((current) => ({ ...current, [key]: errorFor(key, values[key]) }))
+  }
+
+  async function submit() {
+    const nextErrors = validate(values)
+    setErrors(nextErrors)
+    const firstInvalid = ASSOCIATION_LINK_FIELDS.find(({ key }) => nextErrors[key])
+    if (firstInvalid) {
+      document.getElementById(fieldId(id, firstInvalid.key))?.focus()
+      return
     }
+    const links: AssociationLinks = { ...EMPTY_ASSOCIATION_LINKS }
+    for (const { key } of ASSOCIATION_LINK_FIELDS) links[key] = values[key].trim() || null
+    try {
+      await editLinksFn({ data: { id, links } })
+    } catch (error) {
+      console.error(error)
+      throw new Error(
+        errorHasCode(error, "NOT_FOUND")
+          ? "This association no longer exists."
+          : "The links could not be saved. Check the values and your permissions.",
+        { cause: error }
+      )
+    }
+    await onSaved()
+    onOpenChange(false)
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto border-border p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
-          <p className="font-mono text-[10px] font-medium tracking-[0.13em] text-muted-foreground">
-            WEB · ASSOCIATION LINKS
-          </p>
-          <DialogTitle className="text-xl font-semibold tracking-[-0.03em]">{association.name} links</DialogTitle>
-          <DialogDescription>Manage the public contact and social profiles for this association.</DialogDescription>
-        </DialogHeader>
-        <form className="px-6 py-5" onSubmit={(event) => void submit(event)}>
-          <div className="grid gap-4 md:grid-cols-2">
-            {ASSOCIATION_LINK_FIELDS.map((field) => {
-              const Icon = field.icon
-              return (
-                <Field key={field.key}>
-                  <FieldLabel htmlFor={`association-${association.id}-${field.key}`}>
-                    <Icon className="size-3.5" /> {field.label}
-                  </FieldLabel>
-                  <Input
-                    id={`association-${association.id}-${field.key}`}
-                    type={field.key === "email" ? "email" : "url"}
-                    value={links[field.key] ?? ""}
-                    placeholder={field.placeholder}
-                    maxLength={2_048}
-                    onChange={(event) =>
-                      setLinks((current) => ({ ...current, [field.key]: event.target.value || null }))
-                    }
-                  />
-                </Field>
-              )
-            })}
-          </div>
-          {error && <FieldError className="mt-4">{error}</FieldError>}
-          <DialogFooter className="-mx-6 -mb-5 mt-5 flex-row justify-end border-t border-border bg-muted/50 px-6 py-4">
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Save links
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={`${name} links`}
+      description="Manage the public contact and social profiles for this association."
+      noun="association"
+      dirty={dirty}
+      submitLabel="Save links"
+      onSubmit={submit}
+    >
+      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+        {ASSOCIATION_LINK_FIELDS.map(({ key, label, placeholder }) => {
+          const inputId = fieldId(id, key)
+          const error = errors[key]
+          return (
+            <FormField key={key} label={label} htmlFor={inputId} error={error}>
+              <Input
+                id={inputId}
+                type={key === "email" ? "email" : "url"}
+                inputMode={key === "email" ? "email" : "url"}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={placeholder}
+                maxLength={ASSOCIATION_LINK_MAX_LENGTH}
+                value={values[key]}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? fieldHintId(inputId) : undefined}
+                onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))}
+                onBlur={() => revalidate(key)}
+                className={cn("h-9", fieldControl)}
+              />
+            </FormField>
+          )
+        })}
+      </div>
+    </FormDialog>
   )
 }

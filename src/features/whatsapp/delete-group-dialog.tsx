@@ -1,74 +1,52 @@
-import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { LoaderCircle, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/primitives"
+import { appToast } from "@/components/shell"
 import { deleteWhatsappGroup } from "@/features/whatsapp/groups.functions"
 import { errorMessage } from "@/lib/errors"
 
-export function DeleteGroupDialog({ id, title }: { id: number; title: string }) {
-  const router = useRouter()
+type DeleteWhatsappGroupDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  group: { id: number; title: string }
+  /** Reloads the route data once the group is gone. */
+  onDeleted: () => Promise<void>
+  /** Where focus goes once the dialog closes, as the trigger's row is gone after a delete. */
+  finalFocus?: () => HTMLElement | null
+}
+
+/** "Delete {title}?". */
+export function DeleteWhatsappGroupDialog({
+  open,
+  onOpenChange,
+  group,
+  onDeleted,
+  finalFocus,
+}: DeleteWhatsappGroupDialogProps) {
   const deleteGroupFn = useServerFn(deleteWhatsappGroup)
-  const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
 
   async function remove() {
-    setPending(true)
-    setError("")
     try {
-      await deleteGroupFn({ data: { id } })
-      toast.success(`${title} deleted.`)
-      setOpen(false)
-      await router.invalidate({ sync: true })
+      await deleteGroupFn({ data: { id: group.id } })
     } catch (cause) {
       console.error(cause)
-      setError(errorMessage(cause, "The group could not be deleted. Check your permissions and try again."))
-    } finally {
-      setPending(false)
+      throw new Error(errorMessage(cause, "The group could not be deleted. Check your permissions and try again."), {
+        cause,
+      })
     }
+    await onDeleted()
+    appToast.success(`${group.title} deleted.`)
   }
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (pending) return
-        setOpen(nextOpen)
-        if (!nextOpen) setError("")
-      }}
-    >
-      <AlertDialogTrigger render={<Button variant="destructive" size="icon-sm" />}>
-        <Trash2 />
-        <span className="sr-only">Delete {title}</span>
-      </AlertDialogTrigger>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete {title}?</AlertDialogTitle>
-          <AlertDialogDescription>This removes the group record. This action cannot be undone.</AlertDialogDescription>
-        </AlertDialogHeader>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={pending} onClick={() => void remove()}>
-            {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      onOpenChange={onOpenChange}
+      title={`Delete ${group.title}?`}
+      description="The group record is removed. This cannot be undone."
+      confirmLabel="Delete group"
+      onConfirm={remove}
+      finalFocus={finalFocus}
+    />
   )
 }

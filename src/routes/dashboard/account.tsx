@@ -8,5 +8,5 @@ export const Route = createFileRoute("/dashboard/account")({
 
 function AccountRoute() {
   const { roles, session } = Route.useRouteContext()
-  return <AccountPage initialSession={session} telegramRoles={roles} />
+  return <AccountPage initialSession={session} roles={roles} />
 }

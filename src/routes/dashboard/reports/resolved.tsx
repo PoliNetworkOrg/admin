@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
-import { GroupLinkReportsPage } from "@/features/group-link-reports/reports-page"
+import { TableSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
+import { ReportsPage } from "@/features/group-link-reports/reports-page"
 import { getResolvedGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 
 export const Route = createFileRoute("/dashboard/reports/resolved")({
   loader: () => getResolvedGroupLinkReports(),
-  pendingComponent: () => <DataPageSkeleton columns={5} />,
-  component: ResolvedGroupLinkReportsRoute,
+  pendingComponent: () => (
+    <PageContent>
+      <TableSkeleton columns={5} label="Loading closed reports…" />
+    </PageContent>
+  ),
+  component: ClosedReportsRoute,
 })
 
-function ResolvedGroupLinkReportsRoute() {
-  const reports = Route.useLoaderData()
-  return <GroupLinkReportsPage loadedReports={reports} showActions={false} />
+function ClosedReportsRoute() {
+  return <ReportsPage status="closed" reports={Route.useLoaderData()} />
 }

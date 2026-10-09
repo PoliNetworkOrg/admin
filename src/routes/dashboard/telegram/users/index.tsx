@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { TableSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { TelegramUsersPage } from "@/features/telegram/users-page"
 import { getTelegramUsers } from "@/features/telegram/users.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/")({
   loader: () => getTelegramUsers(),
-  pendingComponent: () => <DataPageSkeleton columns={4} />,
+  pendingComponent: () => (
+    <PageContent>
+      <TableSkeleton columns={2} label="Loading users…" />
+    </PageContent>
+  ),
   component: TelegramUsersRoute,
 })
 

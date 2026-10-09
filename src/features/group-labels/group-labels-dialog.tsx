@@ -1,128 +1,97 @@
 import { useServerFn } from "@tanstack/react-start"
-import { LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
+import { useState } from "react"
 
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { isSameGroupLabel } from "@/features/group-labels/group-labels.constants"
+import { FormDialog, InlineAlert, LabelTreeSelector } from "@/components/primitives"
+import { appToast } from "@/components/shell"
 import { tagGroup, untagGroup } from "@/features/group-labels/group-labels.functions"
-import { LabelTreeSelector } from "@/features/group-labels/label-tree-selector"
-import type { TgGroupLabel } from "@/lib/api/types"
-import { errorMessage } from "@/lib/errors"
+import type { GroupLabel } from "@/features/group-labels/types"
+import type { GroupWithLabels } from "@/lib/api/types"
 
-/** Works for both Telegram and WhatsApp groups; the platform prevents ID collisions. */
+type GroupLabelsDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Telegram and WhatsApp ids are independent sequences, so the platform is part of the identity. */
+  group: { type: GroupWithLabels["type"]; id: number; title: string }
+  allLabels: GroupLabel[]
+  /** The group's saved label paths. */
+  currentLabels: string[]
+  /** Reloads the route data; runs after a save, including a partial one. */
+  onSaved: () => Promise<void>
+}
+
+/** "Edit labels": picks the group's labels; Save is enabled only once the set changes. */
 export function GroupLabelsDialog({
+  open,
+  onOpenChange,
   group,
   allLabels,
   currentLabels,
-  onClose,
   onSaved,
-}: {
-  group: { id: number; title: string; type: "tg" | "wa" } | null
-  allLabels: TgGroupLabel[]
-  currentLabels: TgGroupLabel[]
-  onClose: () => void
-  onSaved: () => Promise<void>
-}) {
+}: GroupLabelsDialogProps) {
   const tagGroupFn = useServerFn(tagGroup)
   const untagGroupFn = useServerFn(untagGroup)
-  const [selected, setSelected] = useState<TgGroupLabel[]>(currentLabels)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState("")
-  const open = group !== null
+  const [selected, setSelected] = useState(currentLabels)
+  const [partialError, setPartialError] = useState<string | null>(null)
+  const [openedFor, setOpenedFor] = useState<string | null>(null)
 
-  // Resets the working selection only when a different group is opened, not on every relations refresh
-  // (currentLabels is intentionally excluded: it gets a new array identity on every parent render) — and
-  // keyed on the group's id rather than the `group` object itself, since every call site constructs a new
-  // `{ id, title }` literal inline on every render, which would otherwise re-fire this effect (discarding
-  // any in-progress, unsaved selection) on every unrelated re-render while the dialog is open.
-  useEffect(() => {
-    if (group) {
+  // Start from the group's saved labels every time the dialog opens, not on every refresh while it is open.
+  const session = open ? `${group.type}:${group.id}` : null
+  if (session !== openedFor) {
+    setOpenedFor(session)
+    if (session !== null) {
       setSelected(currentLabels)
-      setError("")
+      setPartialError(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group?.id])
+  }
 
-  const added = selected.filter((label) => !currentLabels.some((current) => isSameGroupLabel(current, label)))
-  const removed = currentLabels.filter((label) => !selected.some((next) => isSameGroupLabel(next, label)))
+  const added = selected.filter((label) => !currentLabels.includes(label))
+  const removed = currentLabels.filter((label) => !selected.includes(label))
   const dirty = added.length > 0 || removed.length > 0
 
-  function toggleManyLabels(labels: TgGroupLabel[], select: boolean) {
-    setSelected((current) => {
-      if (select) {
-        const toAdd = labels.filter((label) => !current.some((existing) => isSameGroupLabel(existing, label)))
-        return [...current, ...toAdd]
-      }
-      return current.filter((existing) => !labels.some((label) => isSameGroupLabel(existing, label)))
-    })
+  function toggleMany(labels: GroupLabel[], select: boolean) {
+    const paths = labels.map((label) => label.label)
+    setSelected((previous) =>
+      select
+        ? [...previous, ...paths.filter((path) => !previous.includes(path))]
+        : previous.filter((path) => !paths.includes(path))
+    )
   }
 
   async function save() {
-    if (!group || !dirty || pending) return
-    setPending(true)
-    setError("")
-    try {
-      const results = await Promise.allSettled([
-        ...added.map((label) => tagGroupFn({ data: { groupId: group.id, type: group.type, label: label.label } })),
-        ...removed.map((label) => untagGroupFn({ data: { groupId: group.id, type: group.type, label: label.label } })),
-      ])
-      const failed = results.filter((result) => result.status === "rejected").length
-      if (failed > 0) {
-        // Some of these may have already applied even though others failed — refresh so the underlying
-        // data (and this dialog, next time it opens) reflects what's actually saved, instead of silently
-        // implying nothing happened.
-        await onSaved()
-        setError(
-          `${failed} of ${results.length} label change(s) couldn't be saved — some may have already applied. Check the group's labels and try again.`
-        )
-        return
-      }
-      toast.success(`Labels updated for ${group.title}.`)
-      onClose()
+    setPartialError(null)
+    const ref = { groupId: group.id, type: group.type }
+    const results = await Promise.allSettled([
+      ...added.map((label) => tagGroupFn({ data: { ...ref, label } })),
+      ...removed.map((label) => untagGroupFn({ data: { ...ref, label } })),
+    ])
+    const failed = results.filter((result) => result.status === "rejected").length
+    if (failed > 0) {
+      // Some changes may have applied: reload so the table, and this dialog next time, show what is saved.
       await onSaved()
-    } catch (cause) {
-      console.error(cause)
-      setError(errorMessage(cause, "The group labels could not be updated. Check your permissions and try again."))
-    } finally {
-      setPending(false)
+      setPartialError(
+        `${failed} of ${results.length} label change(s) couldn't be saved — some may have already applied. Check the group's labels and try again.`
+      )
+      return
     }
+    await onSaved()
+    appToast.success(`Labels updated for ${group.title}.`)
+    onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !pending && !nextOpen && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit labels</DialogTitle>
-          <DialogDescription>{group ? `Choose the labels that apply to ${group.title}.` : null}</DialogDescription>
-        </DialogHeader>
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Labels</p>
-          {allLabels.length ? (
-            <LabelTreeSelector allLabels={allLabels} selected={selected} onToggleMany={toggleManyLabels} />
-          ) : (
-            <p className="text-sm text-muted-foreground">No labels have been created yet.</p>
-          )}
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <DialogFooter>
-          <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="button" disabled={pending || !dirty} onClick={() => void save()}>
-            {pending && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />}
-            Save labels
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Edit labels"
+      description={`Choose the labels that apply to ${group.title}.`}
+      noun="group"
+      dirty={dirty}
+      canSubmit={dirty}
+      submitLabel="Save labels"
+      onSubmit={save}
+      notice={partialError && <InlineAlert tone="warning">{partialError}</InlineAlert>}
+    >
+      <LabelTreeSelector allLabels={allLabels} selected={selected} onToggleMany={toggleMany} />
+    </FormDialog>
   )
 }

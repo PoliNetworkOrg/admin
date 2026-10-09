@@ -1,425 +1,294 @@
 import { useSortable } from "@dnd-kit/react/sortable"
-import {
-  ExternalLink,
-  GripVertical,
-  Languages,
-  Link as LinkIcon,
-  LoaderCircle,
-  MoreHorizontal,
-  Pencil,
-  Save,
-  Trash2,
-  Upload,
-  X,
-} from "lucide-react"
-import { type ChangeEvent, useEffect, useId, useState } from "react"
-import { toast } from "sonner"
+import { ExternalLink, FolderInput, GripVertical, Trash2 } from "lucide-react"
+import { useReducedMotion } from "motion/react"
+import { useEffect, useRef, useState } from "react"
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+  ConfirmDialog,
+  IconButton,
+  InlineEditCard,
+  InlineEditInput,
+  InlineEditTextarea,
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+  StatusBadge,
+  TranslationGroup,
+  TranslationPanel,
+  TranslationText,
+  Unset,
+} from "@/components/primitives"
 import { cn } from "@/lib/utils"
 
-import { isProjectCategory, PROJECT_CATEGORIES, PROJECT_LOGO_MAX_SIZE, PROJECT_LOGO_TYPES } from "./projects.constants"
-import type { Project, ProjectCategory, ProjectFormValues } from "./types"
+import { WebLogo, WebLogoUpload } from "../web/logo-upload"
+import { focusOnFinePointer } from "../web/web-card"
+import {
+  isProjectCategory,
+  PROJECT_CATEGORIES,
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_LINK_MAX_LENGTH,
+  PROJECT_LOGO_RULES,
+  PROJECT_TITLE_MAX_LENGTH,
+} from "./projects.constants"
+import type { Project, ProjectCategory, ProjectForm } from "./types"
+
+/** The open inline edit, owned by the page so only one card edits at a time. */
+export type ProjectEditSession = {
+  values: ProjectForm
+  onChange: (values: ProjectForm) => void
+  dirty: boolean
+  valid: boolean
+  saving: boolean
+  error?: string
+  /** Logo validation message, shown in the card footer. */
+  message?: string
+  /** Shown under the link field. */
+  linkError?: string
+  onSave: () => void
+  onCancel: () => void
+  onLinkBlur: () => void
+  onLogoError: (message: string | null) => void
+}
 
 type ProjectCardProps = {
   project: Project
-  draft: boolean
-  initialEditActive: boolean
-  sortableIndex: number
-  onCancelDraft: () => void
-  onDelete: () => Promise<boolean>
-  onCategoryChange: (category: ProjectCategory) => Promise<void>
-  onSave: (values: ProjectFormValues) => Promise<boolean>
+  /** Position within the active category, for sorting. */
+  index: number
+  draft?: boolean
+  canWrite: boolean
+  session: ProjectEditSession | null
+  onEdit: () => void
+  /** Toasts its own outcome; never throws. */
+  onMove: (category: ProjectCategory) => Promise<void>
+  /** Throws to keep the confirm dialog open with the error. */
+  onDelete: () => Promise<void>
 }
 
-function initials(value: string) {
-  return value
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("")
-}
+const SORT_TRANSITION = { duration: 160, easing: "cubic-bezier(0.45, 0, 0.2, 1)", idle: false }
 
 export function ProjectCard({
   project,
-  draft,
-  initialEditActive,
-  sortableIndex,
-  onCancelDraft,
+  index,
+  draft = false,
+  canWrite,
+  session,
+  onEdit,
+  onMove,
   onDelete,
-  onCategoryChange,
-  onSave,
 }: ProjectCardProps) {
-  const { ref, handleRef, isDragging } = useSortable({
+  const reduceMotion = useReducedMotion()
+  const editing = session !== null
+  // A move writes the whole record with its old values, so edit, delete and drag wait for it to finish.
+  const [moving, setMoving] = useState(false)
+  const { ref, handleRef, isDragging, isDropping } = useSortable({
     id: project.id,
-    index: sortableIndex,
+    index,
     group: project.category,
-    disabled: draft,
+    disabled: draft || editing || moving || !canWrite,
+    transition: reduceMotion ? null : SORT_TRANSITION,
   })
-  const logoInputId = useId()
-  const [editing, setEditing] = useState(initialEditActive)
-  const [title, setTitle] = useState(project.title)
-  const [descriptionIt, setDescriptionIt] = useState(project.descriptionIt)
-  const [descriptionEn, setDescriptionEn] = useState(project.descriptionEn)
-  const [link, setLink] = useState(project.link ?? "")
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const canSave = Boolean(title.trim() && descriptionIt.trim() && descriptionEn.trim())
+  const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    return () => {
-      if (logoPreview) URL.revokeObjectURL(logoPreview)
-    }
-  }, [logoPreview])
+    if (editing) focusOnFinePointer(titleRef.current)
+  }, [editing])
 
-  function resetFields() {
-    setTitle(project.title)
-    setDescriptionIt(project.descriptionIt)
-    setDescriptionEn(project.descriptionEn)
-    setLink(project.link ?? "")
-    setLogoFile(null)
-    setLogoPreview(null)
+  async function move(category: ProjectCategory) {
+    setMoving(true)
+    await onMove(category)
+    setMoving(false)
   }
 
-  function cancelEdit() {
-    if (draft) {
-      onCancelDraft()
-      return
-    }
-    resetFields()
-    setEditing(false)
-  }
+  const handle = (
+    <button
+      ref={handleRef}
+      type="button"
+      aria-label={`Reorder ${project.title}`}
+      className="absolute top-4 left-0 grid h-10 w-4 cursor-grab touch-none place-items-center rounded-(--pn-r-1) text-(--pn-fg-subtle) transition-[color] duration-120 hover:text-(--pn-fg) focus-visible:text-(--pn-fg) after:absolute after:inset-y-0 after:left-0 after:w-9 active:cursor-grabbing"
+    >
+      <GripVertical aria-hidden className="size-4" />
+    </button>
+  )
 
-  function selectLogo(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (!PROJECT_LOGO_TYPES.some((type) => type === file.type)) {
-      toast.error("Choose an SVG, PNG, or JPEG logo.")
-      event.target.value = ""
-      return
-    }
-    if (file.size > PROJECT_LOGO_MAX_SIZE) {
-      toast.error("The logo must be no larger than 1 MB.")
-      event.target.value = ""
-      return
-    }
-    setLogoFile(file)
-    setLogoPreview(URL.createObjectURL(file))
-  }
+  const viewHeader = (
+    <div className="flex h-10 min-w-0 items-center gap-3">
+      <WebLogo src={project.logo} name={project.title} fallback="PR" />
+      <p title={project.title} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
+        {project.title}
+      </p>
+    </div>
+  )
 
-  async function save() {
-    if (saving || !canSave) return
-    setSaving(true)
-    try {
-      const saved = await onSave({
-        title: title.trim(),
-        descriptionIt: descriptionIt.trim(),
-        descriptionEn: descriptionEn.trim(),
-        link: link.trim() || null,
-        logo: project.logo,
-        logoFile,
-        category: project.category,
-      })
-      if (saved) {
-        setLogoFile(null)
-        setLogoPreview(null)
-        setEditing(false)
-      }
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function remove() {
-    setDeleting(true)
-    try {
-      if (await onDelete()) setDeleteOpen(false)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  const logo = logoPreview ?? project.logo
-
-  return (
+  const view = (
     <>
-      <Card
-        ref={(element) => ref(element)}
-        className={cn("transition-opacity", isDragging && "relative z-10 opacity-60")}
-      >
-        <CardHeader className="grid-cols-[auto_1fr_auto] gap-x-3 gap-y-1">
-          <Button
-            ref={(element) => handleRef(element)}
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            className="cursor-grab self-center text-muted-foreground active:cursor-grabbing"
-            aria-label={`Reorder ${project.title}`}
-            disabled={draft || editing}
+      <p className="text-[13px] leading-5">
+        {project.link ? (
+          <a
+            href={project.link}
+            target="_blank"
+            rel="noreferrer"
+            title={project.link}
+            className="inline-flex max-w-full items-center gap-1 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
           >
-            <GripVertical />
-          </Button>
-          <CardTitle className="flex min-w-0 items-center gap-3 self-center text-lg">
-            {editing ? (
-              <>
-                <label
-                  htmlFor={logoInputId}
-                  className="group relative grid size-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg border border-input bg-background transition-colors hover:bg-muted"
-                >
-                  <ProjectLogo logo={logo} title={title} />
-                  <span className="absolute inset-0 grid place-items-center bg-background/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                    <Upload className="size-4" />
-                  </span>
-                  <Input
-                    id={logoInputId}
-                    type="file"
-                    aria-label="Project logo"
-                    accept="image/svg+xml,image/png,image/jpeg"
-                    className="sr-only"
-                    onChange={selectLogo}
-                  />
-                </label>
-                <Input
-                  aria-label="Project title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="min-w-0 text-base font-medium"
-                  maxLength={160}
-                  required
-                />
-              </>
-            ) : (
-              <>
-                <ProjectLogo logo={project.logo} title={project.title} />
-                <span className="truncate">{project.title}</span>
-              </>
-            )}
-          </CardTitle>
-          <CardAction className="flex items-center gap-1.5">
-            {editing ? (
-              <>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  onClick={() => void save()}
-                  disabled={saving || !canSave}
-                  aria-label={`Save ${title}`}
-                >
-                  {saving ? <LoaderCircle className="animate-spin-slow" /> : <Save />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={cancelEdit}
-                  disabled={saving}
-                  aria-label="Cancel editing"
-                >
-                  <X />
-                </Button>
-              </>
-            ) : (
-              <>
-                <ProjectCategoryMenu category={project.category} onCategoryChange={onCategoryChange} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => {
-                    resetFields()
-                    setEditing(true)
-                  }}
-                  aria-label={`Edit ${project.title}`}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  onClick={() => setDeleteOpen(true)}
-                  aria-label={`Delete ${project.title}`}
-                >
-                  <Trash2 />
-                </Button>
-              </>
-            )}
-          </CardAction>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <ProjectField label="Link" icon={<LinkIcon />} className="md:col-span-2">
-            {editing ? (
-              <Input
-                type="url"
-                aria-label="Project link"
-                value={link}
-                onChange={(event) => setLink(event.target.value)}
-                maxLength={2048}
-                placeholder="https://…"
-              />
-            ) : project.link ? (
-              <a
-                href={project.link}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-h-10 items-center gap-2 break-all rounded-lg bg-muted/60 px-3 py-2 text-sm text-primary hover:underline"
-              >
-                {project.link} <ExternalLink className="size-3.5 shrink-0" />
-              </a>
-            ) : (
-              <p className="min-h-10 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                No link provided
-              </p>
-            )}
-          </ProjectField>
-          <ProjectField label="Italian" icon={<Languages />}>
-            {editing ? (
-              <Textarea
-                aria-label="Italian project description"
-                value={descriptionIt}
-                onChange={(event) => setDescriptionIt(event.target.value)}
-                className="min-h-28"
-                maxLength={5000}
-                required
-              />
-            ) : (
-              <p className="min-h-28 whitespace-pre-wrap rounded-lg bg-muted/60 px-3 py-2 text-sm leading-6">
-                {project.descriptionIt}
-              </p>
-            )}
-          </ProjectField>
-          <ProjectField label="English" icon={<Languages />}>
-            {editing ? (
-              <Textarea
-                aria-label="English project description"
-                value={descriptionEn}
-                onChange={(event) => setDescriptionEn(event.target.value)}
-                className="min-h-28"
-                maxLength={5000}
-                required
-              />
-            ) : (
-              <p className="min-h-28 whitespace-pre-wrap rounded-lg bg-muted/60 px-3 py-2 text-sm leading-6">
-                {project.descriptionEn}
-              </p>
-            )}
-          </ProjectField>
-        </CardContent>
-      </Card>
-
-      <AlertDialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20">
-              <Trash2 />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Delete project</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{project.title}</strong>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={deleting} onClick={() => void remove()}>
-              {deleting && <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />} Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <span className="truncate">{project.link}</span>
+            <ExternalLink aria-hidden className="size-3 shrink-0" />
+          </a>
+        ) : (
+          <Unset />
+        )}
+      </p>
+      <TranslationGroup>
+        <TranslationPanel lang="it">
+          <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
+        </TranslationPanel>
+        <TranslationPanel lang="en">
+          <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
+        </TranslationPanel>
+      </TranslationGroup>
     </>
   )
-}
 
-function ProjectLogo({ logo, title }: { logo: string | null; title: string }) {
-  if (logo) return <img src={logo} alt="" className="size-11 shrink-0 rounded-lg object-contain" />
-  return (
-    <span
-      className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-primary"
-      aria-hidden="true"
-    >
-      {initials(title) || "PR"}
-    </span>
+  const edit = session && (
+    <>
+      <div className="flex h-10 min-w-0 items-center gap-3">
+        <WebLogoUpload
+          src={session.values.logo}
+          name={session.values.title}
+          fallback="PR"
+          rules={PROJECT_LOGO_RULES}
+          disabled={session.saving}
+          onChange={({ file, preview }) => session.onChange({ ...session.values, logo: preview, logoFile: file })}
+          onError={session.onLogoError}
+        />
+        <InlineEditInput
+          ref={titleRef}
+          label="Project title"
+          placeholder="Project title"
+          value={session.values.title}
+          maxLength={PROJECT_TITLE_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, title: event.target.value })}
+        />
+        {draft && <StatusBadge tone="warning">Draft</StatusBadge>}
+      </div>
+      <InlineEditInput
+        label="Project link"
+        type="url"
+        inputMode="url"
+        placeholder="https://…"
+        value={session.values.link}
+        maxLength={PROJECT_LINK_MAX_LENGTH}
+        onChange={(event) => session.onChange({ ...session.values, link: event.target.value })}
+        onBlur={session.onLinkBlur}
+        error={session.linkError}
+      />
+      <TranslationGroup>
+        <TranslationPanel lang="it" editing>
+          <InlineEditTextarea
+            bare
+            label="Italian description"
+            lang="it"
+            placeholder="Descrizione in italiano"
+            value={session.values.descriptionIt}
+            maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionIt: event.target.value })}
+          />
+        </TranslationPanel>
+        <TranslationPanel lang="en" editing>
+          <InlineEditTextarea
+            bare
+            label="English description"
+            lang="en"
+            placeholder="Description in English"
+            value={session.values.descriptionEn}
+            maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
+            onChange={(event) => session.onChange({ ...session.values, descriptionEn: event.target.value })}
+          />
+        </TranslationPanel>
+      </TranslationGroup>
+    </>
   )
-}
 
-function ProjectField({
-  label,
-  icon,
-  className,
-  children,
-}: {
-  label: string
-  icon: React.ReactNode
-  className?: string
-  children: React.ReactNode
-}) {
+  const moveMenu = (
+    <Menu>
+      <MenuTrigger
+        render={
+          <IconButton label="Move project" ariaLabel={`Move ${project.title}`} icon={FolderInput} pending={moving} />
+        }
+      />
+      <MenuContent className="w-48">
+        <MenuGroup>
+          <MenuLabel>Move to</MenuLabel>
+          <MenuRadioGroup
+            value={project.category}
+            onValueChange={(value: string) => {
+              if (isProjectCategory(value) && value !== project.category) void move(value)
+            }}
+          >
+            {PROJECT_CATEGORIES.map((category) => (
+              <MenuRadioItem key={category.value} value={category.value}>
+                {category.label}
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
+  )
+
+  const deleteButton = (
+    <ConfirmDialog
+      title="Delete project?"
+      description={`${project.title} is removed from the website. This cannot be undone.`}
+      confirmLabel="Delete project"
+      onConfirm={onDelete}
+      trigger={
+        <IconButton
+          label="Delete project"
+          ariaLabel={`Delete ${project.title}`}
+          icon={Trash2}
+          tone="danger"
+          disabled={moving}
+        />
+      }
+    />
+  )
+
   return (
-    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <Badge variant="secondary" className="w-fit gap-1.5">
-        {icon} {label}
-      </Badge>
-      {children}
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-(--pn-r-4)",
+        (isDragging || isDropping) && "z-10 scale-[1.01] opacity-90 shadow-(--pn-shadow-float)"
+      )}
+    >
+      <InlineEditCard
+        className="relative"
+        readOnly={!canWrite}
+        editing={editing}
+        onEdit={onEdit}
+        onCancel={session?.onCancel ?? noop}
+        onSave={session?.onSave ?? noop}
+        dirty={session?.dirty ?? false}
+        valid={session?.valid ?? false}
+        saving={session?.saving ?? false}
+        error={session?.error}
+        message={session?.message}
+        editLabel="Edit project"
+        editAriaLabel={`Edit ${project.title}`}
+        editDisabled={moving}
+        handle={handle}
+        leadingActions={moveMenu}
+        deleteAction={deleteButton}
+        viewHeader={viewHeader}
+        view={view}
+        edit={edit}
+      />
     </div>
   )
 }
 
-function ProjectCategoryMenu({
-  category,
-  onCategoryChange,
-}: {
-  category: ProjectCategory
-  onCategoryChange: (category: ProjectCategory) => Promise<void>
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button type="button" variant="outline" size="icon-sm" aria-label="Move project to another category" />}
-      >
-        <MoreHorizontal />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuRadioGroup
-          value={category}
-          onValueChange={(value) => {
-            if (isProjectCategory(value)) void onCategoryChange(value)
-          }}
-        >
-          {PROJECT_CATEGORIES.map((item) => (
-            <DropdownMenuRadioItem key={item.value} value={item.value}>
-              {item.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
+function noop() {}

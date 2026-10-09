@@ -3,6 +3,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react"
 import { z } from "zod"
 
 import { type AdminSession, auth, useSession } from "@/lib/auth"
+import { copyText } from "@/lib/clipboard"
 
 const storageKey = "linktg"
 
@@ -183,7 +184,7 @@ export function useTelegramLink(initialSession: AdminSession) {
   async function copyCode() {
     if (!savedLink) return
     try {
-      await navigator.clipboard.writeText(savedLink.code)
+      await copyText(savedLink.code)
       setNotice({ kind: "success", text: "Code copied to the clipboard." })
     } catch (error) {
       console.error(error)
@@ -210,7 +211,7 @@ export function useTelegramLink(initialSession: AdminSession) {
       await router.navigate({ to: "/login", replace: true })
     } catch (error) {
       console.error(error)
-      setNotice({ kind: "error", text: "Could not sign out. Please try again." })
+      setNotice({ kind: "error", text: "Couldn't sign out. Try again." })
       setLoggingOut(false)
     }
   }

@@ -1,18 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DataPageSkeleton } from "@/components/loading-skeleton"
+import { TableSkeleton } from "@/components/primitives"
+import { PageContent } from "@/components/shell"
 import { TelegramGrantsPage } from "@/features/telegram/grants-page"
-import { getTelegramGrants } from "@/features/telegram/grants.functions"
-import { hasWriteAdminRole } from "@/server/authorization"
+import { getTelegramGrantsWithGrantors } from "@/features/telegram/grants.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/grants")({
-  loader: () => getTelegramGrants(),
-  pendingComponent: () => <DataPageSkeleton columns={6} withTabs />,
+  loader: () => getTelegramGrantsWithGrantors(),
+  pendingComponent: () => (
+    <PageContent>
+      <TableSkeleton columns={6} label="Loading grants…" />
+    </PageContent>
+  ),
   component: TelegramGrantsRoute,
 })
 
 function TelegramGrantsRoute() {
-  const grants = Route.useLoaderData()
-  const { roles } = Route.useRouteContext()
-  return <TelegramGrantsPage grants={grants} canWrite={hasWriteAdminRole(roles)} />
+  return <TelegramGrantsPage grants={Route.useLoaderData()} />
 }

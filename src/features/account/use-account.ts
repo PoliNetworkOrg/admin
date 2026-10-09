@@ -1,230 +1,139 @@
-import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { type AdminSession, auth, useSession } from "@/lib/auth"
 
 import { uploadProfilePicture } from "./account.functions"
-import type { AccountNotice, ActiveSession, Passkey } from "./types"
+import { isValidProfilePicture } from "./account.validation"
+import type { ActiveSession, Passkey } from "./types"
 
-export function useAccount(initialSession: AdminSession) {
-  const router = useRouter()
-  const uploadProfilePictureFn = useServerFn(uploadProfilePicture)
-  const sessionQuery = useSession()
-  const session = sessionQuery.data ?? initialSession
-  const user = session.user
-  const [name, setName] = useState(user.name ?? "")
+/** `stale` keeps the last loaded lists on screen after a failed refresh; `error` means nothing has loaded yet. */
+export type SecurityState = "loading" | "ready" | "stale" | "error"
+
+/** better-auth client results carry failures in `error` instead of throwing. */
+function assertOk<Failure>(result: { error: Failure | null }, message: string) {
+  if (result.error) {
+    console.error(result.error)
+    throw new Error(message)
+  }
+}
+
+/**
+ * Passkeys and sessions from the better-auth client. The first load shows a skeleton; `reload` after a mutation
+ * keeps the list on screen; `retry` keeps the error on screen with a pending Retry until it settles. Only the latest
+ * load publishes, so an older response settling last can't overwrite a newer list.
+ */
+function useSecurityData() {
+  const [state, setState] = useState<SecurityState>("loading")
+  const [retrying, setRetrying] = useState(false)
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [sessions, setSessions] = useState<ActiveSession[]>([])
-  const [securityLoading, setSecurityLoading] = useState(true)
-  const [securityRefreshing, setSecurityRefreshing] = useState(false)
-  const [securityError, setSecurityError] = useState("")
-  const [busy, setBusy] = useState<string | null>(null)
-  const [notice, setNotice] = useState<AccountNotice>(null)
+  const latestLoad = useRef(0)
 
-  const sortedSessions = useMemo(
-    () => sessions.toSorted((item) => (item.id === session.session.id ? -1 : 0)),
-    [session.session.id, sessions]
-  )
-
-  const refreshSecurityData = useCallback(async (isRetry = false) => {
-    if (isRetry) setSecurityRefreshing(true)
+  const reload = useCallback(async () => {
+    const load = ++latestLoad.current
     try {
       const [passkeyResult, sessionResult] = await Promise.all([auth.passkey.listUserPasskeys(), auth.listSessions()])
-      if (passkeyResult.error || sessionResult.error) {
-        if (passkeyResult.error) console.error(passkeyResult.error)
-        if (sessionResult.error) console.error(sessionResult.error)
-        setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
-        return false
-      }
+      assertOk(passkeyResult, "Couldn't load passkeys.")
+      assertOk(sessionResult, "Couldn't load sessions.")
+      if (load !== latestLoad.current) return
       setPasskeys(passkeyResult.data ?? [])
       setSessions(sessionResult.data ?? [])
-      setSecurityError("")
-      return true
+      setState("ready")
     } catch (error) {
       console.error(error)
-      setSecurityError("Could not load passkeys and active sessions. Your existing security data is still shown.")
-      return false
-    } finally {
-      setSecurityLoading(false)
-      if (isRetry) setSecurityRefreshing(false)
+      if (load !== latestLoad.current) return
+      setState((current) => (current === "ready" || current === "stale" ? "stale" : "error"))
     }
   }, [])
 
   useEffect(() => {
-    void refreshSecurityData()
-  }, [refreshSecurityData])
+    void reload()
+  }, [reload])
 
-  useEffect(() => setName(user.name ?? ""), [user.name])
-
-  async function updateName(event: React.FormEvent) {
-    event.preventDefault()
-    setBusy("name")
-    setNotice(null)
-    try {
-      const result = await auth.updateUser({ name: name.trim() })
-      if (result.error) {
-        console.error(result.error)
-        setNotice({ type: "error", text: result.error.message ?? "Could not update your name." })
-      } else {
-        await sessionQuery.refetch()
-        setNotice({ type: "success", text: "Profile name updated." })
-      }
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not update your name." })
-    } finally {
-      setBusy(null)
-    }
+  async function retry() {
+    setRetrying(true)
+    await reload()
+    setRetrying(false)
   }
 
-  async function uploadImage(file?: File) {
-    if (!file) return
-    setNotice(null)
-    if (file.size > 1024 * 1024 || !["image/png", "image/jpeg"].includes(file.type)) {
-      setNotice({ type: "error", text: "Use a PNG or JPEG image smaller than 1 MB." })
-      return
-    }
+  return { state, retrying, retry, reload, passkeys, sessions }
+}
 
-    setBusy("image")
+/**
+ * Account data and mutations. Each mutation throws an `Error` carrying its failure copy, so confirm dialogs
+ * can show it inline and the page can toast it.
+ */
+export function useAccount(initialSession: AdminSession) {
+  const uploadProfilePictureFn = useServerFn(uploadProfilePicture)
+  const sessionQuery = useSession()
+  const session = sessionQuery.data ?? initialSession
+  const currentSessionId = session.session.id
+  const security = useSecurityData()
+  const { reload } = security
+
+  const sessions = useMemo(
+    () => [
+      ...security.sessions.filter((item) => item.id === currentSessionId),
+      ...security.sessions.filter((item) => item.id !== currentSessionId),
+    ],
+    [currentSessionId, security.sessions]
+  )
+
+  async function updateName(name: string) {
+    assertOk(await auth.updateUser({ name }), "Couldn't update your name.")
+    await sessionQuery.refetch()
+  }
+
+  /** Rejects files the server would refuse before uploading; returns false for them. */
+  async function uploadImage(file: File) {
+    if (!isValidProfilePicture(file)) return false
     const formData = new FormData()
     formData.set("image", file)
     try {
       await uploadProfilePictureFn({ data: formData })
-      await sessionQuery.refetch()
-      setNotice({ type: "success", text: "Profile picture updated." })
     } catch (error) {
       console.error(error)
-      setNotice({ type: "error", text: "Could not update your profile picture." })
+      throw new Error("Couldn't update your profile picture.")
     }
-    setBusy(null)
+    await sessionQuery.refetch()
+    return true
   }
 
   async function removeImage() {
-    setBusy("image")
-    setNotice(null)
-    try {
-      const result = await auth.updateUser({ image: null })
-      if (result.error) {
-        console.error(result.error)
-        setNotice({ type: "error", text: result.error.message ?? "Could not remove the picture." })
-      } else {
-        await sessionQuery.refetch()
-        setNotice({ type: "success", text: "Profile picture removed." })
-      }
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not remove the picture." })
-    } finally {
-      setBusy(null)
-    }
+    assertOk(await auth.updateUser({ image: null }), "Couldn't remove the picture.")
+    await sessionQuery.refetch()
   }
 
   async function addPasskey() {
-    setBusy("passkey")
-    setNotice(null)
-    try {
-      const result = await auth.passkey.addPasskey({ name: `Passkey ${passkeys.length + 1}` })
-      if (result.error) {
-        console.error(result.error)
-        setNotice({ type: "error", text: result.error.message ?? "Could not create the passkey." })
-      } else {
-        const refreshed = await refreshSecurityData()
-        setNotice({
-          type: "success",
-          text: refreshed ? "Passkey created." : "Passkey created. Refresh security data to see the updated list.",
-        })
-      }
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not create the passkey." })
-    } finally {
-      setBusy(null)
-    }
+    assertOk(
+      await auth.passkey.addPasskey({ name: `Passkey ${security.passkeys.length + 1}` }),
+      "Couldn't add the passkey."
+    )
+    await reload()
   }
 
   async function deletePasskey(id: string) {
-    setBusy(id)
-    setNotice(null)
-    try {
-      const result = await auth.passkey.deletePasskey({ id })
-      if (result.error) {
-        console.error(result.error)
-        setNotice({ type: "error", text: result.error.message ?? "Could not delete the passkey." })
-      } else {
-        const refreshed = await refreshSecurityData()
-        setNotice({
-          type: "success",
-          text: refreshed ? "Passkey deleted." : "Passkey deleted. Refresh security data to see the updated list.",
-        })
-      }
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not delete the passkey." })
-    } finally {
-      setBusy(null)
-    }
+    assertOk(await auth.passkey.deletePasskey({ id }), "Couldn't delete the passkey.")
+    await reload()
   }
 
   async function revokeOtherSessions() {
-    setBusy("sessions")
-    setNotice(null)
-    try {
-      const result = await auth.revokeOtherSessions()
-      if (result.error) {
-        console.error(result.error)
-        setNotice({ type: "error", text: result.error.message ?? "Could not revoke other sessions." })
-      } else {
-        const refreshed = await refreshSecurityData()
-        setNotice({
-          type: "success",
-          text: refreshed
-            ? "Other sessions signed out."
-            : "Sessions were signed out. Refresh security data to see the updated list.",
-        })
-      }
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not revoke other sessions." })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function logout() {
-    setBusy("logout")
-    setNotice(null)
-    try {
-      const result = await auth.signOut()
-      if (result.error) throw new Error(result.error.message)
-      await router.invalidate()
-      await router.navigate({ to: "/login", replace: true })
-    } catch (error) {
-      console.error(error)
-      setNotice({ type: "error", text: "Could not sign out. Please try again." })
-      setBusy(null)
-    }
+    assertOk(await auth.revokeOtherSessions(), "Couldn't sign out other sessions.")
+    await reload()
   }
 
   return {
-    user,
-    currentSessionId: session.session.id,
-    name,
-    setName,
-    passkeys,
-    sortedSessions,
-    securityLoading,
-    securityRefreshing,
-    securityError,
-    busy,
-    notice,
+    user: session.user,
+    currentSessionId,
+    security: { state: security.state, retrying: security.retrying, retry: security.retry },
+    passkeys: security.passkeys,
+    sessions,
     updateName,
     uploadImage,
     removeImage,
     addPasskey,
     deletePasskey,
     revokeOtherSessions,
-    refreshSecurityData,
-    logout,
   }
 }

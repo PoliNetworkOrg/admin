@@ -3,14 +3,36 @@ import { z } from "zod"
 
 import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
 
-export const getTelegramGrants = createServerFn()
+/** How long the grants page waits for grantor names before showing their ids instead. */
+const GRANTOR_LOOKUP_MS = 2000
+
+/**
+ * The grants page: both grant lists plus the users who authorized them, so "Authorized by" can show a name.
+ * Grantors are looked up by id once the grants are in (one batched request, none without grants); they are
+ * decoration, so a failed or slow lookup leaves the page with the grantor ids.
+ */
+export const getTelegramGrantsWithGrantors = createServerFn()
   .middleware([adminMiddleware])
   .handler(async ({ context }) => {
     const [ongoing, scheduled] = await Promise.all([
       context.backend.tg.grants.getOngoing.query(),
       context.backend.tg.grants.getScheduled.query(),
     ])
-    return { ongoing, scheduled }
+    const grantorIds = new Set([...ongoing.grants, ...scheduled.grants].map(({ grant }) => grant.grantedBy))
+    const signal = AbortSignal.timeout(GRANTOR_LOOKUP_MS)
+    const lookups = await Promise.all(
+      Array.from(grantorIds, (userId) =>
+        context.backend.tg.users.get
+          .query({ userId }, { signal })
+          .then(({ user }) => user)
+          .catch((error) => {
+            console.error(error)
+            return null
+          })
+      )
+    )
+    const grantors = lookups.filter((user) => user !== null && user !== undefined)
+    return { ongoing, scheduled, grantors }
   })
 
 const grantInput = z

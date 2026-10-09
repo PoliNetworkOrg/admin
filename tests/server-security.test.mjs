@@ -241,6 +241,7 @@ test("the auth proxy preserves the request and exact upstream response", async (
 
 test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/guides/guides.functions.ts",
@@ -306,6 +307,48 @@ test("dashboard mutations enforce their exact write scope", async () => {
   }
 })
 
+test("dashboard mutation controls use their server's write scope", async () => {
+  const scopes = {
+    "src/features/azure/groups-page.tsx": undefined,
+    "src/features/azure/members-page.tsx": undefined,
+    "src/features/telegram/grants-page.tsx": undefined,
+    "src/features/telegram/user-detail/profile.tsx": undefined,
+    "src/features/telegram/groups-page.tsx": "web",
+    "src/features/whatsapp/whatsapp-groups-page.tsx": "web",
+    "src/features/associations/associations-page.tsx": "web",
+    "src/features/faqs/faqs-page.tsx": "web",
+    "src/features/group-labels/group-labels-page.tsx": "web",
+    "src/features/groups-by-label/categories-page.tsx": "web",
+    "src/features/groups-by-label/category-page.tsx": "web",
+    "src/features/groups-by-label/tag-groups-page.tsx": "web",
+    "src/features/group-link-reports/reports-page.tsx": "web",
+    "src/features/guides/guides-page.tsx": "web",
+    "src/features/projects/projects-page.tsx": "web",
+  }
+  const directory = new URL("../src", import.meta.url).pathname
+  const checked = new Set()
+  for (const file of await sourceFiles(directory)) {
+    const relativeFile = file.replace(`${directory}/`, "src/")
+    const source = ts.createSourceFile(file, await readFile(file, "utf8"), ts.ScriptTarget.Latest, true)
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useCanWrite") {
+        assert.ok(Object.hasOwn(scopes, relativeFile), `${relativeFile} needs a write-scope entry`)
+        const expected = scopes[relativeFile]
+        assert.equal(node.arguments.length, expected === undefined ? 0 : 1, relativeFile)
+        if (expected !== undefined) {
+          assert.ok(ts.isStringLiteral(node.arguments[0]), `${relativeFile} must declare its write scope`)
+          assert.equal(node.arguments[0].text, expected, relativeFile)
+        }
+        checked.add(relativeFile)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  const compare = (a, b) => a.localeCompare(b)
+  assert.deepEqual([...checked].sort(compare), Object.keys(scopes).sort(compare))
+})
+
 test("session middleware marks identity-dependent responses private", async () => {
   const source = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
   assert.match(source, /setResponseHeader\("Cache-Control", "private, no-store"\)/)
@@ -319,23 +362,57 @@ test("event handlers integrate protected server-function redirects with the rout
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
     "src/features/account/use-account.ts": ["uploadProfilePicture"],
-    "src/features/associations/association-dialogs.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
+    "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
-    "src/features/azure/group-membership.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
+    "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember", "setAzureMemberNumber"],
-    "src/features/guides/guide-dialogs.tsx": ["createGuide", "deleteGuide"],
+    "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
+    "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
+    "src/features/group-labels/add-category-dialog.tsx": ["createGroupLabel"],
+    "src/features/group-labels/add-tag-dialog.tsx": ["createGroupLabel", "createReleaseLabel"],
+    "src/features/group-labels/group-labels-dialog.tsx": ["tagGroup", "untagGroup"],
+    "src/features/group-labels/group-labels-page.tsx": ["editGroupLabel", "deleteGroupLabel"],
+    "src/features/group-labels/rename-label-dialog.tsx": ["renameGroupLabel"],
+    "src/features/group-link-reports/reports-page.tsx": ["resolveGroupLinkReport", "dismissGroupLinkReport"],
+    "src/features/groups/group-row-actions.tsx": ["setGroupVisibility", "setWhatsappGroupVisibility"],
+    "src/features/groups-by-label/add-child-label-dialog.tsx": ["createGroupLabel"],
+    "src/features/groups-by-label/add-group-to-label-dialog.tsx": [
+      "createGroupLabel",
+      "createWhatsappGroup",
+      "tagGroup",
+    ],
+    "src/features/groups-by-label/publish-tag-groups-dialog.tsx": [
+      "setGroupVisibility",
+      "setWhatsappGroupVisibility",
+      "untagGroup",
+    ],
+    "src/features/guides/guide-dialogs.tsx": ["createGuide"],
+    "src/features/guides/guides-page.tsx": ["deleteGuide"],
     "src/features/projects/projects-page.tsx": ["createProject", "deleteProject", "editProject", "reorderProjects"],
-    "src/features/telegram/groups-table.tsx": ["setGroupVisibility"],
     "src/features/telegram/leave-group-dialog.tsx": ["leaveTelegramGroup"],
     "src/features/telegram/user-detail/grant-dialogs.tsx": ["interruptTelegramGrant"],
     "src/features/telegram/user-detail/group-admin-dialog.tsx": ["addTelegramGroupAdmin", "removeTelegramGroupAdmin"],
     "src/features/telegram/user-detail/role-dialog.tsx": ["addTelegramUserRole", "removeTelegramUserRole"],
+    "src/features/whatsapp/delete-group-dialog.tsx": ["deleteWhatsappGroup"],
+    "src/features/whatsapp/whatsapp-group-dialog.tsx": ["createWhatsappGroup", "editWhatsappGroup"],
   }
 
   for (const [file, serverFunctions] of Object.entries(consumers)) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
     for (const serverFunction of serverFunctions) {
       assert.match(source, new RegExp(`useServerFn\\(${serverFunction}\\)`), `${file} must wrap ${serverFunction}`)
+    }
+  }
+
+  const srcDirectory = new URL("../src", import.meta.url).pathname
+  const wrapped = new Set(Object.values(consumers).flat())
+  for (const file of (await sourceFiles(srcDirectory)).filter((path) => path.endsWith(".functions.ts"))) {
+    const source = await readFile(file, "utf8")
+    for (const mutation of exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)) {
+      assert.ok(
+        wrapped.has(mutation.name),
+        `${file.replace(`${srcDirectory}/`, "src/")}:${mutation.name} needs a useServerFn consumer entry`
+      )
     }
   }
 })

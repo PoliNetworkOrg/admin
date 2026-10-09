@@ -65,11 +65,6 @@ export function formatLabelCompact(path: string): string {
   return labelPathToUrlSegments(path).slice(-2).map(formatLabelSegment).join(" › ")
 }
 
-/** Picks the right compact display for any label, category or tag, without the caller needing to branch. */
-export function formatLabelChip(path: string): string {
-  return isCategoryLabel(path) ? formatLabelCompact(path) : formatLabelSegment(path)
-}
-
 export type LabelTreeNode = {
   segment: string
   path: string
@@ -138,36 +133,6 @@ export function urlSegmentsToLabelPath(segments: string[]): string {
   return segments.filter((segment) => segment.length > 0).join(".")
 }
 
-/** A group matches a branch when one of its labels is exactly `path`, or nested under it (e.g. "informatica.triennale.primo" under "informatica"). */
-export function matchesLabelBranch(groupLabels: GroupLabel[], path: string): boolean {
-  return groupLabels.some((label) => label.label === path || label.label.startsWith(`${path}.`))
-}
-
-/** A group has this exact category — unlike `matchesLabelBranch`, a group nested one level deeper doesn't count. */
-export function hasExactLabel(groupLabels: GroupLabel[], path: string): boolean {
-  return groupLabels.some((label) => label.label === path)
-}
-
-/**
- * Resolves each group's label strings (from the cross-platform `groups.search.getAll` result) to full label
- * objects, for groups of the given platform only — Telegram and WhatsApp group ids are independent sequences
- * that could otherwise collide.
- */
-export function buildLabelsByGroupId(
-  labels: GroupLabel[],
-  groupsWithLabels: { id: number; type: "tg" | "wa"; labels: string[] }[],
-  type: "tg" | "wa"
-): Map<number, GroupLabel[]> {
-  const labelsByName = new Map(labels.map((label) => [label.label, label]))
-  const map = new Map<number, GroupLabel[]>()
-  for (const group of groupsWithLabels) {
-    if (group.type !== type) continue
-    const resolved = group.labels.map((name) => labelsByName.get(name)).filter((label) => label != null)
-    if (resolved.length) map.set(group.id, resolved)
-  }
-  return map
-}
-
 /** Every real label in a node's own subtree (itself, if it has one, plus all of its descendants). */
 export function collectSubtreeLabels(node: LabelTreeNode): GroupLabel[] {
   const labels: GroupLabel[] = []
@@ -206,4 +171,14 @@ export function filterFlatLabels(labels: GroupLabel[], query: string): GroupLabe
   return labels.filter((label) =>
     [label.label, label.description ?? ""].some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
   )
+}
+
+/** Every category below `node`, grouping nodes included: each one is a page you can browse to. */
+export function countCategoryDescendants(node: LabelTreeNode): number {
+  return node.children.reduce((sum, child) => sum + 1 + countCategoryDescendants(child), 0)
+}
+
+/** Groups whose labels include `path` or anything nested under it (the counts on sub-category cards). */
+export function countBranchGroups(groupLabels: string[][], path: string): number {
+  return groupLabels.filter((labels) => labels.some((label) => label === path || label.startsWith(`${path}.`))).length
 }

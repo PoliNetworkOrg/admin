@@ -12,5 +12,3 @@ export type ActiveSession = {
   ipAddress?: string | null
   createdAt?: Date | string
 }
-
-export type AccountNotice = { type: "success" | "error"; text: string } | null

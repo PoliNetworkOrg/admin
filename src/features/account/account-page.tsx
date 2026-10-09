@@ -1,87 +1,114 @@
-import { LoaderCircle, RefreshCw } from "lucide-react"
+import { Info, LogOut } from "lucide-react"
 
-import { PageHeader } from "@/components/page-header"
-import { Alert, AlertAction, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { Chip, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
+import { PageBar, PageContent, useSignOut } from "@/components/shell"
 import type { AdminSession } from "@/lib/auth"
 
-import { ProfileDetailsCard, ProfileSummaryCard, TelegramIdentityCard } from "./profile-sections"
-import { PasskeysCard, SessionsCard } from "./security-sections"
+import { ProfileCard } from "./profile-card"
+import { PasskeysCard, SessionsCard } from "./security-cards"
 import { useAccount } from "./use-account"
 
-export function AccountPage({
-  initialSession,
-  telegramRoles,
-}: {
-  initialSession: AdminSession
-  telegramRoles: string[]
-}) {
+/** Account: profile, Telegram identity, passkeys, sessions, sign out. */
+export function AccountPage({ initialSession, roles }: { initialSession: AdminSession; roles: readonly string[] }) {
   const account = useAccount(initialSession)
 
   return (
-    <div className="animate-appear">
-      <PageHeader
-        eyebrow="Account"
-        title="Profile and security"
-        description="Manage your identity, passkeys and active sessions."
-      />
-      {account.notice && (
-        <Alert variant={account.notice.type === "error" ? "destructive" : "default"} className="mt-4">
-          <AlertDescription>{account.notice.text}</AlertDescription>
-        </Alert>
-      )}
-      {account.securityError && (
-        <Alert variant="destructive" className="mt-4">
-          <AlertDescription>{account.securityError}</AlertDescription>
-          <AlertAction className="mt-2 sm:mt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void account.refreshSecurityData(true)}
-              disabled={account.securityRefreshing}
-            >
-              {account.securityRefreshing ? (
-                <LoaderCircle data-icon="inline-start" className="animate-spin-slow" />
-              ) : (
-                <RefreshCw data-icon="inline-start" />
-              )}
-              Retry security data
-            </Button>
-          </AlertAction>
-        </Alert>
-      )}
+    <>
+      <PageBar title="Account" width="settings" />
+      <PageContent width="settings">
+        <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-6">
+            <ProfileCard
+              user={account.user}
+              onUpload={account.uploadImage}
+              onRemove={account.removeImage}
+              onRename={account.updateName}
+            />
+            <TelegramCard
+              username={account.user.telegramUsername ?? null}
+              telegramId={account.user.telegramId ?? null}
+              roles={roles}
+            />
+            <PasskeysCard
+              state={account.security.state}
+              retrying={account.security.retrying}
+              onRetry={() => void account.security.retry()}
+              passkeys={account.passkeys}
+              onAdd={account.addPasskey}
+              onDelete={account.deletePasskey}
+            />
+            <SessionsCard
+              state={account.security.state}
+              sessions={account.sessions}
+              currentSessionId={account.currentSessionId}
+              onRevokeOthers={account.revokeOtherSessions}
+            />
+          </div>
+          <SignOutCard />
+        </div>
+      </PageContent>
+    </>
+  )
+}
 
-      <div className="mt-5 grid grid-cols-2 gap-5 max-[900px]:grid-cols-1">
-        <ProfileSummaryCard
-          user={account.user}
-          busy={account.busy}
-          onUpload={(file) => void account.uploadImage(file)}
-          onRemove={() => void account.removeImage()}
+type TelegramCardProps = { username: string | null; telegramId: number | string | null; roles: readonly string[] }
+
+function TelegramCard({ username, telegramId, roles }: TelegramCardProps) {
+  return (
+    <SectionCard title="Telegram" padding="settings">
+      <div className="flex flex-col gap-4">
+        <KeyValueList
+          items={[
+            { key: "Username", value: username ? `@${username}` : null },
+            {
+              key: "Telegram ID",
+              value: telegramId === null ? null : String(telegramId),
+              mono: telegramId !== null,
+              hint: telegramId === null ? "Not linked" : undefined,
+            },
+            {
+              key: "Roles",
+              value:
+                roles.length === 0 ? null : (
+                  <span className="flex flex-wrap gap-1.5">
+                    {roles.map((role) => (
+                      <Chip key={role}>{role}</Chip>
+                    ))}
+                  </span>
+                ),
+            },
+          ]}
         />
-        <ProfileDetailsCard
-          user={account.user}
-          name={account.name}
-          busy={account.busy}
-          onNameChange={account.setName}
-          onSubmit={(event) => void account.updateName(event)}
-        />
-        <TelegramIdentityCard user={account.user} roles={telegramRoles} />
-        <PasskeysCard
-          passkeys={account.passkeys}
-          busy={account.busy}
-          loading={account.securityLoading}
-          onAdd={() => void account.addPasskey()}
-          onDelete={(id) => void account.deletePasskey(id)}
-        />
-        <SessionsCard
-          sessions={account.sortedSessions}
-          currentSessionId={account.currentSessionId}
-          busy={account.busy}
-          loading={account.securityLoading}
-          onRevokeOthers={() => void account.revokeOtherSessions()}
-          onLogout={() => void account.logout()}
-        />
+        <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
+          <Info aria-hidden className="size-3.5 shrink-0" />
+          Roles and permissions come from this Telegram account.
+        </p>
       </div>
-    </div>
+    </SectionCard>
+  )
+}
+
+/** The destructive zone: no confirmation, signing in again reverses it. */
+function SignOutCard() {
+  const { signOut, pending } = useSignOut()
+
+  return (
+    <SectionCard padding="settings">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="text-sm leading-5 font-medium text-(--pn-fg)">Sign out of this device</p>
+          <p className="text-xs text-(--pn-fg-muted)">You will return to the sign-in page.</p>
+        </div>
+        <LoadingButton
+          variant="outline"
+          tone="dangerOutline"
+          icon={LogOut}
+          pending={pending}
+          onClick={() => void signOut()}
+        >
+          Sign out
+        </LoadingButton>
+      </div>
+    </SectionCard>
   )
 }

@@ -4,7 +4,7 @@ export type Association = ApiOutput["web"]["associations"]["getAllAssociations"]
 export type AssociationLinks = Association["links"]
 export type AssociationLink = keyof AssociationLinks
 
-export type AssociationFormValues = Pick<Association, "name" | "descriptionIt" | "descriptionEn"> & {
-  logo: string | null
+/** The inline edit's values; `logo` is the shown image (saved URL or a chosen file's preview). */
+export type AssociationForm = Pick<Association, "name" | "descriptionIt" | "descriptionEn" | "logo"> & {
   logoFile: File | null
 }

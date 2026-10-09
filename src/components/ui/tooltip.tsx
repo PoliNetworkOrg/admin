@@ -6,8 +6,34 @@ function TooltipProvider({ delay = 0, ...props }: TooltipPrimitive.Provider.Prop
   return <TooltipPrimitive.Provider data-slot="tooltip-provider" delay={delay} {...props} />
 }
 
-function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+/** Elements whose next focus (focus handed back by a closing dialog) must not open their tooltip. */
+const quietFocus = new WeakSet<Element>()
+
+/**
+ * Keeps `element`'s tooltip closed when it is focused next, for focus the user did not move there themselves (a
+ * dismissed command palette returning focus to the rail Search button). The mark expires shortly after.
+ */
+export function suppressNextFocusTooltip(element: Element) {
+  quietFocus.add(element)
+  window.setTimeout(() => quietFocus.delete(element), 500)
+}
+
+function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props) {
+  return (
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      onOpenChange={(open, details) => {
+        const trigger = details.trigger
+        if (open && details.reason === "trigger-focus" && trigger && quietFocus.has(trigger)) {
+          quietFocus.delete(trigger)
+          details.cancel()
+          return
+        }
+        onOpenChange?.(open, details)
+      }}
+      {...props}
+    />
+  )
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {

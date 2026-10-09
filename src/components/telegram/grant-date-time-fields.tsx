@@ -1,36 +1,47 @@
-import { CalendarIcon, Clock3Icon } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { CalendarIcon, Clock3 } from "lucide-react"
+import { type ReactNode, useEffect, useMemo, useState } from "react"
 
+import {
+  buttonMotion,
+  fieldControl,
+  fieldHintId,
+  floatingMotion,
+  FormField,
+  raisedSurface,
+  SegmentedControl,
+} from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
 import { WheelPicker, WheelPickerColumn } from "@/components/ui/wheel-picker"
+import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 const LOCAL_DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
 
-function parseLocalDateTime(value: string) {
+/** Parses the `datetime-local` format ("2026-10-06T09:30") in local time. */
+export function parseLocalDateTime(value: string) {
   const match = LOCAL_DATE_TIME_PATTERN.exec(value)
   if (!match) return undefined
-
   const [, year, month, day, hours, minutes] = match
   const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes))
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
-function localDatePart(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+function pad(value: number) {
+  return String(value).padStart(2, "0")
 }
 
 function localDateTimeValue(date: Date) {
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
-  return `${localDatePart(date)}T${hours}:${minutes}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/** Grants may start at the earliest at midnight today. */
+export function earliestGrantStart() {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  return start
 }
 
 function sameLocalDay(left: Date, right: Date) {
@@ -45,81 +56,63 @@ function clampToMinimum(date: Date, minimum?: Date) {
   return minimum && date < minimum ? new Date(minimum) : date
 }
 
-function isMobileDateTimePickerDevice() {
-  const userAgent = navigator.userAgent
-  const iPadOSDesktopMode = /Macintosh/.test(userAgent) && navigator.maxTouchPoints > 1
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) || iPadOSDesktopMode
-}
-
-function useNativeDateTimePicker() {
-  const [nativePicker, setNativePicker] = useState(false)
-
+/** Native `datetime-local` on touch devices; the calendar and wheel popovers on fine pointers. */
+function useCoarsePointer() {
+  const [coarse, setCoarse] = useState(false)
   useEffect(() => {
-    setNativePicker(isMobileDateTimePickerDevice())
+    const query = window.matchMedia("(pointer: coarse)")
+    setCoarse(query.matches)
+    const onChange = (event: MediaQueryListEvent) => setCoarse(event.matches)
+    query.addEventListener("change", onChange)
+    return () => query.removeEventListener("change", onChange)
   }, [])
-
-  return nativePicker
+  return coarse
 }
 
-export type AdaptiveDateTimeFieldProps = {
+const HOUR_VALUES = Array.from({ length: 24 }, (_, hour) => pad(hour))
+const MINUTE_VALUES = Array.from({ length: 60 }, (_, minute) => pad(minute))
+
+const pickerButton = cn(
+  buttonMotion,
+  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-muted) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
+)
+
+type DateTimeInputProps = {
   id: string
   label: string
   value: string
   onChange: (value: string) => void
-  min?: string
-  invalid?: boolean
-  error?: React.ReactNode
-  required?: boolean
-  disabled?: boolean
-}
-
-type DesktopDateTimePickerProps = Pick<
-  AdaptiveDateTimeFieldProps,
-  "id" | "label" | "value" | "onChange" | "invalid" | "disabled"
-> & {
   minimum?: Date
+  invalid: boolean
+  disabled: boolean
 }
 
-const HOUR_VALUES = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"))
-const MINUTE_VALUES = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"))
-
-function DesktopDateTimePicker({
-  id,
-  label,
-  value,
-  onChange,
-  minimum,
-  invalid = false,
-  disabled = false,
-}: DesktopDateTimePickerProps) {
+function DesktopDateTimeInput({ id, label, value, onChange, minimum, invalid, disabled }: DateTimeInputProps) {
   const selected = parseLocalDateTime(value)
   const [dateOpen, setDateOpen] = useState(false)
   const [timeOpen, setTimeOpen] = useState(false)
   const [draft, setDraft] = useState(() => clampToMinimum(selected ?? new Date(), minimum))
 
-  const updateTimeOpen = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setDraft(clampToMinimum(selected ?? new Date(), minimum))
-    }
-    setTimeOpen(nextOpen)
+  function updateTimeOpen(next: boolean) {
+    if (next) setDraft(clampToMinimum(selected ?? new Date(), minimum))
+    setTimeOpen(next)
   }
 
-  const chooseDate = (date: Date | undefined) => {
+  function chooseDate(date: Date | undefined) {
     if (!date) return
-
     const next = new Date(date)
     next.setHours(selected?.getHours() ?? 0, selected?.getMinutes() ?? 0, 0, 0)
     onChange(localDateTimeValue(clampToMinimum(next, minimum)))
     setDateOpen(false)
   }
 
-  const chooseHour = (hour: string) => {
+  function chooseHour(hour: string) {
     const next = new Date(draft)
     next.setHours(Number(hour))
     setDraft(clampToMinimum(next, minimum))
   }
 
-  const chooseMinute = (minute: string) => {
+  function chooseMinute(minute: string) {
     const next = new Date(draft)
     next.setMinutes(Number(minute))
     setDraft(clampToMinimum(next, minimum))
@@ -130,10 +123,7 @@ function DesktopDateTimePicker({
       HOUR_VALUES.map((hour) => {
         const endOfHour = new Date(draft)
         endOfHour.setHours(Number(hour), 59, 59, 999)
-        return {
-          value: hour,
-          disabled: Boolean(minimum && sameLocalDay(draft, minimum) && endOfHour < minimum),
-        }
+        return { value: hour, disabled: Boolean(minimum && sameLocalDay(draft, minimum) && endOfHour < minimum) }
       }),
     [draft, minimum]
   )
@@ -143,16 +133,15 @@ function DesktopDateTimePicker({
       MINUTE_VALUES.map((minute) => {
         const candidate = new Date(draft)
         candidate.setMinutes(Number(minute), 0, 0)
-        return {
-          value: minute,
-          disabled: Boolean(minimum && sameLocalDay(draft, minimum) && candidate < minimum),
-        }
+        return { value: minute, disabled: Boolean(minimum && sameLocalDay(draft, minimum) && candidate < minimum) }
       }),
     [draft, minimum]
   )
 
+  const describedBy = invalid ? fieldHintId(id) : undefined
+
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+    <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_96px] gap-2">
       <Popover open={dateOpen} onOpenChange={setDateOpen}>
         <PopoverTrigger
           render={
@@ -160,30 +149,30 @@ function DesktopDateTimePicker({
               id={id}
               type="button"
               variant="outline"
-              className="justify-start font-normal"
-              aria-invalid={invalid}
+              className={pickerButton}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               disabled={disabled}
             />
           }
         >
-          <CalendarIcon data-icon="inline-start" />
-          {selected
-            ? selected.toLocaleDateString(undefined, { dateStyle: "medium" })
-            : `Choose ${label.toLocaleLowerCase()}`}
+          <CalendarIcon aria-hidden data-icon="inline-start" />
+          {selected ? (
+            <span className="tabular-nums">{formatDate(selected, "local")}</span>
+          ) : (
+            <span className="text-(--pn-fg-subtle)">Choose {label.toLocaleLowerCase()}</span>
+          )}
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-0">
+        <PopoverContent align="start" className={cn(raisedSurface, floatingMotion, "w-auto rounded-(--pn-r-4) p-0")}>
           <Calendar
             mode="single"
             selected={selected}
             defaultMonth={selected ?? minimum}
             disabled={
-              minimum
-                ? {
-                    before: new Date(minimum.getFullYear(), minimum.getMonth(), minimum.getDate()),
-                  }
-                : undefined
+              minimum ? { before: new Date(minimum.getFullYear(), minimum.getMonth(), minimum.getDate()) } : undefined
             }
             onSelect={chooseDate}
+            className="bg-transparent"
           />
         </PopoverContent>
       </Popover>
@@ -193,44 +182,44 @@ function DesktopDateTimePicker({
             <Button
               type="button"
               variant="outline"
-              className="justify-start font-mono font-normal"
+              className={pickerButton}
               aria-label={`${label} time, 24-hour format`}
-              aria-invalid={invalid}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               disabled={disabled}
             />
           }
         >
-          <Clock3Icon data-icon="inline-start" />
-          {selected
-            ? `${String(selected.getHours()).padStart(2, "0")}:${String(selected.getMinutes()).padStart(2, "0")}`
-            : "--:--"}
+          <Clock3 aria-hidden data-icon="inline-start" />
+          <span className={cn("font-mono tabular-nums", !selected && "text-(--pn-fg-subtle)")}>
+            {selected ? `${pad(selected.getHours())}:${pad(selected.getMinutes())}` : "--:--"}
+          </span>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-40 p-2">
-          <p className="px-1 font-mono text-[10px] text-muted-foreground">24-hour time</p>
+        <PopoverContent align="end" className={cn(raisedSurface, floatingMotion, "w-44 gap-2 rounded-(--pn-r-4) p-2")}>
+          <p className="px-1 text-xs text-(--pn-fg-muted)">24-hour time</p>
           <WheelPicker aria-label={`${label} time`} itemHeight={30} visibleCount={3}>
             <WheelPickerColumn
               aria-label="Hour"
               options={hourOptions}
-              value={String(draft.getHours()).padStart(2, "0")}
+              value={pad(draft.getHours())}
               onChange={chooseHour}
               loop
             />
-            <span aria-hidden className="flex items-center font-mono text-muted-foreground">
+            <span aria-hidden className="flex items-center font-mono text-(--pn-fg-muted)">
               :
             </span>
             <WheelPickerColumn
               aria-label="Minute"
               options={minuteOptions}
-              value={String(draft.getMinutes()).padStart(2, "0")}
+              value={pad(draft.getMinutes())}
               onChange={chooseMinute}
               loop
             />
           </WheelPicker>
-          <Separator />
           <Button
             type="button"
             size="sm"
-            className="w-full"
+            className={cn(buttonMotion, "w-full")}
             onClick={() => {
               onChange(localDateTimeValue(draft))
               setTimeOpen(false)
@@ -244,62 +233,46 @@ function DesktopDateTimePicker({
   )
 }
 
-export function AdaptiveDateTimeField({
-  id,
-  label,
-  value,
-  onChange,
-  min,
-  invalid = false,
-  error,
-  required = false,
-  disabled = false,
-}: AdaptiveDateTimeFieldProps) {
-  const nativePicker = useNativeDateTimePicker()
-  const minimum = min ? parseLocalDateTime(min) : undefined
-
+function DateTimeInput(props: DateTimeInputProps) {
+  const coarse = useCoarsePointer()
+  if (!coarse) return <DesktopDateTimeInput {...props} />
+  const { id, value, onChange, minimum, invalid, disabled } = props
   return (
-    <Field data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      {nativePicker ? (
-        <Input
-          id={id}
-          type="datetime-local"
-          min={min}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          aria-invalid={invalid}
-          required={required}
-          disabled={disabled}
-          className="max-w-full [inline-size:-webkit-fill-available]"
-        />
-      ) : (
-        <DesktopDateTimePicker
-          id={id}
-          label={label}
-          value={value}
-          onChange={onChange}
-          minimum={minimum}
-          invalid={invalid}
-          disabled={disabled}
-        />
-      )}
-      {invalid && error}
-    </Field>
+    <Input
+      id={id}
+      type="datetime-local"
+      min={minimum ? localDateTimeValue(minimum) : undefined}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      aria-invalid={invalid || undefined}
+      aria-describedby={invalid ? fieldHintId(id) : undefined}
+      disabled={disabled}
+      className={cn("h-9 min-w-0 flex-1 [inline-size:-webkit-fill-available]", fieldControl)}
+    />
   )
 }
+
+const DURATIONS = [
+  { label: "2h", hours: 2 },
+  { label: "6h", hours: 6 },
+  { label: "12h", hours: 12 },
+  { label: "1d", hours: 24 },
+]
+
+const HOUR_MS = 60 * 60 * 1000
 
 export type GrantDateTimeFieldsProps = {
   validSince: string
   validUntil: string
   onValidSinceChange: (value: string) => void
   onValidUntilChange: (value: string) => void
-  minimumSince: string
-  minimumUntil: string
+  minimumSince: Date
+  minimumUntil: Date
   invalidStart: boolean
   invalidEnd: boolean
 }
 
+/** "Valid from" with a Now shortcut and "Valid until" with duration shortcuts. */
 export function GrantDateTimeFields({
   validSince,
   validUntil,
@@ -310,65 +283,82 @@ export function GrantDateTimeFields({
   invalidStart,
   invalidEnd,
 }: GrantDateTimeFieldsProps) {
-  const setDuration = (hours: number) => {
-    const start = parseLocalDateTime(validSince)
-    if (!start) return
-    onValidUntilChange(localDateTimeValue(new Date(start.getTime() + hours * 60 * 60 * 1000)))
+  const start = parseLocalDateTime(validSince)
+  const end = parseLocalDateTime(validUntil)
+  const activeDuration =
+    start && end
+      ? DURATIONS.find((duration) => end.getTime() - start.getTime() === duration.hours * HOUR_MS)
+      : undefined
+
+  function setDuration(label: string) {
+    const duration = DURATIONS.find((item) => item.label === label)
+    if (!start || !duration) return
+    onValidUntilChange(localDateTimeValue(new Date(start.getTime() + duration.hours * HOUR_MS)))
   }
 
   return (
     <>
-      <AdaptiveDateTimeField
-        id="grant-valid-since"
+      <FormField
         label="Valid from"
-        min={minimumSince}
-        value={validSince}
-        onChange={onValidSinceChange}
-        invalid={invalidStart}
-        error={<p className="text-[10px] text-destructive">Choose today or a future date.</p>}
-        required
-      />
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="-mt-2 h-7 font-mono text-xs"
-        onClick={() => onValidSinceChange(localDateTimeValue(new Date()))}
+        htmlFor="grant-valid-since"
+        error={invalidStart ? "Choose today or a future date." : undefined}
       >
-        Now
-      </Button>
-      <AdaptiveDateTimeField
-        id="grant-valid-until"
-        label="Valid until"
-        min={minimumUntil}
-        value={validUntil}
-        onChange={onValidUntilChange}
-        invalid={invalidEnd}
-        error={<p className="text-[10px] text-destructive">Choose a time after the grant starts.</p>}
-        required
-        disabled={!validSince}
-      />
-      <fieldset className="-mt-2 grid grid-cols-4 gap-2" aria-label="Grant duration shortcuts">
-        {[
-          { label: "2h", hours: 2 },
-          { label: "6h", hours: 6 },
-          { label: "12h", hours: 12 },
-          { label: "1d", hours: 24 },
-        ].map(({ label, hours }) => (
+        <Row>
+          <DateTimeInput
+            id="grant-valid-since"
+            label="Valid from"
+            value={validSince}
+            onChange={onValidSinceChange}
+            minimum={minimumSince}
+            invalid={invalidStart}
+            disabled={false}
+          />
           <Button
-            key={label}
             type="button"
+            variant="ghost"
             size="sm"
-            variant="outline"
-            className="h-7 font-mono text-xs"
-            disabled={!validSince || invalidStart}
-            onClick={() => setDuration(hours)}
-            aria-label={`Set grant duration to ${label}`}
+            className={cn(buttonMotion, "w-[176px] justify-center text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+            onClick={() => onValidSinceChange(localDateTimeValue(new Date()))}
           >
-            {label}
+            Now
           </Button>
-        ))}
-      </fieldset>
+        </Row>
+      </FormField>
+      <FormField
+        label="Valid until"
+        htmlFor="grant-valid-until"
+        error={invalidEnd ? "Choose a time after the grant starts." : undefined}
+      >
+        <Row>
+          <DateTimeInput
+            id="grant-valid-until"
+            label="Valid until"
+            value={validUntil}
+            onChange={onValidUntilChange}
+            minimum={minimumUntil}
+            invalid={invalidEnd}
+            disabled={!validSince}
+          />
+          <SegmentedControl
+            label="Grant duration shortcuts"
+            items={DURATIONS.map((duration) => ({
+              value: duration.label,
+              label: duration.label,
+              ariaLabel: `Set grant duration to ${duration.label}`,
+            }))}
+            value={activeDuration?.label ?? null}
+            onValueChange={setDuration}
+            disabled={!start || invalidStart}
+            // Same 176px as the "Now" button above, so both rows' pickers line up.
+            className="w-[176px]"
+            itemClassName="flex-1 px-0 tabular-nums"
+          />
+        </Row>
+      </FormField>
     </>
   )
+}
+
+function Row({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-2 min-[480px]:flex-nowrap">{children}</div>
 }
