@@ -52,8 +52,12 @@ export function groupActionsWidth(tinted: 3 | 4, canWrite: boolean) {
   return 72 + 8 + tinted * (4 + 36) + 8 + 36
 }
 
+/**
+ * Below `sm` a writable group table stacks each row: the title on its own line, the actions right-aligned under it,
+ * with the cell padding and the gap after the invite link pair trimmed so four tinted actions fit at 320px.
+ */
 export const mobileGroupTableClasses =
-  "max-sm:[&_table]:block max-sm:[&_thead]:block max-sm:[&_thead_tr]:block max-sm:[&_thead_th:first-child]:block max-sm:[&_thead_th:first-child]:max-w-none max-sm:[&_thead_th:last-child]:hidden max-sm:[&_tbody]:block max-sm:[&_tbody_tr]:grid max-sm:[&_tbody_tr]:h-auto max-sm:[&_tbody_tr]:grid-cols-1 max-sm:[&_tbody_td:first-child]:max-w-none max-sm:[&_tbody_td:first-child]:py-3 max-sm:[&_tbody_td:last-child]:w-auto max-sm:[&_tbody_td:last-child]:justify-self-end max-sm:[&_tbody_td:last-child]:pb-2"
+  "max-sm:[&_table]:block max-sm:[&_thead]:block max-sm:[&_thead_tr]:block max-sm:[&_thead_th:first-child]:block max-sm:[&_thead_th:first-child]:max-w-none max-sm:[&_thead_th:last-child]:hidden max-sm:[&_tbody]:block max-sm:[&_tbody_tr]:grid max-sm:[&_tbody_tr]:h-auto max-sm:[&_tbody_tr]:grid-cols-1 max-sm:[&_tbody_td:first-child]:max-w-none max-sm:[&_tbody_td:first-child]:py-3 max-sm:[&_tbody_td:last-child]:w-auto max-sm:[&_tbody_td:last-child]:justify-self-end max-sm:[&_tbody_td:last-child]:pb-2 max-sm:[&_tbody_td:last-child]:pr-3 max-sm:[&_tbody_td:last-child]:pl-0 max-sm:[&_tbody_td:last-child>div>div:first-child]:mr-0"
 
 /** `router.invalidate({ sync: true })` after a mutation; a failed reload is a warning, the mutation itself succeeded. */
 export function useRefreshGroups() {
