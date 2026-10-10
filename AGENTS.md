@@ -16,8 +16,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
 - **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through
   the backend's fixed new-member workflow. List groups with `azure:groups:read`; add or remove existing directory users
-  in a group with `azure:groups:write` (adding also needs `azure:members:read`). Users and groups themselves cannot be
-  edited from the dashboard.
+  in a group with `azure:groups:write`; the add picker lists the directory, so it is disabled without
+  `azure:members:read`. Users and groups themselves cannot be edited from the dashboard.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
