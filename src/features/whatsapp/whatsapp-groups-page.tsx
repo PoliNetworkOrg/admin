@@ -9,7 +9,7 @@ import {
   GroupLabelBadges,
   SegmentedControl,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { GroupLabel } from "@/features/group-labels/types"
 import {
@@ -52,7 +52,8 @@ export function WhatsappGroupsPage({
   visibility,
   onVisibilityChange,
 }: WhatsappGroupsPageProps) {
-  const canWrite = useCanWrite("web")
+  const canLabels = useCan("groups:labels:write")
+  const canWrite = useCan("wa:groups:manage")
   const refresh = useRefreshGroups()
   const labelsByPath = useLabelsByPath(labels)
   const list = useGroupListState({
@@ -170,7 +171,7 @@ export function WhatsappGroupsPage({
       <PageContent width="wide">
         <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
           <DataTable
-            className={canWrite ? mobileGroupTableClasses : undefined}
+            className={canWrite || canLabels ? mobileGroupTableClasses : undefined}
             label="WhatsApp groups"
             columns={columns}
             rows={rows}
@@ -178,7 +179,7 @@ export function WhatsappGroupsPage({
             sort={sort}
             onSort={list.setSort}
             actions={(row) => <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} />}
-            actionsWidth={groupActionsWidth(4, canWrite)}
+            actionsWidth={groupActionsWidth(4, canWrite || canLabels)}
             pagination={pagination}
             empty={empty}
           />

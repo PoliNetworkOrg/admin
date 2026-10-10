@@ -9,9 +9,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
-import { type DashboardPath, type PageMatch, type Service, panelServices, serviceById, serviceFor } from "./nav"
+import { type DashboardPath, type PageMatch, type Service, serviceById, serviceFor } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
+import { useVisibleServices } from "./use-can"
 
 const railItemClass =
   "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
@@ -98,6 +99,7 @@ const iconProps = { className: "size-5", strokeWidth: 1.75 } as const
 
 /** The 56px service rail. One tab stop; ↑/↓, Home and End move between items. */
 export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, className }: RailProps) {
+  const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const { theme, toggleTheme } = useTheme()

@@ -4,7 +4,7 @@ import { Plus, Users } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import { buttonMotion, EmptyState, useEditSlot } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { errorHasCode } from "@/lib/errors"
 
@@ -57,7 +57,7 @@ function associationFormData(values: AssociationForm, id?: number) {
 /** Associations: searchable inline-edit cards, a draft on top, links in a dialog. */
 export function AssociationsPage({ loadedAssociations: associations }: { loadedAssociations: Association[] }) {
   const router = useRouter()
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("web:content:write")
   const createAssociationFn = useServerFn(createAssociation)
   const editAssociationFn = useServerFn(editAssociation)
   const deleteAssociationFn = useServerFn(deleteAssociation)

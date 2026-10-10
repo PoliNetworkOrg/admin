@@ -4,6 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react"
 
 import {
   buttonMotion,
+  Chip,
   DataTable,
   type DataTableColumn,
   EmptyState,
@@ -12,7 +13,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,8 @@ function searchText({ grant, user, grantor, status }: Row) {
     user?.lastName,
     user?.username,
     grant.grantedBy,
+    grant.grantedBySub,
+    grant.source === "idp" ? "idp" : "legacy",
     grantor?.firstName,
     grantor?.lastName,
     grantor?.username,
@@ -110,23 +113,15 @@ const columns: DataTableColumn<Row>[] = [
     label: "Authorized by",
     priority: 3,
     minWidth: 130,
-    // Its own link to the grantor; the row click still opens the grantee.
-    cell: ({ grant, grantor }) => (
-      <Link
-        to="/dashboard/telegram/users/$userId"
-        params={{ userId: String(grant.grantedBy) }}
-        title={grantor?.username ? `@${grantor.username}` : undefined}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-        className={
-          grantor
-            ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-            : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-        }
-      >
-        {grantor ? telegramUserName(grantor) : grant.grantedBy}
-      </Link>
-    ),
+    cell: ({ grant, grantor }) => <Grantor grant={grant} grantor={grantor} />,
+  },
+  {
+    id: "source",
+    label: "Source",
+    // Legacy grants were made before the IdP migration; both kinds count until the legacy table is dropped.
+    priority: 6,
+    minWidth: 100,
+    cell: ({ grant }) => <Chip>{grant.source === "idp" ? "IdP" : "Legacy"}</Chip>,
   },
   {
     id: "starts",
@@ -162,12 +157,45 @@ const columns: DataTableColumn<Row>[] = [
   },
 ]
 
+/**
+ * Legacy grants name their grantor by Telegram ID, linked to that user; IdP grants by IdP subject (`grantedBySub`),
+ * which the backend does not resolve to a name.
+ */
+function Grantor({ grant, grantor }: Pick<Row, "grant" | "grantor">) {
+  if (grant.grantedBy === null) {
+    return grant.grantedBySub ? (
+      <span className="block truncate font-mono text-(--pn-fg-muted)" title={`IdP user ${grant.grantedBySub}`}>
+        {grant.grantedBySub}
+      </span>
+    ) : (
+      <Unset />
+    )
+  }
+  // Its own link to the grantor; the row click still opens the grantee.
+  return (
+    <Link
+      to="/dashboard/telegram/users/$userId"
+      params={{ userId: String(grant.grantedBy) }}
+      title={grantor?.username ? `@${grantor.username}` : undefined}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      className={
+        grantor
+          ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+          : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+      }
+    >
+      {grantor ? telegramUserName(grantor) : grant.grantedBy}
+    </Link>
+  )
+}
+
 const PAGE_SIZE = 20
 
 /** Grants: ongoing and scheduled grants with a status filter; a row opens the grantee. */
 export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }: { grants: TelegramGrants }) {
   const navigate = useNavigate()
-  const canWrite = useCanWrite()
+  const canWrite = useCan("tg:grants:manage")
   const [query, setQuery] = useState("")
   const [tab, setTab] = useState<Tab>("all")
   const [sort, setSort] = useState<TableSort>({ column: "starts", direction: "asc" })
@@ -180,7 +208,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
     const grantorById = new Map(grantors.map((user) => [user.id, user]))
     const toRow = (status: Status) => (record: GrantRecord) => ({
       ...record,
-      grantor: grantorById.get(record.grant.grantedBy) ?? null,
+      grantor: record.grant.grantedBy === null ? null : (grantorById.get(record.grant.grantedBy) ?? null),
       status,
     })
     return [...ongoing.grants.map(toRow("active")), ...scheduled.grants.map(toRow("scheduled"))]
@@ -254,7 +282,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
           label="Grants"
           columns={columns}
           rows={rows}
-          getRowId={(row) => row.grant.id}
+          getRowId={(row) => row.grant.key}
           sort={sort}
           onSort={(next) => {
             setSort(next)

@@ -39,6 +39,12 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
   },
   resolve: { tsconfigPaths: true },
-  plugins: lazyPlugins(() => [tailwindcss(), tanstackStart(), nitro(), viteReact()]),
+  plugins: lazyPlugins(() => [
+    tailwindcss(),
+    // `src/start.ts` checks the Origin of every state-changing request against the configured dashboard origin.
+    tanstackStart({ serverFns: { disableCsrfMiddlewareWarning: true } }),
+    nitro(),
+    viteReact(),
+  ]),
   server: { host: "0.0.0.0", port: Number(process.env.PORT) || 3001 },
 })

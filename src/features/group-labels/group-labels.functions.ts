@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, labelsWriteMiddleware } from "@/server/auth.middleware"
 
 import {
   createGroupLabelInput,
@@ -12,12 +12,12 @@ import {
 } from "./group-labels.validation"
 
 export const listGroupLabels = createServerFn()
-  .middleware([webAdminMiddleware])
-  .handler(({ context }) => context.backend.tg.groupLabels.getAll.query())
+  .middleware([adminMiddleware])
+  .handler(({ context }) => context.backend.groups.labels.getAll.query())
 
 /** All groups (Telegram + WhatsApp) with their labels already resolved. */
 export const listGroupsWithLabels = createServerFn()
-  .middleware([webAdminMiddleware])
+  .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.groups.search.getAll.query())
 
 /** Platform is required because Telegram and WhatsApp group IDs may collide. */
@@ -29,7 +29,7 @@ const groupLabelTagInput = z.object({
 
 /** The web-only category view needs both platform lists without broadening their dashboard functions. */
 export const listGroupsForLabels = createServerFn()
-  .middleware([webAdminMiddleware])
+  .middleware([adminMiddleware])
   .handler(async ({ context }) => {
     const [tgGroups, waGroups] = await Promise.all([
       context.backend.tg.groups.getAll.query(),
@@ -38,75 +38,70 @@ export const listGroupsForLabels = createServerFn()
     return { tgGroups, waGroups }
   })
 
+// Writes carry no author: the backend records it from the access token (`*_by_sub`).
 export const tagGroup = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(groupLabelTagInput)
   .handler(({ data, context }) => context.backend.groups.labels.tagGroup.mutate(data))
 
 export const untagGroup = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(groupLabelTagInput)
   .handler(({ data, context }) => context.backend.groups.labels.untagGroup.mutate(data))
 
 export const createGroupLabel = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(createGroupLabelInput)
   .handler(async ({ data, context }) => {
-    const [created] = await context.backend.tg.groupLabels.create.mutate({
+    const [created] = await context.backend.groups.labels.create.mutate({
       label: data.label,
       description: data.description,
       color: data.color,
-      createdBy: context.telegramId,
     })
     if (!created) throw new Error("The label could not be created.")
     return created
   })
 
 export const createReleaseLabel = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(createReleaseLabelInput)
   .handler(async ({ data, context }) => {
-    const [created] = await context.backend.tg.groupLabels.create.mutate({
-      ...data,
-      createdBy: context.telegramId,
-    })
+    const [created] = await context.backend.groups.labels.create.mutate(data)
     if (!created) throw new Error("The publication could not be created.")
     return created
   })
 
 export const editGroupLabel = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(editGroupLabelInput)
   .handler(async ({ data, context }) => {
-    const [updated] = await context.backend.tg.groupLabels.modify.mutate({
+    const [updated] = await context.backend.groups.labels.modify.mutate({
       label: data.label,
       description: data.description,
       color: data.color,
-      updatedBy: context.telegramId,
     })
     if (!updated) throw new Error("NOT_FOUND")
     return updated
   })
 
 export const renameGroupLabel = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(renameGroupLabelInput)
   .handler(async ({ data, context }) => {
-    const [renamed] = await context.backend.tg.groupLabels.modify.mutate({
+    const [renamed] = await context.backend.groups.labels.modify.mutate({
       label: data.label,
       newLabel: data.newLabel,
       description: data.description,
       color: data.color,
-      updatedBy: context.telegramId,
     })
     if (!renamed) throw new Error("NOT_FOUND")
     return renamed
   })
 
 export const deleteGroupLabel = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([labelsWriteMiddleware])
   .validator(groupLabelIdentifierInput)
   .handler(async ({ data, context }) => {
-    await context.backend.tg.groupLabels.delete.mutate({ label: data.label })
+    await context.backend.groups.labels.delete.mutate({ label: data.label })
     return { error: null }
   })

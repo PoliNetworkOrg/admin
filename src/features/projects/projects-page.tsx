@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
 import { buttonMotion, EmptyState, SegmentedControl, useEditSlot } from "@/components/primitives"
-import { appToast, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { ProjectCard, type ProjectEditSession } from "./project-card"
@@ -87,7 +87,7 @@ function DropSettle() {
 /** Projects: category segments, sortable inline-edit cards, drafts on top. */
 export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) {
   const router = useRouter()
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("web:content:write")
   const createProjectFn = useServerFn(createProject)
   const editProjectFn = useServerFn(editProject)
   const deleteProjectFn = useServerFn(deleteProject)

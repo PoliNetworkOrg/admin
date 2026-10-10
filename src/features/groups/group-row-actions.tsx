@@ -4,7 +4,7 @@ import { LogOut, Pencil, Tags, Trash2 } from "lucide-react"
 import { type ReactNode, useMemo, useRef, useState } from "react"
 
 import { IconButton, InviteLinkActions, useFocusAfterRemoval, VisibilityToggle } from "@/components/primitives"
-import { appToast } from "@/components/shell"
+import { appToast, useCan } from "@/components/shell"
 import { GroupLabelsDialog } from "@/features/group-labels/group-labels-dialog"
 import { isCategoryLabel, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
 import type { GroupLabel } from "@/features/group-labels/types"
@@ -216,58 +216,68 @@ type GroupRowActionsProps = {
  * Per-platform cluster: copy/open invite link · visibility · edit labels · [edit] · leave/delete (other actions, then edit, then the destructive one).
  * Without write access only the invite link remains.
  */
-export function GroupRowActions({ group, controller, canWrite, alignEdit = false }: GroupRowActionsProps) {
+export function GroupRowActions({ group, controller, alignEdit = false }: GroupRowActionsProps) {
   const invite = <InviteLinkActions link={group.link} name={group.title} />
-  if (!canWrite) return invite
+  const canLabels = useCan("groups:labels:write")
+  const canTelegram = useCan("tg:groups:manage")
+  const canWhatsapp = useCan("wa:groups:manage")
+  const canManage = group.type === "tg" ? canTelegram : canWhatsapp
+  if (!canLabels && !canManage) return invite
 
   return (
     <>
       {invite}
-      <VisibilityToggle
-        name={group.title}
-        visible={!controller.isHidden(group)}
-        pending={controller.isToggling(group)}
-        onToggle={() => void controller.toggleVisibility(group)}
-      />
-      <IconButton
-        label="Edit labels"
-        ariaLabel={`Edit labels for ${group.title}`}
-        icon={Tags}
-        tone="warning"
-        appearance="tinted"
-        onClick={() => controller.show("labels", group)}
-      />
-      {group.type === "wa" ? (
-        <IconButton
-          label="Edit group"
-          ariaLabel={`Edit ${group.title}`}
-          icon={Pencil}
-          tone="success"
-          appearance="tinted"
-          onClick={() => controller.show("edit", group)}
-        />
-      ) : (
-        alignEdit && <span aria-hidden className="size-9 shrink-0" />
-      )}
-      {group.type === "tg" ? (
-        <IconButton
-          label="Leave group"
-          ariaLabel={`Leave ${group.title}`}
-          icon={LogOut}
-          tone="danger"
-          appearance="tinted"
-          onClick={(event) => controller.show("leave", group, event.currentTarget)}
-        />
-      ) : (
-        <IconButton
-          label="Delete group"
-          ariaLabel={`Delete ${group.title}`}
-          icon={Trash2}
-          tone="danger"
-          appearance="tinted"
-          onClick={(event) => controller.show("delete", group, event.currentTarget)}
+      {canManage && (
+        <VisibilityToggle
+          name={group.title}
+          visible={!controller.isHidden(group)}
+          pending={controller.isToggling(group)}
+          onToggle={() => void controller.toggleVisibility(group)}
         />
       )}
+      {canLabels && (
+        <IconButton
+          label="Edit labels"
+          ariaLabel={`Edit labels for ${group.title}`}
+          icon={Tags}
+          tone="warning"
+          appearance="tinted"
+          onClick={() => controller.show("labels", group)}
+        />
+      )}
+      {canManage &&
+        (group.type === "wa" ? (
+          <IconButton
+            label="Edit group"
+            ariaLabel={`Edit ${group.title}`}
+            icon={Pencil}
+            tone="success"
+            appearance="tinted"
+            onClick={() => controller.show("edit", group)}
+          />
+        ) : (
+          alignEdit && <span aria-hidden className="size-9 shrink-0" />
+        ))}
+      {canManage &&
+        (group.type === "tg" ? (
+          <IconButton
+            label="Leave group"
+            ariaLabel={`Leave ${group.title}`}
+            icon={LogOut}
+            tone="danger"
+            appearance="tinted"
+            onClick={(event) => controller.show("leave", group, event.currentTarget)}
+          />
+        ) : (
+          <IconButton
+            label="Delete group"
+            ariaLabel={`Delete ${group.title}`}
+            icon={Trash2}
+            tone="danger"
+            appearance="tinted"
+            onClick={(event) => controller.show("delete", group, event.currentTarget)}
+          />
+        ))}
     </>
   )
 }

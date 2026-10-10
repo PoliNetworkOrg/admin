@@ -25,13 +25,21 @@ import telegramLogo from "@/assets/svg/telegram.svg"
 import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
 import type { FileRoutesByTo } from "@/routeTree.gen"
+import type { Permission } from "@/server/permissions"
 
 /** Every navigable dashboard route path, as TanStack `Link`'s `to` accepts it. */
 export type DashboardPath = Extract<keyof FileRoutesByTo, `/dashboard${string}`>
 
 export type ServiceId = "overview" | "telegram" | "whatsapp" | "m365" | "web" | "reports" | "account"
 
-export type Section = { id: string; title: string; icon: LucideIcon; path: DashboardPath; searchPlaceholder?: string }
+export type Section = {
+  id: string
+  title: string
+  icon: LucideIcon
+  path: DashboardPath
+  searchPlaceholder?: string
+  permission?: Permission
+}
 
 /**
  * `path` is where the service lands (its first section, or its own page for Overview and Account). `logo` is the
@@ -55,7 +63,6 @@ export type PageMatch =
   | { kind: "telegram-groups" }
   | { kind: "telegram-grants" }
   | { kind: "whatsapp-groups" }
-  | { kind: "m365-groups" }
   | { kind: "m365-members" }
   | { kind: "web-projects" }
   | { kind: "web-associations" }
@@ -86,6 +93,7 @@ const telegram: Service = {
       title: "Users",
       icon: UsersRound,
       path: "/dashboard/telegram/users",
+      permission: "tg:users:read",
       searchPlaceholder: "Search by name or username…",
     },
     {
@@ -100,6 +108,7 @@ const telegram: Service = {
       title: "Grants",
       icon: ShieldCheck,
       path: "/dashboard/telegram/grants",
+      permission: "tg:grants:read",
       searchPlaceholder: "Search users, authorizers or reasons…",
     },
   ],
@@ -127,20 +136,14 @@ const m365: Service = {
   title: "Microsoft 365",
   icon: Cloud,
   logo: azureLogo,
-  path: "/dashboard/azure/groups",
+  path: "/dashboard/azure/members",
   sections: [
-    {
-      id: "groups",
-      title: "Groups",
-      icon: Database,
-      path: "/dashboard/azure/groups",
-      searchPlaceholder: "Search by group or email…",
-    },
     {
       id: "members",
       title: "Members",
       icon: UsersRound,
       path: "/dashboard/azure/members",
+      permission: "azure:members:create",
       searchPlaceholder: "Search by name, email or member ID…",
     },
   ],
@@ -202,6 +205,7 @@ const reports: Service = {
       title: "Open",
       icon: Inbox,
       path: "/dashboard/reports/group-links",
+      permission: "web:reports:manage",
       searchPlaceholder: "Search by group, label or link…",
     },
     {
@@ -209,6 +213,7 @@ const reports: Service = {
       title: "Closed",
       icon: CircleCheck,
       path: "/dashboard/reports/resolved",
+      permission: "web:reports:manage",
       searchPlaceholder: "Search by group, label or link…",
     },
   ],
@@ -258,7 +263,6 @@ export function matchPath(pathname: string): PageMatch {
   if (head === "whatsapp" && second === "groups" && third === undefined) return { kind: "whatsapp-groups" }
 
   if (head === "azure" && third === undefined) {
-    if (second === "groups") return { kind: "m365-groups" }
     if (second === "members") return { kind: "m365-members" }
   }
 
@@ -296,7 +300,6 @@ export function serviceFor(match: PageMatch): Service {
       return telegram
     case "whatsapp-groups":
       return whatsapp
-    case "m365-groups":
     case "m365-members":
       return m365
     case "web-projects":
@@ -330,8 +333,6 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(telegram, "grants")
     case "whatsapp-groups":
       return section(whatsapp, "groups")
-    case "m365-groups":
-      return section(m365, "groups")
     case "m365-members":
       return section(m365, "members")
     case "web-projects":

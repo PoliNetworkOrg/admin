@@ -43,6 +43,7 @@ const LOOKUP_METHODS = [
 function grantMutationError(error: string) {
   if (error === "UNAUTHORIZED") return "You do not have permission to create grants."
   if (error === "ALREADY_EXISTING") return "This user already has an ongoing grant."
+  if (error === "INVALID_PERIOD") return "The grant end must be after its start."
   return "The grant could not be created."
 }
 

@@ -10,7 +10,7 @@ import {
   RecordHeader,
   SectionHeading,
 } from "@/components/primitives"
-import { type PageBarBack, PageBar, PageContent, SearchField, useCanWrite } from "@/components/shell"
+import { type PageBarBack, PageBar, PageContent, SearchField, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { GroupLabel } from "@/features/group-labels/types"
 import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
@@ -33,7 +33,9 @@ type TagGroupsPageProps = {
 
 /** One flat tag's groups: the category node layout without sub-categories. */
 export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPageProps) {
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("groups:labels:write")
+  const canTelegram = useCan("tg:groups:manage")
+  const canWhatsapp = useCan("wa:groups:manage")
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState("")
   const [addOpen, setAddOpen] = useState(false)
@@ -92,7 +94,9 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
                 <Plus aria-hidden data-icon="inline-start" />
                 Add group
               </Button>
-              {publication && <PublishTagGroupsDialog tag={tag} rows={rows} />}
+              {publication && rows.every((row) => (row.type === "tg" ? canTelegram : canWhatsapp)) && (
+                <PublishTagGroupsDialog tag={tag} rows={rows} />
+              )}
             </>
           )
         }

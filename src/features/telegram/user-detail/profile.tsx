@@ -1,15 +1,13 @@
 import { Link } from "@tanstack/react-router"
-import { CalendarPlus, ExternalLink, Minus, Plus, ShieldX, UserX } from "lucide-react"
-import { type ReactNode, useMemo, useRef, useState } from "react"
+import { CalendarPlus, ExternalLink, ShieldX, UserX } from "lucide-react"
+import { useRef, useState } from "react"
 
 import {
   buttonMotion,
   buttonTones,
-  Chip,
   DataTable,
   type DataTableColumn,
   EmptyState,
-  Hint,
   initialsOf,
   RecordHeader,
   SectionCard,
@@ -17,7 +15,7 @@ import {
   StatusBadge,
   Unset,
 } from "@/components/primitives"
-import { PageBar, PageContent, useCanWrite } from "@/components/shell"
+import { PageBar, PageContent, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -27,14 +25,12 @@ import { formatDateTime, formatRange } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { InterruptGrantDialog } from "./grant-dialogs"
-import { AddGroupAdminDialog, RemoveGroupAdminDialog } from "./group-admin-dialog"
-import { RoleDialog, type RoleDialogMode } from "./role-dialog"
 import type { TelegramUserDetail } from "./types"
 
 const BACK = { label: "users", link: { to: "/dashboard/telegram/users" } } as const
 
-type Message = TelegramUserDetail["messages"][number]
-type Audit = TelegramUserDetail["audits"][number]
+type Message = NonNullable<TelegramUserDetail["messages"]>[number]
+type Audit = NonNullable<TelegramUserDetail["audits"]>[number]
 
 export function TelegramUserNotFound({ userId }: { userId: string }) {
   return (
@@ -63,20 +59,18 @@ export function TelegramUserNotFound({ userId }: { userId: string }) {
   )
 }
 
-type OpenDialog = "none" | "grant" | "end-grant" | "role" | "add-group" | "remove-group"
+type OpenDialog = "none" | "grant" | "end-grant"
 
-/** Telegram user detail: roles in the header, then grants, groups, messages, audit log. */
+/**
+ * Telegram user detail: grants, messages, audit log, each shown only with its read permission. Roles live in the
+ * IdP now (RFC v3 §11.4), so there is no role or group-admin management here.
+ */
 export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
-  const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, ongoingGrant, scheduledGrants } = data
-  const canWrite = useCanWrite()
+  const { user, messages, audits, grants } = data
+  const canWrite = useCan("tg:grants:manage")
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [dialog, setDialog] = useState<OpenDialog>("none")
-  // Dialog subjects outlive `dialog` so each dialog keeps its copy while it animates closed.
-  const [roleMode, setRoleMode] = useState<RoleDialogMode>("add")
-  const [removeTarget, setRemoveTarget] = useState<{ groupId: number; groupTitle: string } | null>(null)
   const name = telegramUserName(user)
-  const assignable = configuredRoles.filter((role) => !roles.includes(role))
-  const administeredGroupIds = useMemo(() => new Set(groupAdmin.map((entry) => entry.group.id)), [groupAdmin])
 
   function closeDialog(open: boolean) {
     if (!open) setDialog("none")
@@ -84,7 +78,7 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
 
   const headerActions = canWrite ? (
     <>
-      {ongoingGrant && (
+      {grants?.ongoing && (
         <Button
           variant="outline"
           size="sm"
@@ -127,126 +121,40 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
               </Avatar>
             }
             meta={user.username ? `@${user.username}` : <Unset />}
-            chips={
-              roles.length > 0 || canWrite ? (
-                <>
-                  {roles.map((role) => (
-                    <Chip key={role}>{role}</Chip>
-                  ))}
-                  {canWrite && (
-                    <>
-                      <RoleButton
-                        icon={<Plus aria-hidden data-icon="inline-start" />}
-                        label="Assign role"
-                        disabledReason={assignable.length === 0 ? "All configured roles are assigned" : null}
-                        onClick={() => {
-                          setRoleMode("add")
-                          setDialog("role")
-                        }}
-                      />
-                      <RoleButton
-                        icon={<Minus aria-hidden data-icon="inline-start" />}
-                        label="Remove role"
-                        disabledReason={roles.length === 0 ? "No roles to remove" : null}
-                        onClick={() => {
-                          setRoleMode("remove")
-                          setDialog("role")
-                        }}
-                      />
-                    </>
-                  )}
-                </>
-              ) : undefined
-            }
           />
 
-          <GrantsSection ongoing={ongoingGrant} scheduled={scheduledGrants} />
+          {grants && <GrantsSection ongoing={grants.ongoing} scheduled={grants.scheduled} />}
 
-          <SectionCard
-            title="Group administration"
-            count={groupAdmin.length}
-            padding="flush"
-            action={
-              canWrite ? (
-                <Button variant="outline" size="sm" className={buttonMotion} onClick={() => setDialog("add-group")}>
-                  <Plus aria-hidden data-icon="inline-start" />
-                  Add group
-                </Button>
-              ) : undefined
-            }
-          >
-            {groupAdmin.length === 0 ? (
-              <SectionEmpty title="No administered groups" hint="Groups this user administers appear here." />
-            ) : (
-              <ul className="divide-y divide-(--pn-line)">
-                {groupAdmin.map((entry) => (
-                  <li
-                    key={entry.group.id}
-                    className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-5 py-2 sm:grid-cols-[minmax(0,1fr)_150px_minmax(0,220px)_auto]"
-                  >
-                    <Link
-                      to="/dashboard/telegram/groups"
-                      search={{ q: entry.group.title }}
-                      title={entry.group.title}
-                      className="truncate text-[13px] font-medium text-(--pn-fg) underline-offset-2 hover:text-(--pn-accent) hover:underline"
-                    >
-                      {entry.group.title}
-                    </Link>
-                    <span className="font-mono text-xs text-(--pn-fg-muted) tabular-nums max-sm:hidden">
-                      {entry.group.id}
-                    </span>
-                    <span className="truncate text-xs text-(--pn-fg-muted) max-sm:hidden">
-                      Added by {entry.addedBy.firstName}
-                      {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
-                    </span>
-                    {canWrite ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(buttonMotion, buttonTones.dangerGhost, "-mr-2")}
-                        aria-label={`Remove ${name} as administrator of ${entry.group.title}`}
-                        onClick={() => {
-                          setRemoveTarget({ groupId: entry.group.id, groupTitle: entry.group.title })
-                          setDialog("remove-group")
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    ) : (
-                      <span />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SectionCard>
+          {messages && (
+            <SectionCard title="Recent messages" count={messages.length} padding="flush">
+              {messages.length === 0 ? (
+                <SectionEmpty title="No recent messages from this user" />
+              ) : (
+                <ul className="divide-y divide-(--pn-line)">
+                  {messages.map((message) => (
+                    <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
+                  ))}
+                </ul>
+              )}
+            </SectionCard>
+          )}
 
-          <SectionCard title="Recent messages" count={messages.length} padding="flush">
-            {messages.length === 0 ? (
-              <SectionEmpty title="No recent messages from this user" />
-            ) : (
-              <ul className="divide-y divide-(--pn-line)">
-                {messages.map((message) => (
-                  <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
-                ))}
-              </ul>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Audit log" count={audits.length} padding="flush">
-            {audits.length === 0 ? (
-              <SectionEmpty title="No audit events for this user" />
-            ) : (
-              <DataTable
-                label={`Audit log for ${name}`}
-                columns={auditColumns}
-                rows={audits}
-                getRowId={(audit) => `${audit.id}-${audit.type}`}
-                className="rounded-none border-0"
-                empty={null}
-              />
-            )}
-          </SectionCard>
+          {audits && (
+            <SectionCard title="Audit log" count={audits.length} padding="flush">
+              {audits.length === 0 ? (
+                <SectionEmpty title="No audit events for this user" />
+              ) : (
+                <DataTable
+                  label={`Audit log for ${name}`}
+                  columns={auditColumns}
+                  rows={audits}
+                  getRowId={(audit) => `${audit.id}-${audit.type}`}
+                  className="rounded-none border-0"
+                  empty={null}
+                />
+              )}
+            </SectionCard>
+          )}
         </div>
       </PageContent>
 
@@ -259,75 +167,21 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
             userId={user.id}
             userName={name}
           />
-          <RoleDialog
-            open={dialog === "role"}
-            onOpenChange={closeDialog}
-            mode={roleMode}
-            userId={user.id}
-            roles={roles}
-            configuredRoles={configuredRoles}
-          />
-          <AddGroupAdminDialog
-            open={dialog === "add-group"}
-            onOpenChange={closeDialog}
-            userId={user.id}
-            groups={groups}
-            administeredGroupIds={administeredGroupIds}
-          />
-          {removeTarget && (
-            <RemoveGroupAdminDialog
-              open={dialog === "remove-group"}
-              onOpenChange={closeDialog}
-              userId={user.id}
-              userName={name}
-              groupId={removeTarget.groupId}
-              groupTitle={removeTarget.groupTitle}
-            />
-          )}
         </>
       )}
     </>
   )
 }
 
-type RoleButtonProps = {
-  icon: ReactNode
-  label: string
-  /** Disables the button and explains why in its tooltip. */
-  disabledReason: string | null
-  onClick: () => void
-}
-
-function RoleButton({ icon, label, disabledReason, onClick }: RoleButtonProps) {
-  const button = (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={disabledReason !== null}
-      onClick={onClick}
-      className={cn(buttonMotion, "text-(--pn-fg-muted) hover:text-(--pn-fg)")}
-    >
-      {icon}
-      {label}
-    </Button>
-  )
-  if (!disabledReason) return button
-  // Disabled buttons swallow pointer events, so the tooltip hangs off a focusable wrapper.
-  return (
-    <Hint label={disabledReason}>
-      <span tabIndex={0} aria-label={disabledReason} className="inline-flex rounded-(--pn-r-3)">
-        {button}
-      </span>
-    </Hint>
-  )
-}
-
 type GrantWindow = Pick<TgGrant, "validSince" | "validUntil">
 
-function GrantsSection({ ongoing, scheduled }: { ongoing: GrantWindow | null; scheduled: GrantWindow[] }) {
+type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { key: string })[] }
+
+function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
+  // `tg.grants.checkUser` returns the ongoing grant without a key; a user has at most one.
   const rows = [
-    ...(ongoing ? [{ grant: ongoing, label: "Ongoing", status: "active" as const }] : []),
-    ...scheduled.map((grant) => ({ grant, label: "Scheduled", status: "scheduled" as const })),
+    ...(ongoing ? [{ key: "ongoing", grant: ongoing, label: "Ongoing", status: "active" as const }] : []),
+    ...scheduled.map((grant) => ({ key: grant.key, grant, label: "Scheduled", status: "scheduled" as const })),
   ]
   return (
     <SectionCard title="Grants" padding="flush">
@@ -338,12 +192,8 @@ function GrantsSection({ ongoing, scheduled }: { ongoing: GrantWindow | null; sc
         />
       ) : (
         <ul className="divide-y divide-(--pn-line)">
-          {rows.map(({ grant, label, status }) => (
-            // `tg.grants.checkUser` returns the ongoing grant without an id; no two grants of a user share a start.
-            <li
-              key={`${label}-${grant.validSince.getTime()}`}
-              className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2"
-            >
+          {rows.map(({ key, grant, label, status }) => (
+            <li key={key} className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2">
               <span className="w-20 text-[13px] font-medium text-(--pn-fg-muted)">{label}</span>
               {status === "active" ? (
                 <StatusBadge tone="success">Active</StatusBadge>
@@ -407,6 +257,13 @@ function MessageRow({ message }: { message: Message }) {
 }
 
 const auditColumns: DataTableColumn<Audit>[] = [
+  {
+    id: "actor",
+    label: "Actor",
+    minWidth: 160,
+    cell: (audit) => audit.actorSub ?? audit.actorTgId ?? audit.adminId ?? <Unset />,
+  },
+  { id: "client", label: "Client", minWidth: 120, cell: (audit) => audit.client ?? <Unset /> },
   { id: "type", label: "Type", minWidth: 120, cell: (audit) => audit.type },
   {
     id: "date",

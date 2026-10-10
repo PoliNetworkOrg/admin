@@ -13,7 +13,7 @@ import {
 
 import { TOOLTIP_DELAY } from "@/components/primitives/hint"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { type AdminSession, useSession } from "@/lib/auth"
+import type { DashboardUser } from "@/lib/auth"
 
 import type { ShellUser } from "./account-avatar"
 import { CommandPalette } from "./command-palette"
@@ -38,6 +38,7 @@ import {
 import { Panel } from "./panel"
 import { PanelSheet } from "./panel-sheet"
 import { Rail } from "./rail"
+import { useVisibleServices } from "./use-can"
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts"
 import { SignOutProvider, useSignOut } from "./use-sign-out"
 
@@ -96,14 +97,13 @@ function useRememberedSections(service: Service, sectionPath: DashboardPath | un
   )
 }
 
-function toShellUser(session: AdminSession | null): ShellUser {
-  const user = session?.user
-  return { name: user?.name ?? "", email: user?.email ?? "", image: user?.image ?? null }
+function toShellUser(user: DashboardUser): ShellUser {
+  return { name: user.name, email: user.email, image: user.picture }
 }
 
 export type DashboardShellProps = {
-  /** The session `/dashboard` loaded; the live `useSession` value replaces it once the client has one. */
-  initialSession: AdminSession
+  /** The signed-in user `/dashboard` loaded: ID-token claims. */
+  user: DashboardUser
   /** Pending reports for the Reports › Open count; streams in, null when it couldn't be loaded. */
   pendingReports: Promise<number | null>
 }
@@ -112,27 +112,27 @@ export type DashboardShellProps = {
  * The dashboard frame: rail · panel · column(header bar + scrolling main). Pages render
  * their header content through `PageBar` and their body inside `PageContent`.
  */
-export function DashboardShell({ initialSession, pendingReports }: DashboardShellProps) {
+export function DashboardShell({ user, pendingReports }: DashboardShellProps) {
   return (
     <SignOutProvider>
-      <DashboardFrame initialSession={initialSession} pendingReports={pendingReports} />
+      <DashboardFrame user={user} pendingReports={pendingReports} />
     </SignOutProvider>
   )
 }
 
-function DashboardFrame({ initialSession, pendingReports }: DashboardShellProps) {
+function DashboardFrame({ user: dashboardUser, pendingReports }: DashboardShellProps) {
   const pathname = useRenderedPathname()
   const match = matchPath(pathname)
-  const service = serviceFor(match)
+  const rawService = serviceFor(match)
+  const service = useVisibleServices().find((candidate) => candidate.id === rawService.id) ?? rawService
   const section = sectionFor(match)
   const hasPanel = servicePanelVisible(service)
   const isDesktop = useIsDesktop()
   const serviceHref = useRememberedSections(service, section?.path)
 
-  const sessionQuery = useSession()
-  const user = toShellUser(sessionQuery.data ?? initialSession)
+  const user = toShellUser(dashboardUser)
   const { signOut } = useSignOut()
-  const onSignOut = useCallback(() => void signOut(), [signOut])
+  const onSignOut = useCallback(() => signOut(), [signOut])
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)

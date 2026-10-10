@@ -3,20 +3,13 @@ import { useState } from "react"
 
 import { fieldControl, fieldHintId, FormDialog, FormField } from "@/components/primitives"
 import { Input } from "@/components/ui/input"
-import { createAzureMember, setAzureMemberNumber } from "@/features/azure/azure.functions"
-import type { AzureMember } from "@/lib/api/types"
+import { createAzureMember } from "@/features/azure/azure.functions"
 import { cn } from "@/lib/utils"
 
-export type MemberDialogTarget = { mode: "create" } | { mode: "edit"; member: AzureMember }
-
 type MemberDialogProps = {
-  target: MemberDialogTarget
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Shows the new member ID in the table right away; returns the function that reverts it. */
-  onOptimisticUpdate: (memberId: string, employeeId: string) => () => void
-  /** Reloads the saved member before the dialog closes. */
-  onSaved: (target: MemberDialogTarget) => Promise<void>
+  onSaved: () => Promise<void>
 }
 
 const MEMBER_ID_ERROR = "Enter a valid positive member ID."
@@ -36,52 +29,34 @@ function saveError(caught: Error) {
   return caught.message === "" || caught.message === "UNAUTHORIZED" ? SAVE_ERROR : caught.message
 }
 
-/** Create a member, or set the member ID of an existing one. */
-export function MemberDialog({ target, open, onOpenChange, onOptimisticUpdate, onSaved }: MemberDialogProps) {
+/** Create a new member through the fixed backend workflow. */
+export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps) {
   const createMember = useServerFn(createAzureMember)
-  const setMemberNumber = useServerFn(setAzureMemberNumber)
-  const editing = target.mode === "edit"
-  const initialMemberId = editing ? (target.member.employeeId ?? "") : ""
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
-  const [memberId, setMemberId] = useState(initialMemberId)
+  const [memberId, setMemberId] = useState("")
   const [submitted, setSubmitted] = useState(false)
 
   const memberIdError = submitted && !isMemberId(memberId) ? MEMBER_ID_ERROR : undefined
-  const emailError = submitted && !editing && !isEmail(email.trim()) ? EMAIL_ERROR : undefined
-  const dirty = editing
-    ? memberId !== initialMemberId
-    : [firstName, lastName, email, memberId].some((value) => value.trim() !== "")
-  const canSubmit = editing
-    ? dirty
-    : firstName.trim() !== "" && lastName.trim() !== "" && email.trim() !== "" && memberId !== ""
+  const emailError = submitted && !isEmail(email.trim()) ? EMAIL_ERROR : undefined
+  const dirty = [firstName, lastName, email, memberId].some((value) => value.trim() !== "")
+  const canSubmit = firstName.trim() !== "" && lastName.trim() !== "" && email.trim() !== "" && memberId !== ""
 
   async function submit() {
     setSubmitted(true)
-    if (!isMemberId(memberId) || (!editing && !isEmail(email.trim()))) return
+    if (!isMemberId(memberId) || !isEmail(email.trim())) return
     const assocNumber = Number.parseInt(memberId, 10)
 
     try {
-      if (target.mode === "edit") {
-        const revert = onOptimisticUpdate(target.member.id, memberId)
-        try {
-          await setMemberNumber({ data: { userId: target.member.id, assocNumber } })
-        } catch (caught) {
-          console.error(caught)
-          revert()
-          throw caught
-        }
-      } else {
-        await createMember({
-          data: { firstName: firstName.trim(), lastName: lastName.trim(), assocNumber, sendEmailTo: email.trim() },
-        })
-      }
+      await createMember({
+        data: { firstName: firstName.trim(), lastName: lastName.trim(), assocNumber, sendEmailTo: email.trim() },
+      })
     } catch (caught) {
       console.error(caught)
       throw new Error(caught instanceof Error ? saveError(caught) : SAVE_ERROR, { cause: caught })
     }
-    await onSaved(target)
+    await onSaved()
     onOpenChange(false)
   }
 
@@ -89,19 +64,15 @@ export function MemberDialog({ target, open, onOpenChange, onOptimisticUpdate, o
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={editing ? "Set member ID" : "Create a member"}
-      description={
-        editing
-          ? "Update the association number linked to this account."
-          : "Creates the association record and sends a welcome email."
-      }
+      title="Create a member"
+      description="Creates the association record and sends a welcome email."
       noun="member"
       dirty={dirty}
       canSubmit={canSubmit}
-      submitLabel={editing ? "Save member ID" : "Create member"}
+      submitLabel="Create member"
       onSubmit={submit}
     >
-      {editing ? null : (
+      {
         <>
           <div className="grid gap-4 min-[480px]:grid-cols-2">
             <FormField label="First name" htmlFor="m365-member-first-name">
@@ -142,7 +113,7 @@ export function MemberDialog({ target, open, onOpenChange, onOptimisticUpdate, o
             />
           </FormField>
         </>
-      )}
+      }
       <FormField label="Member ID" htmlFor="m365-member-id" error={memberIdError}>
         <Input
           id="m365-member-id"

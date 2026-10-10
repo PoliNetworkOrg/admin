@@ -13,7 +13,7 @@ import {
   IconButton,
   StatusBadge,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -34,7 +34,7 @@ function nextVersion(version: string | undefined) {
 export function GuidesPage({ guides }: { guides: Guide[] }) {
   const router = useRouter()
   const deleteGuideFn = useServerFn(deleteGuide)
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("web:content:write")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [publishOpen, setPublishOpen] = useState(false)

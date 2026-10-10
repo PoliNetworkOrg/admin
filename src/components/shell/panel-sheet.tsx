@@ -8,18 +8,11 @@ import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/she
 import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
-import {
-  type DashboardPath,
-  type PageMatch,
-  type Service,
-  type ServiceId,
-  panelServices,
-  serviceById,
-  serviceFor,
-} from "./nav"
+import { type DashboardPath, type PageMatch, type Service, type ServiceId, serviceById, serviceFor } from "./nav"
 import { onSectionListKeyDown, SectionItems } from "./panel"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
+import { useVisibleServices } from "./use-can"
 
 const rowClass =
   "flex h-14 w-full items-center gap-3 rounded-(--pn-r-3) px-3 text-left text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
@@ -54,6 +47,7 @@ export function PanelSheet({
   user,
   pendingReports,
 }: PanelSheetProps) {
+  const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
   const { theme, toggleTheme } = useTheme()
   const currentId = serviceFor(match).id
   const close = () => onOpenChange(false)

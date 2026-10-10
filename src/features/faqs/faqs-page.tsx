@@ -14,7 +14,7 @@ import {
   useEditSlot,
   useFocusAfterRemoval,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -48,7 +48,7 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
   const editFAQFn = useServerFn(editFAQ)
   const deleteFAQFn = useServerFn(deleteFAQ)
   const deleteCategoryFn = useServerFn(deleteFAQCategory)
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("web:content:write")
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim())
