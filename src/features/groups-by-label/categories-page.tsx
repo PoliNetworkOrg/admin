@@ -3,7 +3,7 @@ import { Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { buttonMotion, NavCard } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { AddCategoryDialog } from "@/features/group-labels/add-category-dialog"
 import {
@@ -16,7 +16,7 @@ import type { GroupLabel } from "@/features/group-labels/types"
 
 /** The top of the category tree: one card per fixed root (Didattica, Extra), even before it has categories. */
 export function CategoriesPage({ labels }: { labels: GroupLabel[] }) {
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("groups:labels:write")
   const [addOpen, setAddOpen] = useState(false)
   const roots = useMemo(() => buildCategoryRootTree(labels.filter((label) => isCategoryLabel(label.label))), [labels])
   const total = roots.reduce((sum, root) => sum + countCategoryDescendants(root), 0)

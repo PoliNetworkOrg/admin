@@ -16,7 +16,7 @@ import {
   SectionEmpty,
   SegmentedControl,
 } from "@/components/primitives"
-import { appToast } from "@/components/shell"
+import { appToast, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -79,10 +79,11 @@ export function AddGroupToLabelDialog({
   allowCreate = true,
 }: AddGroupToLabelDialogProps) {
   const router = useRouter()
+  const canCreateWhatsapp = useCan("wa:groups:manage")
   const createGroupLabelFn = useServerFn(createGroupLabel)
   const createWhatsappGroupFn = useServerFn(createWhatsappGroup)
   const tagGroupFn = useServerFn(tagGroup)
-  const initialStep: Step = allowCreate ? "choose" : "existing"
+  const initialStep: Step = allowCreate && canCreateWhatsapp ? "choose" : "existing"
   const ids = { title: useId(), link: useId(), hide: useId(), tags: useId(), search: useId() }
 
   const [step, setStep] = useState<Step>(initialStep)
@@ -206,7 +207,7 @@ export function AddGroupToLabelDialog({
   }
 
   const back =
-    step === "choose" || !allowCreate ? undefined : (
+    step === "choose" || !allowCreate || !canCreateWhatsapp ? undefined : (
       <Button
         type="button"
         variant="ghost"

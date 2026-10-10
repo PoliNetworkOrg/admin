@@ -1,10 +1,10 @@
-import { USER_ROLE } from "@polinetwork/backend"
 import { notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
 import type { TgUser } from "@/lib/api/types"
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware } from "@/server/auth.middleware"
+import { hasPermission } from "@/server/permissions"
 
 export const getTelegramUsers = createServerFn()
   .middleware([adminMiddleware])
@@ -52,65 +52,41 @@ export const findTelegramUser = createServerFn()
     }
   })
 
+/**
+ * A Telegram user with the sections the signed-in admin may read: each needs its own permission in the backend
+ * (`tg:messages:read`, `tg:audit:read`, `tg:grants:read`), and a section without it is `null`.
+ */
 export const getTelegramUserDetails = createServerFn()
   .middleware([adminMiddleware])
   .validator(z.object({ userId: z.number().int().positive() }))
   .handler(async ({ data, context }) => {
-    const { user } = await context.backend.tg.users.get.query({ userId: data.userId })
+    const { backend, permissions } = context
+    const { user } = await backend.tg.users.get.query({ userId: data.userId })
     if (!user) throw notFound()
 
-    const [permissions, messages, audits, ongoingGrant, scheduledGrants, groups] = await Promise.all([
-      context.backend.tg.permissions.getRoles.query({ userId: user.id }),
-      context.backend.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 }),
-      context.backend.tg.auditLog.getById.query({ targetId: user.id }),
-      context.backend.tg.grants.checkUser.query({ userId: user.id }),
-      context.backend.tg.grants.getScheduled.query(),
-      context.backend.tg.groups.getAll.query(),
+    const canReadGrants = hasPermission(permissions, "tg:grants:read")
+    const [messages, audits, ongoingGrant, scheduledGrants] = await Promise.all([
+      hasPermission(permissions, "tg:messages:read")
+        ? backend.tg.messages.getLastByUser.query({ userId: user.id, limit: 15 })
+        : null,
+      hasPermission(permissions, "tg:audit:read") ? backend.tg.auditLog.getById.query({ targetId: user.id }) : null,
+      canReadGrants ? backend.tg.grants.checkUser.query({ userId: user.id }) : null,
+      canReadGrants ? backend.tg.grants.getScheduled.query() : null,
     ])
-    const userScheduledGrants = scheduledGrants.grants
-      .filter((record) => record.grant.userId === user.id)
-      .map((record) => record.grant)
-      .sort((left, right) => new Date(left.validSince).getTime() - new Date(right.validSince).getTime())
 
     return {
       user,
-      roles: permissions.roles ?? [],
-      configuredRoles: Object.values(USER_ROLE),
-      groupAdmin: permissions.groupAdmin.filter((group) => group !== null),
-      groups,
-      messages: messages.messages ?? [],
+      messages: messages ? (messages.messages ?? []) : null,
       audits,
-      ongoingGrant: ongoingGrant.grant ?? null,
-      scheduledGrants: userScheduledGrants,
+      grants:
+        ongoingGrant && scheduledGrants
+          ? {
+              ongoing: ongoingGrant.grant ?? null,
+              scheduled: scheduledGrants.grants
+                .filter((record) => record.grant.userId === user.id)
+                .map((record) => record.grant)
+                .sort((left, right) => left.validSince.getTime() - right.validSince.getTime()),
+            }
+          : null,
     }
   })
-
-export const addTelegramGroupAdmin = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
-  .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
-  .handler(({ data, context }) =>
-    context.backend.tg.permissions.addGroup.mutate({ ...data, adderId: context.telegramId })
-  )
-
-export const removeTelegramGroupAdmin = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
-  .validator(z.object({ userId: z.number().int().positive(), groupId: z.number().int() }))
-  .handler(({ data, context }) =>
-    context.backend.tg.permissions.removeGroup.mutate({ ...data, removerId: context.telegramId })
-  )
-
-const telegramRoleInput = z.object({ userId: z.number().int().positive(), role: z.enum(USER_ROLE) })
-
-export const addTelegramUserRole = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
-  .validator(telegramRoleInput)
-  .handler(({ data, context }) =>
-    context.backend.tg.permissions.addRole.mutate({ ...data, adderId: context.telegramId })
-  )
-
-export const removeTelegramUserRole = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
-  .validator(telegramRoleInput)
-  .handler(({ data, context }) =>
-    context.backend.tg.permissions.removeRole.mutate({ ...data, removerId: context.telegramId })
-  )

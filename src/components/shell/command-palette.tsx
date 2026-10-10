@@ -7,9 +7,9 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog"
 import { suppressNextFocusTooltip } from "@/components/ui/tooltip"
 
-import { panelServices } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { useTheme } from "./theme"
+import { useVisibleServices } from "./use-can"
 
 type PaletteEntry = { id: string; label: string; glyph: ReactNode; run: () => void }
 type PaletteGroup = { heading: string; entries: PaletteEntry[] }
@@ -55,6 +55,7 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
     document.addEventListener("focusin", remember)
     return () => document.removeEventListener("focusin", remember)
   }, [])
+  const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
 

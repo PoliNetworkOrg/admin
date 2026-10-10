@@ -9,14 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as OnboardingUnauthorizedRouteImport } from './routes/onboarding/unauthorized'
-import { Route as OnboardingLinkRouteImport } from './routes/onboarding/link'
 import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
@@ -28,14 +30,17 @@ import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
-import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
 import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
 
+const UnauthorizedRoute = UnauthorizedRouteImport.update({
+  id: '/unauthorized',
+  path: '/unauthorized',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -56,16 +61,6 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const OnboardingUnauthorizedRoute = OnboardingUnauthorizedRouteImport.update({
-  id: '/onboarding/unauthorized',
-  path: '/onboarding/unauthorized',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingLinkRoute = OnboardingLinkRouteImport.update({
-  id: '/onboarding/link',
-  path: '/onboarding/link',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardWebRoute = DashboardWebRouteImport.update({
   id: '/web',
   path: '/web',
@@ -75,6 +70,21 @@ const DashboardAccountRoute = DashboardAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
   id: '/whatsapp/groups',
@@ -134,16 +144,6 @@ const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
   path: '/azure/members',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
-  id: '/azure/groups',
-  path: '/azure/groups',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
     id: '/groups-by-label/',
@@ -178,13 +178,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -205,13 +205,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -234,13 +234,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -264,13 +264,13 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
     | '/dashboard/web'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
     | '/dashboard/'
-    | '/api/auth/$'
-    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -291,13 +291,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
     | '/dashboard/web'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
     | '/dashboard'
-    | '/api/auth/$'
-    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -319,13 +319,13 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
     | '/dashboard/web'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
     | '/dashboard/'
-    | '/api/auth/$'
-    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -348,13 +348,21 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
-  OnboardingLinkRoute: typeof OnboardingLinkRoute
-  OnboardingUnauthorizedRoute: typeof OnboardingUnauthorizedRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  UnauthorizedRoute: typeof UnauthorizedRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unauthorized': {
+      id: '/unauthorized'
+      path: '/unauthorized'
+      fullPath: '/unauthorized'
+      preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -383,20 +391,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/onboarding/unauthorized': {
-      id: '/onboarding/unauthorized'
-      path: '/onboarding/unauthorized'
-      fullPath: '/onboarding/unauthorized'
-      preLoaderRoute: typeof OnboardingUnauthorizedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/link': {
-      id: '/onboarding/link'
-      path: '/onboarding/link'
-      fullPath: '/onboarding/link'
-      preLoaderRoute: typeof OnboardingLinkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard/web': {
       id: '/dashboard/web'
       path: '/web'
@@ -410,6 +404,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/account'
       preLoaderRoute: typeof DashboardAccountRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/whatsapp/groups': {
       id: '/dashboard/whatsapp/groups'
@@ -488,20 +503,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureMembersRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/azure/groups': {
-      id: '/dashboard/azure/groups'
-      path: '/azure/groups'
-      fullPath: '/dashboard/azure/groups'
-      preLoaderRoute: typeof DashboardAzureGroupsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
       path: '/groups-by-label'
@@ -570,7 +571,6 @@ interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
   DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
-  DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
@@ -585,7 +585,6 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRoute,
   DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
-  DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
@@ -604,19 +603,21 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
-  OnboardingLinkRoute: OnboardingLinkRoute,
-  OnboardingUnauthorizedRoute: OnboardingUnauthorizedRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  UnauthorizedRoute: UnauthorizedRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

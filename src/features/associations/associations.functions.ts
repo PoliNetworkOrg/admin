@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { webAdminMiddleware, webWriteAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, webContentWriteMiddleware } from "@/server/auth.middleware"
 
 import {
   associationIdInput,
@@ -10,7 +10,7 @@ import {
 } from "./associations.validation"
 
 export const getAssociations = createServerFn()
-  .middleware([webAdminMiddleware])
+  .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.web.associations.getAllAssociations.query())
 
 function associationFormData(data: ReturnType<typeof parseCreateAssociationForm>) {
@@ -23,40 +23,35 @@ function associationFormData(data: ReturnType<typeof parseCreateAssociationForm>
 }
 
 export const createAssociation = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(parseCreateAssociationForm)
   .handler(async ({ data, context }) => {
     const formData = associationFormData(data)
-    formData.set("createdBy", String(context.telegramId))
     return context.backend.web.associations.addAssociation.mutate(formData)
   })
 
 export const editAssociation = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(parseEditAssociationForm)
   .handler(async ({ data, context }) => {
     const formData = associationFormData(data)
     formData.set("id", String(data.id))
-    formData.set("modifiedBy", String(context.telegramId))
     const result = await context.backend.web.associations.editAssociation.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return result
   })
 
 export const editAssociationLinks = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(associationLinksInput)
   .handler(async ({ data, context }) => {
-    const result = await context.backend.web.associations.editAssociationLinks.mutate({
-      ...data,
-      modifiedBy: context.telegramId,
-    })
+    const result = await context.backend.web.associations.editAssociationLinks.mutate(data)
     if ("error" in result) throw new Error(result.error)
     return result
   })
 
 export const deleteAssociation = createServerFn({ method: "POST" })
-  .middleware([webWriteAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(associationIdInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.associations.deleteAssociation.mutate(data)

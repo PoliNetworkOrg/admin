@@ -25,7 +25,7 @@ import {
   Unset,
   useEditSlot,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { errorMessage } from "@/lib/errors"
@@ -99,7 +99,7 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
   const router = useRouter()
   const editGroupLabelFn = useServerFn(editGroupLabel)
   const deleteGroupLabelFn = useServerFn(deleteGroupLabel)
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("groups:labels:write")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const searching = deferredQuery.trim() !== ""

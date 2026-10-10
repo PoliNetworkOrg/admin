@@ -1,26 +1,28 @@
 import { Link, useRouter } from "@tanstack/react-router"
-import { ChevronRight, Cloud, EyeOff, Inbox, type LucideIcon, ShieldCheck } from "lucide-react"
+import { ChevronRight, EyeOff, Inbox, type LucideIcon, ShieldCheck } from "lucide-react"
 import { useState } from "react"
 
 import { Chip, EmptyState, InlineAlert, LoadingButton, SectionHeading, StatTile } from "@/components/primitives"
-import { type DashboardPath, PageBar, PageContent, panelServices, ServiceGlyph } from "@/components/shell"
+import { type DashboardPath, PageBar, PageContent, ServiceGlyph } from "@/components/shell"
+import { useVisibleServices } from "@/components/shell/use-can"
 import { pluralize } from "@/lib/format"
 
-/** Each count is null when its service couldn't be loaded. */
+/** `null` when its service couldn't be loaded; `undefined` when the user lacks the permission to read it. */
+export type OverviewCount = number | null | undefined
+
 export type OverviewCounts = {
-  telegramGroups: number | null
-  hiddenGroups: number | null
-  telegramUsers: number | null
-  openReports: number | null
-  activeGrants: number | null
-  expiringGrants: number | null
-  smallM365Groups: number | null
+  telegramGroups: OverviewCount
+  hiddenGroups: OverviewCount
+  telegramUsers: OverviewCount
+  openReports: OverviewCount
+  activeGrants: OverviewCount
+  expiringGrants: OverviewCount
 }
 
-type AttentionItem = { id: string; icon: LucideIcon; text: string; to: DashboardPath; count: number | null }
+type AttentionItem = { id: string; icon: LucideIcon; text: string; to: DashboardPath; count: OverviewCount }
 
 function attentionItems(counts: OverviewCounts): AttentionItem[] {
-  const { openReports, hiddenGroups, expiringGrants, smallM365Groups } = counts
+  const { openReports, hiddenGroups, expiringGrants } = counts
   return [
     {
       id: "reports",
@@ -43,22 +45,18 @@ function attentionItems(counts: OverviewCounts): AttentionItem[] {
       text: `${pluralize(expiringGrants ?? 0, "grant")} ${expiringGrants === 1 ? "expires" : "expire"} within 7 days`,
       to: "/dashboard/telegram/grants",
     },
-    {
-      id: "m365",
-      icon: Cloud,
-      count: smallM365Groups,
-      text: `${pluralize(smallM365Groups ?? 0, "Microsoft 365 group")} with 0–1 member`,
-      to: "/dashboard/azure/groups",
-    },
   ]
 }
 
 /** Overview: four stat tiles, what needs attention, and every service's sections. */
 export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
+  const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
   const router = useRouter()
   const [retrying, setRetrying] = useState(false)
 
-  const attention = attentionItems(counts).filter((item) => item.count !== null && item.count > 0)
+  const attention = attentionItems(counts).filter(
+    (item) => item.count !== null && item.count !== undefined && item.count > 0
+  )
   const someFailed = Object.values(counts).some((count) => count === null)
 
   async function retry() {
@@ -86,26 +84,34 @@ export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
           ) : null}
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatTile
-              label="Telegram groups"
-              value={counts.telegramGroups}
-              render={<Link to="/dashboard/telegram/groups" />}
-            />
-            <StatTile
-              label="Telegram users"
-              value={counts.telegramUsers}
-              render={<Link to="/dashboard/telegram/users" />}
-            />
-            <StatTile
-              label="Open reports"
-              value={counts.openReports}
-              render={<Link to="/dashboard/reports/group-links" />}
-            />
-            <StatTile
-              label="Active grants"
-              value={counts.activeGrants}
-              render={<Link to="/dashboard/telegram/grants" />}
-            />
+            {counts.telegramGroups !== undefined && (
+              <StatTile
+                label="Telegram groups"
+                value={counts.telegramGroups}
+                render={<Link to="/dashboard/telegram/groups" />}
+              />
+            )}
+            {counts.telegramUsers !== undefined && (
+              <StatTile
+                label="Telegram users"
+                value={counts.telegramUsers}
+                render={<Link to="/dashboard/telegram/users" />}
+              />
+            )}
+            {counts.openReports !== undefined && (
+              <StatTile
+                label="Open reports"
+                value={counts.openReports}
+                render={<Link to="/dashboard/reports/group-links" />}
+              />
+            )}
+            {counts.activeGrants !== undefined && (
+              <StatTile
+                label="Active grants"
+                value={counts.activeGrants}
+                render={<Link to="/dashboard/telegram/grants" />}
+              />
+            )}
           </div>
 
           <section aria-labelledby="overview-attention" className="flex flex-col gap-3">

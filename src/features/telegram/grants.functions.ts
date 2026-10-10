@@ -1,15 +1,16 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+import { adminMiddleware, grantsWriteMiddleware } from "@/server/auth.middleware"
 
 /** How long the grants page waits for grantor names before showing their ids instead. */
 const GRANTOR_LOOKUP_MS = 2000
 
 /**
- * The grants page: both grant lists plus the users who authorized them, so "Authorized by" can show a name.
- * Grantors are looked up by id once the grants are in (one batched request, none without grants); they are
- * decoration, so a failed or slow lookup leaves the page with the grantor ids.
+ * The grants page: both grant lists plus the Telegram users who authorized legacy grants, so "Authorized by" can show
+ * a name. Grants made through the IdP name their grantor by IdP subject (`grantedBySub`) instead, which the backend
+ * does not resolve to a name. Grantors are looked up by id once the grants are in (one batched request, none without
+ * legacy grants); they are decoration, so a failed or slow lookup leaves the page with the grantor ids.
  */
 export const getTelegramGrantsWithGrantors = createServerFn()
   .middleware([adminMiddleware])
@@ -18,7 +19,11 @@ export const getTelegramGrantsWithGrantors = createServerFn()
       context.backend.tg.grants.getOngoing.query(),
       context.backend.tg.grants.getScheduled.query(),
     ])
-    const grantorIds = new Set([...ongoing.grants, ...scheduled.grants].map(({ grant }) => grant.grantedBy))
+    const grantorIds = new Set(
+      [...ongoing.grants, ...scheduled.grants].flatMap(({ grant }) =>
+        grant.grantedBy === null ? [] : [grant.grantedBy]
+      )
+    )
     const signal = AbortSignal.timeout(GRANTOR_LOOKUP_MS)
     const lookups = await Promise.all(
       Array.from(grantorIds, (userId) =>
@@ -44,24 +49,13 @@ const grantInput = z
   })
   .refine(({ since, until }) => until > since, { message: "The grant end must be after its start.", path: ["until"] })
 
+// The backend takes the author from the access token; actor fields are only read from legacy callers.
 export const createTelegramGrant = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([grantsWriteMiddleware])
   .validator(grantInput)
-  .handler(({ data, context }) =>
-    context.backend.tg.grants.create.mutate({
-      ...data,
-      adderId: context.telegramId,
-      sendTgLog: true,
-    })
-  )
+  .handler(({ data, context }) => context.backend.tg.grants.create.mutate({ ...data, sendTgLog: true }))
 
 export const interruptTelegramGrant = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([grantsWriteMiddleware])
   .validator(z.object({ userId: z.number().int().positive() }))
-  .handler(({ data, context }) =>
-    context.backend.tg.grants.interrupt.mutate({
-      userId: data.userId,
-      interruptedById: context.telegramId,
-      sendTgLog: true,
-    })
-  )
+  .handler(({ data, context }) => context.backend.tg.grants.interrupt.mutate({ userId: data.userId, sendTgLog: true }))

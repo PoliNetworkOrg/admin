@@ -1,13 +1,15 @@
-import { AUTH_PATH } from "@polinetwork/backend"
-import { createAuthClient } from "better-auth/react"
+/** The signed-in user as the dashboard shows them: ID-token claims plus the linked Telegram account from `me.access`. */
+export type DashboardUser = {
+  sub: string
+  name: string
+  email: string
+  picture: string | null
+  telegramId: string | null
+}
 
-import { createAuthPlugins } from "@/lib/auth-plugins"
+export type DashboardAccess =
+  | { status: "authorized"; user: DashboardUser; permissions: string[] }
+  /** Signed in without `admin:access`; `stale` when the backend's permission snapshot is out of date. */
+  | { status: "forbidden"; user: DashboardUser; stale: boolean }
 
-export const auth = createAuthClient({
-  basePath: AUTH_PATH,
-  plugins: createAuthPlugins(),
-})
-
-export const { signIn, signOut, useSession } = auth
-
-export type AdminSession = typeof auth.$Infer.Session
+export type DashboardAccessState = DashboardAccess | { status: "unauthenticated" }

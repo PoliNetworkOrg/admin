@@ -4,25 +4,31 @@ import { RouteNotFound } from "@/components/route-error"
 import { DashboardShell, documentTitle, matchPath } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
+import { signInRedirect } from "@/lib/sign-in"
+import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard")({
-  beforeLoad: async () => {
+  // Signed in, then `admin:access` from `me.access` (RFC v3 §11.3). The permissions go into the route context for
+  // `useCan`; the backend enforces them on every call regardless.
+  beforeLoad: async ({ location }) => {
     const access = await getDashboardAccess()
-    if (access.status === "unauthenticated") throw redirect({ to: "/login" })
-    if (access.status === "telegram-unlinked") throw redirect({ to: "/onboarding/link" })
-    if (access.status === "forbidden") throw redirect({ to: "/onboarding/unauthorized" })
-    return { session: access.session, roles: access.roles }
+    if (access.status === "unauthenticated") throw signInRedirect(location.href)
+    if (access.status === "forbidden") throw redirect({ to: "/unauthorized" })
+    return { user: access.user, permissions: access.permissions }
   },
   // Not awaited: the panel count streams in. It is decoration, so a failed load hides it; the Reports page reports
-  // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it.
-  loader: () => ({
-    pendingReports: getPendingGroupLinkReports().then(
-      (reports) => reports.length,
-      (error) => {
-        console.error(error)
-        return null
-      }
-    ),
+  // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same
+  // permission as managing them.
+  loader: ({ context }) => ({
+    pendingReports: hasPermission(context.permissions, "web:reports:manage")
+      ? getPendingGroupLinkReports().then(
+          (reports) => reports.length,
+          (error) => {
+            console.error(error)
+            return null
+          }
+        )
+      : Promise.resolve(null),
   }),
   staleTime: 60_000,
   // One title for every dashboard page, from the deepest match: "{Section} · {Service} · PoliNetwork Admin".
@@ -34,7 +40,7 @@ export const Route = createFileRoute("/dashboard")({
 })
 
 function DashboardLayout() {
-  const { session } = Route.useRouteContext()
+  const { user } = Route.useRouteContext()
   const { pendingReports } = Route.useLoaderData()
-  return <DashboardShell initialSession={session} pendingReports={pendingReports} />
+  return <DashboardShell user={user} pendingReports={pendingReports} />
 }

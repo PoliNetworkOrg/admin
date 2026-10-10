@@ -3,7 +3,7 @@ import { FolderTree, Plus } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
 import { buttonMotion, EmptyState, NavCard, RecordHeader, SectionHeading } from "@/components/primitives"
-import { PageBar, PageContent, SearchField, useCanWrite } from "@/components/shell"
+import { PageBar, PageContent, SearchField, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import {
   buildCategoryRootTree,
@@ -37,7 +37,7 @@ function categoryPath(path: string) {
 
 /** One category node: its sub-categories as cards, then the groups tagged with exactly this category. */
 export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPageProps) {
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("groups:labels:write")
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState("")
   const [childOpen, setChildOpen] = useState(false)

@@ -1,49 +1,29 @@
-import { Info, LogOut } from "lucide-react"
+import { ExternalLink, Info, LogOut } from "lucide-react"
 
-import { Chip, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
+import { buttonMotion, Chip, initialsOf, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent, useSignOut } from "@/components/shell"
-import type { AdminSession } from "@/lib/auth"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import type { DashboardUser } from "@/lib/auth"
 
-import { ProfileCard } from "./profile-card"
-import { PasskeysCard, SessionsCard } from "./security-cards"
-import { useAccount } from "./use-account"
+type AccountPageProps = {
+  user: DashboardUser
+  permissions: readonly string[]
+  /** PoliNetwork Auth's account page, where the profile, Telegram link, passkeys and sessions are managed. */
+  accountUrl: string
+}
 
-/** Account: profile, Telegram identity, passkeys, sessions, sign out. */
-export function AccountPage({ initialSession, roles }: { initialSession: AdminSession; roles: readonly string[] }) {
-  const account = useAccount(initialSession)
-
+/** Account: the IdP profile, the linked Telegram account, dashboard permissions, sign out. */
+export function AccountPage({ user, permissions, accountUrl }: AccountPageProps) {
   return (
     <>
       <PageBar title="Account" width="settings" />
       <PageContent width="settings">
         <div className="flex flex-col gap-12">
           <div className="flex flex-col gap-6">
-            <ProfileCard
-              user={account.user}
-              onUpload={account.uploadImage}
-              onRemove={account.removeImage}
-              onRename={account.updateName}
-            />
-            <TelegramCard
-              username={account.user.telegramUsername ?? null}
-              telegramId={account.user.telegramId ?? null}
-              roles={roles}
-            />
-            <PasskeysCard
-              state={account.security.state}
-              retrying={account.security.retrying}
-              onRetry={() => void account.security.retry()}
-              passkeys={account.passkeys}
-              onAdd={account.addPasskey}
-              onDelete={account.deletePasskey}
-            />
-            <SessionsCard
-              state={account.security.state}
-              sessions={account.sessions}
-              currentSessionId={account.currentSessionId}
-              onRevoke={account.revokeSession}
-              onRevokeOthers={account.revokeOtherSessions}
-            />
+            <ProfileCard user={user} accountUrl={accountUrl} />
+            <TelegramCard telegramId={user.telegramId} accountUrl={accountUrl} />
+            <PermissionsCard permissions={permissions} />
           </div>
           <SignOutCard />
         </div>
@@ -52,37 +32,89 @@ export function AccountPage({ initialSession, roles }: { initialSession: AdminSe
   )
 }
 
-type TelegramCardProps = { username: string | null; telegramId: number | string | null; roles: readonly string[] }
-
-function TelegramCard({ username, telegramId, roles }: TelegramCardProps) {
+function IdpLink({ href, children }: { href: string; children: string }) {
   return (
-    <SectionCard title="Telegram" padding="settings">
+    <Button
+      variant="outline"
+      size="sm"
+      className={buttonMotion}
+      nativeButton={false}
+      render={<a href={href} target="_blank" rel="noreferrer" />}
+    >
+      {children}
+      <ExternalLink aria-hidden data-icon="inline-end" />
+    </Button>
+  )
+}
+
+function ProfileCard({ user, accountUrl }: { user: DashboardUser; accountUrl: string }) {
+  return (
+    <SectionCard title="Profile" padding="settings" action={<IdpLink href={accountUrl}>Manage account</IdpLink>}>
+      <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar className="size-16 after:border-(--pn-line)">
+            {user.picture && <AvatarImage src={user.picture} alt="" />}
+            <AvatarFallback className="bg-(--pn-accent-solid) text-lg font-medium text-(--pn-accent-solid-fg)">
+              {initialsOf(user.name, user.email)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex min-w-0 flex-col">
+            <p className="truncate text-sm leading-5 font-medium" title={user.name}>
+              {user.name || user.email}
+            </p>
+            <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)" title={user.email}>
+              {user.email}
+            </p>
+          </div>
+        </div>
+        <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
+          <Info aria-hidden className="size-3.5 shrink-0" />
+          Your name, picture, passkeys and sessions are managed in PoliNetwork Auth.
+        </p>
+      </div>
+    </SectionCard>
+  )
+}
+
+function TelegramCard({ telegramId, accountUrl }: { telegramId: string | null; accountUrl: string }) {
+  return (
+    <SectionCard
+      title="Telegram"
+      padding="settings"
+      action={telegramId === null ? <IdpLink href={accountUrl}>Link Telegram</IdpLink> : undefined}
+    >
       <div className="flex flex-col gap-4">
         <KeyValueList
           items={[
-            { key: "Username", value: username ? `@${username}` : null },
             {
               key: "Telegram ID",
-              value: telegramId === null ? null : String(telegramId),
+              value: telegramId,
               mono: telegramId !== null,
               hint: telegramId === null ? "Not linked" : undefined,
-            },
-            {
-              key: "Roles",
-              value:
-                roles.length === 0 ? null : (
-                  <span className="flex flex-wrap gap-1.5">
-                    {roles.map((role) => (
-                      <Chip key={role}>{role}</Chip>
-                    ))}
-                  </span>
-                ),
             },
           ]}
         />
         <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
           <Info aria-hidden className="size-3.5 shrink-0" />
-          Roles and permissions come from this Telegram account.
+          Link your Telegram account in PoliNetwork Auth to use your permissions with the bot.
+        </p>
+      </div>
+    </SectionCard>
+  )
+}
+
+function PermissionsCard({ permissions }: { permissions: readonly string[] }) {
+  return (
+    <SectionCard title="Permissions" count={permissions.length} padding="settings">
+      <div className="flex flex-col gap-4">
+        <span className="flex flex-wrap gap-1.5">
+          {permissions.map((permission) => (
+            <Chip key={permission}>{permission}</Chip>
+          ))}
+        </span>
+        <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
+          <Info aria-hidden className="size-3.5 shrink-0" />
+          Permissions come from your roles in PoliNetwork Auth.
         </p>
       </div>
     </SectionCard>
@@ -97,16 +129,10 @@ function SignOutCard() {
     <SectionCard padding="settings">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-sm leading-5 font-medium text-(--pn-fg)">Sign out of this device</p>
-          <p className="text-xs text-(--pn-fg-muted)">You will return to the sign-in page.</p>
+          <p className="text-sm leading-5 font-medium text-(--pn-fg)">Sign out</p>
+          <p className="text-xs text-(--pn-fg-muted)">Ends this dashboard session and your PoliNetwork Auth session.</p>
         </div>
-        <LoadingButton
-          variant="outline"
-          tone="dangerOutline"
-          icon={LogOut}
-          pending={pending}
-          onClick={() => void signOut()}
-        >
+        <LoadingButton variant="outline" tone="dangerOutline" icon={LogOut} pending={pending} onClick={signOut}>
           Sign out
         </LoadingButton>
       </div>

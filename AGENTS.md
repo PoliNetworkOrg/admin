@@ -4,22 +4,18 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
 
 ## Architecture
 
-- **Routes** (`src/routes/`). `/dashboard` (`dashboard.tsx`) resolves access in `beforeLoad`: signed in, then Telegram
-  account linked, then an admin role, otherwise it redirects to `/login`, `/onboarding/link` or
-  `/onboarding/unauthorized`. It puts `{ session, roles }` in the route context and renders the shell. Each page route's
-  `loader` calls server functions and passes the data to its page component. `/dashboard/web` adds a web-admin gate
-  (`web.tsx`; today the same roles).
-- **Features** (`src/features/<area>/`): the page, its dialogs, validation and the `*.functions.ts` server functions.
-- **Server functions** (`createServerFn`) each attach one middleware from `src/server/auth.middleware.ts`, which also
-  provides `context.backend`, a tRPC client for this request that forwards the user's cookies to the backend. Reads use
-  `adminMiddleware` (`webAdminMiddleware` under `/dashboard/web`). Mutations (`method: "POST"`) use their area's write
-  middleware: `writeAdminMiddleware` (Telegram users and grants, Microsoft 365), `groupWriteAdminMiddleware` (Telegram
-  and WhatsApp groups, reports) or `webWriteAdminMiddleware` (web content and labels).
-- **Roles** (`src/server/authorization.ts`): every admin role reads; write roles mutate; `web` also mutates web content
-  and groups. The UI hides controls the server would reject with `useCanWrite()` or `useCanWrite("web")`.
-- **Auth**: `/api/auth/*` proxies Better Auth to the backend (`src/server/auth-proxy*.ts`).
-- **Shared UI**: `src/components/shell` (dashboard chrome and navigation), `src/components/primitives` (page building
-  blocks), `src/components/ui` (shadcn/Base UI base, used through the primitives).
+- **Routes** (`src/routes/`): `/dashboard` loads `me.access` via the BFF and requires `admin:access`. The route context
+  carries display user data and permissions, never tokens. Navigation and mutation controls use exact permissions.
+- **Auth**: `/auth/login`, `/auth/callback` and POST `/auth/logout` implement OIDC with PKCE/state/nonce through
+  `openid-client`. ID tokens are signature-checked. Tokens remain in the dedicated Redis server session store.
+  `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
+- **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
+  grants, Telegram groups, WhatsApp groups, labels, website content, reports and dedicated member creation.
+  The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
+- **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
+- **Microsoft 365**: only `azure.members.create` through the backend's fixed new-member workflow. Existing users,
+  memberships and arbitrary Entra groups cannot be modified from the dashboard.
+- **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
 
@@ -30,7 +26,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   every loader (including the shell's open-reports count) has reloaded before the dialog closes or the toast shows. A
   failed reload after a successful mutation is not a failed mutation: do not offer to repeat it. Optimistic updates
   revert on failure and toast the error.
-- **Write scope**: each file calling `useCanWrite` is listed with its scope in the same test (test). The middleware
+- **Write scope**: each file calling `useCan` is listed with its permission in the same test (test). The middleware
   checks cover only the `*.functions.ts` files listed in that test: add a new one there.
 - **Errors**: every `catch` block and `.catch(handler)` logs `console.error(error)` (test). Route errors and not-found
   states come from the router defaults (`RouteError`, `RouteNotFound`), so routes declare no `errorComponent`, and
@@ -46,7 +42,7 @@ Run with a high port (≥ 10000) that won't collide with other previews, and age
 PORT=1xxxx AGENT_MODE=true pnpm dev
 ```
 
-`AGENT_MODE` (development only) signs in a fake administrator with every role and disables the auth redirects between
+`AGENT_MODE` (development only) signs in a fake administrator with every permission and disables the auth redirects between
 `/login` and `/dashboard`, so open `/dashboard/...` or `/login` directly. Data still comes from `BACKEND_URL` (default
 `http://localhost:3000`). When changing auth or those redirects, also verify the normal flow with `AGENT_MODE=false`.
 

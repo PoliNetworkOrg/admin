@@ -10,6 +10,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
+import { useCan } from "@/components/shell"
 import type { GroupLabel } from "@/features/group-labels/types"
 import {
   groupActionsWidth,
@@ -43,6 +44,9 @@ type CombinedGroupsTableProps = {
  * categories and tag pages pass rows and an empty state; mutations reload the route through `router.invalidate()`.
  */
 export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, search }: CombinedGroupsTableProps) {
+  const canTelegram = useCan("tg:groups:manage")
+  const canWhatsapp = useCan("wa:groups:manage")
+  const canAct = canWrite || canTelegram || canWhatsapp
   const labelsByPath = useLabelsByPath(labels)
   const groupActions = useGroupActions(labels, rows)
   const [sort, setSort] = useState<TableSort>({ column: "title", direction: "asc" })
@@ -123,7 +127,7 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
     <>
       <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
         <DataTable
-          className={canWrite ? mobileGroupTableClasses : undefined}
+          className={canAct ? mobileGroupTableClasses : undefined}
           label="Groups"
           columns={columns}
           rows={visible}
@@ -136,7 +140,7 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
           actions={(row) => (
             <GroupRowActions group={row} controller={groupActions} canWrite={canWrite} alignEdit={mixed} />
           )}
-          actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 4 : 3, canWrite)}
+          actionsWidth={groupActionsWidth(rows.some((row) => row.type === "wa") ? 4 : 3, canAct)}
           pagination={{
             page: current,
             pageSize,

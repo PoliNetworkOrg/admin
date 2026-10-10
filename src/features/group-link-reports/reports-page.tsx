@@ -16,7 +16,7 @@ import {
   Unset,
   useFocusAfterRemoval,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCanWrite } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
 import { dismissGroupLinkReport, resolveGroupLinkReport } from "@/features/group-link-reports/reports.functions"
@@ -139,7 +139,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
   const router = useRouter()
   const resolve = useServerFn(resolveGroupLinkReport)
   const dismiss = useServerFn(dismissGroupLinkReport)
-  const canWrite = useCanWrite("web")
+  const canWrite = useCan("web:reports:manage")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [segment, setSegment] = useState<Segment>("all")
