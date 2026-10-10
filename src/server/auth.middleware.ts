@@ -115,3 +115,19 @@ export const azureMembersCreateMiddleware = createMiddleware({ type: "function" 
     requirePermission(context.permissions, "azure:members:create")
     return next()
   })
+
+/** Microsoft 365: list the groups and their members. */
+export const azureGroupsReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "azure:groups:read")
+    return next()
+  })
+
+/** Microsoft 365: add or remove an existing directory user in a group. */
+export const azureGroupsWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "azure:groups:write")
+    return next()
+  })

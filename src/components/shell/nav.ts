@@ -64,6 +64,7 @@ export type PageMatch =
   | { kind: "telegram-groups" }
   | { kind: "telegram-grants" }
   | { kind: "whatsapp-groups" }
+  | { kind: "m365-groups" }
   | { kind: "m365-members" }
   | { kind: "web-projects" }
   | { kind: "web-associations" }
@@ -137,8 +138,16 @@ const m365: Service = {
   title: "Microsoft 365",
   icon: Cloud,
   logo: azureLogo,
-  path: "/dashboard/azure/members",
+  path: "/dashboard/azure/groups",
   sections: [
+    {
+      id: "groups",
+      title: "Groups",
+      icon: Database,
+      path: "/dashboard/azure/groups",
+      permission: "azure:groups:read",
+      searchPlaceholder: "Search by group or email…",
+    },
     {
       id: "members",
       title: "Members",
@@ -264,6 +273,7 @@ export function matchPath(pathname: string): PageMatch {
   if (head === "whatsapp" && second === "groups" && third === undefined) return { kind: "whatsapp-groups" }
 
   if (head === "azure" && third === undefined) {
+    if (second === "groups") return { kind: "m365-groups" }
     if (second === "members") return { kind: "m365-members" }
   }
 
@@ -301,6 +311,7 @@ export function serviceFor(match: PageMatch): Service {
       return telegram
     case "whatsapp-groups":
       return whatsapp
+    case "m365-groups":
     case "m365-members":
       return m365
     case "web-projects":
@@ -334,6 +345,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(telegram, "grants")
     case "whatsapp-groups":
       return section(whatsapp, "groups")
+    case "m365-groups":
+      return section(m365, "groups")
     case "m365-members":
       return section(m365, "members")
     case "web-projects":

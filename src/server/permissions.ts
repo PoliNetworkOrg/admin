@@ -16,6 +16,8 @@ export const PERMISSIONS = [
   "web:reports:manage",
   "azure:members:read",
   "azure:members:create",
+  "azure:groups:read",
+  "azure:groups:write",
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]

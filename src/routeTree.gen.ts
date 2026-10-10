@@ -30,6 +30,7 @@ import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
+import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
@@ -144,6 +145,11 @@ const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
   path: '/azure/members',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
+  id: '/azure/groups',
+  path: '/azure/groups',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
     id: '/groups-by-label/',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
@@ -503,6 +515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureMembersRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/azure/groups': {
+      id: '/dashboard/azure/groups'
+      path: '/azure/groups'
+      fullPath: '/dashboard/azure/groups'
+      preLoaderRoute: typeof DashboardAzureGroupsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
       path: '/groups-by-label'
@@ -571,6 +590,7 @@ interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
   DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
@@ -585,6 +605,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRoute,
   DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,

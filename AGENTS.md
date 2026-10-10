@@ -10,11 +10,14 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `openid-client`. ID tokens are signature-checked. Tokens remain in the dedicated Redis server session store.
   `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
 - **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
-  grants, Telegram groups, WhatsApp groups, labels, website content, reports and dedicated member creation.
+  grants, Telegram groups, WhatsApp groups, labels, website content, reports, Microsoft 365 group memberships and
+  dedicated member creation.
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
-- **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through the backend's fixed new-member workflow. Existing users,
-  memberships and arbitrary Entra groups cannot be modified from the dashboard.
+- **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through
+  the backend's fixed new-member workflow. List groups with `azure:groups:read`; add or remove existing directory users
+  in a group with `azure:groups:write`; the add picker lists the directory, so it is disabled without
+  `azure:members:read`. Users and groups themselves cannot be edited from the dashboard.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

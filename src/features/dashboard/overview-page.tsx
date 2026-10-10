@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router"
-import { ChevronRight, EyeOff, Inbox, type LucideIcon, ShieldCheck } from "lucide-react"
+import { ChevronRight, Cloud, EyeOff, Inbox, type LucideIcon, ShieldCheck } from "lucide-react"
 import { useState } from "react"
 
 import { Chip, EmptyState, InlineAlert, LoadingButton, SectionHeading, StatTile } from "@/components/primitives"
@@ -17,12 +17,13 @@ export type OverviewCounts = {
   openReports: OverviewCount
   activeGrants: OverviewCount
   expiringGrants: OverviewCount
+  smallM365Groups: OverviewCount
 }
 
 type AttentionItem = { id: string; icon: LucideIcon; text: string; to: DashboardPath; count: OverviewCount }
 
 function attentionItems(counts: OverviewCounts): AttentionItem[] {
-  const { openReports, hiddenGroups, expiringGrants } = counts
+  const { openReports, hiddenGroups, expiringGrants, smallM365Groups } = counts
   return [
     {
       id: "reports",
@@ -44,6 +45,13 @@ function attentionItems(counts: OverviewCounts): AttentionItem[] {
       count: expiringGrants,
       text: `${pluralize(expiringGrants ?? 0, "grant")} ${expiringGrants === 1 ? "expires" : "expire"} within 7 days`,
       to: "/dashboard/telegram/grants",
+    },
+    {
+      id: "m365",
+      icon: Cloud,
+      count: smallM365Groups,
+      text: `${pluralize(smallM365Groups ?? 0, "Microsoft 365 group")} with 0–1 member`,
+      to: "/dashboard/azure/groups",
     },
   ]
 }

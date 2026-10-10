@@ -1,8 +1,9 @@
 # PoliNetwork Admin
 
 The dashboard manages Telegram and WhatsApp groups, labels, Telegram users and grants, website content and reports.
-Microsoft 365 supports a read-only member directory and creating a new association member through the backend's fixed workflow.
-Directory access requires `azure:members:read`; creation independently requires `azure:members:create`.
+Microsoft 365 supports a read-only member directory, creating a new association member through the backend's fixed
+workflow, and group membership management. Directory access requires `azure:members:read`; creation independently
+requires `azure:members:create`. Groups require `azure:groups:read`; adding and removing members `azure:groups:write`.
 
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
