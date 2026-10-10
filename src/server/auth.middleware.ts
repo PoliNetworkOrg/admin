@@ -100,6 +100,14 @@ export const reportsManageMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
+/** Microsoft 365: read the directory without modifying users or groups. */
+export const azureMembersReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "azure:members:read")
+    return next()
+  })
+
 /** Microsoft 365: create a new member through the backend's fixed workflow. */
 export const azureMembersCreateMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])

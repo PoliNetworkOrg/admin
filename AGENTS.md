@@ -13,7 +13,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   grants, Telegram groups, WhatsApp groups, labels, website content, reports and dedicated member creation.
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
-- **Microsoft 365**: only `azure.members.create` through the backend's fixed new-member workflow. Existing users,
+- **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through the backend's fixed new-member workflow. Existing users,
   memberships and arbitrary Entra groups cannot be modified from the dashboard.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 

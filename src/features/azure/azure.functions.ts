@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { azureMembersCreateMiddleware } from "@/server/auth.middleware"
+import { azureMembersCreateMiddleware, azureMembersReadMiddleware } from "@/server/auth.middleware"
+
+export const getAzureMembers = createServerFn({ method: "GET" })
+  .middleware([azureMembersReadMiddleware])
+  .handler(({ context }) => context.backend.azure.members.getAll.query())
 
 export const createAzureMember = createServerFn({ method: "POST" })
   .middleware([azureMembersCreateMiddleware])

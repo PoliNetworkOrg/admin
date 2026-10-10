@@ -182,7 +182,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.some((name) => /(?:Write|Manage|Create)Middleware$/.test(name)),
+          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create)Middleware$/.test(name)),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
@@ -541,4 +541,19 @@ test("every caught runtime error is written to the console", async () => {
   }
 
   assert.deepEqual(failures, [], `Caught errors must be logged at: ${failures.join(", ")}`)
+})
+
+void test("the Azure directory read has its own permission boundary", async () => {
+  const source = await readFile(new URL("../src/features/azure/azure.functions.ts", import.meta.url), "utf8")
+  const read = exportedServerFunctions(source, "azure.functions.ts").find((fn) => fn.name === "getAzureMembers")
+  assert.ok(read)
+  assert.equal(read.isPost, false)
+  assert.deepEqual(read.middleware, ["azureMembersReadMiddleware"])
+  const middleware = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
+  const readMiddleware = middleware.slice(
+    middleware.indexOf("export const azureMembersReadMiddleware"),
+    middleware.indexOf("export const azureMembersCreateMiddleware")
+  )
+  assert.match(readMiddleware, /middleware\(\[adminMiddleware\]\)/)
+  assert.match(readMiddleware, /requirePermission\(context.permissions, "azure:members:read"\)/)
 })
