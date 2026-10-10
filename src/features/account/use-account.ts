@@ -118,6 +118,11 @@ export function useAccount(initialSession: AdminSession) {
     await reload()
   }
 
+  async function revokeSession(token: string) {
+    assertOk(await auth.revokeSession({ token }), "Couldn't sign out the session.")
+    await reload()
+  }
+
   async function revokeOtherSessions() {
     assertOk(await auth.revokeOtherSessions(), "Couldn't sign out other sessions.")
     await reload()
@@ -134,6 +139,7 @@ export function useAccount(initialSession: AdminSession) {
     removeImage,
     addPasskey,
     deletePasskey,
+    revokeSession,
     revokeOtherSessions,
   }
 }
