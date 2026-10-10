@@ -23,7 +23,7 @@ export const getOverviewCounts = createServerFn()
     const { backend, permissions } = context
     const ifAllowed = <T>(permission: Permission, load: () => Promise<T>) =>
       hasPermission(permissions, permission) ? load() : Promise.resolve(undefined)
-    const [groups, users, reports, grants] = await Promise.allSettled([
+    const [groups, users, reports, grants, azureGroups] = await Promise.allSettled([
       backend.tg.groups.getAll.query(),
       ifAllowed("tg:users:read", () =>
         backend.tg.users.getAll.query().then((result) => {
@@ -33,6 +33,7 @@ export const getOverviewCounts = createServerFn()
       ),
       ifAllowed("web:reports:manage", () => backend.web.reports.list.query({ statuses: ["pending"] })),
       ifAllowed("tg:grants:read", () => backend.tg.grants.getOngoing.query()),
+      ifAllowed("azure:groups:read", () => backend.azure.groups.getAll.query()),
     ])
     const now = Date.now()
     return {
@@ -49,5 +50,6 @@ export const getOverviewCounts = createServerFn()
             return remaining >= 0 && remaining <= WEEK_MS
           }).length
       ),
+      smallM365Groups: countOf(azureGroups, (all) => all.filter((group) => group.members.length <= 1).length),
     }
   })

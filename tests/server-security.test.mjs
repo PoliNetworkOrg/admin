@@ -164,6 +164,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
+    "src/features/azure/groups.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
     "src/features/group-labels/group-labels.functions.ts",
@@ -192,6 +193,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
 test("dashboard mutations enforce their exact write scope", async () => {
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts"]],
+    ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
     ["grantsWriteMiddleware", ["src/features/telegram/grants.functions.ts"]],
     ["telegramGroupsWriteMiddleware", ["src/features/telegram/groups.functions.ts"]],
     ["whatsappGroupsWriteMiddleware", ["src/features/whatsapp/groups.functions.ts"]],
@@ -226,6 +228,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
+    "src/features/azure/groups-page.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": "azure:members:create",
     "src/features/telegram/grants-page.tsx": "tg:grants:manage",
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
@@ -282,6 +285,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
+    "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
     "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
     "src/features/group-labels/add-category-dialog.tsx": ["createGroupLabel"],
