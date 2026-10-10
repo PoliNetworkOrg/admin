@@ -23,7 +23,7 @@ Grant lists support the `source`/`key`/`grantedBySub` shape; audit rows display 
 
 Removed the backend Better Auth proxy, email-OTP/passkey login, Telegram onboarding/link flow, account passkey/session
 management, profile upload, Telegram role/group-admin dialogs, and arbitrary Azure directory/group/member edits.
-Microsoft 365 now exposes only the dedicated new-member creation flow. Linking and account management point to IdP.
+Microsoft 365 exposes the read-only member directory (`azure:members:read`) and the independent dedicated new-member creation flow (`azure:members:create`). Linking and account management point to IdP.
 
 ## Verification
 
@@ -91,3 +91,47 @@ PR body:
 > verification before deployment. Existing dashboard sessions require a new login.
 
 Working tree is left uncommitted for review. No commit, push, PR creation, merge, branch change or deployment.
+
+## Member directory follow-up
+
+Register `azure:members:read` in the IdP permission catalog and assign it to the roles that should see the list.
+It does not imply `azure:members:create`, and creation does not imply reading. Both need `admin:access`
+to enter the dashboard. Create-only users retain access to the creation form without loading the directory.
+Deploy the backend's `azure.members.getAll` policy before deploying this dashboard change.
+No new dashboard Azure credentials or SDK release are required; the backend remains the Graph caller.
+
+### Follow-up verification
+
+- Dashboard: `pnpm typecheck`, `pnpm test` (32 passed, 3 optional integration tests skipped),
+  `pnpm check` (0 errors, 18 existing warnings) and `pnpm build` passed.
+- Backend: Azure and IdP router tests (27 passed), typecheck, build and Biome checks on changed files passed.
+- Local collaborative browser with 25 synthetic directory entries: search, Members only filter,
+  numeric ordering, pagination, creation dialog and mobile layout checked. No existing-user edit controls.
+- Production Azure access and deployment have not been exercised.
+
+Suggested branch: `fix/admin-member-directory`.
+Suggested commit: `fix(azure): restore read-only member directory`.
+Suggested PR title: `Restore the Microsoft 365 member directory with IdP authorization`.
+
+Ready-to-paste PR description:
+
+```markdown
+## Changes
+
+- Restore the read-only Microsoft 365 directory with search, member filtering, sorting and pagination.
+- Require azure:members:read in both the dashboard server function and backend procedure.
+- Keep azure:members:create independent, including access for create-only users.
+- Refresh the directory after creation; keep existing-user and group mutations unavailable.
+- Update permission and rollout documentation.
+
+## Verification
+
+- Dashboard typecheck, tests, check and production build passed (18 existing lint warnings).
+- Backend Azure/IdP router tests, typecheck, scoped Biome check and build passed.
+- Browser interactions and mobile layout checked with synthetic data.
+
+## Rollout
+
+Register and assign azure:members:read in the IdP. Deploy the backend policy before the dashboard.
+No production Azure verification or deployment was performed.
+```

@@ -21,7 +21,9 @@ export function useVisibleServices() {
   return services.flatMap((service) => {
     if (service.sections.length === 0) return [service]
     const sections = service.sections.filter(
-      (section) => !section.permission || hasPermission(permissions, section.permission)
+      (section) =>
+        (!section.permission || hasPermission(permissions, section.permission)) &&
+        (!section.anyPermission || section.anyPermission.some((permission) => hasPermission(permissions, permission)))
     )
     return sections.length ? [{ ...service, sections, path: sections[0].path }] : []
   })

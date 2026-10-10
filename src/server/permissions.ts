@@ -14,6 +14,7 @@ export const PERMISSIONS = [
   "groups:labels:write",
   "web:content:write",
   "web:reports:manage",
+  "azure:members:read",
   "azure:members:create",
 ] as const
 

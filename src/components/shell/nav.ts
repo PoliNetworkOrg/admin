@@ -39,6 +39,7 @@ export type Section = {
   path: DashboardPath
   searchPlaceholder?: string
   permission?: Permission
+  anyPermission?: readonly Permission[]
 }
 
 /**
@@ -143,7 +144,7 @@ const m365: Service = {
       title: "Members",
       icon: UsersRound,
       path: "/dashboard/azure/members",
-      permission: "azure:members:create",
+      anyPermission: ["azure:members:read", "azure:members:create"],
       searchPlaceholder: "Search by name, email or member ID…",
     },
   ],
