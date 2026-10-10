@@ -41,6 +41,7 @@ export function AccountPage({ initialSession, roles }: { initialSession: AdminSe
               state={account.security.state}
               sessions={account.sessions}
               currentSessionId={account.currentSessionId}
+              onRevoke={account.revokeSession}
               onRevokeOthers={account.revokeOtherSessions}
             />
           </div>

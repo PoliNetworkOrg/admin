@@ -1,4 +1,4 @@
-import { KeyRound, MonitorSmartphone, Plus, Trash2 } from "lucide-react"
+import { KeyRound, LogOut, Monitor, Plus, Smartphone, Tablet, Trash2 } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
 import {
@@ -19,6 +19,7 @@ import { formatDate, pluralize } from "@/lib/format"
 
 import type { ActiveSession, Passkey } from "./types"
 import type { SecurityState } from "./use-account"
+import { sessionDevice } from "./user-agent"
 
 function ListRow({ icon, title, meta, end }: { icon: ReactNode; title: ReactNode; meta: ReactNode; end?: ReactNode }) {
   return (
@@ -184,11 +185,21 @@ type SessionsCardProps = {
   /** The current session first. */
   sessions: ActiveSession[]
   currentSessionId: string
+  onRevoke: (token: string) => Promise<void>
   onRevokeOthers: () => Promise<void>
 }
 
-export function SessionsCard({ state, sessions, currentSessionId, onRevokeOthers }: SessionsCardProps) {
+const deviceIcons = { desktop: Monitor, phone: Smartphone, tablet: Tablet }
+
+function sessionName(session: ActiveSession) {
+  return sessionDevice(session.userAgent).name
+}
+
+export function SessionsCard({ state, sessions, currentSessionId, onRevoke, onRevokeOthers }: SessionsCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [revoking, setRevoking] = useState<ActiveSession | null>(null)
+  const [revokeOpen, setRevokeOpen] = useState(false)
+  const focus = useFocusAfterRemoval<HTMLDivElement>("li")
   const others = sessions.filter((session) => session.id !== currentSessionId).length
 
   return (
@@ -212,22 +223,42 @@ export function SessionsCard({ state, sessions, currentSessionId, onRevokeOthers
         )
       }
     >
-      <div className="px-5">
+      <div ref={focus.surfaceRef} tabIndex={-1} className="px-5">
         {state === "loading" && <SettingsListSkeleton rows={2} label="Loading sessions…" />}
         {state === "error" && (
           <p className="flex h-14 items-center text-[13px] text-(--pn-fg-muted)">Couldn't load sessions.</p>
         )}
         {hasLists(state) && (
           <ul aria-label="Sessions">
-            {sessions.map((session) => (
-              <ListRow
-                key={session.id}
-                icon={<MonitorSmartphone aria-hidden className="size-4" />}
-                title={session.userAgent || "Unknown device"}
-                meta={sessionMeta(session)}
-                end={session.id === currentSessionId ? <StatusBadge tone="brand">Current</StatusBadge> : undefined}
-              />
-            ))}
+            {sessions.map((session) => {
+              const device = sessionDevice(session.userAgent)
+              const DeviceIcon = deviceIcons[device.kind]
+              return (
+                <ListRow
+                  key={session.id}
+                  icon={<DeviceIcon aria-hidden className="size-4" />}
+                  title={<span title={session.userAgent ?? undefined}>{device.name}</span>}
+                  meta={sessionMeta(session)}
+                  end={
+                    session.id === currentSessionId ? (
+                      <StatusBadge tone="brand">Current</StatusBadge>
+                    ) : (
+                      <IconButton
+                        label="Sign out session"
+                        ariaLabel={`Sign out ${device.name}`}
+                        icon={LogOut}
+                        tone="danger"
+                        onClick={(event) => {
+                          focus.capture(event.currentTarget)
+                          setRevoking(session)
+                          setRevokeOpen(true)
+                        }}
+                      />
+                    )
+                  }
+                />
+              )
+            })}
           </ul>
         )}
       </div>
@@ -240,6 +271,19 @@ export function SessionsCard({ state, sessions, currentSessionId, onRevokeOthers
         onConfirm={async () => {
           await onRevokeOthers()
           appToast.success("Other sessions signed out.")
+        }}
+      />
+      <ConfirmDialog
+        open={revokeOpen}
+        onOpenChange={setRevokeOpen}
+        title="Sign out session?"
+        finalFocus={focus.target}
+        description={`${revoking ? sessionName(revoking) : "This session"} will be signed out.`}
+        confirmLabel="Sign out session"
+        onConfirm={async () => {
+          if (!revoking) return
+          await onRevoke(revoking.token)
+          appToast.success("Session signed out.")
         }}
       />
     </SectionCard>
