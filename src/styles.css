@@ -5,6 +5,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The shell breakpoint (760px): `shell:` gets the rail and panel, `max-shell:` the top bar, pills and bottom nav. */
+@theme {
+  --breakpoint-shell: 47.5rem;
+}
+
 /* Design tokens (docs/design.md). Components use the --pn-* variables or the utilities mapped to them. */
 
 :root {

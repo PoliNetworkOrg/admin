@@ -3,7 +3,7 @@ import { ChevronRight, Cloud, EyeOff, Inbox, type LucideIcon, ShieldCheck } from
 import { useState } from "react"
 
 import { Chip, EmptyState, InlineAlert, LoadingButton, SectionHeading, StatTile } from "@/components/primitives"
-import { type DashboardPath, PageBar, PageContent, ServiceGlyph } from "@/components/shell"
+import { type DashboardPath, PageBar, PageContent } from "@/components/shell"
 import { useVisibleServices } from "@/components/shell/use-can"
 import { pluralize } from "@/lib/format"
 
@@ -164,7 +164,7 @@ export function DashboardOverviewPage({ counts }: { counts: OverviewCounts }) {
                   className="flex flex-col gap-3 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) p-4"
                 >
                   <h3 className="flex items-center gap-2 text-[14px] leading-5 font-semibold text-(--pn-fg)">
-                    <ServiceGlyph service={service} className="size-4 text-(--pn-fg-muted)" />
+                    <service.icon aria-hidden className="size-4 text-(--pn-fg-muted)" />
                     {service.title}
                   </h3>
                   <div className="flex flex-wrap gap-2">

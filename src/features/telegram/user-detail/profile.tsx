@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { CalendarPlus, ExternalLink, ShieldX, UserX } from "lucide-react"
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 import {
   buttonMotion,
@@ -68,7 +68,6 @@ type OpenDialog = "none" | "grant" | "end-grant"
 export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
   const { user, messages, audits, grants } = data
   const canWrite = useCan("tg:grants:manage")
-  const titleRef = useRef<HTMLHeadingElement>(null)
   const [dialog, setDialog] = useState<OpenDialog>("none")
   const name = telegramUserName(user)
 
@@ -98,19 +97,10 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
 
   return (
     <>
-      <PageBar
-        width="record"
-        back={BACK}
-        context={String(user.id)}
-        contextMono
-        scrollTitleRef={titleRef}
-        scrollTitle={name}
-        right={headerActions}
-      />
+      <PageBar width="record" back={BACK} context={String(user.id)} contextMono right={headerActions} />
       <PageContent width="record">
         <div className="flex flex-col gap-6">
           <RecordHeader
-            titleRef={titleRef}
             title={name}
             className="border-b border-(--pn-line) pb-6"
             avatar={

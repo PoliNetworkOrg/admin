@@ -1,6 +1,16 @@
 import { Link } from "@tanstack/react-router"
 import { Moon, Search, Sun } from "lucide-react"
-import { type FocusEvent, type KeyboardEvent, type MouseEvent, type ReactNode, useRef, useState } from "react"
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  Suspense,
+  use,
+  useDeferredValue,
+  useRef,
+  useState,
+} from "react"
 
 import logoUrl from "@/assets/logo.png"
 import { TOOLTIP_DELAY_SLOW } from "@/components/primitives/hint"
@@ -10,19 +20,25 @@ import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
 import { type DashboardPath, type PageMatch, type Service, serviceById, serviceFor } from "./nav"
-import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
 const railItemClass =
   "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
 
-// The 2px × 20px indicator sits on the rail's left edge: items are inset 8px, hence -left-2.
-const railActiveClass =
-  "bg-(--pn-accent-soft) text-(--pn-accent) hover:bg-(--pn-accent-soft) hover:text-(--pn-accent) before:absolute before:top-1/2 before:-left-2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-[1px] before:bg-(--pn-accent)"
+// The 3px indicator sits on the rail's left edge: items are inset 12px, hence -left-3.
+const railIndicator =
+  "before:absolute before:inset-y-2 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
+const railActiveClass = cn(
+  "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-active) hover:text-(--pn-fg)",
+  railIndicator
+)
+// Logo and avatar are round marks: the active one gets a ring instead of a fill.
+const railMarkClass = "rounded-full hover:bg-transparent"
+const railMarkActiveClass = cn("[&>*]:shadow-[0_0_0_2px_var(--pn-nav),0_0_0_4px_var(--pn-accent-solid)]", railIndicator)
 
 type RailItemTarget =
-  | { kind: "link"; to: DashboardPath; onClick?: (event: MouseEvent<HTMLAnchorElement>) => void }
+  | { kind: "link"; to: DashboardPath }
   | { kind: "button"; onClick: (event: MouseEvent<HTMLButtonElement>) => void }
 
 type RailItemProps = {
@@ -36,6 +52,8 @@ type RailItemProps = {
   target: RailItemTarget
   /** Marks the theme toggle: the palette's theme switch starts its reveal here, and presses during a reveal find it. */
   themeToggle?: boolean
+  /** Round marks (logo, avatar): a ring shows the active state instead of a fill. */
+  mark?: boolean
   className?: string
   children: ReactNode
 }
@@ -48,6 +66,7 @@ function RailItem({
   focusable,
   target,
   themeToggle,
+  mark = false,
   className,
   children,
 }: RailItemProps) {
@@ -56,17 +75,16 @@ function RailItem({
     "data-rail-item": "",
     "data-theme-toggle": themeToggle ? "" : undefined,
     tabIndex: focusable ? 0 : -1,
-    className: cn(railItemClass, active && railActiveClass, className),
+    className: cn(
+      railItemClass,
+      mark && railMarkClass,
+      active && (mark ? railMarkActiveClass : railActiveClass),
+      className
+    ),
   }
   const trigger =
     target.kind === "link" ? (
-      <Link
-        to={target.to}
-        onClick={target.onClick}
-        activeOptions={{ exact: true }}
-        aria-current={active ? "page" : undefined}
-        {...shared}
-      />
+      <Link to={target.to} activeOptions={{ exact: true }} aria-current={active ? "page" : undefined} {...shared} />
     ) : (
       <button type="button" onClick={target.onClick} {...shared} />
     )
@@ -88,17 +106,39 @@ export type RailProps = {
   match: PageMatch
   /** Where a service's rail item leads: its last visited section, or its first. */
   serviceHref: (service: Service) => DashboardPath
-  /** Lets the shell open the panel sheet instead of navigating on narrow screens. */
-  onServiceClick: (service: Service, event: MouseEvent<HTMLAnchorElement>) => void
   onOpenPalette: () => void
   user: ShellUser
+  /** Pending reports: a dot on Reports while there are any. */
+  pendingReports: Promise<number | null>
   className?: string
 }
 
 const iconProps = { className: "size-5", strokeWidth: 1.75 } as const
 
-/** The 56px service rail. One tab stop; ↑/↓, Home and End move between items. */
-export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, className }: RailProps) {
+/** The accent dot on Reports while reports are open; nothing while loading, at zero or on a failed load. */
+export function OpenReportsDot({
+  count: countPromise,
+  className,
+}: {
+  count: Promise<number | null>
+  className?: string
+}) {
+  const count = use(useDeferredValue(countPromise))
+  if (!count) return null
+  return (
+    <span
+      className={cn(
+        "absolute top-1.5 right-1.5 size-2 rounded-full bg-(--pn-accent-solid) shadow-[0_0_0_2px_var(--pn-nav)]",
+        className
+      )}
+    >
+      <span className="sr-only">, open reports</span>
+    </span>
+  )
+}
+
+/** The 64px service rail. One tab stop; ↑/↓, Home and End move between items. */
+export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, className }: RailProps) {
   const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
@@ -109,7 +149,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
   const overview = serviceById("overview")
   const account = serviceById("account")
 
-  // Item order (the logo is not an item): overview, search, services…, theme, account.
+  // Item order: logo (Overview), search, services…, theme, account.
   const serviceStart = 2
   const themeIndex = serviceStart + panelServices.length
   const accountIndex = themeIndex + 1
@@ -163,22 +203,20 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
       onBlur={onBlur}
       onKeyDown={onKeyDown}
       className={cn(
-        "flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-(--pn-line) bg-(--pn-nav) py-2 select-none",
+        "flex h-full w-16 shrink-0 flex-col items-center gap-1.5 border-r border-(--pn-line) bg-(--pn-nav) py-3.5 select-none",
         className
       )}
     >
-      {/* Brand mark only: Overview is the next item, so the logo is not a second link to it. */}
-      <div aria-hidden className="mb-1 grid size-10 shrink-0 place-items-center">
-        <img src={logoUrl} alt="" width={28} height={28} className="size-7 rounded-full" />
-      </div>
-
+      {/* The logo is the way home: it leads to Overview and carries its active ring. */}
       <RailItem
         label={overview.title}
         active={activeId === "overview"}
         focusable={tabStop === 0}
         target={{ kind: "link", to: overview.path }}
+        mark
+        className="size-11 [&>img]:transition-transform [&>img]:duration-120 [&>img]:ease-(--pn-ease-out) hover:[&>img]:scale-106"
       >
-        <overview.icon {...iconProps} />
+        <img src={logoUrl} alt="" width={32} height={32} className="size-8 rounded-full" />
       </RailItem>
 
       <RailItem
@@ -195,7 +233,7 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
         <Search {...iconProps} />
       </RailItem>
 
-      <div aria-hidden className="my-1 h-px w-6 shrink-0 bg-(--pn-line)" />
+      <div aria-hidden className="my-1.5 h-px w-6 shrink-0 bg-(--pn-line)" />
 
       {panelServices.map((service, index) => (
         <RailItem
@@ -203,9 +241,14 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
           label={service.title}
           active={activeId === service.id}
           focusable={tabStop === serviceStart + index}
-          target={{ kind: "link", to: serviceHref(service), onClick: (event) => onServiceClick(service, event) }}
+          target={{ kind: "link", to: serviceHref(service) }}
         >
-          <ServiceGlyph service={service} className="size-5" />
+          <service.icon aria-hidden {...iconProps} />
+          {service.id === "reports" ? (
+            <Suspense fallback={null}>
+              <OpenReportsDot count={pendingReports} />
+            </Suspense>
+          ) : null}
         </RailItem>
       ))}
 
@@ -227,8 +270,9 @@ export function Rail({ match, serviceHref, onServiceClick, onOpenPalette, user, 
         active={activeId === "account"}
         focusable={tabStop === accountIndex}
         target={{ kind: "link", to: account.path }}
+        mark
       >
-        <AccountAvatar user={user} />
+        <AccountAvatar user={user} className="size-7.5" />
       </RailItem>
     </nav>
   )

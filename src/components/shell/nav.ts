@@ -3,7 +3,6 @@ import {
   CircleCheck,
   CircleQuestionMark,
   Cloud,
-  Database,
   Flag,
   FolderKanban,
   FolderTree,
@@ -12,6 +11,7 @@ import {
   LayoutDashboard,
   type LucideIcon,
   MessageCircle,
+  MessagesSquare,
   Send,
   ShieldCheck,
   Tags,
@@ -20,9 +20,6 @@ import {
   UsersRound,
 } from "lucide-react"
 
-import azureLogo from "@/assets/svg/azure.svg"
-import telegramLogo from "@/assets/svg/telegram.svg"
-import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
 import type { FileRoutesByTo } from "@/routeTree.gen"
 import type { Permission } from "@/server/permissions"
@@ -43,15 +40,15 @@ export type Section = {
 }
 
 /**
- * `path` is where the service lands (its first section, or its own page for Overview and Account). `logo` is the
- * branded mark that replaces `icon` wherever the service is named (rail, panel, sheet, overview, palette);
- * `icon` stays as the monochrome fallback.
+ * `path` is where the service lands (its first section, or its own page for Overview and Account). `icon` is the
+ * monochrome glyph used wherever the service is named (rail, panel, bottom nav, palette, Overview); `short` is the
+ * label under it in the mobile bottom nav.
  */
 export type Service = {
   id: ServiceId
   title: string
+  short: string
   icon: LucideIcon
-  logo?: string
   path: DashboardPath
   sections: Section[]
 }
@@ -80,20 +77,34 @@ export type PageMatch =
 
 export type PageKind = PageMatch["kind"]
 
-const overview: Service = { id: "overview", title: "Overview", icon: LayoutDashboard, path: "/dashboard", sections: [] }
-const account: Service = { id: "account", title: "Account", icon: UserRound, path: "/dashboard/account", sections: [] }
+const overview: Service = {
+  id: "overview",
+  title: "Overview",
+  short: "Overview",
+  icon: LayoutDashboard,
+  path: "/dashboard",
+  sections: [],
+}
+const account: Service = {
+  id: "account",
+  title: "Account",
+  short: "Account",
+  icon: UserRound,
+  path: "/dashboard/account",
+  sections: [],
+}
 
 const telegram: Service = {
   id: "telegram",
   title: "Telegram",
+  short: "Telegram",
   icon: Send,
-  logo: telegramLogo,
   path: "/dashboard/telegram/users",
   sections: [
     {
       id: "users",
       title: "Users",
-      icon: UsersRound,
+      icon: UserRound,
       path: "/dashboard/telegram/users",
       permission: "tg:users:read",
       searchPlaceholder: "Search by name or username…",
@@ -101,7 +112,7 @@ const telegram: Service = {
     {
       id: "groups",
       title: "Groups",
-      icon: Database,
+      icon: MessagesSquare,
       path: "/dashboard/telegram/groups",
       searchPlaceholder: "Search by group name or tag…",
     },
@@ -119,14 +130,14 @@ const telegram: Service = {
 const whatsapp: Service = {
   id: "whatsapp",
   title: "WhatsApp",
+  short: "WhatsApp",
   icon: MessageCircle,
-  logo: whatsappLogo,
   path: "/dashboard/whatsapp/groups",
   sections: [
     {
       id: "groups",
       title: "Groups",
-      icon: Database,
+      icon: MessagesSquare,
       path: "/dashboard/whatsapp/groups",
       searchPlaceholder: "Search by group name…",
     },
@@ -136,14 +147,14 @@ const whatsapp: Service = {
 const m365: Service = {
   id: "m365",
   title: "Microsoft 365",
+  short: "M365",
   icon: Cloud,
-  logo: azureLogo,
   path: "/dashboard/azure/groups",
   sections: [
     {
       id: "groups",
       title: "Groups",
-      icon: Database,
+      icon: UsersRound,
       path: "/dashboard/azure/groups",
       permission: "azure:groups:read",
       searchPlaceholder: "Search by group or email…",
@@ -151,7 +162,7 @@ const m365: Service = {
     {
       id: "members",
       title: "Members",
-      icon: UsersRound,
+      icon: UserRound,
       path: "/dashboard/azure/members",
       anyPermission: ["azure:members:read", "azure:members:create"],
       searchPlaceholder: "Search by name, email or member ID…",
@@ -162,6 +173,7 @@ const m365: Service = {
 const web: Service = {
   id: "web",
   title: "Web",
+  short: "Web",
   icon: Globe,
   path: "/dashboard/web/projects",
   sections: [
@@ -207,6 +219,7 @@ const web: Service = {
 const reports: Service = {
   id: "reports",
   title: "Reports",
+  short: "Reports",
   icon: Flag,
   path: "/dashboard/reports/group-links",
   sections: [
@@ -229,7 +242,7 @@ const reports: Service = {
   ],
 }
 
-/** Rail order: Overview, then the five services with sections, then Account. */
+/** Rail order: Overview (the logo), then the five services with sections, then Account. */
 export const services: Service[] = [overview, telegram, whatsapp, m365, web, reports, account]
 
 /** The services that own a panel, in rail order. */
