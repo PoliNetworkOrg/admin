@@ -61,6 +61,8 @@ type FormDialogProps = {
   notice?: ReactNode
   /** Footer content on the left, e.g. a "Back" ghost button in a stepper. */
   footerStart?: ReactNode
+  /** Immediate filters may replace Cancel/Submit with their clear action and count. */
+  footer?: ReactNode
   trigger?: ReactElement
   children: ReactNode
 }
@@ -81,6 +83,7 @@ export function FormDialog({
   error,
   notice,
   footerStart,
+  footer,
   trigger,
   children,
 }: FormDialogProps) {
@@ -167,17 +170,19 @@ export function FormDialog({
                 {shownError && <InlineAlert>{shownError}</InlineAlert>}
               </div>
             )}
-            <div className={dialogFooter}>
-              {footerStart && <div className="mr-auto flex gap-2 max-shell:flex-none">{footerStart}</div>}
-              <Button type="button" variant="outline" onClick={requestClose} className={dialogFooterButton}>
-                Cancel
-              </Button>
-              {submitLabel !== undefined && (
-                <LoadingButton type="submit" size="default" pending={pending} disabled={!canSubmit}>
-                  {submitLabel}
-                </LoadingButton>
-              )}
-            </div>
+            {footer ?? (
+              <div className={dialogFooter}>
+                {footerStart && <div className="mr-auto flex gap-2 max-shell:flex-none">{footerStart}</div>}
+                <Button type="button" variant="outline" onClick={requestClose} className={dialogFooterButton}>
+                  Cancel
+                </Button>
+                {submitLabel !== undefined && (
+                  <LoadingButton type="submit" size="default" pending={pending} disabled={!canSubmit}>
+                    {submitLabel}
+                  </LoadingButton>
+                )}
+              </div>
+            )}
           </form>
           <ConfirmDialog
             open={confirmingDiscard}

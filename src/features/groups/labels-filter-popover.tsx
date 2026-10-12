@@ -3,6 +3,7 @@ import { useDeferredValue, useEffect, useState } from "react"
 
 import {
   buttonMotion,
+  dialogFooter,
   floatingMotion,
   FormDialog,
   IconButton,
@@ -177,6 +178,26 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
   const count = labelFilterCount(value)
   const active = count > 0
 
+  const footer = (
+    <div
+      className={cn(
+        mobile ? dialogFooter : "flex items-center border-t border-(--pn-line) pt-2",
+        "justify-between max-shell:[&>*]:flex-none"
+      )}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!active}
+        onClick={() => onChange(EMPTY_LABEL_FILTER)}
+        className={cn(buttonMotion, "self-start")}
+      >
+        Clear label filters
+      </Button>
+      <span className="text-xs text-(--pn-fg-muted) tabular-nums">{groupCount} groups</span>
+    </div>
+  )
+
   const content = (
     <>
       {labels.length === 0 ? (
@@ -212,7 +233,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
                   {expanded === side ? "Close picker" : "Add…"}
                 </Button>
               </div>
-              <Reveal open={expanded === side}>
+              <Reveal open={expanded === side} lazy>
                 <LabelTreeSelector
                   allLabels={labels.filter(
                     (label) => !value[side === "include" ? "exclude" : "include"].includes(label.label)
@@ -226,18 +247,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
               </Reveal>
             </section>
           ))}
-          <div className="flex items-center justify-between border-t border-(--pn-line) pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!active}
-              onClick={() => onChange(EMPTY_LABEL_FILTER)}
-              className={cn(buttonMotion, "self-start")}
-            >
-              Clear label filters
-            </Button>
-            <span className="text-xs text-(--pn-fg-muted) tabular-nums">{groupCount} groups</span>
-          </div>
+          {!mobile && footer}
         </>
       )}
     </>
@@ -275,6 +285,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
           noun="label filter"
           dirty={false}
           onSubmit={() => {}}
+          footer={footer}
         >
           {content}
         </FormDialog>
