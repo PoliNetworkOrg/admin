@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
 import { type DashboardPath, type PageMatch, type Service, serviceById, serviceFor } from "./nav"
+import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
@@ -243,7 +244,7 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, 
           focusable={tabStop === serviceStart + index}
           target={{ kind: "link", to: serviceHref(service) }}
         >
-          <service.icon aria-hidden {...iconProps} />
+          <ServiceGlyph service={service} className={iconProps.className} />
           {service.id === "reports" ? (
             <Suspense fallback={null}>
               <OpenReportsDot count={pendingReports} />

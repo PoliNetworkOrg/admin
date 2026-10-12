@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { AccountAvatar, type ShellUser } from "./account-avatar"
 import { type DashboardPath, type PageMatch, type Service, serviceFor } from "./nav"
 import { OpenReportsDot } from "./rail"
+import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
@@ -110,7 +111,7 @@ export function MobileBottomNav({ match, serviceHref, pendingReports, className 
             )}
           >
             <span className="relative">
-              <service.icon aria-hidden strokeWidth={1.75} className="size-5.5" />
+              <ServiceGlyph service={service} className="size-5.5" />
               {service.id === "reports" ? (
                 <Suspense fallback={null}>
                   <OpenReportsDot count={pendingReports} className="-top-0.5 -right-1" />

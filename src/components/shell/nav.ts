@@ -20,6 +20,9 @@ import {
   UsersRound,
 } from "lucide-react"
 
+import azureLogo from "@/assets/svg/azure.svg"
+import telegramLogo from "@/assets/svg/telegram.svg"
+import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
 import type { FileRoutesByTo } from "@/routeTree.gen"
 import type { Permission } from "@/server/permissions"
@@ -42,15 +45,16 @@ export type Section = {
 }
 
 /**
- * `path` is where the service lands (its first section, or its own page for Overview and Account). `icon` is the
- * monochrome glyph used wherever the service is named (rail, panel, bottom nav, palette, Overview); `short` is the
- * label under it in the mobile bottom nav.
+ * `path` is where the service lands (its first section, or its own page for Overview and Account). `logo` is the
+ * branded mark that replaces `icon` wherever the service is named (rail, panel, bottom nav, palette, Overview);
+ * `icon` is the monochrome glyph of services without one. `short` is the label under it in the mobile bottom nav.
  */
 export type Service = {
   id: ServiceId
   title: string
   short: string
   icon: LucideIcon
+  logo?: string
   path: DashboardPath
   sections: Section[]
 }
@@ -101,6 +105,7 @@ const telegram: Service = {
   title: "Telegram",
   short: "Telegram",
   icon: Send,
+  logo: telegramLogo,
   path: "/dashboard/telegram/users",
   sections: [
     {
@@ -136,6 +141,7 @@ const whatsapp: Service = {
   title: "WhatsApp",
   short: "WhatsApp",
   icon: MessageCircle,
+  logo: whatsappLogo,
   path: "/dashboard/whatsapp/groups",
   sections: [
     {
@@ -154,6 +160,7 @@ const m365: Service = {
   title: "Microsoft 365",
   short: "M365",
   icon: Cloud,
+  logo: azureLogo,
   path: "/dashboard/azure/groups",
   sections: [
     {

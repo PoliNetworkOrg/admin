@@ -4,6 +4,7 @@ import { type KeyboardEvent, Suspense, use, useDeferredValue } from "react"
 import { cn } from "@/lib/utils"
 
 import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } from "./nav"
+import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
   "relative flex h-9.5 items-center gap-2.5 rounded-(--pn-r-3) px-2.5 text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
@@ -113,7 +114,7 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
       )}
     >
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-(--pn-line) px-5.5">
-        <service.icon aria-hidden strokeWidth={1.75} className="size-4.5 shrink-0 text-(--pn-fg)" />
+        <ServiceGlyph service={service} className="size-4.5 text-(--pn-fg)" />
         <span className="truncate text-[15px] font-semibold text-(--pn-fg)">{service.title}</span>
       </div>
       <nav

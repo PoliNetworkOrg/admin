@@ -1,22 +1,15 @@
-import { MessageCircle, Send } from "lucide-react"
-
+import telegramLogo from "@/assets/svg/telegram.svg"
+import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import type { GroupWithLabels } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
 const platforms = {
-  tg: { icon: Send, label: "Telegram" },
-  wa: { icon: MessageCircle, label: "WhatsApp" },
+  tg: { logo: telegramLogo, label: "Telegram" },
+  wa: { logo: whatsappLogo, label: "WhatsApp" },
 }
 
-/** The platform as its monochrome service icon (the rail's), named for assistive tech. Size it with `className`. */
+/** The 16px platform logo, named for assistive tech. */
 export function PlatformGlyph({ platform, className }: { platform: GroupWithLabels["type"]; className?: string }) {
-  const { icon: Icon, label } = platforms[platform]
-  return (
-    <Icon
-      role="img"
-      aria-label={label}
-      strokeWidth={1.75}
-      className={cn("size-4 shrink-0 text-(--pn-fg-muted)", className)}
-    />
-  )
+  const { logo, label } = platforms[platform]
+  return <img src={logo} alt={label} width={16} height={16} className={cn("size-4 shrink-0", className)} />
 }

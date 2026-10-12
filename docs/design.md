@@ -14,8 +14,8 @@ Login and onboarding pages use the same tokens but not the shell.
 2. **The chrome is for finding; the content is for doing.** Rail, panel, top bar and bottom nav locate; nothing in
    them explains. Help lives in the page context line, empty states, field hints and dialog descriptions.
 3. **One accent, neutral everything else.** Brand blue marks the active location, the one primary action, links,
-   "on" states (a visible group) and focus. Icons are `--pn-fg-muted`, and every service and platform is a
-   monochrome lucide icon: there are no multicolor logos. Status uses the fixed tones, never ad-hoc colors.
+   "on" states (a visible group) and focus. Icons are `--pn-fg-muted`; the only multicolor marks are
+   the Telegram, WhatsApp and Microsoft 365 logos, wherever those services and platforms are named. Status uses the fixed tones, never ad-hoc colors.
 4. **Borders separate; shadows float.** Static surfaces (cards, tables, nav) get a 1px line; only layers above the page
    (popover, menu, dialog, sheet, toast, drag ghost) cast a shadow.
 5. **Motion confirms, never decorates.** Animate only changes the user caused, mostly on `transform`/`opacity`, short
@@ -71,7 +71,8 @@ Vocabulary, used throughout:
 
 Services and sections are defined once, in `src/components/shell/nav.ts`, with each section's icon, search placeholder
 and whether it reads `?q=`; rail, panel, pills, bottom nav, command palette and Overview read from it. A service is
-drawn with its monochrome `icon`; the bottom nav uses its `short` label ("M365"). Never import logos.
+drawn with `ServiceGlyph`: its `logo` when it has one, else its monochrome `icon`; the bottom nav uses its `short` label
+("M365").
 
 **Where each level is named**
 
@@ -84,7 +85,7 @@ drawn with its monochrome `icon`; the bottom nav uses its `short` label ("M365")
 
 **Rail** (64px, from 760px). One tab stop with roving focus (`↑/↓`, `Home/End`). The PoliNetwork logo is the link to
 Overview and gets an accent ring while Overview is open; then Search (opens the palette), a divider and the five
-services as monochrome icons. The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
+services (logos for Telegram, WhatsApp and Microsoft 365). The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
 an accent dot while there are open reports. A service opens the last section visited in that service this session,
 else its first. Theme toggle and the account avatar (ringed while Account is open) sit at the bottom; sign out lives on
 the Account page.
@@ -247,8 +248,8 @@ align. Queues use labelled buttons instead (Reports: ghost "Dismiss", outline "R
 grant Active (success), Scheduled (brand); report Pending (warning), Resolved (success), Dismissed (neutral); session
 "Current" and guide edition "Latest" (brand); Draft (warning). Absence of a state shows nothing (no "Visible", "Public"
 or "Published" badges). `Chip` for categorical values (roles, licenses, IT/EN markers). `LabelChip` for labels: a neutral fill and readable neutral text, with a colored dot carrying the label color.
-`CountBadge` for neutral counts such as `×3` duplicates. Platforms are a 16px monochrome `PlatformGlyph` (the service's
-lucide icon with an accessible name), not a text badge.
+`CountBadge` for neutral counts such as `×3` duplicates. Platforms are a 16px `PlatformGlyph` (the service's logo with an
+accessible name), not a text badge.
 
 **Buttons.** Text buttons `size="sm"` (36px), icon buttons `icon-sm` (36px); page-header actions and toolbar controls
 (search, filter buttons, toggles, segmented controls) are 40px, as are dialog footer buttons; never `xs`. One `default`

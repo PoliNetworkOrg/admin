@@ -12,6 +12,9 @@ import {
   Tags,
 } from "lucide-react"
 
+import azureLogo from "@/assets/svg/azure.svg"
+import telegramLogo from "@/assets/svg/telegram.svg"
+import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { buttonMotion, Chip, initialsOf, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent, useSignOut } from "@/components/shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -116,12 +119,12 @@ function TelegramCard({ telegramId, accountUrl }: { telegramId: string | null; a
 }
 
 /** Permission prefixes → the area they unlock, in rail order; unknown prefixes fall under "Other". */
-const PERMISSION_AREAS: { prefix: string; area: string; icon: LucideIcon }[] = [
+const PERMISSION_AREAS: { prefix: string; area: string; icon: LucideIcon; logo?: string }[] = [
   { prefix: "admin", area: "Dashboard", icon: LayoutDashboard },
-  { prefix: "tg", area: "Telegram", icon: Send },
-  { prefix: "wa", area: "WhatsApp", icon: MessageCircle },
+  { prefix: "tg", area: "Telegram", icon: Send, logo: telegramLogo },
+  { prefix: "wa", area: "WhatsApp", icon: MessageCircle, logo: whatsappLogo },
   { prefix: "groups", area: "Group labels", icon: Tags },
-  { prefix: "azure", area: "Microsoft 365", icon: Cloud },
+  { prefix: "azure", area: "Microsoft 365", icon: Cloud, logo: azureLogo },
   { prefix: "web", area: "Web", icon: Globe },
 ]
 
@@ -141,13 +144,17 @@ function PermissionsCard({ permissions }: { permissions: readonly string[] }) {
     <SectionCard title="Permissions" count={permissions.length} padding="settings">
       <div className="flex flex-col gap-4">
         <dl className="flex flex-col">
-          {groupPermissions(permissions).map(({ area, icon: Icon, items }) => (
+          {groupPermissions(permissions).map(({ area, icon: Icon, logo, items }) => (
             <div
               key={area}
               className="grid items-center gap-x-4 gap-y-2 border-b border-(--pn-line) py-3 first:pt-0 shell:grid-cols-[160px_minmax(0,1fr)]"
             >
               <dt className="flex items-center gap-2 font-medium text-(--pn-fg)">
-                <Icon aria-hidden strokeWidth={1.75} className="size-4 text-(--pn-fg-muted)" />
+                {logo ? (
+                  <img src={logo} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
+                ) : (
+                  <Icon aria-hidden strokeWidth={1.75} className="size-4 text-(--pn-fg-muted)" />
+                )}
                 {area}
               </dt>
               <dd className="flex flex-wrap gap-1.5">

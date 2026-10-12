@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog"
 import { suppressNextFocusTooltip } from "@/components/ui/tooltip"
 
+import { ServiceGlyph } from "./service-glyph"
 import { useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
@@ -73,7 +74,7 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
       service.sections.map((section) => ({
         id: `section:${service.id}:${section.id}`,
         label: `${service.title} › ${section.title}`,
-        glyph: <service.icon aria-hidden strokeWidth={1.75} className={glyphClass} />,
+        glyph: <ServiceGlyph service={service} className={glyphClass} />,
         run: () => void navigate({ to: section.path }),
       }))
     )

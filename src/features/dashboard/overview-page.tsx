@@ -3,7 +3,7 @@ import { ArrowRight, ArrowUp, ChevronRight, Search } from "lucide-react"
 import { type ReactNode, Suspense, use, useState } from "react"
 
 import { InlineAlert, LoadingButton, SegmentedControl, useModifierKey } from "@/components/primitives"
-import { type DashboardPath, PageBar, PageContent, type Service, useShellFrame } from "@/components/shell"
+import { type DashboardPath, PageBar, PageContent, type Service, ServiceGlyph, useShellFrame } from "@/components/shell"
 import { useVisibleServices } from "@/components/shell/use-can"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -284,7 +284,7 @@ function AreaCard({ service, openReports }: { service: Service; openReports: Ove
     >
       <div className="flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)">
-          <service.icon aria-hidden strokeWidth={1.75} className="size-5" />
+          <ServiceGlyph service={service} className="size-5" />
         </span>
         <h3 className="flex-1 text-[17px] font-semibold text-(--pn-fg)">
           {/* The card's link: its ::after covers the card, the section buttons sit above it. */}

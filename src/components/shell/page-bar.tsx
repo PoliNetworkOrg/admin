@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 import type { DashboardPath, Section, Service } from "./nav"
+import { ServiceGlyph } from "./service-glyph"
 
 /** Content widths per template. The header bar follows the same width. */
 export type ContentWidth = "wide" | "tree" | "record" | "settings" | "overview"
@@ -175,7 +176,7 @@ export function PageBar({
         <div className="flex min-w-0 items-center gap-3.5">
           {serviceTile ? (
             <span className="grid size-11 shrink-0 place-items-center rounded-[11px] border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg) max-shell:hidden">
-              <service.icon aria-hidden strokeWidth={1.75} className="size-5.5" />
+              <ServiceGlyph service={service} className="size-5.5" />
             </span>
           ) : null}
           <div className="min-w-0">

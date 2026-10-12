@@ -32,6 +32,7 @@ export {
   useInShell,
   useShellFrame,
 } from "./page-bar"
+export { ServiceGlyph } from "./service-glyph"
 export { DashboardShell, type DashboardShellProps } from "./shell"
 export { type Theme, themeToggleLabel, useTheme } from "./theme"
 export { appToast } from "./toast"
