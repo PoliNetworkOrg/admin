@@ -229,7 +229,8 @@ because they animate height; `skeleton` by the primitives' skeletons.
 visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
 hover or focus. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
 `Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
-that go nowhere). Only the first column may carry a 12px secondary line; people get a 32px initials avatar. Chip lists
+that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
+readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get a 32px initials avatar. Chip lists
 never wrap on desktop (`ChipOverflow`). Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
 first/last buttons); on narrow tables "‹ 1 of 34 ›".
 
@@ -358,7 +359,8 @@ Rules that the templates above don't imply.
 - **Overview**: the hero stats link to their section; a service that failed to load shows `—` and one warning alert
   with Retry. The users chart reads `tg.users.getCreationHistory` (new users per Europe/Rome day, from `created_at`)
   through `getTelegramUserHistory`; the range buckets are computed in the browser. Without `tg:users:read` the hero
-  shows only the stats; while the backend lacks the procedure the chart is left out and the total stays.
+  shows only the stats; while the backend lacks the procedure, or refuses it as unauthenticated (agent mode calls
+  the backend anonymously and the procedure is token-only), the chart is left out and the total stays.
 - **Account**: the exemplar Settings page. Passkeys and sessions load together and share one Retry. Sign out needs no
   confirmation (signing in again undoes it).
 - **Telegram users**: no create action (users appear once the bot sees them); search strips a leading `@`.
