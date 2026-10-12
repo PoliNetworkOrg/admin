@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router"
-import { Plus, UsersRound } from "lucide-react"
+import { Check, Plus, UsersRound } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -9,6 +9,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  initialsOf,
   type TableSort,
   Unset,
 } from "@/components/primitives"
@@ -16,7 +17,7 @@ import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/compon
 import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
 import type { AzureMember } from "@/lib/api/types"
-import { formatLicense } from "@/lib/format"
+import { formatLicense, pluralize } from "@/lib/format"
 
 import { MemberDialog } from "./member-dialog"
 
@@ -63,8 +64,16 @@ const columns: DataTableColumn<AzureMember>[] = [
     minWidth: 180,
     fill: true,
     cell: (member) => (
-      <span title={memberName(member)} className="block truncate">
-        {memberName(member)}
+      <span className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden
+          className="grid size-8 shrink-0 place-items-center rounded-full border border-(--pn-line-strong) bg-(--pn-muted) text-[11px] font-semibold text-(--pn-fg-muted)"
+        >
+          {initialsOf(memberName(member), member.mail ?? "")}
+        </span>
+        <span title={memberName(member)} className="truncate">
+          {memberName(member)}
+        </span>
       </span>
     ),
   },
@@ -76,7 +85,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     minWidth: 220,
     cell: (member) =>
       member.mail ? (
-        <span title={member.mail} className="block max-w-[280px] truncate">
+        <span title={member.mail} className="block max-w-[280px] truncate font-mono text-[13px]">
           {member.mail}
         </span>
       ) : (
@@ -118,6 +127,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
   const licenses = filtered.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
+  const allLicenses = shown.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
   const filteredView = deferredQuery !== "" || membersOnly
 
   async function onSaved() {
@@ -156,10 +166,15 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   return (
     <>
       <PageBar
+        description={
+          members === null
+            ? "Create association members in Microsoft Entra"
+            : `${pluralize(shown.length, "member")} · ${pluralize(allLicenses, "license")}`
+        }
         left={
           members !== null ? (
             <Toolbar
-              search={{ value: query, onChange: changeQuery, className: "xl:w-80" }}
+              search={{ value: query, onChange: changeQuery }}
               filters={
                 <Toggle
                   variant="outline"
@@ -169,18 +184,21 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                     setMembersOnly(pressed)
                     setPage(1)
                   }}
-                  className="h-9 shrink-0 rounded-(--pn-r-3) border-(--pn-line-strong) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-muted) aria-pressed:border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                  className="h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-muted) aria-pressed:border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
                 >
+                  {membersOnly ? <Check aria-hidden strokeWidth={2} className="size-4" /> : null}
                   Members only
                 </Toggle>
               }
               count={
-                <Count
-                  value={filtered.length}
-                  total={filteredView ? shown.length : undefined}
-                  noun="member"
-                  parts={[{ value: licenses, noun: "license" }]}
-                />
+                filteredView ? (
+                  <Count
+                    value={filtered.length}
+                    total={shown.length}
+                    noun="member"
+                    parts={[{ value: licenses, noun: "license" }]}
+                  />
+                ) : undefined
               }
             />
           ) : undefined
