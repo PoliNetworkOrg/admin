@@ -8,6 +8,7 @@ import {
   FormDialog,
   IconButton,
   LabelChip,
+  labelDisplayName,
   Reveal,
   LabelTreeSelector,
   PAGE_SIZES,
@@ -19,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { GroupLabel } from "@/features/group-labels/types"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import type { VisibilityFilter } from "./visibility"
@@ -194,7 +196,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
       >
         Clear label filters
       </Button>
-      <span className="text-xs text-(--pn-fg-muted) tabular-nums">{groupCount} groups</span>
+      <span className="text-xs text-(--pn-fg-muted) tabular-nums">{pluralize(groupCount, "group")}</span>
     </div>
   )
 
@@ -217,7 +219,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
                       <LabelChip label={label} />
                       <IconButton
                         icon={X}
-                        label={`Remove ${path} filter`}
+                        label={`Remove ${labelDisplayName(label.label)} filter`}
                         onClick={() => onChange({ ...value, [side]: value[side].filter((item) => item !== path) })}
                       />
                     </span>
