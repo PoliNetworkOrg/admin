@@ -91,11 +91,15 @@ let liveToggle: HTMLElement | null = null
 
 let reveal: Reveal | null = null
 
+/** The center of the toggle's shown icon (it holds a Sun and a Moon, one hidden), else of the toggle itself. */
 function iconCenter(element: Element | null): Point | null {
-  const icon = element?.querySelector("svg") ?? element
-  const box = icon?.getBoundingClientRect()
-  if (!box || (box.width === 0 && box.height === 0)) return null
-  return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+  if (!element) return null
+  const candidates = [...element.querySelectorAll("svg"), element]
+  for (const candidate of candidates) {
+    const box = candidate.getBoundingClientRect()
+    if (box.width > 0 || box.height > 0) return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+  }
+  return null
 }
 
 /** The pressed toggle; without one (command palette) the first visible `data-theme-toggle`. */
