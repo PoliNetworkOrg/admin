@@ -63,6 +63,13 @@ permission checks without using the admin's `AGENT_MODE`.
    `SESSION_SECRET` of at least 32 characters. Run `pnpm dev`, open `http://localhost:3001/login`, and choose
    **Ada Admin** on Auth's development sign-in page. Other personas may correctly lack `admin:access`.
 
+Keep Auth, backend and both Redis instances running while using the admin. `pnpm dev` starts only the admin. If Auth
+on port `3002` is stopped, login reports “The sign-in service is temporarily unavailable” because OIDC discovery
+cannot reach it. If admin Redis on port `6380` is stopped, existing sessions cannot be read; backend Redis on port
+`6379` also needs to run for backend features. After stopping the local
+stack, restart Auth's database with `docker compose up -d --wait` in the Auth repository, start Auth with
+`pnpm run dev`, restart the two Redis containers from step 2, and start backend and admin with their usual dev commands.
+
 Set the following runtime variables (the build does not need secrets):
 
 | Variable                  | Meaning                                                                                                                                                                                                                                              |
