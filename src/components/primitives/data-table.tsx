@@ -27,9 +27,10 @@ export type DataTableColumn<T> = {
   /**
    * Below 760px rows become stacked cards: the first column takes the full width (`main`), the others follow inline as
    * meta (12px, muted), then the actions on their own line. `full` gives a column its own line (chip lists), `inline`
-   * keeps a primary value on the current line taking the rest of it (a name after a short id), `hidden` drops it.
+   * keeps a primary value on the current line taking the rest of it (a name after a short id), `end` pushes a value to
+   * the line's end (a status badge), `text` is a full-width 14px line of body text (a reason), `hidden` drops it.
    */
-  mobile?: "main" | "inline" | "meta" | "full" | "hidden"
+  mobile?: "main" | "inline" | "end" | "text" | "meta" | "full" | "hidden"
   /**
    * Takes the width the other columns leave, so a `truncate` title uses the free space instead of a fixed
    * `max-w-*` cap. Use on one column: the title, or the free-text column when the title is short (Grants › Reason).
@@ -114,6 +115,8 @@ const mobileCell = "max-shell:block max-shell:h-auto max-shell:w-auto max-shell:
 const mobileCellRole = {
   main: "max-shell:basis-full max-shell:whitespace-normal",
   inline: "max-shell:min-w-0 max-shell:flex-1 max-shell:text-left max-shell:text-[14px] max-shell:font-medium",
+  end: "max-shell:ml-auto max-shell:shrink-0",
+  text: "max-shell:basis-full max-shell:min-w-0 max-shell:text-[14px] max-shell:whitespace-normal max-shell:text-(--pn-fg)",
   meta: "max-shell:min-w-0 max-shell:text-left max-shell:text-xs max-shell:text-(--pn-fg-muted)",
   full: "max-shell:basis-full max-shell:min-w-0",
   hidden: "max-shell:hidden",
