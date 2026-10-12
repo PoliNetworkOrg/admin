@@ -252,7 +252,7 @@ function MessageRow({ message }: { message: Message }) {
         >
           {message.group?.title ?? `Chat ${message.chatId}`}
         </a>
-        <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums max-sm:hidden">
+        <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums">
           Chat {message.chatId}
         </span>
         <time
@@ -276,19 +276,66 @@ function MessageRow({ message }: { message: Message }) {
   )
 }
 
+/** "ban_all" → "Ban all". */
+function humanize(value: string) {
+  const text = value.replaceAll("_", " ")
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/**
+ * Who acted, as a person reads it: the Telegram admin's name, "Moderation bot" for automatic actions, "User {id}"
+ * for a bare Telegram ID, and a dashboard or IdP account by kind (its subject stays in the tooltip, never as the name).
+ */
+function auditActor(audit: Audit): { name: string; title?: string } {
+  if (audit.admin) return { name: telegramUserName(audit.admin) }
+  if (audit.actorTgId !== null) return { name: `User ${audit.actorTgId}` }
+  if (audit.adminId !== null) return { name: `User ${audit.adminId}` }
+  if (audit.actorSub) {
+    return { name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account", title: `IdP subject ${audit.actorSub}` }
+  }
+  if (audit.client === "bot" || audit.basis === "automatic") return { name: "Moderation bot" }
+  return { name: "Unknown actor" }
+}
+
 const auditColumns: DataTableColumn<Audit>[] = [
   {
     id: "actor",
     label: "Actor",
     minWidth: 160,
-    cell: (audit) => audit.actorSub ?? audit.actorTgId ?? audit.adminId ?? <Unset />,
+    // Cards: actor, type and date share the first line.
+    mobile: "inline",
+    cell: (audit) => {
+      const actor = auditActor(audit)
+      return (
+        <span className="block truncate" title={actor.title ?? actor.name}>
+          {actor.name}
+        </span>
+      )
+    },
   },
-  { id: "type", label: "Type", minWidth: 120, cell: (audit) => <Chip>{audit.type}</Chip> },
-  { id: "client", label: "Client", minWidth: 120, cell: (audit) => audit.client ?? <Unset /> },
+  {
+    id: "type",
+    label: "Type",
+    minWidth: 120,
+    cell: (audit) => <Chip className="h-6 rounded-full">{humanize(audit.type)}</Chip>,
+  },
+  {
+    id: "client",
+    label: "Client",
+    minWidth: 120,
+    mobile: "hidden",
+    cell: (audit) =>
+      audit.client ? (
+        <Chip className="h-6 rounded-(--pn-r-2) bg-(--pn-muted) font-normal">{humanize(audit.client)}</Chip>
+      ) : (
+        <Unset />
+      ),
+  },
   {
     id: "date",
     label: "Date",
     minWidth: 170,
+    mobile: "end",
     className: "whitespace-nowrap tabular-nums",
     cell: (audit) => formatDateTime(audit.createdAt),
   },
@@ -298,9 +345,10 @@ const auditColumns: DataTableColumn<Audit>[] = [
     priority: 2,
     minWidth: 180,
     className: "max-w-[280px]",
+    mobile: "text",
     cell: (audit) =>
       audit.reason ? (
-        <span className="block truncate" title={audit.reason}>
+        <span className="block truncate max-shell:whitespace-normal" title={audit.reason}>
           {audit.reason}
         </span>
       ) : (
@@ -312,6 +360,7 @@ const auditColumns: DataTableColumn<Audit>[] = [
     label: "Group",
     priority: 1,
     minWidth: 220,
+    mobile: "full",
     cell: (audit) =>
       audit.groupTitle && audit.groupId !== null ? (
         <span className="flex min-w-0 items-baseline gap-1">

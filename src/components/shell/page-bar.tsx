@@ -106,6 +106,9 @@ export function servicePanelVisible(service: Service) {
 const headerActions =
   "flex flex-wrap items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:px-3.5 [&>[data-slot=button]]:text-[14px]"
 
+/** Record actions on deep pages keep their own width on phones, left-aligned under the breadcrumb. */
+const deepHeaderActions = "max-shell:justify-start max-shell:[&>*]:flex-none"
+
 const titleText = "text-[22px]/7 font-semibold tracking-[-0.01em] text-(--pn-fg) shell:text-[24px]/8"
 
 /**
@@ -157,7 +160,7 @@ export function PageBar({
             </ol>
           </nav>
         </div>
-        {right ? <div className={headerActions}>{right}</div> : null}
+        {right ? <div className={cn(headerActions, deepHeaderActions)}>{right}</div> : null}
       </div>
     )
   } else {
