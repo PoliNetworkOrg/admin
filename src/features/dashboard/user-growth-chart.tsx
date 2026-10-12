@@ -7,18 +7,17 @@ import { useMemo } from "react"
 
 import { formatNumber } from "@/lib/format"
 
-import type { GrowthPoint, GrowthSeries } from "./user-growth"
-
-const compactNumber = new Intl.NumberFormat("en-GB", { notation: "compact", maximumFractionDigits: 1 })
+import { type GrowthPoint, type GrowthSeries, growthAxis } from "./user-growth"
 
 const CHART_HEIGHT = 200
 
 /**
- * One 2px accent line of the running total over a light grid, month labels below and compact counts on the left.
+ * One 2px accent line of the running total over a light grid, month labels below and distinct counts on the left.
  * Hover or keyboard focus shows a dashed guide, the point and a tooltip with the bucket's date, total and growth.
  * Paints are CSS variables, so the chart follows the theme without being rebuilt.
  */
 export function UserGrowthChart({ series, description }: { series: GrowthSeries; description: string }) {
+  const yAxis = useMemo(() => growthAxis(series.points), [series])
   const definition = useMemo(
     () =>
       defineChart({
@@ -43,17 +42,12 @@ export function UserGrowthChart({ series, description }: { series: GrowthSeries;
             },
           },
           y: {
-            scale: scaleLinear,
-            nice: true,
+            // Explicit ticks and domain from `growthAxis`, so grid lines and labels match and labels never repeat.
+            scale: scaleLinear().domain(yAxis.domain),
             grid: { stroke: "var(--pn-line)", strokeOpacity: 1, strokeWidth: 1 },
             axis: {
               line: false,
-              ticks: {
-                count: 4,
-                size: 0,
-                padding: 8,
-                format: (value: number) => compactNumber.format(value).toLowerCase(),
-              },
+              ticks: { values: yAxis.values, size: 0, padding: 8, format: yAxis.format },
             },
           },
         },
@@ -73,7 +67,7 @@ export function UserGrowthChart({ series, description }: { series: GrowthSeries;
           format: (point) => `${point.datum.label}: ${formatNumber(point.datum.total)} users`,
         },
       }),
-    [series]
+    [series, yAxis]
   )
 
   return (
