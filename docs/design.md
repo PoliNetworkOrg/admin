@@ -236,6 +236,8 @@ readers keep the context the hidden header row gave. Only the first column may c
 a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`). Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
 first/last buttons); on narrow tables "‹ 1 of 34 ›".
 
+Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
+
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
 right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts: `tone="danger"` (and success/warning) only tints
 the hover; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic

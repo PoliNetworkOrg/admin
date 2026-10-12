@@ -304,9 +304,7 @@ export function DataTable<T>({
           className={cn(
             "h-13 border-(--pn-line) transition-[background-color] duration-120",
             mobileRow,
-            interactive || hasActions
-              ? "hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]"
-              : "hover:bg-transparent",
+            interactive || hasActions ? "hover:bg-(--pn-accent-soft)" : "hover:bg-transparent",
             interactive && "cursor-pointer",
             selectedRowId === id && "bg-(--pn-accent-soft) hover:bg-(--pn-accent-soft-hover)",
             extra?.className
