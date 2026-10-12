@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
 import { TableSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import { getAzureMembers } from "@/features/azure/azure.functions"
 import { AzureMembersPage } from "@/features/azure/members-page"
 import { hasPermission } from "@/server/permissions"
@@ -16,9 +16,12 @@ export const Route = createFileRoute("/dashboard/azure/members")({
   },
   loader: ({ context }) => (hasPermission(context.permissions, "azure:members:read") ? getAzureMembers() : null),
   pendingComponent: () => (
-    <PageContent>
-      <TableSkeleton columns={4} label="Loading members…" />
-    </PageContent>
+    <>
+      <PageBar />
+      <PageContent>
+        <TableSkeleton columns={4} label="Loading members…" />
+      </PageContent>
+    </>
   ),
   component: AzureMembersRoute,
 })

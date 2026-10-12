@@ -32,6 +32,7 @@ import {
 } from "@/features/groups/labels-filter-popover"
 import { matchesVisibility, type VisibilityFilter, visibilityItems } from "@/features/groups/visibility"
 import type { GroupWithLabels, TgGroup } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
 
 type TelegramGroupRow = GroupWithLabels & { tag: string | null }
 
@@ -149,6 +150,7 @@ export function TelegramGroupsPage({
       label: "Labels",
       priority: 1,
       width: 320,
+      mobile: "full",
       cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
     },
   ]
@@ -171,6 +173,7 @@ export function TelegramGroupsPage({
   return (
     <>
       <PageBar
+        description={`${pluralize(all.length, "group")} managed by the bot`}
         left={
           <Toolbar
             search={{ value: list.query, onChange: list.setQuery, placeholder: "Search by group name or tag…" }}

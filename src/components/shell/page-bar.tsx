@@ -102,6 +102,10 @@ export function servicePanelVisible(service: Service) {
   return service.sections.length > 1
 }
 
+/** Header actions are 40px like the toolbar controls; below 760px they share the full width under the title. */
+const headerActions =
+  "flex flex-wrap items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:px-3.5 [&>[data-slot=button]]:text-[14px]"
+
 const titleText = "text-[22px]/7 font-semibold tracking-[-0.01em] text-(--pn-fg) shell:text-[24px]/8"
 
 /**
@@ -151,9 +155,7 @@ export function PageBar({
             </ol>
           </nav>
         </div>
-        {right ? (
-          <div className="flex items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1">{right}</div>
-        ) : null}
+        {right ? <div className={headerActions}>{right}</div> : null}
       </div>
     )
   } else {
@@ -163,11 +165,7 @@ export function PageBar({
           <h1 className={titleText}>{heading}</h1>
           {description ? <p className="mt-0.5 text-[14px] text-(--pn-fg-muted) tabular-nums">{description}</p> : null}
         </div>
-        {right ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1">
-            {right}
-          </div>
-        ) : null}
+        {right ? <div className={headerActions}>{right}</div> : null}
       </div>
     )
   }

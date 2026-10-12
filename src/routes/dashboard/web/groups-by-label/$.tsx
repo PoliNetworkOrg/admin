@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { RecordSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import {
   listGroupLabels,
   listGroupsForLabels,
@@ -25,9 +25,12 @@ export const Route = createFileRoute("/dashboard/web/groups-by-label/$")({
 
 function CategoryPending() {
   return (
-    <PageContent width="wide">
-      <RecordSkeleton label="Loading category…" />
-    </PageContent>
+    <>
+      <PageBar back={{ label: "categories", link: { to: "/dashboard/web/groups-by-label" } }} />
+      <PageContent width="wide">
+        <RecordSkeleton label="Loading category…" />
+      </PageContent>
+    </>
   )
 }
 

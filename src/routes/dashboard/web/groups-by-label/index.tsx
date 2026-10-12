@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { CardsSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import { listGroupLabels } from "@/features/group-labels/group-labels.functions"
 import { CategoriesPage } from "@/features/groups-by-label/categories-page"
 
@@ -13,9 +13,12 @@ export const Route = createFileRoute("/dashboard/web/groups-by-label/")({
 
 function CategoriesPending() {
   return (
-    <PageContent width="wide">
-      <CardsSkeleton count={2} label="Loading categories…" />
-    </PageContent>
+    <>
+      <PageBar width="wide" />
+      <PageContent width="wide">
+        <CardsSkeleton count={2} label="Loading categories…" />
+      </PageContent>
+    </>
   )
 }
 

@@ -12,7 +12,7 @@ const bodyPadding = {
 const headerPadding = {
   default: "px-4",
   settings: "px-5",
-  flush: "px-5",
+  flush: "px-4.5",
 }
 
 type SectionCardProps = {
@@ -43,7 +43,7 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
+        "overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
         className
       )}
     >
@@ -60,7 +60,7 @@ export function SectionCard({
               <h2 className="flex items-baseline gap-2 text-[15px] leading-[22px] font-semibold tracking-[-0.005em] text-balance">
                 {title}
                 {count !== undefined && (
-                  <span className="text-[13px] font-normal tracking-normal text-(--pn-fg-muted) tabular-nums">
+                  <span className="font-mono text-xs font-normal tracking-normal text-(--pn-fg-muted) tabular-nums">
                     {formatNumber(count)}
                   </span>
                 )}

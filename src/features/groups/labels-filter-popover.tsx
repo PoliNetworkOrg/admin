@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Tags } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -172,13 +172,14 @@ export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPop
             size="sm"
             className={cn(
               buttonMotion,
-              "shrink-0 gap-1.5 data-popup-open:bg-(--pn-muted)",
+              "h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] data-popup-open:bg-(--pn-muted)",
               active &&
                 "border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklch,var(--pn-accent)_60%,transparent)]"
             )}
           />
         }
       >
+        <Tags aria-hidden strokeWidth={1.75} data-icon="inline-start" />
         Labels
         {active && (
           <span className="tabular-nums text-(--pn-fg-muted)">

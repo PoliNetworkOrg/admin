@@ -5,9 +5,11 @@ import { useState } from "react"
 import {
   buttonMotion,
   buttonTones,
+  Chip,
   DataTable,
   type DataTableColumn,
   EmptyState,
+  CopyableText,
   initialsOf,
   RecordHeader,
   SectionCard,
@@ -18,7 +20,6 @@ import {
 import { PageBar, PageContent, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import type { TgGrant } from "@/lib/api/types"
 import { formatDateTime, formatRange } from "@/lib/format"
@@ -95,6 +96,21 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
     </>
   ) : undefined
 
+  const messagesCard = messages && (
+    <SectionCard title="Recent messages" count={messages.length} padding="flush">
+      {messages.length === 0 ? (
+        <SectionEmpty title="No recent messages from this user" />
+      ) : (
+        <ol className="divide-y divide-(--pn-line)">
+          {messages.map((message) => (
+            <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
+          ))}
+        </ol>
+      )}
+    </SectionCard>
+  )
+  const grantsCard = grants && <GrantsSection ongoing={grants.ongoing} scheduled={grants.scheduled} />
+
   return (
     <>
       <PageBar width="record" back={BACK} context={String(user.id)} contextMono right={headerActions} />
@@ -102,31 +118,34 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
         <div className="flex flex-col gap-6">
           <RecordHeader
             title={name}
-            className="border-b border-(--pn-line) pb-6"
             avatar={
-              <Avatar size="lg">
-                <AvatarFallback className="bg-(--pn-accent-solid) text-sm font-medium text-(--pn-accent-solid-fg)">
-                  {initialsOf(name)}
-                </AvatarFallback>
-              </Avatar>
+              <span
+                aria-hidden
+                className="grid size-16 place-items-center rounded-full border border-(--pn-line-strong) bg-(--pn-muted) text-[20px] font-semibold text-(--pn-fg) max-shell:size-13 max-shell:text-[17px]"
+              >
+                {initialsOf(name)}
+              </span>
             }
-            meta={user.username ? `@${user.username}` : <Unset />}
+            badge={grants?.ongoing ? <StatusBadge tone="success">Grant active</StatusBadge> : undefined}
+            meta={
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {user.username ? <span>@{user.username}</span> : <span>No username</span>}
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1">
+                  Telegram ID{" "}
+                  <CopyableText value={String(user.id)} what="Telegram ID" className="font-mono text-(--pn-fg)" />
+                </span>
+              </span>
+            }
           />
 
-          {grants && <GrantsSection ongoing={grants.ongoing} scheduled={grants.scheduled} />}
-
-          {messages && (
-            <SectionCard title="Recent messages" count={messages.length} padding="flush">
-              {messages.length === 0 ? (
-                <SectionEmpty title="No recent messages from this user" />
-              ) : (
-                <ul className="divide-y divide-(--pn-line)">
-                  {messages.map((message) => (
-                    <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
+          {messagesCard && grantsCard ? (
+            <div className="grid items-start gap-4 min-[1000px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              {messagesCard}
+              {grantsCard}
+            </div>
+          ) : (
+            (messagesCard ?? grantsCard)
           )}
 
           {audits && (
@@ -168,29 +187,41 @@ type GrantWindow = Pick<TgGrant, "validSince" | "validUntil">
 type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { key: string })[] }
 
 function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
-  // `tg.grants.checkUser` returns the ongoing grant without a key; a user has at most one.
-  const rows = [
-    ...(ongoing ? [{ key: "ongoing", grant: ongoing, label: "Ongoing", status: "active" as const }] : []),
-    ...scheduled.map((grant) => ({ key: grant.key, grant, label: "Scheduled", status: "scheduled" as const })),
-  ]
+  // `tg.grants.checkUser` returns the ongoing grant without a key or reason; a user has at most one.
+  const count = (ongoing ? 1 : 0) + scheduled.length
   return (
-    <SectionCard title="Grants" padding="flush">
-      {rows.length === 0 ? (
+    <SectionCard title="Grants" count={count} padding="flush">
+      {count === 0 ? (
         <SectionEmpty
           title="No active or scheduled grants"
           hint="Grants let this user send links without automatic moderation."
         />
       ) : (
-        <ul className="divide-y divide-(--pn-line)">
-          {rows.map(({ key, grant, label, status }) => (
-            <li key={key} className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2">
-              <span className="w-20 text-[13px] font-medium text-(--pn-fg-muted)">{label}</span>
-              {status === "active" ? (
+        <ul className="flex flex-col gap-3 p-4">
+          {ongoing ? (
+            <li className="flex flex-col gap-2.5 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-bg) p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">Ongoing</span>
                 <StatusBadge tone="success">Active</StatusBadge>
-              ) : (
+              </div>
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-1.5 text-[13px]">
+                <dt className="text-(--pn-fg-muted)">From</dt>
+                <dd className="tabular-nums">{formatDateTime(ongoing.validSince)}</dd>
+                <dt className="text-(--pn-fg-muted)">Until</dt>
+                <dd className="tabular-nums">{formatDateTime(ongoing.validUntil)}</dd>
+              </dl>
+            </li>
+          ) : null}
+          {scheduled.map((grant) => (
+            <li
+              key={grant.key}
+              className="flex flex-col gap-1.5 rounded-(--pn-r-4) border border-dashed border-(--pn-line-strong) p-3.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">Scheduled</span>
                 <StatusBadge tone="brand">Scheduled</StatusBadge>
-              )}
-              <span className="text-[13px] whitespace-nowrap text-(--pn-fg) tabular-nums">
+              </div>
+              <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">
                 {formatRange(grant.validSince, grant.validUntil)}
               </span>
             </li>
@@ -211,33 +242,32 @@ const externalLink =
 function MessageRow({ message }: { message: Message }) {
   const link = messageLink(message.chatId, message.messageId)
   return (
-    <li className="flex flex-col gap-2 px-5 py-4">
-      <div className="flex min-w-0 items-baseline gap-3">
+    <li className="flex flex-col gap-2 px-4.5 py-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
         <a
           href={message.group?.inviteLink ?? link}
           target="_blank"
           rel="noreferrer"
-          className={cn(externalLink, "text-[13px] font-medium")}
+          className="min-w-0 truncate font-semibold text-(--pn-fg) transition-[color] duration-120 hover:text-(--pn-accent)"
         >
-          <span className="truncate">{message.group?.title ?? `Chat ${message.chatId}`}</span>
-          <ExternalLink aria-hidden className="size-3.5 shrink-0" />
+          {message.group?.title ?? `Chat ${message.chatId}`}
         </a>
         <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums max-sm:hidden">
           Chat {message.chatId}
         </span>
         <time
           dateTime={message.timestamp.toISOString()}
-          className="ml-auto shrink-0 text-xs whitespace-nowrap text-(--pn-fg-muted) tabular-nums"
+          className="ml-auto shrink-0 whitespace-nowrap text-(--pn-fg-muted) tabular-nums"
         >
           {formatDateTime(message.timestamp)}
         </time>
       </div>
-      <p className="border-l-2 border-(--pn-line-strong) pl-3 text-[13px] leading-5 text-pretty whitespace-pre-wrap text-(--pn-fg)">
+      <blockquote className="rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-bg) px-3 py-2.5 text-[14px] leading-5 text-pretty whitespace-pre-wrap text-(--pn-fg)">
         {message.message}
-      </p>
-      <div className="flex items-center gap-3 text-xs">
+      </blockquote>
+      <div className="flex items-center justify-between gap-3 text-xs">
         <span className="font-mono text-(--pn-fg-muted) tabular-nums">Message #{message.messageId}</span>
-        <a href={link} target="_blank" rel="noreferrer" className={externalLink}>
+        <a href={link} target="_blank" rel="noreferrer" className={cn(externalLink, "font-medium")}>
           Open message
           <ExternalLink aria-hidden className="size-3 shrink-0" />
         </a>
@@ -253,8 +283,8 @@ const auditColumns: DataTableColumn<Audit>[] = [
     minWidth: 160,
     cell: (audit) => audit.actorSub ?? audit.actorTgId ?? audit.adminId ?? <Unset />,
   },
+  { id: "type", label: "Type", minWidth: 120, cell: (audit) => <Chip>{audit.type}</Chip> },
   { id: "client", label: "Client", minWidth: 120, cell: (audit) => audit.client ?? <Unset /> },
-  { id: "type", label: "Type", minWidth: 120, cell: (audit) => audit.type },
   {
     id: "date",
     label: "Date",

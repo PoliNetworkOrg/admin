@@ -109,7 +109,8 @@ const telegram: Service = {
       icon: UserRound,
       path: "/dashboard/telegram/users",
       permission: "tg:users:read",
-      searchPlaceholder: "Search by name or username…",
+      searchPlaceholder: "Search by name, username or Telegram ID…",
+      queryable: true,
     },
     {
       id: "groups",

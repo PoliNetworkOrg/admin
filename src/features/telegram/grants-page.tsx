@@ -93,6 +93,20 @@ const columns: DataTableColumn<Row>[] = [
     },
   },
   {
+    id: "status",
+    label: "Status",
+    // Hides before the text columns: the segmented filter already states the status.
+    sortable: true,
+    priority: 5,
+    minWidth: 110,
+    cell: ({ status }) =>
+      status === "active" ? (
+        <StatusBadge tone="success">Active</StatusBadge>
+      ) : (
+        <StatusBadge tone="brand">Scheduled</StatusBadge>
+      ),
+  },
+  {
     id: "reason",
     label: "Reason",
     priority: 4,
@@ -140,20 +154,6 @@ const columns: DataTableColumn<Row>[] = [
     minWidth: 150,
     className: "whitespace-nowrap tabular-nums",
     cell: ({ grant }) => formatDateTime(grant.validUntil),
-  },
-  {
-    id: "status",
-    label: "Status",
-    // Hides before the text columns: the segmented filter already states the status.
-    sortable: true,
-    priority: 5,
-    minWidth: 110,
-    cell: ({ status }) =>
-      status === "active" ? (
-        <StatusBadge tone="success">Active</StatusBadge>
-      ) : (
-        <StatusBadge tone="brand">Scheduled</StatusBadge>
-      ),
   },
 ]
 
@@ -245,6 +245,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
   return (
     <>
       <PageBar
+        description="Periods when a user may send links without automatic moderation"
         left={
           <Toolbar
             search={{ value: query, onChange: updateQuery, placeholder: "Search users, authorizers or reasons…" }}

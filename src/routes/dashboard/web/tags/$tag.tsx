@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
 import { RecordSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import {
   listGroupLabels,
   listGroupsForLabels,
@@ -35,9 +35,12 @@ export const Route = createFileRoute("/dashboard/web/tags/$tag")({
 
 function TagPending() {
   return (
-    <PageContent width="wide">
-      <RecordSkeleton label="Loading tag…" />
-    </PageContent>
+    <>
+      <PageBar back={{ label: "labels", link: { to: "/dashboard/web/group-labels" } }} />
+      <PageContent width="wide">
+        <RecordSkeleton label="Loading tag…" />
+      </PageContent>
+    </>
   )
 }
 

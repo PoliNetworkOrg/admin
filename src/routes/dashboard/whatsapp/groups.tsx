@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { z } from "zod"
 
 import { TableSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import { listGroupLabels, listGroupsWithLabels } from "@/features/group-labels/group-labels.functions"
 import { parseVisibility } from "@/features/groups/visibility"
 import { getWhatsappGroups } from "@/features/whatsapp/groups.functions"
@@ -22,9 +22,12 @@ export const Route = createFileRoute("/dashboard/whatsapp/groups")({
     return { groups, groupLabels, groupsWithLabels }
   },
   pendingComponent: () => (
-    <PageContent width="wide">
-      <TableSkeleton columns={3} label="Loading groups…" />
-    </PageContent>
+    <>
+      <PageBar width="wide" />
+      <PageContent width="wide">
+        <TableSkeleton columns={3} label="Loading groups…" />
+      </PageContent>
+    </>
   ),
   component: WhatsappGroupsRoute,
 })
