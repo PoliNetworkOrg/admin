@@ -247,10 +247,10 @@ function formatCountPart({ value, total, noun, plural }: CountPart) {
 
 /**
  * "{n} {noun}" or "{n} of {total} {noun}", pluralized with Intl.PluralRules; `parts` append
- * " · {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
+ * ", {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
  */
 export function Count({ parts = [], className, ...first }: CountProps) {
-  const text = [first, ...parts].map(formatCountPart).join(" · ")
+  const text = [first, ...parts].map(formatCountPart).join(", ")
   return (
     <span
       aria-live="polite"
@@ -357,11 +357,13 @@ export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
       {search ? (
         <SearchField
           {...search}
-          className={cn("max-w-115 flex-[1_1_320px] max-shell:max-w-none max-shell:basis-full", search.className)}
+          className={cn("max-w-115 flex-[1_1_300px] max-shell:max-w-none max-shell:basis-full", search.className)}
         />
       ) : null}
       {filters}
-      {count ? <div className="ml-auto flex shrink-0 pl-1">{count}</div> : null}
+      {count ? (
+        <div className="ml-auto flex shrink-0 pl-1 max-shell:ml-0 max-shell:basis-full max-shell:pl-0">{count}</div>
+      ) : null}
     </div>
   )
 }

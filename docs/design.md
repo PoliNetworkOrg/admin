@@ -102,7 +102,7 @@ content in place. Between 760px and 1439px, the content follows the panel as it 
 **Page header.** Scrolls with the page (the page, not the document, scrolls: the column below the top bar is the
 scroll container). `h1` 24px (22px on mobile) with the context line in 14px muted, actions on the right at 40px; below
 760px the actions take the full width under the title. The toolbar row follows 20px below. Below 760px the search takes its own row and a segmented filter fills the rest of the row it shares (scrolling
-sideways when its options don't fit); the `/` hint is hidden. `/` focuses the page
+sideways when its options don't fit) and the `Count` takes its own row under them; the `/` hint is hidden. `/` focuses the page
 search from anywhere; `Esc` clears it. A service with a single section (WhatsApp) shows its icon in a 44px tile next to
 the `h1`.
 
@@ -144,7 +144,7 @@ does not move when data arrives.
 priority; from 760px the lowest hide first when the table surface narrows, never the first or the actions column.
 Below 760px every row is a stacked card: the first column on its own line, the others inline as 12px meta
 (`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. An unset value
-(`Unset`) is left out of the card rather than shown as a lone dash, and copyable values keep a 36px touch target
+(`Unset`) is left out of the card rather than shown as a lone dash (an unset `text` line collapses but still ends the line above it, so the meta never climbs up beside the name), and copyable values keep a 36px touch target
 without making their line taller. Give columns
 whose content length varies a `width` (the table switches to fixed layout and the title column takes the rest), so
 nothing jumps across search, filters and paging. Pagination shows in the table footer once rows exceed the smallest page
@@ -177,7 +177,7 @@ further apart, without a red border.
 **Overview.** A 52px search that opens the command palette; a hero card with the Telegram users total, its growth over
 the selected range and a TanStack Charts line (3M per day, 1Y per week, All per month; one 2px accent line, a light
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
-reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline and without the "To
+reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline, labelled "Groups" rather than "Telegram groups", and without the "To
 review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
 as a 44px button (two per row on mobile).
 
@@ -295,7 +295,7 @@ warning sign unless the action has its own icon). Footer right-aligned, buttons 
 full width, rounded top, sliding up above the navigation, with a scrolling body and a visible footer. Microsoft 365
 member pickers use the same 18px title, then radio, avatar and name with a monospace email below; names and emails
 wrap independently. Grant dialogs put Change user in the selected-user card, full-width filled date controls on mobile,
-duration shortcuts on their own row, and an always-visible "Optional · n/500" hint under the reason. `Enter` submits single-line fields,
+duration shortcuts on their own row, and an always-visible "Optional, n/500" hint under the reason. `Enter` submits single-line fields,
 `⌘/Ctrl+Enter` textareas. On error an `InlineAlert` appears above the footer and the dialog stays open. On success a
 toast fires and the dialog closes: `ConfirmDialog` closes itself, `FormDialog` doesn't, so call `onOpenChange(false)`
 after the mutation, and keep the dialog's record in state after closing so its content survives the exit animation. A
@@ -305,7 +305,7 @@ only.
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
 and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
-include/exclude tree open at a time, and a "Clear label filters · n groups" footer. On mobile the filter uses a
+include/exclude tree open at a time, and a "Clear label filters" button. On mobile the filter uses a
 bottom-sheet dialog with focus trapping and a reachable footer.
 
 **Inline editing** (`InlineEditCard`, `InlineEditRow`, `useEditSlot`), used by Projects, Associations, FAQs and Labels:
@@ -380,7 +380,7 @@ the theme reveal and the skeleton pulse switch off.
   view is a subset ("No open reports", "Nothing needs attention"); one sentence on what will appear and how, or how to
   widen the filter. Action: the page's create action as `outline` (the header primary stays), or a `ghost` "Clear
   search"/"Clear filters".
-- **Counts** (`Count`, `Intl.PluralRules`): "{n} {noun}" or "{n} of {total} {noun}", joined with " · ", never "results".
+- **Counts** (`Count`, `Intl.PluralRules`): "{n} {noun}" or "{n} of {total} {noun}", joined with ", ", never "results".
   The page header's context line carries the list's total, so the toolbar `Count` appears only while search or a
   filter narrows the list ("12 of 680 groups"). Segmented filters show a bare total per option over the whole list. Next to such a filter the toolbar `Count` appears
   only while search or another filter narrows the list further.

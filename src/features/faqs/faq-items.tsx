@@ -218,14 +218,14 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
               {questionIt && answerIt && (
                 <TranslationPanel lang="it" editing>
                   <InlineEditInput bare ref={firstField} {...questionIt} className="font-medium" />
-                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <div aria-hidden className="my-2 border-t border-(--pn-line)" />
                   <InlineEditTextarea bare {...answerIt} />
                 </TranslationPanel>
               )}
               {questionEn && answerEn && (
                 <TranslationPanel lang="en" editing>
                   <InlineEditInput bare {...questionEn} className="font-medium" />
-                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <div aria-hidden className="my-2 border-t border-(--pn-line)" />
                   <InlineEditTextarea bare {...answerEn} />
                 </TranslationPanel>
               )}

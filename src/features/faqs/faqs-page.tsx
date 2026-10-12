@@ -243,7 +243,7 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
                   <div className="flex min-w-0 flex-1 flex-col">
                     <h2 className="truncate text-[18px] leading-6 font-semibold">{category.titleIt}</h2>
                     <span className="truncate text-[13px] text-(--pn-fg-muted)">
-                      <span lang="en">{category.titleEn}</span> · {pluralize(faqs.length, "FAQ")}
+                      <span lang="en">{category.titleEn}</span>, {pluralize(faqs.length, "FAQ")}
                     </span>
                   </div>
                   {canWrite ? (

@@ -163,7 +163,7 @@ type LabelsFilterPopoverProps = {
 }
 
 /**
- * The `Labels` toolbar filter: an outline button showing "Labels · n" when active and a 320px
+ * The `Labels` toolbar filter: an outline button showing "Labels" and a count pill when active and a 320px
  * popover with "Must have" / "Must not have" pickers. A label picked on one side is hidden on the other.
  */
 export function LabelsFilterPopover({ labels, value, onChange, groupCount }: LabelsFilterPopoverProps) {
@@ -272,8 +272,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
           <Tags aria-hidden strokeWidth={1.75} data-icon="inline-start" />
           Labels
           {active && (
-            <span className="tabular-nums text-(--pn-fg-muted)">
-              <span aria-hidden>· </span>
+            <span className="rounded-full bg-(--pn-accent-soft) px-1.75 text-xs leading-5 font-medium text-(--pn-accent) tabular-nums">
               {count}
               <span className="sr-only"> active</span>
             </span>
@@ -313,8 +312,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
         <Tags aria-hidden strokeWidth={1.75} data-icon="inline-start" />
         Labels
         {active && (
-          <span className="tabular-nums text-(--pn-fg-muted)">
-            <span aria-hidden>· </span>
+          <span className="rounded-full bg-(--pn-accent-soft) px-1.75 text-xs leading-5 font-medium text-(--pn-accent) tabular-nums">
             {count}
             <span className="sr-only"> active</span>
           </span>

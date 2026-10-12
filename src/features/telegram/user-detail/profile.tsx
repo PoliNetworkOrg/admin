@@ -129,12 +129,8 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
             }
             badge={grants?.ongoing ? <StatusBadge tone="success">Grant active</StatusBadge> : undefined}
             meta={
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 {user.username ? <span>@{user.username}</span> : <span>No username</span>}
-                {/* Phones stack the two facts, so the separator would dangle at a line end. */}
-                <span aria-hidden className="max-shell:hidden">
-                  ·
-                </span>
                 <span className="inline-flex items-center gap-1 max-shell:basis-full">
                   Telegram ID{" "}
                   <CopyableText value={String(user.id)} what="Telegram ID" className="font-mono text-(--pn-fg)" />
@@ -262,13 +258,10 @@ function MessageRow({ message }: { message: Message }) {
       <blockquote className="w-fit max-w-full rounded-(--pn-r-4) rounded-tl-(--pn-r-1) bg-(--pn-muted) px-4 py-3 text-[15px] leading-6 whitespace-pre-wrap text-(--pn-fg) [overflow-wrap:anywhere]">
         {message.message}
       </blockquote>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <time dateTime={message.timestamp.toISOString()} className="text-(--pn-fg-muted) tabular-nums">
           {formatDateTime(message.timestamp)}
         </time>
-        <span aria-hidden className="text-(--pn-fg-subtle)">
-          ·
-        </span>
         <a
           href={link}
           target="_blank"
@@ -376,11 +369,10 @@ const auditColumns: DataTableColumn<Audit>[] = [
     mobile: "full",
     cell: (audit) =>
       audit.groupTitle && audit.groupId !== null ? (
-        <span className="flex min-w-0 items-baseline gap-1">
+        <span className="flex min-w-0 items-baseline gap-2">
           <Hint overflowOnly label={audit.groupTitle}>
             <span className="truncate">{audit.groupTitle}</span>
           </Hint>
-          <span className="shrink-0 text-(--pn-fg-muted)">·</span>
           <span className="shrink-0 font-mono text-(--pn-fg-muted) tabular-nums">{audit.groupId}</span>
         </span>
       ) : (

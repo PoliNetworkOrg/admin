@@ -131,16 +131,27 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
 export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
   const ref = useRef<HTMLElement>(null)
-  // Keep the current pill in view: a section past the screen edge would otherwise look unselected.
+  const currentPath = sectionFor(match)?.path
+  // Keep the current pill in view: a section past the screen edge would otherwise look unselected. Re-run when the
+  // section changes (the shell stays mounted between sections) and once the web font has settled the pill widths.
   useLayoutEffect(() => {
     const nav = ref.current
-    const current = nav?.querySelector<HTMLElement>("[aria-current=page], [data-ancestor]")
-    if (!nav || !current) return
-    const start = current.offsetLeft - 16
-    const end = current.offsetLeft + current.offsetWidth + 16 - nav.clientWidth
-    if (nav.scrollLeft > start) nav.scrollLeft = start
-    else if (nav.scrollLeft < end) nav.scrollLeft = end
-  }, [match.kind])
+    if (!nav) return
+    const reveal = () => {
+      const current = nav.querySelector<HTMLElement>("[aria-current=page], [data-ancestor]")
+      if (!current) return
+      const start = current.offsetLeft - 16
+      const end = current.offsetLeft + current.offsetWidth + 16 - nav.clientWidth
+      if (nav.scrollLeft > start) nav.scrollLeft = start
+      else if (nav.scrollLeft < end) nav.scrollLeft = end
+    }
+    reveal()
+    let live = true
+    void document.fonts?.ready.then(() => live && reveal())
+    return () => {
+      live = false
+    }
+  }, [currentPath])
   return (
     <nav
       ref={ref}

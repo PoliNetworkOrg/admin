@@ -94,8 +94,9 @@ function OverviewSearch() {
 }
 
 function Hero({ counts, userHistory }: OverviewPageProps) {
-  const stats: { label: string; value: OverviewCount; to: DashboardPath; flag?: ReactNode }[] = [
-    { label: "Telegram groups", value: counts.telegramGroups, to: "/dashboard/telegram/groups" },
+  // `short` is the phone label: the hero already sits under "Telegram users", so "Groups" is unambiguous there.
+  const stats: { label: string; short?: string; value: OverviewCount; to: DashboardPath; flag?: ReactNode }[] = [
+    { label: "Telegram groups", short: "Groups", value: counts.telegramGroups, to: "/dashboard/telegram/groups" },
     {
       label: "Open reports",
       value: counts.openReports,
@@ -138,9 +139,15 @@ function Hero({ counts, userHistory }: OverviewPageProps) {
               className="group/stat flex min-w-0 items-center gap-3 rounded-(--pn-r-4) px-5 py-4.5 text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-hover) max-shell:min-w-0 max-shell:flex-1 max-shell:items-start max-shell:px-3 max-shell:py-2.5"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                {/* Two reserved lines on mobile, so the three numbers share a baseline when a label wraps. */}
-                <span className="text-[13px] text-(--pn-fg-muted) max-shell:min-h-8 max-shell:text-xs max-shell:leading-4">
-                  {stat.label}
+                <span className="text-[13px] text-(--pn-fg-muted) max-shell:text-xs max-shell:leading-4">
+                  {stat.short ? (
+                    <>
+                      <span className="max-shell:hidden">{stat.label}</span>
+                      <span className="shell:hidden">{stat.short}</span>
+                    </>
+                  ) : (
+                    stat.label
+                  )}
                 </span>
                 <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                   {stat.value === null ? (
