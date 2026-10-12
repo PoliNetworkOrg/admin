@@ -35,6 +35,8 @@ export type Section = {
   icon: LucideIcon
   path: DashboardPath
   searchPlaceholder?: string
+  /** The section reads `?q=` into its search, so the command palette can search it ("Find “…” in Telegram › Groups"). */
+  queryable?: boolean
   permission?: Permission
   anyPermission?: readonly Permission[]
 }
@@ -115,6 +117,7 @@ const telegram: Service = {
       icon: MessagesSquare,
       path: "/dashboard/telegram/groups",
       searchPlaceholder: "Search by group name or tag…",
+      queryable: true,
     },
     {
       id: "grants",
@@ -140,6 +143,7 @@ const whatsapp: Service = {
       icon: MessagesSquare,
       path: "/dashboard/whatsapp/groups",
       searchPlaceholder: "Search by group name…",
+      queryable: true,
     },
   ],
 }

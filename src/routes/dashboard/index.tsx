@@ -3,10 +3,17 @@ import { createFileRoute } from "@tanstack/react-router"
 import { CardsSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { DashboardOverviewPage } from "@/features/dashboard/overview-page"
-import { getOverviewCounts } from "@/features/dashboard/overview.functions"
+import { getOverviewCounts, getTelegramUserHistory } from "@/features/dashboard/overview.functions"
 
 export const Route = createFileRoute("/dashboard/")({
-  loader: () => getOverviewCounts(),
+  // The history is not awaited: the hero renders with the counts and its chart streams in.
+  loader: async () => ({
+    counts: await getOverviewCounts(),
+    userHistory: getTelegramUserHistory().catch((error) => {
+      console.error(error)
+      return { status: "error" as const }
+    }),
+  }),
   staleTime: 60_000,
   pendingComponent: () => (
     <>
@@ -20,5 +27,6 @@ export const Route = createFileRoute("/dashboard/")({
 })
 
 function OverviewRoute() {
-  return <DashboardOverviewPage counts={Route.useLoaderData()} />
+  const { counts, userHistory } = Route.useLoaderData()
+  return <DashboardOverviewPage counts={counts} userHistory={userHistory} />
 }
