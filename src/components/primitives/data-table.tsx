@@ -321,7 +321,17 @@ export function DataTable<T>({
                 column.className
               )}
             >
-              {index === 0 ? renderFirstCell(href, column.cell(row)) : column.cell(row)}
+              {index === 0 ? (
+                renderFirstCell(href, column.cell(row))
+              ) : (
+                <>
+                  {/* Stacked cards hide the header row: each value carries its column name for screen readers. */}
+                  {column.label ? (
+                    <span className="hidden max-shell:sr-only max-shell:inline">{column.label}: </span>
+                  ) : null}
+                  {column.cell(row)}
+                </>
+              )}
             </TableCell>
           ))}
           {hasActions && (
