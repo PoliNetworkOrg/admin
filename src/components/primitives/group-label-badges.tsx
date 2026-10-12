@@ -4,7 +4,7 @@ import { isCategoryLabel } from "@/features/group-labels/label-tree"
 import type { GroupLabel } from "@/features/group-labels/types"
 
 import { ChipOverflow } from "./chip-overflow"
-import { LabelChip } from "./label-chip"
+import { LabelChip, labelChipText } from "./label-chip"
 import { labelDisplayName } from "./label-name"
 import { Unset } from "./unset"
 
@@ -34,6 +34,7 @@ export function GroupLabelBadges({ labels, max = 2, hrefForLabel, renderLink, cl
       items={ordered}
       max={max}
       itemLabel={(label) => labelDisplayName(label.label)}
+      chipText={(label) => labelChipText(label.label)}
       renderItem={(label) => (
         <LabelChip
           key={label.label}
