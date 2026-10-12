@@ -76,8 +76,16 @@ const PAGE_SIZE = 20
 export function TelegramUsersPage({ users, initialQuery = "" }: { users: TgUser[]; initialQuery?: string }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
+  const [syncedQuery, setSyncedQuery] = useState(initialQuery)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+
+  // A later navigation to this page with another `?q=` (the command palette's "Find …") replaces the search.
+  if (initialQuery !== syncedQuery) {
+    setSyncedQuery(initialQuery)
+    setQuery(initialQuery)
+    setPage(1)
+  }
   const deferredQuery = useDeferredValue(query)
 
   const normalized = deferredQuery.trim().replace(/^@/, "").toLocaleLowerCase()
