@@ -25,6 +25,12 @@ export type DataTableColumn<T> = {
   /** Width in px this column needs; drives when lower-priority columns hide. Defaults to 140. */
   minWidth?: number
   /**
+   * Below 760px rows become stacked cards: the first column takes the full width, the others follow inline as meta
+   * (12px, muted), then the actions on their own line. `full` gives a column its own line (chip lists), `hidden`
+   * drops it from the card.
+   */
+  mobile?: "meta" | "full" | "hidden"
+  /**
    * Takes the width the other columns leave, so a `truncate` title uses the free space instead of a fixed
    * `max-w-*` cap. Use on one column: the title, or the free-text column when the title is short (Grants › Reason).
    */
@@ -98,8 +104,18 @@ function columnHideClasses<T>(columns: DataTableColumn<T>[], actionsWidth: numbe
   return classes
 }
 
-function edgePadding(index: number, count: number) {
-  return cn("px-4", index === 0 && "pl-5", index === count - 1 && "pr-5")
+const cellPadding = "px-4"
+
+/** Below the shell breakpoint the table is a list of cards; these classes undo the table layout per part. */
+const mobileTable = "max-shell:block"
+const mobileRow =
+  "max-shell:flex max-shell:h-auto max-shell:flex-wrap max-shell:items-center max-shell:gap-x-3 max-shell:gap-y-1.5 max-shell:px-3.5 max-shell:py-3"
+const mobileCell = "max-shell:block max-shell:h-auto max-shell:w-auto max-shell:max-w-none max-shell:p-0"
+const mobileCellRole = {
+  main: "max-shell:basis-full max-shell:whitespace-normal",
+  meta: "max-shell:min-w-0 max-shell:text-xs max-shell:text-(--pn-fg-muted)",
+  full: "max-shell:basis-full max-shell:min-w-0",
+  hidden: "max-shell:hidden",
 }
 
 function SortIcon({ direction }: { direction: "asc" | "desc" | null }) {
@@ -114,15 +130,14 @@ function SortIcon({ direction }: { direction: "asc" | "desc" | null }) {
 }
 
 /**
- * Right-aligned icon actions. Tinted buttons keep 4px apart, and a tinted danger button 8px more. Ghost buttons show no
- * box, so their icons read as spaced by the padding alone: ghost groups have no gap. The gap is set on the group, not
- * between siblings, because an open menu inserts focus-guard spans beside its trigger.
+ * Right-aligned monochrome icon actions, 2px apart; on mobile cards they start at the left. The gap is set on the
+ * group, not between siblings, because an open menu inserts focus-guard spans beside its trigger.
  */
 export function RowActions({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-end has-[>[data-appearance=tinted]]:gap-1 [&>[data-tone=danger][data-appearance=tinted]]:ml-2",
+        "flex items-center justify-end gap-0.5 max-shell:-ml-1.5 max-shell:flex-wrap max-shell:justify-start",
         className
       )}
     >
@@ -157,7 +172,10 @@ function useTableFits() {
   return { tableRef, fits }
 }
 
-/** Surface, sortable 36px header, 44px rows, actions column, footer pagination, loading/empty/error slots. */
+/**
+ * Surface, sortable 42px header, 52px rows, actions column, footer pagination, loading/empty/error slots. Below 760px
+ * each row is a stacked card (see `DataTableColumn.mobile`).
+ */
 export function DataTable<T>({
   label,
   columns,
@@ -224,8 +242,8 @@ export function DataTable<T>({
     if (loading) return <SkeletonRows columns={cellCount} />
     if (error) {
       return (
-        <TableRow className="border-0 hover:bg-transparent">
-          <TableCell colSpan={cellCount} className="p-4 whitespace-normal">
+        <TableRow className={cn("border-0 hover:bg-transparent", mobileRow)}>
+          <TableCell colSpan={cellCount} className={cn("p-4 whitespace-normal", mobileCell, mobileCellRole.full)}>
             <InlineAlert
               tone="danger"
               action={
@@ -249,8 +267,8 @@ export function DataTable<T>({
     }
     if (!rows.length) {
       return (
-        <TableRow className="border-0 hover:bg-transparent">
-          <TableCell colSpan={cellCount} className="p-0 whitespace-normal">
+        <TableRow className="border-0 hover:bg-transparent max-shell:block">
+          <TableCell colSpan={cellCount} className="p-0 whitespace-normal max-shell:block">
             {empty}
           </TableCell>
         </TableRow>
@@ -277,8 +295,11 @@ export function DataTable<T>({
           }
           onKeyDown={interactive ? (event) => openRow(event, row) : undefined}
           className={cn(
-            "h-11 border-(--pn-line) transition-[background-color] duration-120",
-            interactive || hasActions ? "hover:bg-(--pn-muted)" : "hover:bg-transparent",
+            "h-13 border-(--pn-line) transition-[background-color] duration-120",
+            mobileRow,
+            interactive || hasActions
+              ? "hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]"
+              : "hover:bg-transparent",
             interactive && "cursor-pointer",
             selectedRowId === id && "bg-(--pn-accent-soft) hover:bg-(--pn-accent-soft-hover)",
             extra?.className
@@ -288,8 +309,10 @@ export function DataTable<T>({
             <TableCell
               key={column.id}
               className={cn(
-                "h-11 py-0 text-[13px] leading-5 text-(--pn-fg)",
-                edgePadding(index, cellCount),
+                "h-13 py-0 text-[14px] leading-5 text-(--pn-fg)",
+                cellPadding,
+                mobileCell,
+                mobileCellRole[index === 0 ? "main" : (column.mobile ?? "meta")],
                 index === 0 && "font-medium",
                 column.mono && "font-mono tabular-nums",
                 column.align === "end" && "text-right tabular-nums",
@@ -303,7 +326,7 @@ export function DataTable<T>({
           ))}
           {hasActions && (
             <TableCell
-              className="h-11 w-px py-0 pr-5 pl-4"
+              className={cn("h-13 w-px py-0 pr-4 pl-4", mobileCell, mobileCellRole.full)}
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
@@ -318,7 +341,7 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        "@container overflow-clip rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
+        "@container overflow-clip rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
         className
       )}
     >
@@ -328,14 +351,14 @@ export function DataTable<T>({
       <Table
         ref={tableRef}
         aria-busy={loading || undefined}
-        className={cn(fixedLayout && "table-fixed")}
+        className={cn(fixedLayout && "table-fixed", mobileTable, "max-shell:[&>tbody]:block")}
         containerClassName={fits ? "overflow-x-clip" : undefined}
       >
         <caption className="sr-only">{label}</caption>
         {/* Collapsed borders stay behind when the header sticks, so its rule is a shadow on the cells. */}
-        <TableHeader className="sticky top-0 z-[1] bg-(--pn-surface) [&_th]:shadow-[inset_0_-1px_0_var(--pn-line)] [&_tr]:border-b-0">
+        <TableHeader className="sticky top-0 z-[1] bg-(--pn-surface) max-shell:hidden [&_th]:shadow-[inset_0_-1px_0_var(--pn-line)] [&_tr]:border-b-0">
           <TableRow className="border-(--pn-line) hover:bg-transparent">
-            {columns.map((column, index) => {
+            {columns.map((column) => {
               const direction = sort?.column === column.id ? sort.direction : null
               const sortable = column.sortable && onSort !== undefined
               return (
@@ -344,8 +367,8 @@ export function DataTable<T>({
                   style={column.width === undefined ? undefined : { width: column.width }}
                   aria-sort={sortable ? (direction === null ? "none" : `${direction}ending`) : undefined}
                   className={cn(
-                    "h-9 text-xs font-medium text-(--pn-fg-muted)",
-                    sortable ? "p-0" : edgePadding(index, cellCount),
+                    "h-10.5 text-xs font-medium text-(--pn-fg-muted)",
+                    sortable ? "p-0" : cellPadding,
                     column.align === "end" && "text-right",
                     column.fill && fill,
                     hideClasses.get(column.id),
@@ -357,8 +380,8 @@ export function DataTable<T>({
                       type="button"
                       onClick={() => toggleSort(column.id)}
                       className={cn(
-                        "group/sort flex h-9 w-full items-center gap-1 transition-[color] duration-120 hover:text-(--pn-fg)",
-                        edgePadding(index, cellCount),
+                        "group/sort flex h-10.5 w-full items-center gap-1 transition-[color] duration-120 hover:text-(--pn-fg)",
+                        cellPadding,
                         column.align === "end" && "justify-end"
                       )}
                     >
@@ -373,8 +396,11 @@ export function DataTable<T>({
               )
             })}
             {hasActions && (
-              <TableHead className="h-9 w-px pr-5 pl-4" style={fixedLayout ? { width: actionsWidth } : undefined}>
-                <span className="sr-only">Actions</span>
+              <TableHead
+                className="h-10.5 w-px pr-4 pl-4 text-xs font-medium text-(--pn-fg-muted)"
+                style={fixedLayout ? { width: actionsWidth } : undefined}
+              >
+                Actions
               </TableHead>
             )}
           </TableRow>

@@ -43,21 +43,14 @@ export function resolveLabels(paths: string[], byPath: Map<string, GroupLabel>):
 }
 
 /**
- * Width the actions column needs, with 36px cell padding: the flush copy/open pair (72px) and 8px after it, then
- * 4px + 36px per tinted icon and 8px before the destructive one. Telegram rows have three tinted icons, WhatsApp (and
- * mixed) rows four; read-only rows only the invite link pair.
+ * Width the actions column needs, with 32px cell padding: the invite slot (the copy/open pair, or the wider "Not
+ * shared" badge, 100px), then a 1px separator with 6px on each side and 38px per further icon. Telegram rows have
+ * three more icons, WhatsApp (and mixed) rows four; read-only rows only the invite slot.
  */
-export function groupActionsWidth(tinted: 3 | 4, canWrite: boolean) {
-  if (!canWrite) return 72 + 8 + 36
-  return 72 + 8 + tinted * (4 + 36) + 8 + 36
+export function groupActionsWidth(icons: 3 | 4, canWrite: boolean) {
+  if (!canWrite) return 32 + 100
+  return 32 + 100 + 13 + icons * 38
 }
-
-/**
- * Below `sm` a writable group table stacks each row: the title on its own line, the actions right-aligned under it,
- * with the cell padding and the gap after the invite link pair trimmed so four tinted actions fit at 320px.
- */
-export const mobileGroupTableClasses =
-  "max-sm:[&_table]:block max-sm:[&_thead]:block max-sm:[&_thead_tr]:block max-sm:[&_thead_th:first-child]:block max-sm:[&_thead_th:first-child]:max-w-none max-sm:[&_thead_th:last-child]:hidden max-sm:[&_tbody]:block max-sm:[&_tbody_tr]:grid max-sm:[&_tbody_tr]:h-auto max-sm:[&_tbody_tr]:grid-cols-1 max-sm:[&_tbody_td:first-child]:max-w-none max-sm:[&_tbody_td:first-child]:py-3 max-sm:[&_tbody_td:last-child]:w-auto max-sm:[&_tbody_td:last-child]:justify-self-end max-sm:[&_tbody_td:last-child]:pb-2 max-sm:[&_tbody_td:last-child]:pr-3 max-sm:[&_tbody_td:last-child]:pl-0 max-sm:[&_tbody_td:last-child>div>div:first-child]:mr-0"
 
 /** `router.invalidate({ sync: true })` after a mutation; a failed reload is a warning, the mutation itself succeeded. */
 export function useRefreshGroups() {
@@ -213,7 +206,8 @@ type GroupRowActionsProps = {
 }
 
 /**
- * Per-platform cluster: copy/open invite link · visibility · edit labels · [edit] · leave/delete (other actions, then edit, then the destructive one).
+ * Per-platform cluster: copy/open invite link | visibility · edit labels · [edit] · leave/delete (other actions, then
+ * edit, then the destructive one).
  * Without write access only the invite link remains.
  */
 export function GroupRowActions({ group, controller, alignEdit = false }: GroupRowActionsProps) {
@@ -227,6 +221,7 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
   return (
     <>
       {invite}
+      <span aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-(--pn-line)" />
       {canManage && (
         <VisibilityToggle
           name={group.title}
@@ -240,8 +235,6 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
           label="Edit labels"
           ariaLabel={`Edit labels for ${group.title}`}
           icon={Tags}
-          tone="warning"
-          appearance="tinted"
           onClick={() => controller.show("labels", group)}
         />
       )}
@@ -251,8 +244,6 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             label="Edit group"
             ariaLabel={`Edit ${group.title}`}
             icon={Pencil}
-            tone="success"
-            appearance="tinted"
             onClick={() => controller.show("edit", group)}
           />
         ) : (
@@ -265,7 +256,6 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             ariaLabel={`Leave ${group.title}`}
             icon={LogOut}
             tone="danger"
-            appearance="tinted"
             onClick={(event) => controller.show("leave", group, event.currentTarget)}
           />
         ) : (
@@ -274,7 +264,6 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             ariaLabel={`Delete ${group.title}`}
             icon={Trash2}
             tone="danger"
-            appearance="tinted"
             onClick={(event) => controller.show("delete", group, event.currentTarget)}
           />
         ))}

@@ -14,8 +14,13 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
   /** Names the record for screen readers ("Leave Analisi 1") while the tooltip stays short ("Leave group"). */
   ariaLabel?: string
   icon: LucideIcon
+  /**
+   * Icons are monochrome at rest. `danger`, `success` and `warning` only tint the hover; `info` marks an "on" state
+   * (a visible group) with the accent color.
+   */
   tone?: "default" | "info" | "success" | "warning" | "danger"
-  appearance?: "ghost" | "tinted"
+  /** `boxed` draws a bordered 36px button on the surface, for actions outside tables (group member add/remove). */
+  appearance?: "ghost" | "boxed"
   pending?: boolean
   iconClassName?: string
   /** Custom icon content, e.g. an animated icon swap; replaces `icon` (still required as the resting icon's type). */
@@ -25,21 +30,16 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
 
 const toneClasses = {
   default: "hover:bg-(--pn-muted) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
-  info: "text-(--pn-info-fg) hover:bg-(--pn-info-bg) hover:text-(--pn-info-fg)",
-  success: "text-(--pn-success-fg) hover:bg-(--pn-success-bg) hover:text-(--pn-success-fg)",
-  warning: "text-(--pn-warning-fg) hover:bg-(--pn-warning-bg) hover:text-(--pn-warning-fg)",
+  info: "text-(--pn-accent) hover:bg-(--pn-muted) hover:text-(--pn-accent)",
+  success: "hover:bg-(--pn-success-bg) hover:text-(--pn-success-fg)",
+  warning: "hover:bg-(--pn-warning-bg) hover:text-(--pn-warning-fg)",
   danger: "hover:bg-(--pn-danger-bg) hover:text-(--pn-danger-fg)",
 }
 
-const tintedToneClasses = {
-  default: "",
-  info: "[--pn-icon-fg:var(--pn-action-blue)] [--pn-icon-tint:var(--pn-action-blue)]",
-  success: "[--pn-icon-fg:var(--pn-action-green)] [--pn-icon-tint:var(--pn-action-green-tint)]",
-  warning: "[--pn-icon-fg:var(--pn-action-amber)] [--pn-icon-tint:var(--pn-action-amber-tint)]",
-  danger: "[--pn-icon-fg:var(--pn-action-red)] [--pn-icon-tint:var(--pn-action-red)]",
-}
+const boxedClasses =
+  "border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg) hover:border-(--pn-fg-subtle) data-[tone=danger]:hover:border-[color-mix(in_oklch,var(--pn-danger-fg)_35%,transparent)]"
 
-/** 36px icon button with matching `aria-label` and tooltip; group actions opt into tinted colors. */
+/** 36px monochrome icon button with matching `aria-label` and tooltip. */
 export function IconButton({
   label,
   ariaLabel,
@@ -68,15 +68,16 @@ export function IconButton({
           buttonMotion,
           "text-(--pn-fg-muted) active:not-aria-[haspopup]:translate-y-0 disabled:text-(--pn-fg-subtle) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:bg-transparent data-disabled:hover:text-(--pn-fg-subtle)",
           toneClasses[tone],
-          appearance === "tinted" && ["border-(--pn-line-strong)", tintedToneClasses[tone]],
-          appearance === "tinted" &&
-            tone !== "default" &&
-            "border-[color-mix(in_oklch,var(--pn-icon-fg)_18%,var(--pn-line-strong))] bg-[color-mix(in_oklch,var(--pn-icon-tint)_5%,transparent)] text-(--pn-icon-fg) hover:border-[color-mix(in_oklch,var(--pn-icon-fg)_30%,transparent)] hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_14%,transparent)] hover:text-(--pn-icon-fg) dark:hover:bg-[color-mix(in_oklch,var(--pn-icon-tint)_16%,transparent)]",
+          appearance === "boxed" && boxedClasses,
           className
         )}
         {...props}
       >
-        {pending ? <Spinner /> : (iconNode ?? <Icon aria-hidden className={cn("size-4", iconClassName)} />)}
+        {pending ? (
+          <Spinner />
+        ) : (
+          (iconNode ?? <Icon aria-hidden strokeWidth={1.75} className={cn("size-4.5", iconClassName)} />)
+        )}
       </Button>
     </Hint>
   )

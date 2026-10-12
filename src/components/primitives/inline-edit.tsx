@@ -113,7 +113,7 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
           ariaLabel="Cancel"
           icon={X}
           tone="danger"
-          appearance="tinted"
+          appearance="boxed"
           disabled={saving}
           onClick={onCancel}
         />
@@ -122,7 +122,7 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
           ariaLabel="Save"
           icon={Check}
           tone="success"
-          appearance="tinted"
+          appearance="boxed"
           pending={saving}
           disabled={!valid || !dirty}
           focusableWhenDisabled
