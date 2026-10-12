@@ -32,6 +32,9 @@ Copy `.env.example` to `.env`, then choose one local mode:
 
 ### Local OIDC across Auth, backend and admin
 
+For the diagnosis, configuration actually used, login screenshot and remaining bootstrap work, see
+[`docs/local-oidc-handoff.md`](docs/local-oidc-handoff.md).
+
 You can run the full sign-in flow locally with [PoliNetwork Auth](https://github.com/PoliNetworkOrg/auth)'s development
 personas. Use separate ports: backend `3000`, admin `3001`, Auth `3002`. This exercises the OIDC code flow and backend
 permission checks without using the admin's `AGENT_MODE`.
