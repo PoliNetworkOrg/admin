@@ -55,7 +55,14 @@ const columns: DataTableColumn<AzureMember>[] = [
     align: "end",
     minWidth: 120,
     className: "w-[120px]",
-    cell: (member) => member.employeeId ?? <Unset />,
+    // Cards: a short muted "#id" before the name on the first line.
+    mobile: "meta",
+    cell: (member) =>
+      member.employeeId ? (
+        <span className="font-mono text-[13px] text-(--pn-fg-muted)">#{member.employeeId}</span>
+      ) : (
+        <Unset />
+      ),
   },
   {
     id: "displayName",
@@ -63,6 +70,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     minWidth: 180,
     fill: true,
+    mobile: "inline",
     cell: (member) => (
       <span className="flex min-w-0 items-center gap-3">
         <span
@@ -83,6 +91,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     priority: 1,
     minWidth: 220,
+    mobile: "full",
     cell: (member) =>
       member.mail ? (
         <span title={member.mail} className="block max-w-[280px] truncate font-mono text-[13px]">
@@ -97,15 +106,22 @@ const columns: DataTableColumn<AzureMember>[] = [
     label: "Licenses",
     priority: 2,
     minWidth: 260,
+    mobile: "full",
     cell: (member) =>
       member.assignedLicensesIds.length ? (
         <ChipOverflow
           items={member.assignedLicensesIds}
           itemLabel={formatLicense}
-          renderItem={(license) => <Chip key={license}>{formatLicense(license)}</Chip>}
+          renderItem={(license) => (
+            <Chip key={license} className="h-6 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal">
+              {formatLicense(license)}
+            </Chip>
+          )}
         />
       ) : (
-        <Unset />
+        <span className="inline-flex h-5.5 items-center rounded-full bg-(--pn-warning-bg) px-2 text-xs font-medium whitespace-nowrap text-(--pn-warning-fg)">
+          No license
+        </span>
       ),
   },
 ]
