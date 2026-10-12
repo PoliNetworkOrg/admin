@@ -7,19 +7,17 @@ import {
   buttonMotion,
   ConfirmDialog,
   EmptyState,
-  floatingMotion,
   Hint,
   IconButton,
-  raisedSurface,
+  RowActions,
   useEditSlot,
   useFocusAfterRemoval,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, SearchField, useCan } from "@/components/shell"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FAQItem, FAQs } from "@/lib/api/types"
-import { formatNumber } from "@/lib/format"
+import { formatNumber, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { FaqCategoryDialog } from "./faq-category-dialog"
@@ -148,146 +146,138 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
     </Button>
   )
 
-  const left = (
-    <Toolbar
-      lead={
-        // One surface for everything that acts on the category: its picker and its edit/delete actions.
-        <div
-          role="group"
-          aria-label="Category"
-          className="flex h-9 shrink-0 items-stretch rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface)"
-        >
-          <span
-            aria-hidden
-            className="flex items-center border-r border-(--pn-line) px-3 text-xs font-medium text-(--pn-fg-muted)"
-          >
-            Category
-          </span>
-          <CategorySelect
-            categories={categories}
-            category={category}
-            onSelect={selectCategory}
-            lastInGroup={!(canWrite && category)}
-          />
-          {canWrite && category && (
-            <div className="flex items-stretch border-l border-(--pn-line)">
-              <IconButton
-                label="Edit category"
-                ariaLabel={`Edit ${category.titleIt}`}
-                icon={Pencil}
-                onClick={() => openCategoryDialog(category)}
-                className={groupedAction}
-              />
-              <IconButton
-                label="Delete category"
-                ariaLabel={`Delete ${category.titleIt}`}
-                icon={Trash2}
-                tone="danger"
-                onClick={() => setDeleteCategoryOpen(true)}
-                className={cn(groupedAction, "rounded-r-[calc(var(--pn-r-3)-1px)]")}
-              />
-            </div>
-          )}
-        </div>
-      }
-      search={
-        category
-          ? {
-              value: query,
-              onChange: setQuery,
-              placeholder: "Search questions…",
-              className: "min-w-28 lg:flex-[0_1_auto]",
+  const totalFaqs = categories.reduce((sum, item) => sum + item.faqs.length, 0)
+
+  const faqList = (
+    <div
+      ref={faqFocus.surfaceRef}
+      tabIndex={-1}
+      className="overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)"
+    >
+      {category === null ? (
+        <EmptyState
+          icon={CircleQuestionMark}
+          title="No categories yet"
+          text="Create a category to start adding FAQs."
+          action={canWrite ? addCategoryButton : undefined}
+        />
+      ) : visible.length === 0 && !drafting ? (
+        deferredQuery ? (
+          <EmptyState
+            icon={CircleQuestionMark}
+            title="No FAQs match"
+            text="Try a different question or keyword."
+            action={
+              <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => setQuery("")}>
+                Clear search
+              </Button>
             }
-          : undefined
-      }
-      count={category && <Count value={visible.length} total={deferredQuery ? faqs.length : undefined} noun="FAQ" />}
-    />
+          />
+        ) : (
+          <EmptyState
+            icon={CircleQuestionMark}
+            title="No FAQs in this category"
+            text="Add the first question and answer."
+            action={canWrite ? emptyAddFaqButton : undefined}
+          />
+        )
+      ) : (
+        <Accordion multiple value={openIds} onValueChange={(next) => setOpenIds(next.map(Number))}>
+          {visible.map((faq) =>
+            faq.faqId === edit.editingId ? (
+              <EditableFaq
+                key={faq.faqId}
+                faqId={faq.faqId}
+                initial={toFaqInput(faq)}
+                dirtyRef={editDirty}
+                onCancel={() => finishEdit(null)}
+                onSave={(input) => saveFaq(faq.faqId, category.categoryId, input)}
+              />
+            ) : (
+              <FaqRow
+                key={faq.faqId}
+                faq={faq}
+                canWrite={canWrite}
+                onEdit={() => startEdit(faq.faqId)}
+                onDelete={(trigger) => {
+                  faqFocus.capture(trigger)
+                  setDeletingFaq(faq)
+                  setDeleteFaqOpen(true)
+                }}
+              />
+            )
+          )}
+          {drafting && (
+            <EditableFaq
+              key={`draft-${category.categoryId}`}
+              faqId={DRAFT_ID}
+              initial={EMPTY_FAQ}
+              dirtyRef={editDirty}
+              onCancel={() => finishEdit(null)}
+              onSave={(input) => saveFaq(DRAFT_ID, category.categoryId, input)}
+            />
+          )}
+        </Accordion>
+      )}
+    </div>
   )
 
   return (
     <>
       <PageBar
-        left={left}
-        right={
-          canWrite ? (
-            <>
-              {addCategoryButton}
-              {addFaqButton}
-            </>
-          ) : undefined
-        }
+        description={`${pluralize(totalFaqs, "question")} in ${pluralize(categories.length, "category")}, in Italian and English`}
+        right={canWrite ? addFaqButton : undefined}
       />
       <PageContent>
-        <div
-          ref={faqFocus.surfaceRef}
-          tabIndex={-1}
-          className="overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)"
-        >
-          {category === null ? (
-            <EmptyState
-              icon={CircleQuestionMark}
-              title="No categories yet"
-              text="Create a category to start adding FAQs."
-              action={canWrite ? addCategoryButton : undefined}
+        <div className="grid items-start gap-5 min-[1100px]:grid-cols-[260px_minmax(0,1fr)]">
+          {categories.length > 0 || canWrite ? (
+            <CategoryList
+              categories={categories}
+              currentId={category?.categoryId ?? null}
+              onSelect={selectCategory}
+              onAdd={canWrite ? () => openCategoryDialog(null) : undefined}
             />
-          ) : visible.length === 0 && !drafting ? (
-            deferredQuery ? (
-              <EmptyState
-                icon={CircleQuestionMark}
-                title="No FAQs match"
-                text="Try a different question or keyword."
-                action={
-                  <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => setQuery("")}>
-                    Clear search
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState
-                icon={CircleQuestionMark}
-                title="No FAQs in this category"
-                text="Add the first question and answer."
-                action={canWrite ? emptyAddFaqButton : undefined}
-              />
-            )
-          ) : (
-            <Accordion multiple value={openIds} onValueChange={(next) => setOpenIds(next.map(Number))}>
-              {visible.map((faq) =>
-                faq.faqId === edit.editingId ? (
-                  <EditableFaq
-                    key={faq.faqId}
-                    faqId={faq.faqId}
-                    initial={toFaqInput(faq)}
-                    dirtyRef={editDirty}
-                    onCancel={() => finishEdit(null)}
-                    onSave={(input) => saveFaq(faq.faqId, category.categoryId, input)}
-                  />
-                ) : (
-                  <FaqRow
-                    key={faq.faqId}
-                    faq={faq}
-                    canWrite={canWrite}
-                    onEdit={() => startEdit(faq.faqId)}
-                    onDelete={(trigger) => {
-                      faqFocus.capture(trigger)
-                      setDeletingFaq(faq)
-                      setDeleteFaqOpen(true)
-                    }}
-                  />
-                )
-              )}
-              {drafting && (
-                <EditableFaq
-                  key={`draft-${category.categoryId}`}
-                  faqId={DRAFT_ID}
-                  initial={EMPTY_FAQ}
-                  dirtyRef={editDirty}
-                  onCancel={() => finishEdit(null)}
-                  onSave={(input) => saveFaq(DRAFT_ID, category.categoryId, input)}
-                />
-              )}
-            </Accordion>
-          )}
+          ) : null}
+
+          <div className="flex min-w-0 flex-col gap-3.5">
+            {category ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex min-w-55 flex-1 items-center gap-2.5">
+                  <span className="grid size-9.5 shrink-0 place-items-center rounded-[9px] border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)">
+                    <FAQCategoryIcon icon={category.icon} aria-hidden className="size-4.5" />
+                  </span>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <h2 className="truncate text-[18px] leading-6 font-semibold">{category.titleIt}</h2>
+                    <span className="truncate text-[13px] text-(--pn-fg-muted)">
+                      <span lang="en">{category.titleEn}</span> · {pluralize(faqs.length, "FAQ")}
+                    </span>
+                  </div>
+                  {canWrite ? (
+                    <RowActions className="max-shell:ml-0">
+                      <IconButton
+                        label="Edit category"
+                        ariaLabel={`Edit ${category.titleIt}`}
+                        icon={Pencil}
+                        onClick={() => openCategoryDialog(category)}
+                      />
+                      <IconButton
+                        label="Delete category"
+                        ariaLabel={`Delete ${category.titleIt}`}
+                        icon={Trash2}
+                        tone="danger"
+                        onClick={() => setDeleteCategoryOpen(true)}
+                      />
+                    </RowActions>
+                  ) : null}
+                </div>
+                <div className="flex flex-[1_1_260px] items-center gap-3 shell:max-w-80">
+                  <SearchField value={query} onChange={setQuery} placeholder="Search questions…" className="flex-1" />
+                  {deferredQuery ? <Count value={visible.length} total={faqs.length} noun="FAQ" /> : null}
+                </div>
+              </div>
+            ) : null}
+            {faqList}
+          </div>
         </div>
       </PageContent>
 
@@ -351,66 +341,65 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
   )
 }
 
-const selectItemClasses =
-  "h-9 gap-2 rounded-(--pn-r-2) pl-2 text-[13px] focus:bg-(--pn-muted) focus:text-(--pn-fg) not-data-[variant=destructive]:focus:**:text-(--pn-fg)"
-
-/** Icon buttons inside the category surface: as tall as it, square, no own rounding except at its right edge. */
-const groupedAction = "h-full w-9 rounded-none"
-
-type CategorySelectProps = {
+type CategoryListProps = {
   categories: FAQs
-  category: FaqCategory | null
+  currentId: number | null
   onSelect: (categoryId: number) => void
-  /** Without edit/delete (read-only viewers, no category) the trigger ends the group and takes its right rounding. */
-  lastInGroup: boolean
+  /** Without write access there is no "Add category". */
+  onAdd?: () => void
 }
 
-/** The page-scoping category picker: icon + Italian title; items add the English title and the FAQ count. */
-function CategorySelect({ categories, category, onSelect, lastInGroup }: CategorySelectProps) {
+/**
+ * The categories as a list beside the questions (icon, Italian title, FAQ count); below 1100px a scrolling row of
+ * pills. The current one is marked with `aria-current`.
+ */
+function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListProps) {
   return (
-    <Select
-      value={category?.categoryId ?? null}
-      disabled={categories.length === 0}
-      onValueChange={(value) => {
-        if (value !== null) onSelect(Number(value))
-      }}
+    <nav
+      aria-label="FAQ categories"
+      className="flex min-w-0 gap-1.5 overflow-x-auto [scrollbar-width:none] min-[1100px]:flex-col min-[1100px]:gap-0.5 min-[1100px]:rounded-(--pn-r-5) min-[1100px]:border min-[1100px]:border-(--pn-line) min-[1100px]:bg-(--pn-surface) min-[1100px]:p-2"
     >
-      <SelectTrigger
-        aria-label="Category"
-        className={cn(
-          "h-full max-w-60 min-w-36 shrink-0 gap-2 rounded-none border-0 bg-transparent px-2.5 text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) data-[size=default]:h-full dark:bg-transparent dark:hover:bg-(--pn-muted)",
-          lastInGroup && "rounded-r-[calc(var(--pn-r-3)-1px)]"
-        )}
-      >
-        <SelectValue className="min-w-0">
-          {() =>
-            category ? (
-              <>
-                <FAQCategoryIcon icon={category.icon} aria-hidden className="size-4 text-(--pn-fg-muted)" />
-                <span className="truncate">{category.titleIt}</span>
-              </>
-            ) : (
-              <span className="text-(--pn-fg-subtle)">No categories</span>
-            )
-          }
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent
-        align="start"
-        alignItemWithTrigger={false}
-        className={cn(raisedSurface, floatingMotion, "w-auto min-w-72 rounded-(--pn-r-4) p-1")}
-      >
-        {categories.map((item) => (
-          <SelectItem key={item.categoryId} value={item.categoryId} className={selectItemClasses}>
-            <FAQCategoryIcon icon={item.icon} aria-hidden className="size-4 text-(--pn-fg-muted)" />
-            <span>{item.titleIt}</span>
-            <span className="text-(--pn-fg-muted)">{item.titleEn}</span>
-            <span className="ml-auto pl-4 text-xs leading-5 text-(--pn-fg-muted) tabular-nums">
+      <p className="px-3 pt-2 pb-1.5 text-xs font-medium text-(--pn-fg-muted) max-[1099px]:hidden">Categories</p>
+      {categories.map((item) => {
+        const current = item.categoryId === currentId
+        return (
+          <button
+            key={item.categoryId}
+            type="button"
+            aria-current={current ? "true" : undefined}
+            onClick={() => onSelect(item.categoryId)}
+            className={cn(
+              "group/cat flex h-9 shrink-0 items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:w-full min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]",
+              current &&
+                "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-[color-mix(in_oklch,var(--pn-accent)_45%,transparent)] max-[1099px]:bg-(--pn-accent-soft) max-[1099px]:text-(--pn-accent)"
+            )}
+          >
+            <FAQCategoryIcon
+              icon={item.icon}
+              aria-hidden
+              className={cn("size-4.5 shrink-0", current ? "text-(--pn-accent)" : "text-(--pn-fg-muted)")}
+            />
+            <span className="min-w-0 truncate">{item.titleIt}</span>
+            <span className="ml-auto font-mono text-xs font-normal text-(--pn-fg-muted) tabular-nums max-[1099px]:ml-1">
               {formatNumber(item.faqs.length)}
             </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+          </button>
+        )
+      })}
+      {onAdd ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onAdd}
+          className={cn(
+            buttonMotion,
+            "h-9 shrink-0 rounded-full border border-dashed border-(--pn-line-strong) text-(--pn-fg-muted) hover:border-(--pn-fg-subtle) hover:text-(--pn-fg) min-[1100px]:mt-1.5 min-[1100px]:h-10 min-[1100px]:rounded-(--pn-r-3)"
+          )}
+        >
+          <FolderPlus aria-hidden data-icon="inline-start" />
+          Add category
+        </Button>
+      ) : null}
+    </nav>
   )
 }

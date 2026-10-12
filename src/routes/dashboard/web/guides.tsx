@@ -14,8 +14,8 @@ export const Route = createFileRoute("/dashboard/web/guides")({
 function GuidesPending() {
   return (
     <>
-      <PageBar />
-      <PageContent>
+      <PageBar width="tree" />
+      <PageContent width="tree">
         <TableSkeleton columns={4} rows={4} label="Loading editions…" />
       </PageContent>
     </>

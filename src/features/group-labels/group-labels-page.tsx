@@ -29,6 +29,7 @@ import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/compon
 import { Button } from "@/components/ui/button"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { errorMessage } from "@/lib/errors"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AddCategoryDialog } from "./add-category-dialog"
@@ -93,7 +94,7 @@ function useExpandedPaths() {
 
 type Draft = { label: string; color: string; description: string }
 
-const surface = "@container overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)"
+const surface = "@container overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)"
 
 export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
   const router = useRouter()
@@ -240,17 +241,11 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
     <>
       <PageBar
         width="tree"
+        description={`${pluralize(labels.length, "label")} that organize groups on the website`}
         left={
           <Toolbar
-            // Wider than the 280px default so the long placeholder is readable.
-            search={{ value: query, onChange: setQuery, className: "xl:w-[360px]" }}
-            count={
-              searching ? (
-                <Count value={visibleCount} total={labels.length} noun="label" />
-              ) : (
-                <Count value={labels.length} noun="label" />
-              )
-            }
+            search={{ value: query, onChange: setQuery }}
+            count={searching ? <Count value={visibleCount} total={labels.length} noun="label" /> : undefined}
           />
         }
         right={

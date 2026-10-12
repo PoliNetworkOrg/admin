@@ -115,46 +115,44 @@ export function ProjectCard({
   )
 
   const viewHeader = (
-    <div className="flex h-10 min-w-0 items-center gap-3">
-      <WebLogo src={project.logo} name={project.title} fallback="PR" />
-      <p title={project.title} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
-        {project.title}
-      </p>
-    </div>
-  )
-
-  const view = (
-    <>
-      <p className="text-[13px] leading-5">
+    <div className="flex min-w-0 items-center gap-3.5">
+      <WebLogo src={project.logo} name={project.title} fallback="PR" className="size-12 rounded-(--pn-r-4)" />
+      <div className="flex min-w-0 flex-col">
+        <h3 title={project.title} className="truncate text-[16px] leading-6 font-semibold text-(--pn-fg)">
+          {project.title}
+        </h3>
         {project.link ? (
           <a
             href={project.link}
             target="_blank"
             rel="noreferrer"
             title={project.link}
-            className="inline-flex max-w-full items-center gap-1 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
+            className="inline-flex max-w-full items-center gap-1 text-[13px] leading-5 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
           >
-            <span className="truncate">{project.link}</span>
+            <span className="truncate">{project.link.replace(/^https?:\/\//, "")}</span>
             <ExternalLink aria-hidden className="size-3 shrink-0" />
           </a>
         ) : (
-          <Unset />
+          <Unset className="text-[13px]" />
         )}
-      </p>
-      <TranslationGroup>
-        <TranslationPanel lang="it">
-          <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
-        </TranslationPanel>
-        <TranslationPanel lang="en">
-          <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
-        </TranslationPanel>
-      </TranslationGroup>
-    </>
+      </div>
+    </div>
+  )
+
+  const view = (
+    <TranslationGroup className="shell:pl-[62px]">
+      <TranslationPanel lang="it">
+        <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
+      </TranslationPanel>
+      <TranslationPanel lang="en">
+        <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
+      </TranslationPanel>
+    </TranslationGroup>
   )
 
   const edit = session && (
     <>
-      <div className="flex h-10 min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <WebLogoUpload
           src={session.values.logo}
           name={session.values.title}
@@ -164,27 +162,35 @@ export function ProjectCard({
           onChange={({ file, preview }) => session.onChange({ ...session.values, logo: preview, logoFile: file })}
           onError={session.onLogoError}
         />
+        {draft && (
+          <StatusBadge tone="warning" className="ml-auto">
+            Draft
+          </StatusBadge>
+        )}
+      </div>
+      <div className="grid gap-3.5 min-[900px]:grid-cols-2">
         <InlineEditInput
           ref={titleRef}
+          showLabel
           label="Project title"
           placeholder="Project title"
           value={session.values.title}
           maxLength={PROJECT_TITLE_MAX_LENGTH}
           onChange={(event) => session.onChange({ ...session.values, title: event.target.value })}
         />
-        {draft && <StatusBadge tone="warning">Draft</StatusBadge>}
+        <InlineEditInput
+          showLabel
+          label="Project link"
+          type="url"
+          inputMode="url"
+          placeholder="https://…"
+          value={session.values.link}
+          maxLength={PROJECT_LINK_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, link: event.target.value })}
+          onBlur={session.onLinkBlur}
+          error={session.linkError}
+        />
       </div>
-      <InlineEditInput
-        label="Project link"
-        type="url"
-        inputMode="url"
-        placeholder="https://…"
-        value={session.values.link}
-        maxLength={PROJECT_LINK_MAX_LENGTH}
-        onChange={(event) => session.onChange({ ...session.values, link: event.target.value })}
-        onBlur={session.onLinkBlur}
-        error={session.linkError}
-      />
       <TranslationGroup>
         <TranslationPanel lang="it" editing>
           <InlineEditTextarea
