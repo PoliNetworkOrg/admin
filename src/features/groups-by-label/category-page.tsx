@@ -124,6 +124,7 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
         <div className="flex flex-col gap-8">
           <RecordHeader
             title={title}
+            className="[&_h1]:text-[28px]"
             dot={node.label?.color}
             meta={
               <span className="tabular-nums">
@@ -144,6 +145,8 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
                     title={formatLabelSegment(child.segment)}
                     count={countBranchGroups(groupLabels, child.path)}
                     noun="group"
+                    dot={child.label?.color ?? node.label?.color}
+                    stackedCount
                     render={<Link to="/dashboard/web/groups-by-label/$" params={categoryPath(child.path)} />}
                   />
                 ))}
@@ -155,12 +158,14 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
             <SectionHeading
               id="category-groups"
               title="Groups"
+              count={rows.length}
+              className="max-shell:flex-col max-shell:items-stretch max-shell:[&>div:last-child]:w-full"
               action={
                 <SearchField
                   value={query}
                   onChange={setQuery}
                   placeholder={GROUP_SEARCH_PLACEHOLDER}
-                  className="w-70 max-sm:w-40"
+                  className="w-70 max-shell:w-full"
                 />
               }
             />
