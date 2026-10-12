@@ -196,6 +196,7 @@ function serviceUnavailable(cookies: string[] = []) {
 
 /** `GET /auth/login`: a fresh PKCE verifier, `state` and `nonce`, then 302 to the IdP's authorization endpoint. */
 export async function startLogin(request: Request) {
+  if (isAgentMode()) return redirectResponse("/dashboard", [], 302)
   const current = authConfig()
   const checks = newLoginChecks()
   let location: URL
@@ -265,6 +266,7 @@ export async function finishLogin(request: Request) {
  * the browser to the IdP's end-session endpoint to close the IdP session too.
  */
 export async function logout() {
+  if (isAgentMode()) return redirectResponse("/dashboard", [])
   const current = authConfig()
   const id = getCookie(current.sessionCookie)
   let location = "/login"

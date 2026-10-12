@@ -9,11 +9,13 @@ export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
     const { agentMode, signedIn } = await getSessionState()
     if (!agentMode && signedIn) throw redirect({ to: "/dashboard" })
+    return { agentMode }
   },
   component: LoginRoute,
 })
 
 function LoginRoute() {
   const { error } = Route.useSearch()
-  return <LoginPage error={error} />
+  const { agentMode } = Route.useRouteContext()
+  return <LoginPage error={error} agentMode={agentMode} />
 }
