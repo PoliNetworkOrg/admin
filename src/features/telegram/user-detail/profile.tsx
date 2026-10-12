@@ -9,6 +9,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  Hint,
   CopyableText,
   initialsOf,
   RecordHeader,
@@ -97,11 +98,11 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
   ) : undefined
 
   const messagesCard = messages && (
-    <SectionCard title="Recent messages" count={messages.length} padding="flush">
+    <SectionCard title="Recent messages" count={messages.length}>
       {messages.length === 0 ? (
         <SectionEmpty title="No recent messages from this user" />
       ) : (
-        <ol className="divide-y divide-(--pn-line)">
+        <ol className="flex flex-col gap-6 pt-2">
           {messages.map((message) => (
             <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
           ))}
@@ -242,30 +243,36 @@ const externalLink =
 function MessageRow({ message }: { message: Message }) {
   const link = messageLink(message.chatId, message.messageId)
   return (
-    <li className="flex flex-col gap-2 px-4.5 py-4">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
-        <a
-          href={message.group?.inviteLink ?? link}
-          target="_blank"
-          rel="noreferrer"
-          className="min-w-0 truncate font-semibold text-(--pn-fg) transition-[color] duration-120 hover:text-(--pn-accent)"
-        >
-          {message.group?.title ?? `Chat ${message.chatId}`}
-        </a>
-        <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums">Chat {message.chatId}</span>
-        <time
-          dateTime={message.timestamp.toISOString()}
-          className="ml-auto shrink-0 whitespace-nowrap text-(--pn-fg-muted) tabular-nums"
-        >
-          {formatDateTime(message.timestamp)}
-        </time>
+    <li className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 items-center gap-2 text-[13px]">
+        <Hint label={`Chat ${message.chatId}`}>
+          <a
+            href={message.group?.inviteLink ?? link}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 truncate font-semibold text-(--pn-fg) transition-[color] duration-120 hover:text-(--pn-accent)"
+          >
+            {message.group?.title ?? `Chat ${message.chatId}`}
+          </a>
+        </Hint>
       </div>
-      <blockquote className="rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-sunken) px-3 py-2.5 text-[14px] leading-5 text-pretty whitespace-pre-wrap text-(--pn-fg)">
+      <blockquote className="w-fit max-w-full rounded-(--pn-r-4) rounded-tl-(--pn-r-1) bg-(--pn-muted) px-4 py-3 text-[15px] leading-6 whitespace-pre-wrap text-(--pn-fg) [overflow-wrap:anywhere]">
         {message.message}
       </blockquote>
-      <div className="flex items-center justify-between gap-3 text-xs">
-        <span className="font-mono text-(--pn-fg-muted) tabular-nums">Message #{message.messageId}</span>
-        <a href={link} target="_blank" rel="noreferrer" className={cn(externalLink, "font-medium")}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <time dateTime={message.timestamp.toISOString()} className="text-(--pn-fg-muted) tabular-nums">
+          {formatDateTime(message.timestamp)}
+        </time>
+        <span aria-hidden className="text-(--pn-fg-subtle)">
+          ·
+        </span>
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open message ${message.messageId} in ${message.group?.title ?? `chat ${message.chatId}`}`}
+          className={cn(externalLink, "font-medium")}
+        >
           Open message
           <ExternalLink aria-hidden className="size-3 shrink-0" />
         </a>

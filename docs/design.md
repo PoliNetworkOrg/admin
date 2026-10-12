@@ -224,6 +224,10 @@ invalid fields show the danger border. Opt out only with `data-focus-ring="none"
 
 ## 5. Components
 
+Scrollable surfaces use thin, rounded scrollbars with the theme's line color on a transparent track, including portals.
+Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
+keyboard users open it with Enter or Space and dismiss it with Escape.
+
 Build from `@/components/shell` and `@/components/primitives`; reach into `@/components/ui` only for what the primitives
 don't wrap. Each primitive's JSDoc states its props and rules. In the dashboard these `ui/` parts are replaced: `card`
 and `alert` by `SectionCard`/surfaces and `InlineAlert` (they remain for login and onboarding); `collapsible` and
@@ -370,6 +374,10 @@ the theme reveal and the skeleton pulse switch off.
   like. Fallbacks that name a thing stay words: "Unnamed passkey", "Unknown device", "User {id}".
 
 ## 8. Page notes
+
+- **Telegram user messages**: a spaced feed with the group above each message, a borderless message bubble, and
+  the timestamp and Telegram link below. Chat IDs stay in the group tooltip; message IDs name the accessible link.
+  Message text preserves line breaks and wraps long words and URLs.
 
 Rules that the templates above don't imply.
 

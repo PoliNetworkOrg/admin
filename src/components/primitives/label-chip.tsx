@@ -6,6 +6,7 @@ import type { GroupLabel } from "@/features/group-labels/types"
 import { cn } from "@/lib/utils"
 
 import { Chip } from "./chip"
+import { Hint } from "./hint"
 import { labelDisplayName } from "./label-name"
 
 type LabelDotProps = { color: string; className?: string }
@@ -38,16 +39,17 @@ export function LabelChip({ label, href, render, className }: LabelChipProps) {
   const link = render ?? (href === undefined ? undefined : <a href={href} />)
   const title = labelDisplayName(label.label)
   return (
-    <Chip
-      render={link}
-      title={title}
-      className={cn(
-        "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-fg-subtle) [a]:hover:bg-(--pn-muted)",
-        className
-      )}
-    >
-      <LabelDot color={label.color} />
-      <span className="truncate">{isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title}</span>
-    </Chip>
+    <Hint label={title}>
+      <Chip
+        render={link}
+        className={cn(
+          "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-fg-subtle) [a]:hover:bg-(--pn-muted)",
+          className
+        )}
+      >
+        <LabelDot color={label.color} />
+        <span className="truncate">{isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title}</span>
+      </Chip>
+    </Hint>
   )
 }
