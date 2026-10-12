@@ -1,6 +1,6 @@
 import { linkOptions, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Check, CircleCheck, Inbox, X } from "lucide-react"
+import { Check, CircleCheck, FolderSearch, Inbox, X } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import {
@@ -52,6 +52,7 @@ function ReportIssue({ report }: { report: GroupLinkReport }) {
   return (
     <>
       {report.reportType === "broken_link" && report.type ? <PlatformGlyph platform={report.type} /> : null}
+      {report.reportType === "missing" && <FolderSearch aria-hidden className="size-4 shrink-0" />}
       {ISSUE_LABEL[report.reportType]}
     </>
   )
@@ -232,7 +233,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
         const text = reference(latest)
         return (
           <span className="block min-w-0">
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 items-start gap-2">
               {text ? (
                 <span title={text} className="truncate">
                   {text}
@@ -240,20 +241,52 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
               ) : (
                 <Unset />
               )}
+              {!open && (
+                <span className="ml-auto flex shrink-0 flex-col items-end gap-1 shell:hidden">
+                  <StatusBadge tone={latest.status === "resolved" ? "success" : "neutral"}>
+                    {latest.status === "resolved" ? "Resolved" : "Dismissed"}
+                  </StatusBadge>
+                  <span className="flex items-center gap-1 text-xs font-normal text-(--pn-fg-muted)">
+                    <ReportIssue report={latest} />
+                  </span>
+                </span>
+              )}
               {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
             </span>
-            <span className="mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) sm:hidden">
+            <span
+              className={cn(
+                "mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) shell:hidden",
+                !open && "hidden"
+              )}
+            >
               <ReportIssue report={latest} />
             </span>
           </span>
         )
       },
     },
+    ...(open
+      ? []
+      : [
+          {
+            id: "status",
+            label: "Status",
+            mobile: "hidden",
+            priority: 1,
+            minWidth: 120,
+            cell: ({ latest }: ReportGroup) =>
+              latest.status === "resolved" ? (
+                <StatusBadge tone="success">Resolved</StatusBadge>
+              ) : (
+                <StatusBadge tone="neutral">Dismissed</StatusBadge>
+              ),
+          },
+        ]),
     {
       id: "issue",
       label: "Issue",
       minWidth: 160,
-      className: "max-sm:hidden",
+      mobile: "hidden",
       cell: ({ latest }) => (
         <span className="flex items-center gap-2 whitespace-nowrap">
           <ReportIssue report={latest} />
@@ -268,30 +301,14 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       cell: ({ latest }) => {
         const link = latest.reportType === "broken_link" ? latest.reportedLink : null
         const text = link ?? latest.details
-        if (!text) return <Unset />
+        if (!text) return open ? <Unset /> : null
         return (
-          <span title={text} className="block max-w-[320px] truncate">
+          <span title={text} className={cn("block max-w-[320px] truncate", link && "font-mono")}>
             {link ? shortLink(link) : text}
           </span>
         )
       },
     },
-    ...(open
-      ? []
-      : [
-          {
-            id: "status",
-            label: "Status",
-            priority: 1,
-            minWidth: 120,
-            cell: ({ latest }: ReportGroup) =>
-              latest.status === "resolved" ? (
-                <StatusBadge tone="success">Resolved</StatusBadge>
-              ) : (
-                <StatusBadge tone="neutral">Dismissed</StatusBadge>
-              ),
-          },
-        ]),
     {
       id: "date",
       label: "Date",
@@ -350,7 +367,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
                         size="sm"
                         aria-label={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "dismiss", event.currentTarget)}
-                        className={cn(buttonMotion, "h-8 px-2.5 text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+                        className={cn(buttonMotion, "h-9 px-2.5 text-(--pn-fg-muted) hover:text-(--pn-fg)")}
                       >
                         <X aria-hidden data-icon="inline-start" />
                         Dismiss
@@ -360,7 +377,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
                         size="sm"
                         aria-label={`Resolve report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "resolve", event.currentTarget)}
-                        className={cn(buttonMotion, "ml-1 h-8 px-2.5")}
+                        className={cn(buttonMotion, "ml-1 h-9 px-2.5")}
                       >
                         <Check aria-hidden data-icon="inline-start" />
                         Resolve
