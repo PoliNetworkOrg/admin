@@ -365,7 +365,7 @@ function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListPr
             className={cn(
               "group/cat flex h-9 shrink-0 items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:w-full min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]",
               current &&
-                "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-[color-mix(in_oklch,var(--pn-accent)_45%,transparent)] max-[1099px]:bg-(--pn-accent-soft) max-[1099px]:text-(--pn-accent)"
+                "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-(--pn-line-strong) max-[1099px]:bg-(--pn-muted) max-[1099px]:text-(--pn-fg)"
             )}
           >
             <FAQCategoryIcon

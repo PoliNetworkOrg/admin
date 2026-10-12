@@ -1,3 +1,5 @@
+import { SHORT_MONTHS } from "../../lib/format.ts"
+
 /** New Telegram users on one Europe/Rome calendar day ("2026-10-11"), as `tg.users.getCreationHistory` returns them. */
 export type UserCreationDay = { date: string; count: number }
 
@@ -31,7 +33,7 @@ export function parseDay(date: string) {
 
 // Labels are built from fixed English names, not Intl: ICU versions differ ("Sep" or "Sept"), and the axis, the tooltip
 // and the server render must agree.
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const MONTHS = SHORT_MONTHS
 const MONTHS_LONG = [
   "January",
   "February",
