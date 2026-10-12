@@ -252,9 +252,7 @@ function MessageRow({ message }: { message: Message }) {
         >
           {message.group?.title ?? `Chat ${message.chatId}`}
         </a>
-        <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums">
-          Chat {message.chatId}
-        </span>
+        <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted) tabular-nums">Chat {message.chatId}</span>
         <time
           dateTime={message.timestamp.toISOString()}
           className="ml-auto shrink-0 whitespace-nowrap text-(--pn-fg-muted) tabular-nums"
@@ -286,12 +284,17 @@ function humanize(value: string) {
  * Who acted, as a person reads it: the Telegram admin's name, "Moderation bot" for automatic actions, "User {id}"
  * for a bare Telegram ID, and a dashboard or IdP account by kind (its subject stays in the tooltip, never as the name).
  */
-function auditActor(audit: Audit): { name: string; title?: string } {
+type AuditActor = { name: string; title?: string }
+
+function auditActor(audit: Audit): AuditActor {
   if (audit.admin) return { name: telegramUserName(audit.admin) }
   if (audit.actorTgId !== null) return { name: `User ${audit.actorTgId}` }
   if (audit.adminId !== null) return { name: `User ${audit.adminId}` }
   if (audit.actorSub) {
-    return { name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account", title: `IdP subject ${audit.actorSub}` }
+    return {
+      name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account",
+      title: `IdP subject ${audit.actorSub}`,
+    }
   }
   if (audit.client === "bot" || audit.basis === "automatic") return { name: "Moderation bot" }
   return { name: "Unknown actor" }
