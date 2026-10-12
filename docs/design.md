@@ -184,7 +184,8 @@ instead.
 Use only the `--pn-*` variables (or the Tailwind utilities that resolve to them). Raw hex and Tailwind palette colors
 (`slate-*`, `amber-*`…) are defects; the one exception is label colors, which are user data and go through `LabelChip`.
 shadcn's variables (`--primary`, `--border`…) are remapped to `--pn-*` in `styles.css`, so `@/components/ui/*` re-theme
-without edits. Light borders are alpha so they composite; dark borders are solid so they don't glow.
+without edits. Light borders are alpha so they composite; dark borders are solid so they don't glow. The light canvas is `#f6f7f9`,
+card surfaces and navigation bars are `#fff`, and the section panel is `#fbfcfd` (`--pn-panel`).
 
 | Role                | Variables                                                                                                                                                                                                                |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -245,7 +246,7 @@ align. Queues use labelled buttons instead (Reports: ghost "Dismiss", outline "R
 **Badges and chips.** `StatusBadge` (dot + label, tones `neutral`/`brand`/`success`/`warning`/`danger`) only for states:
 grant Active (success), Scheduled (brand); report Pending (warning), Resolved (success), Dismissed (neutral); session
 "Current" and guide edition "Latest" (brand); Draft (warning). Absence of a state shows nothing (no "Visible", "Public"
-or "Published" badges). `Chip` for categorical values (roles, licenses, IT/EN markers). `LabelChip` for labels.
+or "Published" badges). `Chip` for categorical values (roles, licenses, IT/EN markers). `LabelChip` for labels: a neutral fill and readable neutral text, with a colored dot carrying the label color.
 `CountBadge` for neutral counts such as `×3` duplicates. Platforms are a 16px monochrome `PlatformGlyph` (the service's
 lucide icon with an accessible name), not a text badge.
 
@@ -262,7 +263,10 @@ Labels are verb + object in sentence case ("Add group", "Publish 12 groups").
 and 14px description, no eyebrow; confirmations lead with a 40px icon tile (danger-tinted for destructive ones, a
 warning sign unless the action has its own icon). Footer right-aligned, buttons side by side at every width: `Cancel`
 (`outline`) then the primary (solid danger for destructive confirmations). Below 760px every dialog is a bottom sheet:
-full width, rounded top, sliding up. `Enter` submits single-line fields,
+full width, rounded top, sliding up above the navigation, with a scrolling body and a visible footer. Microsoft 365
+member pickers use the same 18px title, then radio, avatar and name with a monospace email below; names and emails
+wrap independently. Grant dialogs put Change user in the selected-user card, full-width filled date controls on mobile,
+duration shortcuts on their own row, and an always-visible "Optional · n/500" hint under the reason. `Enter` submits single-line fields,
 `⌘/Ctrl+Enter` textareas. On error an `InlineAlert` appears above the footer and the dialog stays open. On success a
 toast fires and the dialog closes: `ConfirmDialog` closes itself, `FormDialog` doesn't, so call `onOpenChange(false)`
 after the mutation, and keep the dialog's record in state after closing so its content survives the exit animation. A
@@ -271,7 +275,9 @@ Key a dialog body with `useOpenGeneration` so every opening starts clean. Autofo
 only.
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
-and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`.
+and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
+include/exclude tree open at a time, and a "Clear label filters · n groups" footer. On mobile the filter uses a
+bottom-sheet dialog with focus trapping and a reachable footer.
 
 **Inline editing** (`InlineEditCard`, `InlineEditRow`, `useEditSlot`), used by Projects, Associations, FAQs and Labels:
 
@@ -302,7 +308,9 @@ three, never infinite, no "Undo".
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
-never the only signal. Hit areas are at least 36px. DOM order matches visual order.
+never the only signal. Hit areas are at least 36px, including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF
+links, label chips that remove a selection and tree expanders. Enlarge the clickable area independently of the icon.
+DOM order matches visual order.
 
 ## 6. Motion
 
@@ -347,7 +355,7 @@ the theme reveal and the skeleton pulse switch off.
   The page header's context line carries the list's total, so the toolbar `Count` appears only while search or a
   filter narrows the list ("12 of 680 groups"). Segmented filters show a bare total per option over the whole list. Next to such a filter the toolbar `Count` appears
   only while search or another filter narrows the list further.
-- **Dates** (`src/lib/format.ts`): "6 Oct 2026", "6 Oct 2026, 09:00", ranges with " → ". Always `Europe/Rome` and
+- **Dates** (`src/lib/format.ts`): "6 Oct 2026", "6 Oct 2026, 09:00", ranges with " → ". Fixed English month names (`Jan`…`Sep`…`Dec`), with unpadded days. Always `Europe/Rome` and
   `en-GB`, so server and browser render the same text; inputs use the local timezone. No relative times in tables.
 - **Unset values:** `Unset` renders `—` (muted, `aria-label="Not set"`) instead of "Not set", "No description" and the
   like. Fallbacks that name a thing stay words: "Unnamed passkey", "Unknown device", "User {id}".
@@ -358,7 +366,9 @@ Rules that the templates above don't imply.
 
 - **Overview**: the hero stats link to their section; a service that failed to load shows `—` and one warning alert
   with Retry. The users chart reads `tg.users.getCreationHistory` (new users per Europe/Rome day, from `created_at`)
-  through `getTelegramUserHistory`; the range buckets are computed in the browser. Without `tg:users:read` the hero
+  through `getTelegramUserHistory`; the range buckets are computed in the browser. The chart is 200px high on mobile,
+  marks the latest point and pins the tooltip/crosshair on tap (tap again, outside, or Esc dismisses). Only
+  keyboard `:focus-visible` draws the app focus ring. Without `tg:users:read` the hero
   shows only the stats; while the backend lacks the procedure, or refuses it as unauthenticated (agent mode calls
   the backend anonymously and the procedure is token-only), the chart is left out and the total stays.
 - **Account**: the exemplar Settings page. Passkeys and sessions load together and share one Retry. Sign out needs no
@@ -372,19 +382,24 @@ Rules that the templates above don't imply.
   The visibility toggle is optimistic with one request in flight.
 - **Microsoft 365 members**: the member ID edit is optimistic.
 - **Projects**: one column at every width, because card order is the order on the website; drag to reorder (handle
-  only), a failed reorder reverts. Segments replace `Count`.
-- **Associations**: links are edited in their own dialog, not inline.
+  only; the handle hides on mobile), a failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
+- **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
+  with Manage links and edit/delete at opposite ends. Links are edited in their own dialog, not inline.
 - **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px) ending in a
   dashed "Add category"; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All
-  editions" table.
+  editions" table. Mobile editions remain compact single rows: version, date, PDF and delete.
 - **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their
   group counts and "+ n more".
 - **Labels**: three kinds (categories, attributes, publications), each a `SectionHeading` with a one-line description:
   the only section descriptions in the app, because users confuse the kinds.
-- **Categories and tag pages**: a node lists only groups tagged with exactly that path. Publishing a tag acts on every
+- **Categories and tag pages**: a node lists only groups tagged with exactly that path. Category titles are 28px on
+  mobile; sub-category cards show a dot and the count below the name. The Groups heading has the direct count, with
+  full-width search below it on mobile. Publishing a tag acts on every
   row, not the searched subset.
 - **Reports**: rows group duplicates (`×n`), but counts and the panel badge count individual reports. Open is
-  oldest-first, Closed newest-first. The rail and bottom nav show a dot on Reports while any report is open.
+  oldest-first, Closed newest-first. Closed columns are Reference, Status, Issue, Details, Date; mobile status and issue sit at the
+  top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
+  their own icon. The rail and bottom nav show a dot on Reports while any report is open.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
