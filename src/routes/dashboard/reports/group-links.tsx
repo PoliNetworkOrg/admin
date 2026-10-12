@@ -9,7 +9,7 @@ export const Route = createFileRoute("/dashboard/reports/group-links")({
   loader: () => getPendingGroupLinkReports(),
   pendingComponent: () => (
     <>
-      <PageBar />
+      <PageBar title="Open reports" />
       <PageContent>
         <TableSkeleton columns={5} label="Loading open reports…" />
       </PageContent>

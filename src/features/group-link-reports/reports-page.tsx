@@ -9,7 +9,6 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
-  IconButton,
   PlatformGlyph,
   SegmentedControl,
   StatusBadge,
@@ -22,6 +21,7 @@ import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-
 import { dismissGroupLinkReport, resolveGroupLinkReport } from "@/features/group-link-reports/reports.functions"
 import type { GroupLinkReport } from "@/lib/api/types"
 import { formatDate, hostOf } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export type ReportStatus = "open" | "closed"
 type Segment = "all" | "tg" | "wa" | "missing" | "resolved" | "dismissed"
@@ -304,6 +304,8 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
   return (
     <>
       <PageBar
+        title={open ? "Open reports" : "Closed reports"}
+        description={open ? "Broken links and missing groups reported by students" : "Resolved and dismissed reports"}
         left={
           <Toolbar
             search={{ value: query, onChange: changeQuery }}
@@ -327,7 +329,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
         }
       />
       <PageContent>
-        <div ref={focus.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
+        <div ref={focus.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-5)">
           <DataTable
             label={open ? "Open reports" : "Closed reports"}
             columns={columns}
@@ -343,23 +345,31 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
               open && canWrite
                 ? (group) => (
                     <>
-                      <IconButton
-                        label="Dismiss"
-                        ariaLabel={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
-                        icon={X}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "dismiss", event.currentTarget)}
-                      />
-                      <IconButton
-                        label="Resolve"
-                        ariaLabel={`Resolve report for ${reference(group.latest) ?? "this group"}`}
-                        icon={Check}
+                        className={cn(buttonMotion, "h-8 px-2.5 text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+                      >
+                        <X aria-hidden data-icon="inline-start" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Resolve report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "resolve", event.currentTarget)}
-                      />
+                        className={cn(buttonMotion, "ml-1 h-8 px-2.5")}
+                      >
+                        <Check aria-hidden data-icon="inline-start" />
+                        Resolve
+                      </Button>
                     </>
                   )
                 : undefined
             }
-            actionsWidth={116}
+            actionsWidth={222}
             pagination={{
               page: currentPage,
               pageSize,
