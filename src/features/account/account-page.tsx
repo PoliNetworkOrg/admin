@@ -1,4 +1,16 @@
-import { ExternalLink, Info, LogOut } from "lucide-react"
+import {
+  Cloud,
+  ExternalLink,
+  Globe,
+  Info,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  type LucideIcon,
+  MessageCircle,
+  Send,
+  Tags,
+} from "lucide-react"
 
 import { buttonMotion, Chip, initialsOf, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent, useSignOut } from "@/components/shell"
@@ -103,15 +115,51 @@ function TelegramCard({ telegramId, accountUrl }: { telegramId: string | null; a
   )
 }
 
+/** Permission prefixes → the area they unlock, in rail order; unknown prefixes fall under "Other". */
+const PERMISSION_AREAS: { prefix: string; area: string; icon: LucideIcon }[] = [
+  { prefix: "admin", area: "Dashboard", icon: LayoutDashboard },
+  { prefix: "tg", area: "Telegram", icon: Send },
+  { prefix: "wa", area: "WhatsApp", icon: MessageCircle },
+  { prefix: "groups", area: "Group labels", icon: Tags },
+  { prefix: "azure", area: "Microsoft 365", icon: Cloud },
+  { prefix: "web", area: "Web", icon: Globe },
+]
+
+function groupPermissions(permissions: readonly string[]) {
+  const known = PERMISSION_AREAS.map((area) => ({
+    ...area,
+    items: permissions.filter((permission) => permission.split(":")[0] === area.prefix),
+  }))
+  const other = permissions.filter(
+    (permission) => !PERMISSION_AREAS.some((area) => permission.split(":")[0] === area.prefix)
+  )
+  return [...known, { prefix: "", area: "Other", icon: KeyRound, items: other }].filter((area) => area.items.length > 0)
+}
+
 function PermissionsCard({ permissions }: { permissions: readonly string[] }) {
   return (
     <SectionCard title="Permissions" count={permissions.length} padding="settings">
       <div className="flex flex-col gap-4">
-        <span className="flex flex-wrap gap-1.5">
-          {permissions.map((permission) => (
-            <Chip key={permission}>{permission}</Chip>
+        <dl className="flex flex-col">
+          {groupPermissions(permissions).map(({ area, icon: Icon, items }) => (
+            <div
+              key={area}
+              className="grid items-center gap-x-4 gap-y-2 border-b border-(--pn-line) py-3 first:pt-0 shell:grid-cols-[160px_minmax(0,1fr)]"
+            >
+              <dt className="flex items-center gap-2 font-medium text-(--pn-fg)">
+                <Icon aria-hidden strokeWidth={1.75} className="size-4 text-(--pn-fg-muted)" />
+                {area}
+              </dt>
+              <dd className="flex flex-wrap gap-1.5">
+                {items.map((permission) => (
+                  <Chip key={permission} className="font-mono text-xs">
+                    {permission}
+                  </Chip>
+                ))}
+              </dd>
+            </div>
           ))}
-        </span>
+        </dl>
         <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
           <Info aria-hidden className="size-3.5 shrink-0" />
           Permissions come from your roles in PoliNetwork Auth.

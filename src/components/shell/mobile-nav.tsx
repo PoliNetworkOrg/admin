@@ -67,7 +67,7 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
         to="/dashboard/account"
         aria-label="Account"
         aria-current={service.id === "account" ? "page" : undefined}
-        className="grid size-10 shrink-0 place-items-center rounded-full"
+        className="grid size-10 shrink-0 place-items-center rounded-full aria-[current=page]:[&>span]:shadow-[0_0_0_2px_var(--pn-nav),0_0_0_4px_var(--pn-accent-solid)]"
       >
         <AccountAvatar user={user} className="size-7.5" />
       </Link>
