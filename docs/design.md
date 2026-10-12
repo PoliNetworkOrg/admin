@@ -101,7 +101,8 @@ content in place. Between 760px and 1439px, the content follows the panel as it 
 
 **Page header.** Scrolls with the page (the page, not the document, scrolls: the column below the top bar is the
 scroll container). `h1` 24px (22px on mobile) with the context line in 14px muted, actions on the right at 40px; below
-760px the actions take the full width under the title. The toolbar row follows 20px below. `/` focuses the page
+760px the actions take the full width under the title. The toolbar row follows 20px below. Below 760px the search takes its own row and a segmented filter fills the rest of the row it shares (scrolling
+sideways when its options don't fit); the `/` hint is hidden. `/` focuses the page
 search from anywhere; `Esc` clears it. A service with a single section (WhatsApp) shows its icon in a 44px tile next to
 the `h1`.
 
@@ -113,7 +114,7 @@ the `h1`.
 
 **Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
 service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
-as horizontally scrolling pills that scroll away with the page; a 64px bottom nav lists the five services (current one
+as horizontally scrolling pills that scroll away with the page, scrolled so the current one is in view; a 64px bottom nav lists the five services (current one
 accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
 is no sheet.
 
@@ -142,7 +143,9 @@ does not move when data arrives.
 **List.** A `DataTable` with search and filters in the toolbar. One row height (52px), no dense mode. Columns declare a
 priority; from 760px the lowest hide first when the table surface narrows, never the first or the actions column.
 Below 760px every row is a stacked card: the first column on its own line, the others inline as 12px meta
-(`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. Give columns
+(`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. An unset value
+(`Unset`) is left out of the card rather than shown as a lone dash, and copyable values keep a 36px touch target
+without making their line taller. Give columns
 whose content length varies a `width` (the table switches to fixed layout and the title column takes the rest), so
 nothing jumps across search, filters and paging. Pagination shows in the table footer once rows exceed the smallest page
 size (20; options 20/50/100). The page resets to page 1 itself when search, filters or sort change (`DataTable`
@@ -174,8 +177,9 @@ further apart, without a red border.
 **Overview.** A 52px search that opens the command palette; a hero card with the Telegram users total, its growth over
 the selected range and a TanStack Charts line (3M per day, 1Y per week, All per month; one 2px accent line, a light
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
-reports and Active grants as links on its right (a row under it on mobile); then "Areas": one card per service whose
-whole surface leads where the rail icon does, with each section as a 44px button.
+reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline and without the "To
+review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
+as a 44px button (two per row on mobile).
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
@@ -413,12 +417,12 @@ Rules that the templates above don't imply.
 - **Projects**: one column at every width, because card order is the order on the website; the whole card drags to
   reorder (pointer after 5px, so its buttons and links still click; touch after a 250ms press; keyboard with
   Space/Enter on the focused card). A grip marks the card's left edge from 760px and its border takes the hover line.
-  A failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
+  A failed reorder reverts. Project links truncate at every width (the hint shows the full URL). Segments replace `Count`.
 - **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
   with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
   own dialog, not inline.
-- **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px) ending in a
-  dashed "Add category"; the selected category's header holds its edit and delete actions and the question search.
+- **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px, running to
+  the screen edges on phones) ending in a dashed "Add category"; on phones questions wrap up to three lines; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All
   editions" table. Mobile editions remain compact single rows: version, date, PDF and delete.
 - **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their

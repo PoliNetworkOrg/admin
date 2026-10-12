@@ -351,7 +351,7 @@ function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListPr
   return (
     <nav
       aria-label="FAQ categories"
-      className="flex min-w-0 gap-1.5 overflow-x-auto [scrollbar-width:none] min-[1100px]:flex-col min-[1100px]:gap-0.5 min-[1100px]:rounded-(--pn-r-5) min-[1100px]:border min-[1100px]:border-(--pn-line) min-[1100px]:bg-(--pn-surface) min-[1100px]:p-2"
+      className="flex min-w-0 gap-1.5 overflow-x-auto [scrollbar-width:none] max-shell:-mx-4 max-shell:px-4 min-[1100px]:flex-col min-[1100px]:gap-0.5 min-[1100px]:rounded-(--pn-r-5) min-[1100px]:border min-[1100px]:border-(--pn-line) min-[1100px]:bg-(--pn-surface) min-[1100px]:p-2"
     >
       <p className="px-3 pt-2 pb-1.5 text-xs font-medium text-(--pn-fg-muted) max-[1099px]:hidden">Categories</p>
       {categories.map((item) => {

@@ -306,7 +306,7 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
         autoComplete="off"
         spellCheck={false}
         data-page-search=""
-        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-hover-line) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 text-ellipsis placeholder:text-(--pn-fg-subtle) hover:border-(--pn-hover-line) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value !== "" ? (
         <button
@@ -320,7 +320,7 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
       ) : (
         <kbd
           aria-hidden
-          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) group-focus-within/search:hidden pointer-coarse:hidden"
+          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) group-focus-within/search:hidden pointer-coarse:hidden max-shell:hidden"
         >
           /
         </kbd>
@@ -345,7 +345,14 @@ export type ToolbarProps = {
  */
 export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 max-shell:[&_[role=group]]:max-w-full max-shell:[&_[role=group]]:overflow-x-auto">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-wrap items-center gap-2.5 max-shell:gap-2",
+        // Below 760px a segmented control takes the rest of its row (basis 0, so it never wraps alone), its segments
+        // share that width, and it scrolls sideways rather than overflow.
+        "max-shell:[&_[role=group]]:max-w-full max-shell:[&_[role=group]]:min-w-0 max-shell:[&_[role=group]]:flex-1 max-shell:[&_[role=group]]:basis-0 max-shell:[&_[role=group]]:overflow-x-auto max-shell:[&_[role=group]]:[scrollbar-width:none] max-shell:[&_[role=group]>*]:flex-[1_0_auto] max-shell:[&_[role=group]>*]:gap-1 max-shell:[&_[role=group]>*]:px-2"
+      )}
+    >
       {lead}
       {search ? (
         <SearchField

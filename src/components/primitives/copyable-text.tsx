@@ -32,11 +32,12 @@ export function CopyableText({ value, what, children, className }: CopyableTextP
       aria-label={`Copy ${what} ${value}`}
       onClick={() => void copy()}
       className={cn(
-        "relative block max-w-full max-shell:min-h-9 max-shell:min-w-9 cursor-pointer truncate rounded-(--pn-r-1) text-left",
+        // The ::after pad gives touch a 36px target without making the line taller in stacked cards.
+        "relative block max-w-full cursor-pointer rounded-(--pn-r-1) text-left max-shell:after:absolute max-shell:after:-inset-y-2 max-shell:after:-inset-x-1 max-shell:after:min-w-9",
         className
       )}
     >
-      {children ?? value}
+      <span className="block truncate">{children ?? value}</span>
     </button>
   )
 }

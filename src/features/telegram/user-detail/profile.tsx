@@ -131,8 +131,11 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
             meta={
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {user.username ? <span>@{user.username}</span> : <span>No username</span>}
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1">
+                {/* Phones stack the two facts, so the separator would dangle at a line end. */}
+                <span aria-hidden className="max-shell:hidden">
+                  ·
+                </span>
+                <span className="inline-flex items-center gap-1 max-shell:basis-full">
                   Telegram ID{" "}
                   <CopyableText value={String(user.id)} what="Telegram ID" className="font-mono text-(--pn-fg)" />
                 </span>

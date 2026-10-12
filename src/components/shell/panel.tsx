@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { type KeyboardEvent, Suspense, use, useDeferredValue } from "react"
+import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, useRef } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -130,12 +130,24 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
 export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
+  const ref = useRef<HTMLElement>(null)
+  // Keep the current pill in view: a section past the screen edge would otherwise look unselected.
+  useLayoutEffect(() => {
+    const nav = ref.current
+    const current = nav?.querySelector<HTMLElement>("[aria-current=page], [data-ancestor]")
+    if (!nav || !current) return
+    const start = current.offsetLeft - 16
+    const end = current.offsetLeft + current.offsetWidth + 16 - nav.clientWidth
+    if (nav.scrollLeft > start) nav.scrollLeft = start
+    else if (nav.scrollLeft < end) nav.scrollLeft = end
+  }, [match.kind])
   return (
     <nav
+      ref={ref}
       aria-label={`${service.title} sections`}
       onKeyDown={onSectionListKeyDown}
       className={cn(
-        "flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
+        "relative flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
         className
       )}
     >
