@@ -1,4 +1,4 @@
-import { defineChart, lineY } from "@tanstack/charts"
+import { defineChart, dot, lineY } from "@tanstack/charts"
 import { crosshair } from "@tanstack/charts/crosshair"
 import { scaleLinear } from "@tanstack/charts/scales/linear"
 import { tooltip } from "@tanstack/charts/tooltip"
@@ -28,6 +28,16 @@ export function UserGrowthChart({ series, description }: { series: GrowthSeries;
             y: "total",
             key: "time",
             stroke: "var(--pn-accent-solid)",
+            strokeWidth: 2,
+          }),
+          dot(series.points.slice(-1), {
+            id: "latest-users",
+            x: "time",
+            y: "total",
+            key: "time",
+            r: 4,
+            fill: "var(--pn-accent-solid)",
+            stroke: "var(--pn-surface)",
             strokeWidth: 2,
           }),
           crosshair({ x: { stroke: "var(--pn-fg-subtle)", strokeDasharray: "3 3", strokeWidth: 1 }, y: false }),
@@ -62,7 +72,7 @@ export function UserGrowthChart({ series, description }: { series: GrowthSeries;
         tooltip: {
           use: tooltip,
           motion: false,
-          sticky: false,
+          sticky: true,
           // The plain-text form is the live region's label; the visible body is `GrowthTooltip`.
           format: (point) => `${point.datum.label}: ${formatNumber(point.datum.total)} users`,
         },
@@ -71,7 +81,7 @@ export function UserGrowthChart({ series, description }: { series: GrowthSeries;
   )
 
   return (
-    <div className="font-mono text-[11px] text-(--pn-fg-muted)">
+    <div className="user-growth-chart font-mono text-[11px] text-(--pn-fg-muted)">
       <Chart
         definition={definition}
         height={CHART_HEIGHT}
