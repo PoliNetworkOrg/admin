@@ -15,7 +15,7 @@ const itemCurrentClass =
   "before:absolute before:inset-y-2.5 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
 
 /** Pending reports as a small accent pill next to Reports › Open; zero (or a failed load) renders nothing. */
-export function PendingReportsCount({ count: countPromise }: { count: Promise<number | null> }) {
+function PendingReportsCount({ count: countPromise }: { count: Promise<number | null> }) {
   const count = use(useDeferredValue(countPromise))
   if (!count) return null
   return (
@@ -107,7 +107,6 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
   return (
     <aside
       data-shell-panel=""
-      aria-label={`${service.title} sections`}
       className={cn(
         "flex h-full w-60 shrink-0 flex-col border-r border-(--pn-line) bg-(--pn-nav) select-none max-[1100px]:w-50",
         className

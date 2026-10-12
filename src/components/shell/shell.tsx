@@ -29,9 +29,9 @@ const DESKTOP_QUERY = "(min-width: 760px)"
  */
 const panelEnter: Transition = { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
 const panelExit: Transition = { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
-/** The panel's width (`w-60`, `w-50` below 1100px): how far the column moves. */
+/** The panel's width (`w-60`, `w-50` below 1100px, Tailwind's `max-[1100px]:`): how far the column moves. */
 function panelWidth() {
-  return window.matchMedia("(max-width: 1100px)").matches ? 200 : 240
+  return window.matchMedia("(width < 1100px)").matches ? 200 : 240
 }
 
 function subscribeDesktop(onChange: () => void) {
