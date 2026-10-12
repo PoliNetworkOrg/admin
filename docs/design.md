@@ -230,8 +230,8 @@ visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unso
 hover or focus. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
 `Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
 that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
-readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get a 32px initials avatar. Chip lists
-never wrap on desktop (`ChipOverflow`). Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
+readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
+a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`). Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
 first/last buttons); on narrow tables "‹ 1 of 34 ›".
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
