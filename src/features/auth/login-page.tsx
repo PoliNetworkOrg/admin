@@ -15,7 +15,7 @@ const errorMessages = new Map([
 ])
 
 /** Sign-in happens at PoliNetwork Auth; this page is where sign-out and failed sign-ins land. */
-export function LoginPage({ error }: { error: string | undefined }) {
+export function LoginPage({ error, agentMode }: { error: string | undefined; agentMode: boolean }) {
   const notice = error ? (errorMessages.get(error) ?? "The sign-in failed. Try again.") : null
 
   return (
@@ -45,7 +45,9 @@ export function LoginPage({ error }: { error: string | undefined }) {
           <CardHeader>
             <CardTitle className="text-2xl tracking-[-0.035em]">Sign in</CardTitle>
             <CardDescription className="leading-5">
-              Use your PoliNetwork account. Access depends on the permissions it holds.
+              {agentMode
+                ? "Local preview uses a test administrator account."
+                : "Use your PoliNetwork account. Access depends on the permissions it holds."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -55,8 +57,8 @@ export function LoginPage({ error }: { error: string | undefined }) {
               </Alert>
             )}
             {/* A document navigation: `/auth/login` is a server route that redirects to the IdP. */}
-            <a href="/auth/login" className={cn(buttonVariants({ size: "lg" }), "w-full")}>
-              Continue with PoliNetwork
+            <a href={agentMode ? "/dashboard" : "/auth/login"} className={cn(buttonVariants({ size: "lg" }), "w-full")}>
+              {agentMode ? "Open dashboard" : "Continue with PoliNetwork"}
               <ArrowRight data-icon="inline-end" className="ml-auto" />
             </a>
           </CardContent>

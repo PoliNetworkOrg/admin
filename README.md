@@ -17,6 +17,9 @@ pnpm install
 pnpm dev
 ```
 
+Copy `.env.example` to `.env`. With `AGENT_MODE=true`, `pnpm dev` signs in a fake administrator without OIDC or Redis.
+Signing in as a real user needs a development client registered in the IdP.
+
 Set the following runtime variables (the build does not need secrets):
 
 | Variable                  | Meaning                                                                                                                                                                                                                                              |
