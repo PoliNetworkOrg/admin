@@ -155,7 +155,12 @@ export function WhatsappGroupsPage({
             search={{ value: list.query, onChange: list.setQuery, placeholder: "Search by group name…" }}
             filters={
               <>
-                <LabelsFilterPopover labels={labels} value={filter} onChange={list.setFilter} />
+                <LabelsFilterPopover
+                  groupCount={matching.length}
+                  labels={labels}
+                  value={filter}
+                  onChange={list.setFilter}
+                />
                 <SegmentedControl
                   label="Visibility"
                   items={visibilityItems(all)}
