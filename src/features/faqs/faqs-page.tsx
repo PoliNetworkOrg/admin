@@ -387,7 +387,7 @@ function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListPr
           onClick={onAdd}
           className={cn(
             buttonMotion,
-            "h-9 shrink-0 rounded-full border border-dashed border-(--pn-line-strong) text-(--pn-fg-muted) hover:border-(--pn-fg-subtle) hover:text-(--pn-fg) min-[1100px]:mt-1.5 min-[1100px]:h-10 min-[1100px]:rounded-(--pn-r-3)"
+            "h-9 shrink-0 rounded-full border border-dashed border-(--pn-line-strong) text-(--pn-fg-muted) hover:border-(--pn-accent) hover:text-(--pn-fg) min-[1100px]:mt-1.5 min-[1100px]:h-10 min-[1100px]:rounded-(--pn-r-3)"
           )}
         >
           <FolderPlus aria-hidden data-icon="inline-start" />

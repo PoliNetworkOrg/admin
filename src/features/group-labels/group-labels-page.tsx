@@ -25,6 +25,7 @@ import {
   Unset,
   useEditSlot,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
@@ -430,7 +431,7 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
       disabled={ctx.searching}
       onClick={() => ctx.onToggle(node.path)}
       className={cn(
-        "-ml-1.5 flex size-7 max-shell:size-9 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg) disabled:hover:bg-transparent",
+        "-ml-1.5 flex size-7 max-shell:size-9 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg) disabled:hover:bg-transparent",
         !hasChildren && "invisible"
       )}
     >
@@ -527,12 +528,11 @@ function NameLink({ path, name }: { path: string; name: string }) {
 
 function Description({ text }: { text: string | null }) {
   return (
-    <span
-      title={text ?? undefined}
-      className="hidden w-[42%] shrink-0 truncate text-[13px] leading-5 text-(--pn-fg-muted) @[560px]:block"
-    >
-      {text || <Unset />}
-    </span>
+    <Hint label={text ?? undefined}>
+      <span className="hidden w-[42%] shrink-0 truncate text-[13px] leading-5 text-(--pn-fg-muted) @[560px]:block">
+        {text || <Unset />}
+      </span>
+    </Hint>
   )
 }
 

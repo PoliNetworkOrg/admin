@@ -13,6 +13,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
@@ -77,9 +78,9 @@ const columns: DataTableColumn<Row>[] = [
       const name = userName(user, grant.userId)
       return (
         <span className="flex min-w-0 flex-col">
-          <span className="truncate" title={name}>
-            {name}
-          </span>
+          <Hint label={name}>
+            <span className="truncate">{name}</span>
+          </Hint>
           <span className="truncate text-xs leading-4 font-normal text-(--pn-fg-muted)">
             {user?.username ? (
               `@${user.username}`
@@ -118,9 +119,9 @@ const columns: DataTableColumn<Row>[] = [
     mobile: "text",
     cell: ({ grant }) =>
       grant.reason ? (
-        <span className="block truncate max-shell:whitespace-normal" title={grant.reason}>
-          {grant.reason}
-        </span>
+        <Hint label={grant.reason}>
+          <span className="block truncate max-shell:whitespace-normal">{grant.reason}</span>
+        </Hint>
       ) : (
         <Unset />
       ),
@@ -181,29 +182,30 @@ const columns: DataTableColumn<Row>[] = [
 function Grantor({ grant, grantor }: Pick<Row, "grant" | "grantor">) {
   if (grant.grantedBy === null) {
     return grant.grantedBySub ? (
-      <span className="block truncate font-mono text-(--pn-fg-muted)" title={`IdP user ${grant.grantedBySub}`}>
-        {grant.grantedBySub}
-      </span>
+      <Hint label={`IdP user ${grant.grantedBySub}`}>
+        <span className="block truncate font-mono text-(--pn-fg-muted)">{grant.grantedBySub}</span>
+      </Hint>
     ) : (
       <Unset />
     )
   }
   // Its own link to the grantor; the row click still opens the grantee.
   return (
-    <Link
-      to="/dashboard/telegram/users/$userId"
-      params={{ userId: String(grant.grantedBy) }}
-      title={grantor?.username ? `@${grantor.username}` : undefined}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
-      className={
-        grantor
-          ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-          : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-      }
-    >
-      {grantor ? telegramUserName(grantor) : grant.grantedBy}
-    </Link>
+    <Hint label={grantor?.username ? `@${grantor.username}` : undefined}>
+      <Link
+        to="/dashboard/telegram/users/$userId"
+        params={{ userId: String(grant.grantedBy) }}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        className={
+          grantor
+            ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+            : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+        }
+      >
+        {grantor ? telegramUserName(grantor) : grant.grantedBy}
+      </Link>
+    </Hint>
   )
 }
 

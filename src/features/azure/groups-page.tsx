@@ -2,6 +2,7 @@ import { ChevronRight, Database, UserMinus, UserPlus } from "lucide-react"
 import { type ReactNode, useDeferredValue, useId, useLayoutEffect, useMemo, useState } from "react"
 
 import { AvatarGroup, EmptyState, IconButton, Reveal, SectionEmpty, Unset } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
@@ -245,13 +246,13 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
   return (
     <li className="@container flex min-h-15 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--pn-line) px-4.5 py-2 transition-[background-color] duration-120 last:border-b-0 hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))] max-shell:px-3.5 max-shell:py-3">
       <div className="flex min-w-0 flex-1 flex-col max-shell:basis-full">
-        <span title={group.displayName} className="truncate text-[14px] leading-5 font-medium text-(--pn-fg)">
-          {group.displayName}
-        </span>
+        <Hint label={group.displayName}>
+          <span className="truncate text-[14px] leading-5 font-medium text-(--pn-fg)">{group.displayName}</span>
+        </Hint>
         {group.mailAddress ? (
-          <span title={group.mailAddress} className="truncate font-mono text-xs leading-4 text-(--pn-fg-muted)">
-            {group.mailAddress}
-          </span>
+          <Hint label={group.mailAddress}>
+            <span className="truncate font-mono text-xs leading-4 text-(--pn-fg-muted)">{group.mailAddress}</span>
+          </Hint>
         ) : (
           <Unset className="text-xs leading-4" />
         )}

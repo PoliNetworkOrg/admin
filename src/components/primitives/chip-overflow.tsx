@@ -41,7 +41,11 @@ export function ChipOverflow<T>({ items, max = 2, renderItem, itemLabel, classNa
           <PopoverContent
             align="end"
             sideOffset={6}
-            className={cn(raisedSurface, floatingMotion, "w-80 max-w-[calc(100vw-32px)] p-3")}
+            className={cn(
+              raisedSurface,
+              floatingMotion,
+              "w-80 max-w-[calc(100vw-32px)] rounded-(--pn-r-3) border border-(--pn-line) p-3"
+            )}
           >
             <PopoverTitle className="sr-only">Additional items</PopoverTitle>
             <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto text-[13px] leading-5">

@@ -67,9 +67,9 @@ export function FileButton({
         {file && (
           <span className="inline-flex h-7 max-w-64 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-0.5 pl-2.5 text-xs font-medium text-(--pn-fg)">
             <FileText aria-hidden className="size-3.5 shrink-0 text-(--pn-fg-muted)" />
-            <span className="truncate" title={file.name}>
-              {file.name}
-            </span>
+            <Hint label={file.name}>
+              <span className="truncate">{file.name}</span>
+            </Hint>
             <Hint label="Remove file">
               <button
                 type="button"

@@ -15,15 +15,15 @@ import { cn } from "@/lib/utils"
 import type { DashboardPath, Section, Service } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 
-/** Content widths per template. The header bar follows the same width. */
+/** Template names share one desktop width so headers and page bodies keep the same edges. */
 export type ContentWidth = "wide" | "tree" | "record" | "settings" | "overview"
 
 const widthClass = {
   wide: "max-w-[1280px]",
-  tree: "max-w-[960px]",
-  record: "max-w-[1200px]",
-  settings: "max-w-[720px]",
-  overview: "max-w-[1120px]",
+  tree: "max-w-[1280px]",
+  record: "max-w-[1280px]",
+  settings: "max-w-[1280px]",
+  overview: "max-w-[1280px]",
 } satisfies Record<ContentWidth, string>
 
 export type ShellFrame = {
@@ -214,7 +214,7 @@ export function BackButton({ label, link }: PageBarBack) {
             data-slot="button"
             className={cn(
               buttonVariants({ variant: "outline", size: "icon-sm" }),
-              "border-(--pn-line-strong) bg-(--pn-surface) text-(--pn-fg) hover:bg-(--pn-muted) active:translate-y-0"
+              "border-(--pn-line-strong) bg-(--pn-surface) text-(--pn-fg) hover:bg-(--pn-accent-soft) active:translate-y-0"
             )}
           />
         }
@@ -306,14 +306,14 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
         autoComplete="off"
         spellCheck={false}
         data-page-search=""
-        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-fg-subtle) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-accent) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value !== "" ? (
         <button
           type="button"
           onClick={() => onChange("")}
           aria-label="Clear search"
-          className="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
+          className="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
         >
           <X className="size-3.5" />
         </button>

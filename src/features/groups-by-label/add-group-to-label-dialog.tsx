@@ -16,6 +16,7 @@ import {
   SectionEmpty,
   SegmentedControl,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -364,18 +365,19 @@ export function AddGroupToLabelDialog({
                 </span>
                 <div className="flex min-w-0 flex-1 flex-wrap gap-1">
                   {selected.map((ref) => (
-                    <button
-                      key={refKey(ref)}
-                      type="button"
-                      aria-label={`Remove ${ref.title}`}
-                      title={ref.title}
-                      onClick={() => toggle(ref)}
-                      className="inline-flex h-6 max-w-56 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
-                    >
-                      <PlatformGlyph platform={ref.type} className="size-3" />
-                      <span className="truncate">{ref.title}</span>
-                      <X aria-hidden className="size-3 shrink-0 text-(--pn-fg-muted)" />
-                    </button>
+                    <Hint key={refKey(ref)} label={ref.title}>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${ref.title}`}
+
+                        onClick={() => toggle(ref)}
+                        className="inline-flex h-6 max-w-56 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
+                      >
+                        <PlatformGlyph platform={ref.type} className="size-3" />
+                        <span className="truncate">{ref.title}</span>
+                        <X aria-hidden className="size-3 shrink-0 text-(--pn-fg-muted)" />
+                      </button>
+                    </Hint>
                   ))}
                 </div>
               </section>
@@ -396,11 +398,11 @@ export function AddGroupToLabelDialog({
                       type="button"
                       aria-pressed={pressed}
                       onClick={() => toggle(group)}
-                      className="flex h-10 w-full min-w-0 items-center gap-3 rounded-(--pn-r-2) px-3 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                      className="flex h-10 w-full min-w-0 items-center gap-3 rounded-(--pn-r-2) px-3 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-accent-soft) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
                     >
-                      <span className="min-w-0 flex-1 truncate" title={group.title}>
-                        {group.title}
-                      </span>
+                      <Hint label={group.title}>
+                        <span className="min-w-0 flex-1 truncate">{group.title}</span>
+                      </Hint>
                       {tag && <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted)">@{tag}</span>}
                       <Check
                         aria-hidden

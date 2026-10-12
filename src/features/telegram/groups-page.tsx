@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   EmptyState,
   GroupLabelBadges,
+  Hint,
   SegmentedControl,
   Unset,
 } from "@/components/primitives"
@@ -115,9 +116,9 @@ export function TelegramGroupsPage({
       minWidth: 200,
       fill: true,
       cell: (row) => (
-        <span title={row.title} className="block truncate">
-          {row.title}
-        </span>
+        <Hint label={row.title}>
+          <span className="block truncate">{row.title}</span>
+        </Hint>
       ),
     },
     {

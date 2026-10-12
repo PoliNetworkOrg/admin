@@ -41,7 +41,7 @@ function pageItems(page: number, pageCount: number): PageItem[] {
 
 const pageButton = cn(
   buttonMotion,
-  "h-8 w-auto min-w-8 max-shell:h-9 max-shell:min-w-9 px-2 text-[13px] font-normal text-(--pn-fg-muted) tabular-nums active:not-aria-[haspopup]:translate-y-0 hover:bg-(--pn-muted) hover:text-(--pn-fg) aria-[current=page]:bg-(--pn-surface-raised) aria-[current=page]:text-(--pn-fg) aria-[current=page]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)]"
+  "h-8 w-auto min-w-8 max-shell:h-9 max-shell:min-w-9 px-2 text-[13px] font-normal text-(--pn-fg-muted) tabular-nums active:not-aria-[haspopup]:translate-y-0 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg) aria-[current=page]:bg-(--pn-surface-raised) aria-[current=page]:text-(--pn-fg) aria-[current=page]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)]"
 )
 
 /**
@@ -79,7 +79,7 @@ export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }
           >
             <SelectTrigger
               aria-labelledby={labelId}
-              className="w-[68px] border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg) tabular-nums data-[size=default]:h-8 max-shell:data-[size=default]:h-9 dark:bg-(--pn-muted) dark:hover:bg-(--pn-muted)"
+              className="w-[68px] border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg) tabular-nums data-[size=default]:h-8 max-shell:data-[size=default]:h-9 dark:bg-(--pn-muted) dark:hover:bg-(--pn-accent-soft)"
             >
               <SelectValue />
             </SelectTrigger>

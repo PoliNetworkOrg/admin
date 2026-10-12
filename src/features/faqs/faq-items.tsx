@@ -14,6 +14,7 @@ import {
   TranslationText,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast } from "@/components/shell"
 import { AccordionItem } from "@/components/ui/accordion"
 import type { FAQItem } from "@/lib/api/types"
@@ -47,12 +48,16 @@ function LanguageLine({ lang, children, muted }: { lang: "IT" | "EN"; children: 
       <Chip size="tiny" className={cn("w-[26px] justify-center", muted && "text-(--pn-fg-muted)")}>
         {lang}
       </Chip>
-      <span
-        title={children}
-        className={cn("truncate text-[13px] leading-5", muted ? "text-(--pn-fg-muted)" : "font-medium text-(--pn-fg)")}
-      >
-        {children}
-      </span>
+      <Hint label={children}>
+        <span
+          className={cn(
+            "truncate text-[13px] leading-5",
+            muted ? "text-(--pn-fg-muted)" : "font-medium text-(--pn-fg)"
+          )}
+        >
+          {children}
+        </span>
+      </Hint>
     </span>
   )
 }

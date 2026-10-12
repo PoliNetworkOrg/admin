@@ -13,6 +13,7 @@ import {
   TranslationPanel,
   TranslationText,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
@@ -75,9 +76,9 @@ export function AssociationCard({
   const viewHeader = (
     <div className="flex min-h-10 min-w-0 items-center gap-3">
       <WebLogo src={association.logo} name={association.name} fallback="AS" />
-      <p title={association.name} className="min-w-0 text-[17px] leading-6 font-semibold break-words text-(--pn-fg)">
-        {association.name}
-      </p>
+      <Hint label={association.name}>
+        <p className="min-w-0 text-[17px] leading-6 font-semibold break-words text-(--pn-fg)">{association.name}</p>
+      </Hint>
     </div>
   )
 

@@ -7,7 +7,7 @@ import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } fr
 import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
-  "relative flex h-9.5 items-center gap-2.5 rounded-(--pn-r-3) px-2.5 text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
+  "relative flex h-9.5 items-center gap-2.5 rounded-(--pn-r-3) px-2.5 text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
 
 // Active and ancestor share the fill and the accent icon; only the current page gets the indicator on the panel's
 // left edge (items are inset 12px, hence -left-3).

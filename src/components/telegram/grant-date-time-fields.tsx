@@ -74,7 +74,7 @@ const MINUTE_VALUES = Array.from({ length: 60 }, (_, minute) => pad(minute))
 
 const pickerButton = cn(
   buttonMotion,
-  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-muted) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
+  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-accent-soft) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
 )
 
 type DateTimeInputProps = {

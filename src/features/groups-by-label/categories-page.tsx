@@ -61,7 +61,7 @@ export function CategoriesPage({ labels, groups }: { labels: GroupLabel[]; group
 function RootCard({ root, groupLabels }: { root: LabelTreeNode; groupLabels: string[][] }) {
   const hidden = root.children.length - VISIBLE_CHILDREN
   return (
-    <article className="group/root relative flex flex-col gap-4.5 rounded-[14px] border border-(--pn-line) bg-(--pn-surface) p-5.5 transition-[background-color,border-color] duration-120 hover:border-(--pn-line-strong) hover:bg-[color-mix(in_oklch,var(--pn-muted)_45%,var(--pn-surface))] max-shell:p-4">
+    <article className="group/root relative flex flex-col gap-4.5 rounded-[14px] border border-(--pn-line) bg-(--pn-surface) p-5.5 transition-[background-color,border-color] duration-120 hover:border-(--pn-accent) hover:bg-(--pn-accent-soft) max-shell:p-4">
       <div className="flex items-center gap-3.5">
         <span className="grid size-11 shrink-0 place-items-center rounded-[11px] border border-(--pn-line) bg-(--pn-muted)">
           {root.label ? (
@@ -121,7 +121,7 @@ function SubChip({ path, children }: { path: string; children: ReactNode }) {
     <Link
       to="/dashboard/web/groups-by-label/$"
       params={{ _splat: labelPathToUrlSegments(path).join("/") }}
-      className="relative z-[1] inline-flex h-9 items-center gap-2 rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-muted) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:border-(--pn-fg-subtle) hover:bg-(--pn-nav-active)"
+      className="relative z-[1] inline-flex h-9 items-center gap-2 rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-muted) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:border-(--pn-accent) hover:bg-(--pn-nav-active)"
     >
       {children}
     </Link>

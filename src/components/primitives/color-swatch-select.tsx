@@ -11,7 +11,7 @@ import { LabelDot } from "./label-chip"
 import { buttonMotion, floatingMotion, raisedSurface } from "./motion"
 
 const swatchButton =
-  "flex size-9 items-center justify-center rounded-(--pn-r-2) transition-[background-color] duration-120 hover:bg-(--pn-muted) aria-pressed:bg-(--pn-accent-soft)"
+  "flex size-9 items-center justify-center rounded-(--pn-r-2) transition-[background-color] duration-120 hover:bg-(--pn-accent-soft) aria-pressed:bg-(--pn-accent-soft)"
 
 function Swatch({ color, custom, className }: { color: string; custom: boolean; className?: string }) {
   if (custom) {
@@ -66,7 +66,7 @@ export function ColorSwatchSelect({
               disabled={disabled}
               className={cn(
                 buttonMotion,
-                "gap-1.5 border-(--pn-line-strong) bg-(--pn-surface) px-2 shadow-none hover:bg-(--pn-muted)",
+                "gap-1.5 border-(--pn-line-strong) bg-(--pn-surface) px-2 shadow-none hover:bg-(--pn-accent-soft)",
                 className
               )}
             />

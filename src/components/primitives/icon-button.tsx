@@ -15,7 +15,7 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
   ariaLabel?: string
   icon: LucideIcon
   /**
-   * Icons are monochrome at rest. `danger`, `success` and `warning` only tint the hover; `info` marks an "on" state
+   * Icons are monochrome at rest. `danger`, `success` and `warning` share the brand-blue hover; `info` marks an "on" state
    * (a visible group) with the accent color.
    */
   tone?: "default" | "info" | "success" | "warning" | "danger"
@@ -29,15 +29,15 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
 }
 
 const toneClasses = {
-  default: "hover:bg-(--pn-muted) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
-  info: "text-(--pn-accent) hover:bg-(--pn-muted) hover:text-(--pn-accent)",
-  success: "hover:bg-(--pn-success-bg) hover:text-(--pn-success-fg)",
-  warning: "hover:bg-(--pn-warning-bg) hover:text-(--pn-warning-fg)",
-  danger: "hover:bg-(--pn-danger-bg) hover:text-(--pn-danger-fg)",
+  default:
+    "hover:bg-(--pn-accent-soft) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
+  info: "text-(--pn-accent) hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
+  success: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
+  warning: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
+  danger: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
 }
 
-const boxedClasses =
-  "border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg) hover:border-(--pn-fg-subtle) data-[tone=danger]:hover:border-[color-mix(in_oklch,var(--pn-danger-fg)_35%,transparent)]"
+const boxedClasses = "border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg) hover:border-(--pn-accent)"
 
 /** 36px monochrome icon button with matching `aria-label` and tooltip. */
 export function IconButton({

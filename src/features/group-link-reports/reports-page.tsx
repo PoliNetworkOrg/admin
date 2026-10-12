@@ -15,6 +15,7 @@ import {
   Unset,
   useFocusAfterRemoval,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
@@ -235,9 +236,9 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
           <span className="block min-w-0">
             <span className="flex min-w-0 items-start gap-2">
               {text ? (
-                <span title={text} className="min-w-0 flex-1 truncate">
-                  {text}
-                </span>
+                <Hint label={text}>
+                  <span className="min-w-0 flex-1 truncate">{text}</span>
+                </Hint>
               ) : (
                 <Unset />
               )}
@@ -303,9 +304,11 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
         const text = link ?? latest.details
         if (!text) return open ? <Unset /> : null
         return (
-          <span title={text} className={cn("block max-w-[320px] truncate", link && "font-mono")}>
-            {link ? shortLink(link) : text}
-          </span>
+          <Hint label={text}>
+            <span className={cn("block max-w-[320px] truncate", link && "font-mono")}>
+              {link ? shortLink(link) : text}
+            </span>
+          </Hint>
         )
       },
     },

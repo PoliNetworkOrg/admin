@@ -43,7 +43,7 @@ export function LabelChip({ label, href, render, className }: LabelChipProps) {
       <Chip
         render={link}
         className={cn(
-          "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-fg-subtle) [a]:hover:bg-(--pn-muted)",
+          "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-accent) [a]:hover:bg-(--pn-accent-soft)",
           className
         )}
       >

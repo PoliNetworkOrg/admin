@@ -317,9 +317,9 @@ const auditColumns: DataTableColumn<Audit>[] = [
     cell: (audit) => {
       const actor = auditActor(audit)
       return (
-        <span className="block truncate" title={actor.title ?? actor.name}>
-          {actor.name}
-        </span>
+        <Hint label={actor.title ?? actor.name}>
+          <span className="block truncate">{actor.name}</span>
+        </Hint>
       )
     },
   },
@@ -358,9 +358,9 @@ const auditColumns: DataTableColumn<Audit>[] = [
     mobile: "text",
     cell: (audit) =>
       audit.reason ? (
-        <span className="block truncate max-shell:whitespace-normal" title={audit.reason}>
-          {audit.reason}
-        </span>
+        <Hint label={audit.reason}>
+          <span className="block truncate max-shell:whitespace-normal">{audit.reason}</span>
+        </Hint>
       ) : (
         <Unset />
       ),
@@ -374,9 +374,9 @@ const auditColumns: DataTableColumn<Audit>[] = [
     cell: (audit) =>
       audit.groupTitle && audit.groupId !== null ? (
         <span className="flex min-w-0 items-baseline gap-1">
-          <span className="truncate" title={audit.groupTitle}>
-            {audit.groupTitle}
-          </span>
+          <Hint label={audit.groupTitle}>
+            <span className="truncate">{audit.groupTitle}</span>
+          </Hint>
           <span className="shrink-0 text-(--pn-fg-muted)">·</span>
           <span className="shrink-0 font-mono text-(--pn-fg-muted) tabular-nums">{audit.groupId}</span>
         </span>

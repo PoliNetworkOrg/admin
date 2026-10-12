@@ -3,6 +3,7 @@ import { ChevronRight, UsersRound } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import { buttonMotion, DataTable, type DataTableColumn, EmptyState, initialsOf } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Button } from "@/components/ui/button"
@@ -32,9 +33,9 @@ const columns: DataTableColumn<TgUser>[] = [
           >
             {initialsOf(name)}
           </span>
-          <span className="truncate" title={name}>
-            {name}
-          </span>
+          <Hint label={name}>
+            <span className="truncate">{name}</span>
+          </Hint>
         </span>
       )
     },

@@ -16,6 +16,7 @@ import azureLogo from "@/assets/svg/azure.svg"
 import telegramLogo from "@/assets/svg/telegram.svg"
 import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { buttonMotion, Chip, initialsOf, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { PageBar, PageContent, useSignOut } from "@/components/shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -74,12 +75,12 @@ function ProfileCard({ user, accountUrl }: { user: DashboardUser; accountUrl: st
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col">
-            <p className="truncate text-sm leading-5 font-medium" title={user.name}>
-              {user.name || user.email}
-            </p>
-            <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)" title={user.email}>
-              {user.email}
-            </p>
+            <Hint label={user.name}>
+              <p className="truncate text-sm leading-5 font-medium">{user.name || user.email}</p>
+            </Hint>
+            <Hint label={user.email}>
+              <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)">{user.email}</p>
+            </Hint>
           </div>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">

@@ -22,6 +22,7 @@ import {
   TranslationText,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { cn } from "@/lib/utils"
 
 import { WebLogo, WebLogoUpload } from "../web/logo-upload"
@@ -118,22 +119,24 @@ export function ProjectCard({
     <div className="flex min-w-0 items-center gap-3.5">
       <WebLogo src={project.logo} name={project.title} fallback="PR" className="size-12 rounded-(--pn-r-4)" />
       <div className="flex min-w-0 flex-col">
-        <h3 title={project.title} className="truncate text-[16px] leading-6 font-semibold text-(--pn-fg)">
-          {project.title}
-        </h3>
+        <Hint label={project.title}>
+          <h3 className="truncate text-[16px] leading-6 font-semibold text-(--pn-fg)">{project.title}</h3>
+        </Hint>
         {project.link ? (
-          <a
-            href={project.link}
-            target="_blank"
-            rel="noreferrer"
-            title={project.link}
-            className="inline-flex max-w-full items-center gap-1 text-[13px] leading-5 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
-          >
-            <span className="truncate max-shell:whitespace-normal max-shell:break-all">
-              {project.link.replace(/^https?:\/\//, "")}
-            </span>
-            <ExternalLink aria-hidden className="size-3 shrink-0" />
-          </a>
+          <Hint label={project.link}>
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+
+              className="inline-flex max-w-full items-center gap-1 text-[13px] leading-5 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
+            >
+              <span className="truncate max-shell:whitespace-normal max-shell:break-all">
+                {project.link.replace(/^https?:\/\//, "")}
+              </span>
+              <ExternalLink aria-hidden className="size-3 shrink-0" />
+            </a>
+          </Hint>
         ) : (
           <Unset className="text-[13px]" />
         )}

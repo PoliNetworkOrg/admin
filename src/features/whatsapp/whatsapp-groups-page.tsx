@@ -7,6 +7,7 @@ import {
   type DataTableColumn,
   EmptyState,
   GroupLabelBadges,
+  Hint,
   SegmentedControl,
 } from "@/components/primitives"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
@@ -102,9 +103,9 @@ export function WhatsappGroupsPage({
       minWidth: 276,
       fill: true,
       cell: (row) => (
-        <span title={row.title} className="block truncate">
-          {row.title}
-        </span>
+        <Hint label={row.title}>
+          <span className="block truncate">{row.title}</span>
+        </Hint>
       ),
     },
     {

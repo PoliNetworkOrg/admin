@@ -84,10 +84,10 @@ drawn with `ServiceGlyph`: its `logo` when it has one, else its monochrome `icon
 | Page    | Overview and Account pass their own `title` to `PageBar`                                         |
 
 **Rail** (64px, from 760px). One tab stop with roving focus (`↑/↓`, `Home/End`). The PoliNetwork logo is the link to
-Overview and gets an accent ring while Overview is open; then Search (opens the palette), a divider and the five
+Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the five
 services (logos for Telegram, WhatsApp and Microsoft 365). The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
 an accent dot while there are open reports. A service opens the last section visited in that service this session,
-else its first. Theme toggle and the account avatar (ringed while Account is open) sit at the bottom; sign out lives on
+else its first. Theme toggle and the account avatar (the same active fill and indicator while Account is open) sit at the bottom; sign out lives on
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
@@ -124,7 +124,7 @@ actions (theme, account, sign out).
 ## 3. Page templates
 
 Wrap every page body in `PageContent` and give `PageBar` the same `width` (both default to `wide`), so header and content
-share edges. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
+share edges. All template names use the same 1280px maximum content width on desktop. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
 does not move when data arrives.
 
 | Template        | `width`    | Used by                                                        |
@@ -224,9 +224,15 @@ invalid fields show the danger border. Opt out only with `data-focus-ring="none"
 
 ## 5. Components
 
+Hover borders use `--pn-accent`; destructive colors identify actions at rest and validation errors, while their hover uses brand blue.
 Scrollable surfaces use thin, rounded scrollbars with the theme's line color on a transparent track, including portals.
 Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
 keyboard users open it with Enter or Space and dismiss it with Escape.
+Tooltips use the same raised surface, foreground, border and corner radius as overflow popovers. Both open below
+the trigger by default (the rail uses the right side); positioning may flip only to stay inside the viewport.
+Use `Hint` for hover text, never the browser's native `title` attribute.
+The document opts out of Dark Reader's recoloring with its documented `darkreader-lock` meta tag because the app
+already provides light and dark palettes; this also prevents extension-injected styles from breaking hydration.
 
 Build from `@/components/shell` and `@/components/primitives`; reach into `@/components/ui` only for what the primitives
 don't wrap. Each primitive's JSDoc states its props and rules. In the dashboard these `ui/` parts are replaced: `card`
@@ -246,8 +252,8 @@ first/last buttons); on narrow tables "‹ 1 of 34 ›".
 Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
-right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts: `tone="danger"` (and success/warning) only tints
-the hover; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
+right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
+including destructive actions; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
 colors at rest: labels use `--pn-warning-fg`, edit uses `--pn-success-fg`, and leave/delete use `--pn-danger-fg`.
 Visibility, labels, edit and leave/delete all hover in brand blue (`--pn-accent` on `--pn-accent-soft`);
 the hidden visibility eye and invite-link actions remain muted. Group rows separate the invite-link pair

@@ -25,7 +25,7 @@ import { themeToggleLabel, useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
 const railItemClass =
-  "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)"
+  "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
 
 // The 3px indicator sits on the rail's left edge: items are inset 12px, hence -left-3.
 const railIndicator =
@@ -34,9 +34,6 @@ const railActiveClass = cn(
   "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-active) hover:text-(--pn-fg)",
   railIndicator
 )
-// Logo and avatar are round marks: the active one gets a ring instead of a fill.
-const railMarkClass = "rounded-full hover:bg-transparent"
-const railMarkActiveClass = cn("[&>*]:shadow-[0_0_0_2px_var(--pn-nav),0_0_0_4px_var(--pn-accent-solid)]", railIndicator)
 
 type RailItemTarget =
   | { kind: "link"; to: DashboardPath }
@@ -53,8 +50,6 @@ type RailItemProps = {
   target: RailItemTarget
   /** Marks the theme toggle: the palette's theme switch starts its reveal here, and presses during a reveal find it. */
   themeToggle?: boolean
-  /** Round marks (logo, avatar): a ring shows the active state instead of a fill. */
-  mark?: boolean
   className?: string
   children: ReactNode
 }
@@ -67,7 +62,6 @@ function RailItem({
   focusable,
   target,
   themeToggle,
-  mark = false,
   className,
   children,
 }: RailItemProps) {
@@ -76,12 +70,7 @@ function RailItem({
     "data-rail-item": "",
     "data-theme-toggle": themeToggle ? "" : undefined,
     tabIndex: focusable ? 0 : -1,
-    className: cn(
-      railItemClass,
-      mark && railMarkClass,
-      active && (mark ? railMarkActiveClass : railActiveClass),
-      className
-    ),
+    className: cn(railItemClass, active && railActiveClass, className),
   }
   const trigger =
     target.kind === "link" ? (
@@ -208,14 +197,13 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, 
         className
       )}
     >
-      {/* The logo is the way home: it leads to Overview and carries its active ring. */}
+      {/* The logo uses the same active fill and left indicator as every other rail item. */}
       <RailItem
         label={overview.title}
         active={activeId === "overview"}
         focusable={tabStop === 0}
         target={{ kind: "link", to: overview.path }}
-        mark
-        className="size-11 [&>img]:transition-transform [&>img]:duration-120 [&>img]:ease-(--pn-ease-out) hover:[&>img]:scale-106"
+        className="[&>img]:transition-transform [&>img]:duration-120 [&>img]:ease-(--pn-ease-out) hover:[&>img]:scale-106"
       >
         <img src={logoUrl} alt="" width={32} height={32} className="size-8 rounded-full" />
       </RailItem>
@@ -271,7 +259,6 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, 
         active={activeId === "account"}
         focusable={tabStop === accountIndex}
         target={{ kind: "link", to: account.path }}
-        mark
       >
         <AccountAvatar user={user} className="size-7.5" />
       </RailItem>
