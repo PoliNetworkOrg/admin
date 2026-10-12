@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useId } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -39,7 +39,15 @@ function pageItems(page: number, pageCount: number): PageItem[] {
   ]
 }
 
-/** Table footer: "Showing 1–20 of 1,318", rows per page, page buttons; "‹ 3 / 66 ›" below 640px of table width. */
+const pageButton = cn(
+  buttonMotion,
+  "h-8 w-auto min-w-8 max-shell:h-9 max-shell:min-w-9 px-2 text-[13px] font-normal text-(--pn-fg-muted) tabular-nums active:not-aria-[haspopup]:translate-y-0 hover:bg-(--pn-hover) hover:text-(--pn-fg) aria-[current=page]:bg-(--pn-surface-raised) aria-[current=page]:text-(--pn-fg) aria-[current=page]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)]"
+)
+
+/**
+ * Table footer: "Showing 1–20 of 1,318", rows per page and ‹ 1 2 3 … 66 ›. Below 640px of table width the range
+ * text goes and the pages collapse to "‹ 3 of 66 ›".
+ */
 export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }: TablePagination) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1
@@ -49,12 +57,16 @@ export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }
   const labelId = useId()
 
   return (
-    <div className="flex min-h-13 items-center justify-between gap-4 border-t border-(--pn-line) px-5 py-2 text-[13px] text-(--pn-fg-muted)">
+    <div className="flex min-h-13 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-(--pn-line) py-2.5 pr-3 pl-4 text-[13px] text-(--pn-fg-muted) @max-[640px]:justify-center @max-[640px]:px-2.5">
       <p className="whitespace-nowrap tabular-nums @max-[640px]:hidden">
-        Showing {formatNumber(first)}–{formatNumber(last)} of {formatNumber(total)}
+        Showing{" "}
+        <span className="text-(--pn-fg)">
+          {formatNumber(first)}–{formatNumber(last)}
+        </span>{" "}
+        of {formatNumber(total)}
       </p>
 
-      <div className="flex items-center gap-6 @max-[640px]:hidden">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span id={labelId} className="whitespace-nowrap">
             Rows per page
@@ -67,7 +79,7 @@ export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }
           >
             <SelectTrigger
               aria-labelledby={labelId}
-              className="w-[72px] border-(--pn-line-strong) bg-(--pn-surface) text-[13px] text-(--pn-fg) tabular-nums data-[size=default]:h-9 dark:bg-(--pn-surface) dark:hover:bg-(--pn-muted)"
+              className="w-[68px] border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg) tabular-nums data-[size=default]:h-8 max-shell:data-[size=default]:h-9 dark:bg-(--pn-muted) dark:hover:bg-(--pn-hover)"
             >
               <SelectValue />
             </SelectTrigger>
@@ -85,12 +97,17 @@ export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }
           </Select>
         </div>
 
-        <nav aria-label="Pagination" className="flex items-center gap-1">
-          <IconButton label="First page" icon={ChevronsLeft} disabled={atStart} onClick={() => onPage(1)} />
-          <IconButton label="Previous page" icon={ChevronLeft} disabled={atStart} onClick={() => onPage(page - 1)} />
+        <nav aria-label="Pagination" className="flex items-center gap-0.5">
+          <IconButton
+            label="Previous page"
+            icon={ChevronLeft}
+            disabled={atStart}
+            onClick={() => onPage(page - 1)}
+            className="size-8 max-shell:size-9"
+          />
           {pageItems(page, pageCount).map((item) =>
             item.kind === "gap" ? (
-              <span key={item.id} aria-hidden className="w-6 text-center">
+              <span key={item.id} aria-hidden className="w-6 text-center @max-[640px]:hidden">
                 …
               </span>
             ) : (
@@ -101,27 +118,24 @@ export function TablePaginationBar({ page, pageSize, total, onPage, onPageSize }
                 aria-label={`Page ${item.page}`}
                 aria-current={item.page === page ? "page" : undefined}
                 onClick={() => onPage(item.page)}
-                className={cn(
-                  buttonMotion,
-                  "w-auto min-w-9 px-2 text-[13px] font-normal text-(--pn-fg-muted) tabular-nums active:not-aria-[haspopup]:translate-y-0 hover:bg-(--pn-muted) hover:text-(--pn-fg) aria-[current=page]:bg-(--pn-accent-soft) aria-[current=page]:text-(--pn-accent)"
-                )}
+                className={cn(pageButton, item.page !== page && "@max-[640px]:hidden")}
               >
                 {formatNumber(item.page)}
               </Button>
             )
           )}
-          <IconButton label="Next page" icon={ChevronRight} disabled={atEnd} onClick={() => onPage(page + 1)} />
-          <IconButton label="Last page" icon={ChevronsRight} disabled={atEnd} onClick={() => onPage(pageCount)} />
+          <span className="hidden px-2 whitespace-nowrap tabular-nums @max-[640px]:inline">
+            of {formatNumber(pageCount)}
+          </span>
+          <IconButton
+            label="Next page"
+            icon={ChevronRight}
+            disabled={atEnd}
+            onClick={() => onPage(page + 1)}
+            className="size-8 max-shell:size-9"
+          />
         </nav>
       </div>
-
-      <nav aria-label="Pagination" className="flex w-full items-center justify-between @min-[640px]:hidden">
-        <IconButton label="Previous page" icon={ChevronLeft} disabled={atStart} onClick={() => onPage(page - 1)} />
-        <span className="tabular-nums">
-          {formatNumber(page)} / {formatNumber(pageCount)}
-        </span>
-        <IconButton label="Next page" icon={ChevronRight} disabled={atEnd} onClick={() => onPage(page + 1)} />
-      </nav>
     </div>
   )
 }

@@ -74,7 +74,7 @@ const MINUTE_VALUES = Array.from({ length: 60 }, (_, minute) => pad(minute))
 
 const pickerButton = cn(
   buttonMotion,
-  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-muted) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
+  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-hover) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
 )
 
 type DateTimeInputProps = {
@@ -247,7 +247,7 @@ function DateTimeInput(props: DateTimeInputProps) {
       aria-invalid={invalid || undefined}
       aria-describedby={invalid ? fieldHintId(id) : undefined}
       disabled={disabled}
-      className={cn("h-9 min-w-0 flex-1 [inline-size:-webkit-fill-available]", fieldControl)}
+      className={cn("h-10 w-full min-w-0 bg-(--pn-surface) min-[480px]:flex-1", fieldControl)}
     />
   )
 }
@@ -317,7 +317,10 @@ export function GrantDateTimeFields({
             type="button"
             variant="ghost"
             size="sm"
-            className={cn(buttonMotion, "w-[176px] justify-center text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+            className={cn(
+              buttonMotion,
+              "w-[176px] max-[479px]:w-auto justify-center text-(--pn-fg-muted) hover:text-(--pn-fg)"
+            )}
             onClick={() => onValidSinceChange(localDateTimeValue(new Date()))}
           >
             Now
@@ -350,7 +353,7 @@ export function GrantDateTimeFields({
             onValueChange={setDuration}
             disabled={!start || invalidStart}
             // Same 176px as the "Now" button above, so both rows' pickers line up.
-            className="w-[176px]"
+            className="w-[176px] max-[479px]:w-full"
             itemClassName="flex-1 px-0 tabular-nums"
           />
         </Row>
@@ -360,5 +363,7 @@ export function GrantDateTimeFields({
 }
 
 function Row({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-2 min-[480px]:flex-nowrap">{children}</div>
+  return (
+    <div className="flex flex-col items-stretch gap-2 min-[480px]:flex-row min-[480px]:items-center">{children}</div>
+  )
 }

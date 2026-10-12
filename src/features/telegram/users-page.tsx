@@ -2,11 +2,13 @@ import { useNavigate } from "@tanstack/react-router"
 import { ChevronRight, UsersRound } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
-import { buttonMotion, DataTable, type DataTableColumn, EmptyState, Unset } from "@/components/primitives"
+import { buttonMotion, DataTable, type DataTableColumn, EmptyState, initialsOf } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Button } from "@/components/ui/button"
 import type { TgUser } from "@/lib/api/types"
+import { formatNumber } from "@/lib/format"
 
 function matchesUser(user: TgUser, query: string) {
   if (!query) return true
@@ -24,8 +26,16 @@ const columns: DataTableColumn<TgUser>[] = [
     cell: (user) => {
       const name = telegramUserName(user)
       return (
-        <span className="block truncate" title={name}>
-          {name}
+        <span className="flex min-w-0 items-center gap-3">
+          <span
+            aria-hidden
+            className="grid size-8 shrink-0 place-items-center rounded-full border border-(--pn-line-strong) bg-(--pn-muted) text-[11px] font-semibold text-(--pn-fg-muted)"
+          >
+            {initialsOf(name)}
+          </span>
+          <Hint overflowOnly label={name}>
+            <span className="truncate">{name}</span>
+          </Hint>
         </span>
       )
     },
@@ -35,7 +45,7 @@ const columns: DataTableColumn<TgUser>[] = [
     label: "Username",
     minWidth: 180,
     priority: 2,
-    cell: (user) => (user.username ? `@${user.username}` : <Unset />),
+    cell: (user) => (user.username ? `@${user.username}` : <span className="text-(--pn-fg-subtle)">No username</span>),
   },
   {
     id: "telegramId",
@@ -49,8 +59,9 @@ const columns: DataTableColumn<TgUser>[] = [
     id: "open",
     label: "",
     // A fixed width switches the table to fixed layout: Name, Username and Telegram ID (all short) share the rest
-    // equally instead of Name taking it all. 16px icon + 16px left and 20px right cell padding.
+    // equally instead of Name taking it all. 16px icon + 16px cell padding on each side. Cards drop it.
     width: 52,
+    mobile: "hidden",
     cell: () => (
       <ChevronRight
         aria-hidden
@@ -63,11 +74,19 @@ const columns: DataTableColumn<TgUser>[] = [
 const PAGE_SIZE = 20
 
 /** Telegram users: searchable list; a row opens the user's detail. */
-export function TelegramUsersPage({ users }: { users: TgUser[] }) {
+export function TelegramUsersPage({ users, initialQuery = "" }: { users: TgUser[]; initialQuery?: string }) {
   const navigate = useNavigate()
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialQuery)
+  const [syncedQuery, setSyncedQuery] = useState(initialQuery)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+
+  // A later navigation to this page with another `?q=` (the command palette's "Find …") replaces the search.
+  if (initialQuery !== syncedQuery) {
+    setSyncedQuery(initialQuery)
+    setQuery(initialQuery)
+    setPage(1)
+  }
   const deferredQuery = useDeferredValue(query)
 
   const normalized = deferredQuery.trim().replace(/^@/, "").toLocaleLowerCase()
@@ -85,10 +104,11 @@ export function TelegramUsersPage({ users }: { users: TgUser[] }) {
   return (
     <>
       <PageBar
+        description={`${formatNumber(users.length)} ${users.length === 1 ? "person" : "people"} the bot has seen`}
         left={
           <Toolbar
-            search={{ value: query, onChange: updateQuery, placeholder: "Search by name, username or Telegram ID…" }}
-            count={<Count value={filtered.length} total={searching ? users.length : undefined} noun="user" />}
+            search={{ value: query, onChange: updateQuery }}
+            count={searching ? <Count value={filtered.length} total={users.length} noun="user" /> : undefined}
           />
         }
       />

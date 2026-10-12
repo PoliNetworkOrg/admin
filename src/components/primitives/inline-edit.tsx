@@ -1,7 +1,8 @@
-import { Check, CircleAlert, Pencil, X } from "lucide-react"
+import { CircleAlert, Pencil } from "lucide-react"
 import type * as React from "react"
 import { createContext, type KeyboardEvent, type ReactNode, use, useId } from "react"
 
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -10,6 +11,8 @@ import { RowActions } from "./data-table"
 import { FieldCounter, isCounterVisible } from "./field-counter"
 import { IconButton } from "./icon-button"
 import { InlineAlert } from "./inline-alert"
+import { LoadingButton } from "./loading-button"
+import { buttonMotion } from "./motion"
 import { useModifierKey } from "./use-modifier-key"
 
 /**
@@ -92,7 +95,7 @@ function focusBlockingField(container: HTMLElement) {
 function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: InlineEditProps) {
   const modifier = useModifierKey()
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         {error ? (
           <InlineAlert className="py-2">{error}</InlineAlert>
@@ -101,41 +104,48 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
             <CircleAlert aria-hidden className="size-3.5 shrink-0" />
             {message}
           </p>
-        ) : (
-          <p className="flex min-h-9 flex-wrap items-center gap-1 text-xs text-(--pn-fg-muted) pointer-coarse:hidden">
-            Press <Kbd>{modifier} + Enter</Kbd> to save, <Kbd>Esc</Kbd> to cancel
-          </p>
-        )}
+        ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <IconButton
-          label="Cancel (Esc)"
-          ariaLabel="Cancel"
-          icon={X}
-          tone="danger"
-          appearance="tinted"
+      <div className="flex shrink-0 items-center gap-2 max-shell:w-full max-shell:[&>*]:flex-1">
+        <Button
+          variant="outline"
+          size="sm"
           disabled={saving}
           onClick={onCancel}
-        />
-        <IconButton
-          label={`Save (${modifier} + Enter)`}
-          ariaLabel="Save"
-          icon={Check}
-          tone="success"
-          appearance="tinted"
+          aria-keyshortcuts="Escape"
+          className={cn(buttonMotion, "gap-2")}
+        >
+          Cancel
+          <Kbd>Esc</Kbd>
+        </Button>
+        <LoadingButton
           pending={saving}
           disabled={!valid || !dirty}
           focusableWhenDisabled
           onClick={onSave}
-        />
+          aria-keyshortcuts={modifier === "⌘" ? "Meta+Enter" : "Control+Enter"}
+          className="gap-2"
+        >
+          Save
+          <Kbd onSolid>{modifier === "⌘" ? "⌘ ↵" : "Ctrl ↵"}</Kbd>
+        </LoadingButton>
       </div>
     </div>
   )
 }
 
-function Kbd({ children }: { children: ReactNode }) {
+/** A shortcut hint inside a footer button; hidden on coarse pointers, where there is no keyboard. */
+function Kbd({ children, onSolid = false }: { children: ReactNode; onSolid?: boolean }) {
   return (
-    <kbd className="rounded-(--pn-r-1) border border-(--pn-line) bg-(--pn-muted) px-1 font-sans text-[11px] leading-4 text-(--pn-fg)">
+    <kbd
+      aria-hidden
+      className={cn(
+        "rounded-[5px] border px-1.5 font-mono text-[11px] leading-4 pointer-coarse:hidden",
+        onSolid
+          ? "border-current bg-transparent text-inherit opacity-70"
+          : "border-(--pn-line-strong) bg-(--pn-surface-raised) text-(--pn-fg-muted)"
+      )}
+    >
       {children}
     </kbd>
   )
@@ -168,9 +178,10 @@ export function InlineEditCard(props: InlineEditProps) {
     <article
       onKeyDown={onKeyDown}
       className={cn(
-        "flex flex-col gap-3 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) p-4 text-(--pn-fg)",
-        // Edit mode (drafts included): a dashed accent border sets the card being edited apart.
-        editing && "border-dashed border-(--pn-accent)",
+        "flex flex-col gap-3 rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) p-4 text-(--pn-fg)",
+        // Edit mode (drafts included): an accent border and soft ring set the card being edited apart.
+        editing &&
+          "gap-4 border-[color-mix(in_oklab,var(--pn-accent)_55%,transparent)] shadow-[0_0_0_3px_color-mix(in_oklab,var(--pn-accent-solid)_14%,transparent)]",
         props.className
       )}
     >
@@ -238,6 +249,8 @@ function FieldError({ id, children }: { id: string; children: ReactNode }) {
 
 type InlineEditInputProps = Omit<React.ComponentProps<"input">, "value"> & {
   label: string
+  /** Shows `label` above the field (cards in edit mode); otherwise it is the accessible name only. */
+  showLabel?: boolean
   value: string
   /** Field error shown under the input; also sets `aria-invalid` and `aria-describedby`. */
   error?: string | null
@@ -251,6 +264,7 @@ const bareInputClasses =
 /** 36px input: a 20px line box + 16px padding. Shows the counter in the last 20% of `maxLength`. */
 export function InlineEditInput({
   label,
+  showLabel = false,
   value,
   maxLength,
   error,
@@ -260,6 +274,7 @@ export function InlineEditInput({
   ...props
 }: InlineEditInputProps) {
   const errorId = useId()
+  const inputId = useId()
   const saving = use(SavingContext)
   const counting = maxLength !== undefined && isCounterVisible(value.length, maxLength)
   if (bare) {
@@ -283,16 +298,22 @@ export function InlineEditInput({
     )
   }
   return (
-    <div className="min-w-0 flex-1">
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      {showLabel ? (
+        <label htmlFor={inputId} className="text-[13px] font-medium text-(--pn-fg)">
+          {label}
+        </label>
+      ) : null}
       <div className="relative">
         <Input
-          aria-label={label}
+          id={inputId}
+          aria-label={showLabel ? undefined : label}
           value={value}
           maxLength={maxLength}
           readOnly={readOnly || saving}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
-          className={cn("h-9 px-2.5", fieldClasses, counting && "pr-20", className)}
+          className={cn(showLabel ? "h-10 px-3" : "h-9 px-2.5", fieldClasses, counting && "pr-20", className)}
           {...props}
         />
         {maxLength !== undefined && (

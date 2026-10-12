@@ -1,6 +1,6 @@
 import { linkOptions, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Check, CircleCheck, Inbox, X } from "lucide-react"
+import { Check, CircleCheck, FolderSearch, Inbox, X } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import {
@@ -9,19 +9,20 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
-  IconButton,
   PlatformGlyph,
   SegmentedControl,
   StatusBadge,
   Unset,
   useFocusAfterRemoval,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
 import { dismissGroupLinkReport, resolveGroupLinkReport } from "@/features/group-link-reports/reports.functions"
 import type { GroupLinkReport } from "@/lib/api/types"
 import { formatDate, hostOf } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export type ReportStatus = "open" | "closed"
 type Segment = "all" | "tg" | "wa" | "missing" | "resolved" | "dismissed"
@@ -52,6 +53,7 @@ function ReportIssue({ report }: { report: GroupLinkReport }) {
   return (
     <>
       {report.reportType === "broken_link" && report.type ? <PlatformGlyph platform={report.type} /> : null}
+      {report.reportType === "missing" && <FolderSearch aria-hidden className="size-4 shrink-0" />}
       {ISSUE_LABEL[report.reportType]}
     </>
   )
@@ -227,33 +229,65 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       label: "Reference",
       minWidth: 220,
       fill: true,
-      className: "max-sm:py-2",
+      className: "max-shell:min-w-0 max-shell:w-full",
       cell: ({ latest, ids }) => {
         const text = reference(latest)
         return (
           <span className="block min-w-0">
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 items-start gap-2">
               {text ? (
-                <span title={text} className="truncate">
-                  {text}
-                </span>
+                <Hint overflowOnly label={text}>
+                  <span className="min-w-0 flex-1 truncate">{text}</span>
+                </Hint>
               ) : (
                 <Unset />
               )}
               {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
+              {!open && (
+                <span className="ml-auto flex shrink-0 flex-col items-end gap-1 shell:hidden">
+                  <StatusBadge tone={latest.status === "resolved" ? "success" : "neutral"}>
+                    {latest.status === "resolved" ? "Resolved" : "Dismissed"}
+                  </StatusBadge>
+                  <span className="flex items-center gap-1 text-xs font-normal text-(--pn-fg-muted)">
+                    <ReportIssue report={latest} />
+                  </span>
+                </span>
+              )}
             </span>
-            <span className="mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) sm:hidden">
+            <span
+              className={cn(
+                "mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) shell:hidden",
+                !open && "hidden"
+              )}
+            >
               <ReportIssue report={latest} />
             </span>
           </span>
         )
       },
     },
+    ...(open
+      ? []
+      : [
+          {
+            id: "status",
+            label: "Status",
+            mobile: "hidden" as const,
+            priority: 1,
+            minWidth: 120,
+            cell: ({ latest }: ReportGroup) =>
+              latest.status === "resolved" ? (
+                <StatusBadge tone="success">Resolved</StatusBadge>
+              ) : (
+                <StatusBadge tone="neutral">Dismissed</StatusBadge>
+              ),
+          },
+        ]),
     {
       id: "issue",
       label: "Issue",
       minWidth: 160,
-      className: "max-sm:hidden",
+      mobile: "hidden",
       cell: ({ latest }) => (
         <span className="flex items-center gap-2 whitespace-nowrap">
           <ReportIssue report={latest} />
@@ -268,30 +302,16 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       cell: ({ latest }) => {
         const link = latest.reportType === "broken_link" ? latest.reportedLink : null
         const text = link ?? latest.details
-        if (!text) return <Unset />
+        if (!text) return open ? <Unset /> : null
         return (
-          <span title={text} className="block max-w-[320px] truncate">
-            {link ? shortLink(link) : text}
-          </span>
+          <Hint overflowOnly label={text}>
+            <span className={cn("block max-w-[320px] truncate", link && "font-mono")}>
+              {link ? shortLink(link) : text}
+            </span>
+          </Hint>
         )
       },
     },
-    ...(open
-      ? []
-      : [
-          {
-            id: "status",
-            label: "Status",
-            priority: 1,
-            minWidth: 120,
-            cell: ({ latest }: ReportGroup) =>
-              latest.status === "resolved" ? (
-                <StatusBadge tone="success">Resolved</StatusBadge>
-              ) : (
-                <StatusBadge tone="neutral">Dismissed</StatusBadge>
-              ),
-          },
-        ]),
     {
       id: "date",
       label: "Date",
@@ -304,6 +324,8 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
   return (
     <>
       <PageBar
+        title={open ? "Open reports" : "Closed reports"}
+        description={open ? "Broken links and missing groups reported by students" : "Resolved and dismissed reports"}
         left={
           <Toolbar
             search={{ value: query, onChange: changeQuery }}
@@ -327,7 +349,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
         }
       />
       <PageContent>
-        <div ref={focus.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
+        <div ref={focus.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-5)">
           <DataTable
             label={open ? "Open reports" : "Closed reports"}
             columns={columns}
@@ -343,23 +365,31 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
               open && canWrite
                 ? (group) => (
                     <>
-                      <IconButton
-                        label="Dismiss"
-                        ariaLabel={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
-                        icon={X}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "dismiss", event.currentTarget)}
-                      />
-                      <IconButton
-                        label="Resolve"
-                        ariaLabel={`Resolve report for ${reference(group.latest) ?? "this group"}`}
-                        icon={Check}
+                        className={cn(buttonMotion, "h-9 px-2.5 text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+                      >
+                        <X aria-hidden data-icon="inline-start" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Resolve report for ${reference(group.latest) ?? "this group"}`}
                         onClick={(event) => void settle(group, "resolve", event.currentTarget)}
-                      />
+                        className={cn(buttonMotion, "ml-1 h-9 px-2.5")}
+                      >
+                        <Check aria-hidden data-icon="inline-start" />
+                        Resolve
+                      </Button>
                     </>
                   )
                 : undefined
             }
-            actionsWidth={116}
+            actionsWidth={222}
             pagination={{
               page: currentPage,
               pageSize,

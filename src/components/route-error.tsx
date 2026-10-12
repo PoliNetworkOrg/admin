@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/button"
 function ErrorFrame({ children }: { children: ReactNode }) {
   const inShell = useInShell()
   const surface = <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">{children}</div>
-  if (inShell) return <PageContent width="record">{surface}</PageContent>
+  if (inShell) {
+    return (
+      <div className="pt-4.5 shell:pt-7">
+        <PageContent width="record">{surface}</PageContent>
+      </div>
+    )
+  }
   return (
     <div className="grid min-h-dvh place-items-center bg-(--pn-bg) p-6 text-(--pn-fg)">
       <div className="w-full max-w-[560px]">{surface}</div>

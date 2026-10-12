@@ -38,7 +38,10 @@ export type CommandPaletteProps = {
   onSignOut: () => void
 }
 
-/** ⌘K palette: every section and the shell actions. No animation. */
+/**
+ * ⌘K palette: every section, "Find “…” in {section}" for the sections that take `?q=`, and the shell actions. No
+ * animation.
+ */
 export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPaletteProps) {
   const [query, setQuery] = useState("")
   // Set when an entry runs, so closing does not hand focus back to the trigger (see `finalFocus`).
@@ -92,11 +95,27 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
       { id: "action:sign-out", label: "Sign out", glyph: actionGlyph(LogOut), run: onSignOut },
     ]
 
+    // With a query, each section that reads `?q=` offers to open its list searched for it.
+    const trimmed = query.trim()
+    const finds: PaletteEntry[] = trimmed
+      ? panelServices.flatMap((service) =>
+          service.sections
+            .filter((section) => section.queryable)
+            .map((section) => ({
+              id: `find:${service.id}:${section.id}`,
+              label: `Find “${trimmed}” in ${service.title} › ${section.title}`,
+              glyph: actionGlyph(Search),
+              run: () => void navigate({ href: `${section.path}?q=${encodeURIComponent(trimmed)}` }),
+            }))
+        )
+      : []
+
     return [
       { heading: "Sections", entries: sections.filter((entry) => matches(entry.label, normalizedQuery)) },
+      { heading: "Search", entries: finds },
       { heading: "Actions", entries: actions.filter((entry) => matches(entry.label, normalizedQuery)) },
     ].filter((group) => group.entries.length > 0)
-  }, [normalizedQuery, navigate, theme, toggleTheme, onSignOut])
+  }, [query, normalizedQuery, navigate, theme, toggleTheme, onSignOut])
 
   function run(entry: PaletteEntry) {
     ranEntry.current = true
@@ -135,7 +154,7 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
               <Command.Input
                 value={query}
                 onValueChange={setQuery}
-                placeholder="Search sections and actions…"
+                placeholder="Search pages, users, groups and members…"
                 data-focus-ring="none"
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-(--pn-fg) outline-none placeholder:text-(--pn-fg-subtle)"
               />

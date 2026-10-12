@@ -5,6 +5,7 @@ import {
   DataTable,
   type DataTableColumn,
   GroupLabelBadges,
+  Hint,
   PAGE_SIZES,
   PlatformGlyph,
   type TableSort,
@@ -17,7 +18,6 @@ import {
   GroupRowActions,
   groupKey,
   labelLink,
-  mobileGroupTableClasses,
   resolveLabels,
   useGroupActions,
   useLabelsByPath,
@@ -92,9 +92,9 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
       cell: (row) => (
         <span className="flex min-w-0 items-center gap-2">
           <PlatformGlyph platform={row.type} />
-          <span title={row.title} className="min-w-0 truncate">
-            {row.title}
-          </span>
+          <Hint overflowOnly label={row.title}>
+            <span className="min-w-0 truncate">{row.title}</span>
+          </Hint>
         </span>
       ),
     },
@@ -127,7 +127,6 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
     <>
       <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
         <DataTable
-          className={canAct ? mobileGroupTableClasses : undefined}
           label="Groups"
           columns={columns}
           rows={visible}

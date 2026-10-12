@@ -30,8 +30,8 @@ type SegmentedControlProps<T extends string> = {
 }
 
 /**
- * 36px segmented control on Base UI `ToggleGroup`: a `--pn-muted` track with 32px segments of equal width
- * from 1024px (each as wide as the widest label); the pressed one sits on the surface with a 1px line. Pressing the active
+ * 40px segmented control on Base UI `ToggleGroup`: a bordered track (the surface in dark, `--pn-muted` in light) with
+ * 32px segments; the pressed one is raised. Counts are DM Mono, accent on the pressed segment. Pressing the active
  * segment again keeps it selected.
  */
 export function SegmentedControl<T extends string>({
@@ -55,9 +55,7 @@ export function SegmentedControl<T extends string>({
       }}
       disabled={disabled}
       className={cn(
-        // Equal segments from 1024px (`1fr` with an automatic minimum, so none shrinks below its label); narrower,
-        // segments keep their natural width so a long set can wrap in the toolbar.
-        "inline-flex h-9 w-fit shrink-0 items-center gap-0.5 rounded-(--pn-r-3) bg-(--pn-muted) p-0.5 data-disabled:opacity-100 lg:inline-grid lg:grid-flow-col lg:[grid-auto-columns:1fr]",
+        "inline-flex h-10 w-fit shrink-0 items-center gap-0.5 rounded-[9px] border border-(--pn-line) bg-(--pn-muted) p-[3px] max-shell:p-px data-disabled:opacity-100 dark:bg-(--pn-surface)",
         className
       )}
     >
@@ -67,14 +65,16 @@ export function SegmentedControl<T extends string>({
           value={item.value}
           aria-label={item.ariaLabel}
           className={cn(
-            "inline-flex h-8 items-center justify-center gap-1.5 rounded-(--pn-r-2) px-2.5 text-[13px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color,box-shadow] duration-120 hover:text-(--pn-fg) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:text-(--pn-fg-subtle) data-pressed:bg-(--pn-surface) data-pressed:text-(--pn-fg) data-pressed:shadow-[0_0_0_1px_var(--pn-line)] dark:data-pressed:bg-(--pn-nav-active) [&_svg]:size-3.5 [&_svg]:shrink-0",
+            "group/segment inline-flex h-8 max-shell:h-9 min-w-9 items-center justify-center gap-1.5 rounded-(--pn-r-2) px-3 text-[13px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color,box-shadow] duration-120 hover:text-(--pn-fg) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:text-(--pn-fg-subtle) data-pressed:bg-(--pn-surface) data-pressed:text-(--pn-fg) data-pressed:shadow-[0_1px_2px_oklch(0.22_0.024_250/0.12)] dark:data-pressed:bg-(--pn-line) dark:data-pressed:shadow-none [&_svg]:size-3.5 [&_svg]:shrink-0",
             itemClassName
           )}
         >
           {item.icon}
           {item.label}
           {item.count !== undefined && (
-            <span className="text-xs font-normal text-(--pn-fg-muted) tabular-nums">{formatNumber(item.count)}</span>
+            <span className="font-mono text-[11px] font-normal text-(--pn-fg-muted) tabular-nums group-data-pressed/segment:text-(--pn-accent)">
+              {formatNumber(item.count)}
+            </span>
           )}
         </Toggle>
       ))}

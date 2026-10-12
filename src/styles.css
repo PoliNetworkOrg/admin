@@ -1,9 +1,44 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Scrolling surfaces and portals share the dashboard palette in both themes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pn-line-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--pn-line-strong);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--pn-fg-subtle);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The shell breakpoint (760px): `shell:` gets the rail and panel, `max-shell:` the top bar, pills and bottom nav. */
+@theme {
+  --breakpoint-shell: 47.5rem;
+}
 
 /* Design tokens (docs/design.md). Components use the --pn-* variables or the utilities mapped to them. */
 
@@ -36,10 +71,12 @@
   --pn-n-950: #060e16;
 
   /* Semantic, light */
-  --pn-bg: var(--pn-n-0);
+  --pn-bg: #f6f7f9;
   --pn-surface: var(--pn-n-0);
   --pn-surface-raised: var(--pn-n-0);
-  --pn-nav: var(--pn-n-50);
+  --pn-nav: var(--pn-n-0);
+  --pn-panel: #fbfcfd;
+  --pn-sunken: var(--pn-n-50);
   --pn-nav-active: var(--pn-n-200);
   --pn-muted: var(--pn-n-100);
   --pn-line: oklch(0.22 0.024 250 / 0.1);
@@ -54,6 +91,9 @@
   --pn-accent-solid-fg: #ffffff;
   --pn-accent-soft: var(--pn-brand-50);
   --pn-accent-soft-hover: var(--pn-brand-100);
+  /* Hover: a faint brand tint over any surface, and a half-strength brand border. Selected states keep accent-soft. */
+  --pn-hover: color-mix(in oklab, var(--pn-brand-500) 6%, var(--pn-surface));
+  --pn-hover-line: color-mix(in oklab, var(--pn-accent) 40%, var(--pn-line-strong));
   --pn-selection: var(--pn-brand-200);
   --pn-focus: var(--pn-brand-500);
   --pn-success-fg: #00642b;
@@ -67,13 +107,6 @@
   --pn-danger-solid: #a43b35;
   --pn-info-fg: var(--pn-brand-700);
   --pn-info-bg: var(--pn-brand-50);
-  /* Original group-action palette; independent of status and toast colors. */
-  --pn-action-blue: oklch(0.468 0.141 255.426);
-  --pn-action-green: oklch(0.508 0.118 165.612);
-  --pn-action-green-tint: oklch(0.696 0.17 162.48);
-  --pn-action-amber: oklch(0.555 0.163 48.998);
-  --pn-action-amber-tint: oklch(0.769 0.188 70.08);
-  --pn-action-red: oklch(0.545 0.15 33.74);
   --pn-scrim: oklch(0.16 0.02 250 / 0.4);
 
   /* Elevation. Dark mode swaps these for a ring plus a deeper shadow. */
@@ -127,7 +160,7 @@
   --secondary-foreground: var(--pn-fg);
   --muted: var(--pn-muted);
   --muted-foreground: var(--pn-fg-muted);
-  --accent: var(--pn-accent-soft);
+  --accent: var(--pn-hover);
   --accent-foreground: var(--pn-accent);
   --destructive: var(--pn-danger-solid);
   --border: var(--pn-line);
@@ -142,6 +175,8 @@
   --pn-surface: #11181f;
   --pn-surface-raised: #192028;
   --pn-nav: #060b11;
+  --pn-panel: #0b1218;
+  --pn-sunken: #0d141a;
   --pn-nav-active: oklch(1 0 0 / 0.08);
   --pn-muted: #1b222a;
   --pn-line: #262f38;
@@ -156,6 +191,8 @@
   --pn-accent-solid-fg: var(--pn-n-950);
   --pn-accent-soft: var(--pn-brand-900);
   --pn-accent-soft-hover: var(--pn-brand-950);
+  --pn-hover: color-mix(in oklab, var(--pn-brand-300) 7%, var(--pn-surface-raised));
+  --pn-hover-line: color-mix(in oklab, var(--pn-accent) 35%, var(--pn-line-strong));
   --pn-selection: var(--pn-brand-800);
   --pn-focus: var(--pn-brand-300);
   --pn-success-fg: #83d494;
@@ -169,10 +206,6 @@
   --pn-danger-solid: #c9524a;
   --pn-info-fg: var(--pn-brand-300);
   --pn-info-bg: var(--pn-brand-900);
-  --pn-action-blue: oklch(0.751 0.114 253.205);
-  --pn-action-green: oklch(0.845 0.143 164.978);
-  --pn-action-amber: oklch(0.879 0.169 91.605);
-  --pn-action-red: oklch(0.646 0.219 25.849);
   --pn-scrim: oklch(0 0 0 / 0.6);
 
   --pn-shadow-float: 0 0 0 1px var(--pn-line-strong), 0 8px 24px oklch(0 0 0 / 0.5);
@@ -295,7 +328,7 @@ p {
 :is(input, textarea, [data-slot="combobox-input"]):focus-visible:not([data-focus-ring="none"]) {
   outline: none;
   border-color: var(--pn-focus);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--pn-focus) 25%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-focus) 25%, transparent);
 }
 
 tr:focus-visible {
@@ -317,7 +350,7 @@ tr:focus-visible {
   ) {
   outline: none;
   border-color: var(--pn-danger-solid);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--pn-danger-solid) 25%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-danger-solid) 25%, transparent);
 }
 
 /* A dialog panel that takes focus itself (no focusable field) never shows a ring; its children keep theirs. */
@@ -350,7 +383,7 @@ tr:focus-visible {
 }
 
 [data-slot="button"].bg-primary:is(:disabled, [data-disabled]) {
-  background: color-mix(in oklch, var(--pn-accent-solid) 50%, var(--pn-surface));
+  background: color-mix(in oklab, var(--pn-accent-solid) 50%, var(--pn-surface));
   color: var(--pn-accent-solid-fg);
 }
 
@@ -490,4 +523,9 @@ tr:focus-visible {
 
 @utility animate-spin-slow {
   animation: spin 1s linear infinite;
+}
+
+/* Touch focus keeps the chart tooltip; only keyboard focus draws the app ring. */
+.user-growth-chart :focus:not(:focus-visible) {
+  outline: none;
 }

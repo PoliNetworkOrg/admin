@@ -1,9 +1,15 @@
-import { ChevronDown } from "lucide-react"
-import { useDeferredValue, useState } from "react"
+import { ChevronDown, Tags, X } from "lucide-react"
+import { useDeferredValue, useEffect, useState } from "react"
 
 import {
   buttonMotion,
+  dialogFooter,
   floatingMotion,
+  FormDialog,
+  IconButton,
+  LabelChip,
+  labelDisplayName,
+  Reveal,
   LabelTreeSelector,
   PAGE_SIZES,
   raisedSurface,
@@ -14,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { GroupLabel } from "@/features/group-labels/types"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import type { VisibilityFilter } from "./visibility"
@@ -152,16 +159,140 @@ type LabelsFilterPopoverProps = {
   labels: GroupLabel[]
   value: LabelFilter
   onChange: (value: LabelFilter) => void
+  groupCount: number
 }
 
 /**
  * The `Labels` toolbar filter: an outline button showing "Labels · n" when active and a 320px
  * popover with "Must have" / "Must not have" pickers. A label picked on one side is hidden on the other.
  */
-export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPopoverProps) {
+export function LabelsFilterPopover({ labels, value, onChange, groupCount }: LabelsFilterPopoverProps) {
   const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState<"include" | "exclude" | null>(null)
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia("(width < 760px)")
+    const update = () => setMobile(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
   const count = labelFilterCount(value)
   const active = count > 0
+
+  const footer = (
+    <div
+      className={cn(
+        mobile ? dialogFooter : "flex items-center border-t border-(--pn-line) pt-2",
+        "justify-between max-shell:[&>*]:flex-none"
+      )}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!active}
+        onClick={() => onChange(EMPTY_LABEL_FILTER)}
+        className={cn(buttonMotion, "self-start")}
+      >
+        Clear label filters
+      </Button>
+      <span className="text-xs text-(--pn-fg-muted) tabular-nums">{pluralize(groupCount, "group")}</span>
+    </div>
+  )
+
+  const content = (
+    <>
+      {labels.length === 0 ? (
+        <SectionEmpty title="No labels have been created yet" className="px-1 py-4" />
+      ) : (
+        <>
+          {(["include", "exclude"] as const).map((side) => (
+            <section key={side} className="flex flex-col gap-1.5">
+              <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">
+                {side === "include" ? "Must have" : "Must not have"}
+              </h2>
+              <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface) px-2 py-1">
+                {value[side].map((path) => {
+                  const label = labels.find((candidate) => candidate.label === path)
+                  return label ? (
+                    <span key={path} className="inline-flex min-w-0 items-center">
+                      <LabelChip label={label} />
+                      <IconButton
+                        icon={X}
+                        label={`Remove ${labelDisplayName(label.label)} filter`}
+                        onClick={() => onChange({ ...value, [side]: value[side].filter((item) => item !== path) })}
+                      />
+                    </span>
+                  ) : null
+                })}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(buttonMotion, "text-(--pn-fg-muted)")}
+                  aria-expanded={expanded === side}
+                  onClick={() => setExpanded(expanded === side ? null : side)}
+                >
+                  {expanded === side ? "Close picker" : "Add…"}
+                </Button>
+              </div>
+              <Reveal open={expanded === side} lazy>
+                <LabelTreeSelector
+                  allLabels={labels.filter(
+                    (label) => !value[side === "include" ? "exclude" : "include"].includes(label.label)
+                  )}
+                  selected={value[side]}
+                  onToggleMany={(picked, select) =>
+                    onChange({ ...value, [side]: toggled(value[side], picked, select) })
+                  }
+                  className="h-52 max-shell:h-44"
+                />
+              </Reveal>
+            </section>
+          ))}
+          {!mobile && footer}
+        </>
+      )}
+    </>
+  )
+
+  if (mobile)
+    return (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            buttonMotion,
+            "h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] data-popup-open:bg-(--pn-muted)",
+            active &&
+              "border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklab,var(--pn-accent)_60%,transparent)]"
+          )}
+          onClick={() => setOpen(true)}
+        >
+          <Tags aria-hidden strokeWidth={1.75} data-icon="inline-start" />
+          Labels
+          {active && (
+            <span className="tabular-nums text-(--pn-fg-muted)">
+              <span aria-hidden>· </span>
+              {count}
+              <span className="sr-only"> active</span>
+            </span>
+          )}
+          <ChevronDown aria-hidden data-icon="inline-end" className="text-(--pn-fg-muted)" />
+        </Button>
+        <FormDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Filter by label"
+          noun="label filter"
+          dirty={false}
+          onSubmit={() => {}}
+          footer={footer}
+        >
+          {content}
+        </FormDialog>
+      </>
+    )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -172,13 +303,14 @@ export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPop
             size="sm"
             className={cn(
               buttonMotion,
-              "shrink-0 gap-1.5 data-popup-open:bg-(--pn-muted)",
+              "h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] data-popup-open:bg-(--pn-muted)",
               active &&
-                "border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklch,var(--pn-accent)_60%,transparent)]"
+                "border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklab,var(--pn-accent)_60%,transparent)]"
             )}
           />
         }
       >
+        <Tags aria-hidden strokeWidth={1.75} data-icon="inline-start" />
         Labels
         {active && (
           <span className="tabular-nums text-(--pn-fg-muted)">
@@ -199,43 +331,7 @@ export function LabelsFilterPopover({ labels, value, onChange }: LabelsFilterPop
           "max-h-(--available-height) w-80 gap-3 overflow-y-auto rounded-(--pn-r-4) p-3 max-lg:max-w-[calc(100vw-2rem)]"
         )}
       >
-        {labels.length === 0 ? (
-          <SectionEmpty title="No labels have been created yet" className="px-1 py-4" />
-        ) : (
-          <>
-            <section className="flex flex-col gap-1.5">
-              <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">Must have</h2>
-              <LabelTreeSelector
-                allLabels={labels.filter((label) => !value.exclude.includes(label.label))}
-                selected={value.include}
-                onToggleMany={(picked, select) =>
-                  onChange({ ...value, include: toggled(value.include, picked, select) })
-                }
-                className="h-64"
-              />
-            </section>
-            <section className="flex flex-col gap-1.5">
-              <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">Must not have</h2>
-              <LabelTreeSelector
-                allLabels={labels.filter((label) => !value.include.includes(label.label))}
-                selected={value.exclude}
-                onToggleMany={(picked, select) =>
-                  onChange({ ...value, exclude: toggled(value.exclude, picked, select) })
-                }
-                className="h-64"
-              />
-            </section>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!active}
-              onClick={() => onChange(EMPTY_LABEL_FILTER)}
-              className={cn(buttonMotion, "self-start")}
-            >
-              Clear label filters
-            </Button>
-          </>
-        )}
+        {content}
       </PopoverContent>
     </Popover>
   )

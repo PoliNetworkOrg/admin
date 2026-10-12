@@ -16,6 +16,7 @@ import {
   LoadingButton,
   scrimClasses,
 } from "@/components/primitives"
+import { dialogTitleText, dialogDescriptionText } from "@/components/primitives/confirm-dialog"
 import { appToast } from "@/components/shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -170,10 +171,12 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
           className={cn(dialogPanel, dialogMotion, "max-w-[480px]")}
         >
           <header className="relative flex shrink-0 flex-col gap-1.5 px-5 pt-5 pr-14">
-            <DialogTitle className="text-[15px] leading-[22px] font-semibold tracking-[-0.005em] text-balance">
-              {confirming ? `Remove ${selectedName}?` : text.title}
+            <DialogTitle className={dialogTitleText}>
+              {confirming
+                ? `Remove ${selectedName}?`
+                : `${adding ? "Add a member to" : "Remove a member from"} ${group.displayName}`}
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-5 text-pretty text-(--pn-fg-muted)">
+            <DialogDescription className={dialogDescriptionText}>
               {confirming ? (
                 "They lose access to this Microsoft 365 group. Their account is not deleted."
               ) : (
@@ -215,8 +218,19 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                         value={`${choice.name ?? "Unnamed user"} ${choice.mail ?? ""} ${choice.id}`}
                         data-checked={selected?.id === choice.id}
                         onSelect={() => choose(choice)}
-                        className="h-10 gap-2.5 rounded-(--pn-r-2) px-2 py-0 data-selected:bg-(--pn-muted) data-[checked=true]:bg-(--pn-accent-soft) [&>svg:last-child]:text-(--pn-accent)"
+                        className="min-h-15 gap-2.5 rounded-(--pn-r-2) px-2 py-2 data-selected:bg-(--pn-muted) data-[checked=true]:bg-(--pn-accent-soft) [&>svg:last-child]:text-(--pn-accent)"
                       >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "grid size-4 shrink-0 place-items-center rounded-full border border-(--pn-line-strong)",
+                            selected?.id === choice.id && "border-(--pn-accent)"
+                          )}
+                        >
+                          {selected?.id === choice.id && (
+                            <span className="size-2 rounded-full bg-(--pn-accent-solid)" />
+                          )}
+                        </span>
                         <PersonLine choice={choice} />
                       </CommandItem>
                     ))}
@@ -245,13 +259,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                 >
                   Keep member
                 </Button>
-                <LoadingButton
-                  size="default"
-                  tone="dangerSolid"
-                  pending={pending}
-                  onClick={() => void submit()}
-                  className="w-full min-[480px]:w-auto"
-                >
+                <LoadingButton size="default" tone="dangerSolid" pending={pending} onClick={() => void submit()}>
                   Remove member
                 </LoadingButton>
               </>
@@ -267,13 +275,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   Cancel
                 </Button>
                 {adding ? (
-                  <LoadingButton
-                    size="default"
-                    pending={pending}
-                    disabled={!selected}
-                    onClick={() => void submit()}
-                    className="w-full min-[480px]:w-auto"
-                  >
+                  <LoadingButton size="default" pending={pending} disabled={!selected} onClick={() => void submit()}>
                     Add member
                   </LoadingButton>
                 ) : null}
@@ -290,14 +292,16 @@ function PersonLine({ choice }: { choice: Choice }) {
   const name = choice.name ?? "Unnamed user"
   return (
     <>
-      <Avatar size="sm" className="size-6 shrink-0">
-        <AvatarFallback className="bg-(--pn-muted) text-[10px] font-medium text-(--pn-fg-muted)">
+      <Avatar size="sm" className="size-8 shrink-0">
+        <AvatarFallback className="bg-(--pn-muted) text-[11px] font-medium text-(--pn-fg-muted)">
           {initialsOf(name)}
         </AvatarFallback>
       </Avatar>
-      <span className="flex min-w-0 flex-1 items-baseline gap-2">
-        <span className="truncate text-[13px] text-(--pn-fg)">{name}</span>
-        {choice.mail ? <span className="truncate text-xs text-(--pn-fg-muted)">{choice.mail}</span> : null}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[14px] leading-5 break-words text-(--pn-fg)">{name}</span>
+        {choice.mail ? (
+          <span className="font-mono text-xs leading-4 break-all text-(--pn-fg-muted)">{choice.mail}</span>
+        ) : null}
       </span>
     </>
   )

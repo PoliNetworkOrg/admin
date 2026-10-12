@@ -14,6 +14,7 @@ import {
   TranslationText,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast } from "@/components/shell"
 import { AccordionItem } from "@/components/ui/accordion"
 import type { FAQItem } from "@/lib/api/types"
@@ -47,12 +48,16 @@ function LanguageLine({ lang, children, muted }: { lang: "IT" | "EN"; children: 
       <Chip size="tiny" className={cn("w-[26px] justify-center", muted && "text-(--pn-fg-muted)")}>
         {lang}
       </Chip>
-      <span
-        title={children}
-        className={cn("truncate text-[13px] leading-5", muted ? "text-(--pn-fg-muted)" : "font-medium text-(--pn-fg)")}
-      >
-        {children}
-      </span>
+      <Hint overflowOnly label={children}>
+        <span
+          className={cn(
+            "truncate text-[13px] leading-5",
+            muted ? "text-(--pn-fg-muted)" : "font-medium text-(--pn-fg)"
+          )}
+        >
+          {children}
+        </span>
+      </Hint>
     </span>
   )
 }
@@ -70,11 +75,11 @@ export function FaqRow({ faq, canWrite, onEdit, onDelete }: FaqRowProps) {
     // Hovering the header (the clickable part) tints the whole item, so an open item's answers are not left out.
     <AccordionItem
       value={faq.faqId}
-      className="border-(--pn-line) transition-[background-color] duration-120 pointer-fine:has-[>h3:hover]:bg-(--pn-muted)"
+      className="border-(--pn-line) transition-[background-color] duration-120 pointer-fine:has-[>h3:hover]:bg-(--pn-hover)"
     >
       <AccordionPrimitive.Header className="flex min-h-12 items-center gap-3 pr-3 pl-5">
-        <AccordionPrimitive.Trigger className="group/trigger flex min-w-0 flex-1 items-center gap-3 self-stretch py-2 text-left outline-offset-[-2px]">
-          <span className="flex min-w-0 flex-1 flex-col">
+        <AccordionPrimitive.Trigger className="group/trigger flex min-w-0 flex-1 items-center gap-3 self-stretch py-3 text-left outline-offset-[-2px]">
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
             <LanguageLine lang="IT">{faq.titleIt}</LanguageLine>
             {faq.titleEn && (
               <LanguageLine lang="EN" muted>

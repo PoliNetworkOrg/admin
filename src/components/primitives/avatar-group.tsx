@@ -66,7 +66,7 @@ export function AvatarGroup({ people, max = 7, listLabel = "Members", className 
             aria-label={`Show ${pluralize(rest.length, "more member")}`}
             className={cn(
               buttonMotion,
-              "relative -ml-0.5 inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-(--pn-r-full) border border-(--pn-line-strong) bg-(--pn-muted) px-1.5 text-[11px] font-medium text-(--pn-fg-muted) tabular-nums ring-2 ring-(--pn-surface) transition-[color,border-color] hover:border-(--pn-fg-subtle) hover:text-(--pn-fg) data-popup-open:border-(--pn-fg-subtle) data-popup-open:text-(--pn-fg)"
+              "relative -ml-0.5 inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-(--pn-r-full) border border-(--pn-line-strong) bg-(--pn-muted) px-1.5 text-[11px] font-medium text-(--pn-fg-muted) tabular-nums ring-2 ring-(--pn-surface) transition-[color,border-color] hover:border-(--pn-hover-line) hover:text-(--pn-fg) data-popup-open:border-(--pn-fg-subtle) data-popup-open:text-(--pn-fg)"
             )}
           >
             +{rest.length}
@@ -84,9 +84,9 @@ export function AvatarGroup({ people, max = 7, listLabel = "Members", className 
               {rest.map((person) => (
                 <li key={person.id} className="flex h-9 items-center gap-2.5 px-3">
                   <PersonAvatar person={person} className="size-6 shrink-0" />
-                  <span title={person.name} className="truncate text-[13px] text-(--pn-fg)">
-                    {person.name}
-                  </span>
+                  <Hint overflowOnly label={person.name}>
+                    <span className="truncate text-[13px] text-(--pn-fg)">{person.name}</span>
+                  </Hint>
                 </li>
               ))}
             </ul>

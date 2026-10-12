@@ -8,8 +8,8 @@ const platforms = {
   wa: { logo: whatsappLogo, label: "WhatsApp" },
 }
 
-/** The 14px platform logo, named for assistive tech. */
+/** The 16px platform logo, named for assistive tech. */
 export function PlatformGlyph({ platform, className }: { platform: GroupWithLabels["type"]; className?: string }) {
   const { logo, label } = platforms[platform]
-  return <img src={logo} alt={label} width={14} height={14} className={cn("size-3.5 shrink-0", className)} />
+  return <img src={logo} alt={label} width={16} height={16} className={cn("size-4 shrink-0", className)} />
 }

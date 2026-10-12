@@ -33,12 +33,12 @@ export function SkeletonRows({ columns, rows = 8 }: { columns: number; rows?: nu
     <motion.tr
       key={row}
       aria-hidden
-      className="h-11 border-b border-(--pn-line) last:border-0"
+      className="h-13 border-b border-(--pn-line) last:border-0 max-shell:flex max-shell:items-center max-shell:gap-3 max-shell:px-3.5"
       animate={reduceMotion ? undefined : { opacity: [1, 0.6, 1] }}
       transition={{ duration: 1.4, ease: "easeInOut", repeat: Infinity }}
     >
       {Array.from({ length: columns }, (_, column) => (
-        <td key={column} className="px-4 first:pl-5 last:pr-5">
+        <td key={column} className="px-4 max-shell:p-0 max-shell:[&:nth-child(n+3)]:hidden">
           <Block className={cn("h-3", cellWidths[(row + column) % cellWidths.length])} />
         </td>
       ))}
@@ -52,9 +52,9 @@ export function TableSkeleton({ columns, rows = 8, label = "Loading…", classNa
   return (
     <Pulse
       label={label}
-      className={cn("overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)", className)}
+      className={cn("overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)", className)}
     >
-      <div className="flex h-9 items-center gap-8 border-b border-(--pn-line) px-5">
+      <div className="flex h-10.5 items-center gap-8 border-b border-(--pn-line) px-4">
         {Array.from({ length: columns }, (_, column) => (
           <div key={column} className={cn("flex-1", column === 0 && "flex-2")}>
             <Block className="h-2.5 w-16" />
@@ -62,7 +62,7 @@ export function TableSkeleton({ columns, rows = 8, label = "Loading…", classNa
         ))}
       </div>
       {Array.from({ length: rows }, (_, row) => (
-        <div key={row} className="flex h-11 items-center gap-8 border-b border-(--pn-line) px-5 last:border-0">
+        <div key={row} className="flex h-13 items-center gap-8 border-b border-(--pn-line) px-4 last:border-0">
           {Array.from({ length: columns }, (_, column) => (
             <Block key={column} className={cn("h-3 flex-1", column === 0 && "flex-2")} />
           ))}

@@ -44,9 +44,8 @@ function CopyResultIcon({ state }: { state: keyof typeof RESULT_ICONS }) {
 }
 
 /**
- * Copy and open the group's invite link: two ghost buttons, flush, with 8px before the actions that follow. Copy shows
- * its result in place (circle-check, circle-x) for 1.5s. Without a link, a disabled "Not shared" button (dimmed amber
- * icon) takes Open's place and Copy's slot stays empty, so columns stay aligned.
+ * Copy and open the group's invite link: two ghost buttons. Copy shows its result in place (circle-check, circle-x)
+ * for 1.5s. Without a link, an amber "Not shared" badge takes both slots.
  */
 export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
   const [result, setResult] = useState<"copied" | "failed" | null>(null)
@@ -70,20 +69,13 @@ export function InviteLinkActions({ link, name }: InviteLinkActionsProps) {
   }
 
   return (
-    <div className="mr-2 flex shrink-0 items-center">
+    <div className="flex shrink-0 items-center gap-0.5">
       {link === null ? (
-        <>
-          <span aria-hidden className="size-9 shrink-0" />
-          <IconButton
-            label="Not shared"
-            ariaLabel={name ? `${name} invite link not shared` : undefined}
-            icon={Link2Off}
-            // Amber says "missing", dimmed says it can't be pressed.
-            iconClassName="text-(--pn-action-amber) opacity-55"
-            disabled
-            focusableWhenDisabled
-          />
-        </>
+        <span className="mx-1 inline-flex h-5.5 items-center gap-1.25 rounded-full bg-(--pn-warning-bg) px-2 text-xs font-medium whitespace-nowrap text-(--pn-warning-fg)">
+          <Link2Off aria-hidden strokeWidth={2} className="size-3.25" />
+          Not shared
+          {name ? <span className="sr-only">: no invite link for {name}</span> : null}
+        </span>
       ) : (
         <>
           <IconButton

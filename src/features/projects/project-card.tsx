@@ -22,6 +22,7 @@ import {
   TranslationText,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { cn } from "@/lib/utils"
 
 import { WebLogo, WebLogoUpload } from "../web/logo-upload"
@@ -84,11 +85,16 @@ export function ProjectCard({
   const editing = session !== null
   // A move writes the whole record with its old values, so edit, delete and drag wait for it to finish.
   const [moving, setMoving] = useState(false)
-  const { ref, handleRef, isDragging, isDropping } = useSortable({
+  // Layout follows `draggable`, so a pending move (which pauses sorting) doesn't shift the card's content.
+  const draggable = canWrite && !draft && !editing
+  const sortable = draggable && !moving
+  // The whole card is the drag source: a pointer drags it after 5px (buttons and links still click), touch after a
+  // 250ms press, and the keyboard picks it up with Space/Enter while the card itself has focus.
+  const { ref, isDragging, isDropping } = useSortable({
     id: project.id,
     index,
     group: project.category,
-    disabled: draft || editing || moving || !canWrite,
+    disabled: !sortable,
     transition: reduceMotion ? null : SORT_TRANSITION,
   })
   const titleRef = useRef<HTMLInputElement>(null)
@@ -104,57 +110,55 @@ export function ProjectCard({
   }
 
   const handle = (
-    <button
-      ref={handleRef}
-      type="button"
-      aria-label={`Reorder ${project.title}`}
-      className="absolute top-4 left-0 grid h-10 w-4 cursor-grab touch-none place-items-center rounded-(--pn-r-1) text-(--pn-fg-subtle) transition-[color] duration-120 hover:text-(--pn-fg) focus-visible:text-(--pn-fg) after:absolute after:inset-y-0 after:left-0 after:w-9 active:cursor-grabbing"
-    >
-      <GripVertical aria-hidden className="size-4" />
-    </button>
+    <GripVertical
+      aria-hidden
+      className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-(--pn-fg-subtle) transition-[color] duration-120 group-hover/project:text-(--pn-fg-muted) max-shell:hidden"
+    />
   )
 
   const viewHeader = (
-    <div className="flex h-10 min-w-0 items-center gap-3">
-      <WebLogo src={project.logo} name={project.title} fallback="PR" />
-      <p title={project.title} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
-        {project.title}
-      </p>
+    <div className="flex min-w-0 items-center gap-3.5">
+      <WebLogo src={project.logo} name={project.title} fallback="PR" className="size-12 rounded-(--pn-r-4)" />
+      <div className="flex min-w-0 flex-col">
+        <Hint overflowOnly label={project.title}>
+          <h3 className="truncate text-[16px] leading-6 font-semibold text-(--pn-fg)">{project.title}</h3>
+        </Hint>
+        {project.link ? (
+          <Hint label={project.link}>
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+
+              className="inline-flex max-w-full items-center gap-1 text-[13px] leading-5 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
+            >
+              <span className="truncate max-shell:whitespace-normal max-shell:break-all">
+                {project.link.replace(/^https?:\/\//, "")}
+              </span>
+              <ExternalLink aria-hidden className="size-3 shrink-0" />
+            </a>
+          </Hint>
+        ) : (
+          <Unset className="text-[13px]" />
+        )}
+      </div>
     </div>
   )
 
   const view = (
-    <>
-      <p className="text-[13px] leading-5">
-        {project.link ? (
-          <a
-            href={project.link}
-            target="_blank"
-            rel="noreferrer"
-            title={project.link}
-            className="inline-flex max-w-full items-center gap-1 text-(--pn-accent) transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
-          >
-            <span className="truncate">{project.link}</span>
-            <ExternalLink aria-hidden className="size-3 shrink-0" />
-          </a>
-        ) : (
-          <Unset />
-        )}
-      </p>
-      <TranslationGroup>
-        <TranslationPanel lang="it">
-          <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
-        </TranslationPanel>
-        <TranslationPanel lang="en">
-          <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
-        </TranslationPanel>
-      </TranslationGroup>
-    </>
+    <TranslationGroup className="shell:pl-[62px]">
+      <TranslationPanel lang="it">
+        <TranslationText lines={4}>{project.descriptionIt}</TranslationText>
+      </TranslationPanel>
+      <TranslationPanel lang="en">
+        <TranslationText lines={4}>{project.descriptionEn}</TranslationText>
+      </TranslationPanel>
+    </TranslationGroup>
   )
 
   const edit = session && (
     <>
-      <div className="flex h-10 min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <WebLogoUpload
           src={session.values.logo}
           name={session.values.title}
@@ -164,27 +168,35 @@ export function ProjectCard({
           onChange={({ file, preview }) => session.onChange({ ...session.values, logo: preview, logoFile: file })}
           onError={session.onLogoError}
         />
+        {draft && (
+          <StatusBadge tone="warning" className="ml-auto">
+            Draft
+          </StatusBadge>
+        )}
+      </div>
+      <div className="grid gap-3.5 min-[900px]:grid-cols-2">
         <InlineEditInput
           ref={titleRef}
+          showLabel
           label="Project title"
           placeholder="Project title"
           value={session.values.title}
           maxLength={PROJECT_TITLE_MAX_LENGTH}
           onChange={(event) => session.onChange({ ...session.values, title: event.target.value })}
         />
-        {draft && <StatusBadge tone="warning">Draft</StatusBadge>}
+        <InlineEditInput
+          showLabel
+          label="Project link"
+          type="url"
+          inputMode="url"
+          placeholder="https://…"
+          value={session.values.link}
+          maxLength={PROJECT_LINK_MAX_LENGTH}
+          onChange={(event) => session.onChange({ ...session.values, link: event.target.value })}
+          onBlur={session.onLinkBlur}
+          error={session.linkError}
+        />
       </div>
-      <InlineEditInput
-        label="Project link"
-        type="url"
-        inputMode="url"
-        placeholder="https://…"
-        value={session.values.link}
-        maxLength={PROJECT_LINK_MAX_LENGTH}
-        onChange={(event) => session.onChange({ ...session.values, link: event.target.value })}
-        onBlur={session.onLinkBlur}
-        error={session.linkError}
-      />
       <TranslationGroup>
         <TranslationPanel lang="it" editing>
           <InlineEditTextarea
@@ -260,13 +272,21 @@ export function ProjectCard({
   return (
     <div
       ref={ref}
+      role={sortable ? "group" : undefined}
+      aria-label={sortable ? project.title : undefined}
+      aria-roledescription={sortable ? "sortable project" : undefined}
       className={cn(
-        "rounded-(--pn-r-4)",
+        "group/project rounded-(--pn-r-5)",
+        sortable && "cursor-grab select-none active:cursor-grabbing",
         (isDragging || isDropping) && "z-10 scale-[1.01] opacity-90 shadow-(--pn-shadow-float)"
       )}
     >
       <InlineEditCard
-        className="relative"
+        className={cn(
+          "relative transition-[border-color] duration-120",
+          draggable && "shell:pl-8",
+          sortable && "group-hover/project:border-(--pn-hover-line)"
+        )}
         readOnly={!canWrite}
         editing={editing}
         onEdit={onEdit}

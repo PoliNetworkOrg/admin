@@ -10,10 +10,10 @@ import { Spinner } from "./spinner"
 export const buttonTones = {
   default: "",
   dangerOutline:
-    "text-(--pn-danger-fg) border-[color-mix(in_oklch,var(--pn-danger-fg)_40%,transparent)] hover:border-[color-mix(in_oklch,var(--pn-danger-fg)_60%,transparent)] hover:bg-(--pn-danger-bg) hover:text-(--pn-danger-fg)",
-  dangerGhost: "text-(--pn-danger-fg) hover:bg-(--pn-danger-bg) hover:text-(--pn-danger-fg)",
+    "text-(--pn-danger-fg) border-[color-mix(in_oklab,var(--pn-danger-fg)_40%,transparent)] hover:border-(--pn-hover-line) hover:bg-(--pn-hover) hover:text-(--pn-accent)",
+  dangerGhost: "text-(--pn-danger-fg) hover:bg-(--pn-hover) hover:text-(--pn-accent)",
   dangerSolid:
-    "bg-(--pn-danger-solid) text-white hover:bg-[color-mix(in_oklch,var(--pn-danger-solid),black_10%)] focus-visible:ring-0",
+    "bg-(--pn-danger-solid) text-white hover:bg-(--pn-accent-solid) hover:text-(--pn-accent-solid-fg) focus-visible:ring-0",
 }
 
 type LoadingButtonProps = React.ComponentProps<typeof Button> & {

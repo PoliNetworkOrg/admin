@@ -16,7 +16,7 @@ export function Chip({ size = "default", className, ...props }: ChipProps) {
     <Badge
       variant="outline"
       className={cn(
-        "gap-1 rounded-(--pn-r-full) border-(--pn-line) bg-transparent font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 [a]:hover:bg-(--pn-muted) [a]:hover:text-(--pn-fg)",
+        "gap-1 rounded-(--pn-r-full) border-(--pn-line) bg-transparent font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 [a]:hover:bg-(--pn-hover) [a]:hover:text-(--pn-fg)",
         sizes[size],
         className
       )}

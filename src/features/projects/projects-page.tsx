@@ -327,7 +327,13 @@ export function ProjectsPage({ loadedProjects }: { loadedProjects: Project[] }) 
 
   return (
     <>
-      <PageBar left={<Toolbar filters={segments} />} right={canWrite ? addButton : undefined} />
+      <PageBar
+        description={
+          canWrite ? "Shown on the website in this order — drag to reorder" : "Shown on the website in this order"
+        }
+        left={<Toolbar filters={segments} />}
+        right={canWrite ? addButton : undefined}
+      />
       <PageContent width="wide">
         {slot.discardDialog}
         {cards.length === 0 ? (

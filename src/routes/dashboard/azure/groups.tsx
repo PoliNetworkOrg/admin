@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
 import { SettingsListSkeleton } from "@/components/primitives"
-import { PageContent } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
 import { getAzureMembers } from "@/features/azure/azure.functions"
 import { AzureGroupsPage } from "@/features/azure/groups-page"
 import { getAzureGroups } from "@/features/azure/groups.functions"
@@ -25,11 +25,14 @@ export const Route = createFileRoute("/dashboard/azure/groups")({
 
 function AzureGroupsPending() {
   return (
-    <PageContent>
-      <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">
-        <SettingsListSkeleton rows={8} label="Loading Microsoft 365 groups…" className="px-5" />
-      </div>
-    </PageContent>
+    <>
+      <PageBar />
+      <PageContent>
+        <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">
+          <SettingsListSkeleton rows={8} label="Loading Microsoft 365 groups…" className="px-5" />
+        </div>
+      </PageContent>
+    </>
   )
 }
 

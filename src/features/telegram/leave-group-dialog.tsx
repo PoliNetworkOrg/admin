@@ -1,4 +1,5 @@
 import { useServerFn } from "@tanstack/react-start"
+import { LogOut } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/primitives"
 import { appToast } from "@/components/shell"
@@ -45,6 +46,7 @@ export function LeaveGroupDialog({ open, onOpenChange, group, onLeft, finalFocus
 
   return (
     <ConfirmDialog
+      icon={LogOut}
       open={open}
       onOpenChange={onOpenChange}
       title={`Leave ${group.title}?`}

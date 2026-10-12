@@ -7,6 +7,7 @@ import {
   type DataTableColumn,
   EmptyState,
   GroupLabelBadges,
+  Hint,
   SegmentedControl,
 } from "@/components/primitives"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
@@ -17,7 +18,6 @@ import {
   GroupRowActions,
   groupKey,
   labelLink,
-  mobileGroupTableClasses,
   resolveLabels,
   useGroupActions,
   useLabelsByPath,
@@ -33,6 +33,7 @@ import {
 import { matchesVisibility, type VisibilityFilter, visibilityItems } from "@/features/groups/visibility"
 import { WhatsappGroupDialog } from "@/features/whatsapp/whatsapp-group-dialog"
 import type { GroupWithLabels, WaGroup } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
 
 type WhatsappGroupsPageProps = {
   groups: WaGroup[]
@@ -102,9 +103,9 @@ export function WhatsappGroupsPage({
       minWidth: 276,
       fill: true,
       cell: (row) => (
-        <span title={row.title} className="block truncate">
-          {row.title}
-        </span>
+        <Hint overflowOnly label={row.title}>
+          <span className="block truncate">{row.title}</span>
+        </Hint>
       ),
     },
     {
@@ -112,6 +113,7 @@ export function WhatsappGroupsPage({
       label: "Labels",
       priority: 1,
       width: 320,
+      mobile: "full",
       cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
     },
   ]
@@ -147,12 +149,19 @@ export function WhatsappGroupsPage({
   return (
     <>
       <PageBar
+        title="WhatsApp groups"
+        description={`${pluralize(all.length, "group")}, registered by hand`}
         left={
           <Toolbar
             search={{ value: list.query, onChange: list.setQuery, placeholder: "Search by group name…" }}
             filters={
               <>
-                <LabelsFilterPopover labels={labels} value={filter} onChange={list.setFilter} />
+                <LabelsFilterPopover
+                  groupCount={matching.length}
+                  labels={labels}
+                  value={filter}
+                  onChange={list.setFilter}
+                />
                 <SegmentedControl
                   label="Visibility"
                   items={visibilityItems(all)}
@@ -171,7 +180,6 @@ export function WhatsappGroupsPage({
       <PageContent width="wide">
         <div ref={groupActions.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-4)">
           <DataTable
-            className={canWrite || canLabels ? mobileGroupTableClasses : undefined}
             label="WhatsApp groups"
             columns={columns}
             rows={rows}

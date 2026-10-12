@@ -13,6 +13,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
@@ -72,13 +73,14 @@ const columns: DataTableColumn<Row>[] = [
     id: "user",
     label: "User",
     minWidth: 180,
+    mobile: "inline",
     cell: ({ grant, user }) => {
       const name = userName(user, grant.userId)
       return (
         <span className="flex min-w-0 flex-col">
-          <span className="truncate" title={name}>
-            {name}
-          </span>
+          <Hint overflowOnly label={name}>
+            <span className="truncate">{name}</span>
+          </Hint>
           <span className="truncate text-xs leading-4 font-normal text-(--pn-fg-muted)">
             {user?.username ? (
               `@${user.username}`
@@ -93,17 +95,33 @@ const columns: DataTableColumn<Row>[] = [
     },
   },
   {
+    id: "status",
+    label: "Status",
+    // Hides before the text columns: the segmented filter already states the status.
+    sortable: true,
+    priority: 5,
+    minWidth: 110,
+    mobile: "end",
+    cell: ({ status }) =>
+      status === "active" ? (
+        <StatusBadge tone="success">Active</StatusBadge>
+      ) : (
+        <StatusBadge tone="brand">Scheduled</StatusBadge>
+      ),
+  },
+  {
     id: "reason",
     label: "Reason",
     priority: 4,
     minWidth: 150,
     // Free text: takes the slack and truncates, so the date columns never get pushed out of view.
     fill: true,
+    mobile: "text",
     cell: ({ grant }) =>
       grant.reason ? (
-        <span className="block truncate" title={grant.reason}>
-          {grant.reason}
-        </span>
+        <Hint overflowOnly label={grant.reason}>
+          <span className="block truncate max-shell:whitespace-normal">{grant.reason}</span>
+        </Hint>
       ) : (
         <Unset />
       ),
@@ -113,7 +131,14 @@ const columns: DataTableColumn<Row>[] = [
     label: "Authorized by",
     priority: 3,
     minWidth: 130,
-    cell: ({ grant, grantor }) => <Grantor grant={grant} grantor={grantor} />,
+    cell: ({ grant, grantor }) => (
+      <span className="flex min-w-0 items-baseline gap-1">
+        <span aria-hidden className="hidden max-shell:inline">
+          By
+        </span>
+        <Grantor grant={grant} grantor={grantor} />
+      </span>
+    ),
   },
   {
     id: "source",
@@ -130,7 +155,13 @@ const columns: DataTableColumn<Row>[] = [
     priority: 2,
     minWidth: 150,
     className: "whitespace-nowrap tabular-nums",
-    cell: ({ grant }) => formatDateTime(grant.validSince),
+    // Cards show the whole window here on one line ("from → until") and drop the Expires cell.
+    cell: ({ grant }) => (
+      <>
+        {formatDateTime(grant.validSince)}
+        <span className="hidden max-shell:inline"> → {formatDateTime(grant.validUntil)}</span>
+      </>
+    ),
   },
   {
     id: "expires",
@@ -139,21 +170,8 @@ const columns: DataTableColumn<Row>[] = [
     priority: 1,
     minWidth: 150,
     className: "whitespace-nowrap tabular-nums",
+    mobile: "hidden",
     cell: ({ grant }) => formatDateTime(grant.validUntil),
-  },
-  {
-    id: "status",
-    label: "Status",
-    // Hides before the text columns: the segmented filter already states the status.
-    sortable: true,
-    priority: 5,
-    minWidth: 110,
-    cell: ({ status }) =>
-      status === "active" ? (
-        <StatusBadge tone="success">Active</StatusBadge>
-      ) : (
-        <StatusBadge tone="brand">Scheduled</StatusBadge>
-      ),
   },
 ]
 
@@ -164,29 +182,30 @@ const columns: DataTableColumn<Row>[] = [
 function Grantor({ grant, grantor }: Pick<Row, "grant" | "grantor">) {
   if (grant.grantedBy === null) {
     return grant.grantedBySub ? (
-      <span className="block truncate font-mono text-(--pn-fg-muted)" title={`IdP user ${grant.grantedBySub}`}>
-        {grant.grantedBySub}
-      </span>
+      <Hint label={`IdP user ${grant.grantedBySub}`}>
+        <span className="block truncate font-mono text-(--pn-fg-muted)">{grant.grantedBySub}</span>
+      </Hint>
     ) : (
       <Unset />
     )
   }
   // Its own link to the grantor; the row click still opens the grantee.
   return (
-    <Link
-      to="/dashboard/telegram/users/$userId"
-      params={{ userId: String(grant.grantedBy) }}
-      title={grantor?.username ? `@${grantor.username}` : undefined}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
-      className={
-        grantor
-          ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-          : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-      }
-    >
-      {grantor ? telegramUserName(grantor) : grant.grantedBy}
-    </Link>
+    <Hint label={grantor?.username ? `@${grantor.username}` : undefined}>
+      <Link
+        to="/dashboard/telegram/users/$userId"
+        params={{ userId: String(grant.grantedBy) }}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        className={
+          grantor
+            ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+            : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
+        }
+      >
+        {grantor ? telegramUserName(grantor) : grant.grantedBy}
+      </Link>
+    </Hint>
   )
 }
 
@@ -245,6 +264,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
   return (
     <>
       <PageBar
+        description="Periods when a user may send links without automatic moderation"
         left={
           <Toolbar
             search={{ value: query, onChange: updateQuery, placeholder: "Search users, authorizers or reasons…" }}

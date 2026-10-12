@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { FolderTree, Plus } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { buttonMotion, EmptyState, NavCard, RecordHeader, SectionHeading } from "@/components/primitives"
 import { PageBar, PageContent, SearchField, useCan } from "@/components/shell"
@@ -38,7 +38,6 @@ function categoryPath(path: string) {
 /** One category node: its sub-categories as cards, then the groups tagged with exactly this category. */
 export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPageProps) {
   const canWrite = useCan("groups:labels:write")
-  const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState("")
   const [childOpen, setChildOpen] = useState(false)
   const [groupOpen, setGroupOpen] = useState(false)
@@ -97,8 +96,6 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
 
   const bar = {
     context: parentPath ? formatLabelBreadcrumb(parentPath) : "Categories",
-    scrollTitleRef: titleRef,
-    scrollTitle: title,
     right: canWrite && (
       <>
         <Button variant="outline" size="sm" onClick={() => setChildOpen(true)} className={buttonMotion}>
@@ -126,8 +123,8 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
       <PageContent width="wide">
         <div className="flex flex-col gap-8">
           <RecordHeader
-            titleRef={titleRef}
             title={title}
+            className="[&_h1]:text-[28px]"
             dot={node.label?.color}
             meta={
               <span className="tabular-nums">
@@ -148,6 +145,8 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
                     title={formatLabelSegment(child.segment)}
                     count={countBranchGroups(groupLabels, child.path)}
                     noun="group"
+                    dot={child.label?.color ?? node.label?.color}
+                    stackedCount
                     render={<Link to="/dashboard/web/groups-by-label/$" params={categoryPath(child.path)} />}
                   />
                 ))}
@@ -159,12 +158,14 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
             <SectionHeading
               id="category-groups"
               title="Groups"
+              count={rows.length}
+              className="max-shell:flex-col max-shell:items-stretch max-shell:[&>div:last-child]:w-full"
               action={
                 <SearchField
                   value={query}
                   onChange={setQuery}
                   placeholder={GROUP_SEARCH_PLACEHOLDER}
-                  className="w-70 max-sm:w-40"
+                  className="w-70 max-shell:w-full"
                 />
               }
             />

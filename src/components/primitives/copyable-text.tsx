@@ -31,7 +31,10 @@ export function CopyableText({ value, what, children, className }: CopyableTextP
       type="button"
       aria-label={`Copy ${what} ${value}`}
       onClick={() => void copy()}
-      className={cn("block max-w-full cursor-pointer truncate rounded-(--pn-r-1) text-left", className)}
+      className={cn(
+        "relative block max-w-full max-shell:min-h-9 max-shell:min-w-9 cursor-pointer truncate rounded-(--pn-r-1) text-left",
+        className
+      )}
     >
       {children ?? value}
     </button>

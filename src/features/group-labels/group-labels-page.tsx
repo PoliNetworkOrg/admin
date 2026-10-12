@@ -25,10 +25,12 @@ import {
   Unset,
   useEditSlot,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { AddChildLabelDialog } from "@/features/groups-by-label/add-child-label-dialog"
 import { errorMessage } from "@/lib/errors"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AddCategoryDialog } from "./add-category-dialog"
@@ -93,7 +95,7 @@ function useExpandedPaths() {
 
 type Draft = { label: string; color: string; description: string }
 
-const surface = "@container overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)"
+const surface = "@container overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)"
 
 export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
   const router = useRouter()
@@ -240,17 +242,11 @@ export function GroupLabelsPage({ labels }: { labels: GroupLabel[] }) {
     <>
       <PageBar
         width="tree"
+        description={`${pluralize(labels.length, "label")} that organize groups on the website`}
         left={
           <Toolbar
-            // Wider than the 280px default so the long placeholder is readable.
-            search={{ value: query, onChange: setQuery, className: "xl:w-[360px]" }}
-            count={
-              searching ? (
-                <Count value={visibleCount} total={labels.length} noun="label" />
-              ) : (
-                <Count value={labels.length} noun="label" />
-              )
-            }
+            search={{ value: query, onChange: setQuery }}
+            count={searching ? <Count value={visibleCount} total={labels.length} noun="label" /> : undefined}
           />
         }
         right={
@@ -435,7 +431,7 @@ function CategoryNode({ node, depth, ctx }: { node: LabelTreeNode; depth: number
       disabled={ctx.searching}
       onClick={() => ctx.onToggle(node.path)}
       className={cn(
-        "-ml-1.5 flex size-7 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg) disabled:hover:bg-transparent",
+        "-ml-1.5 flex size-7 max-shell:size-9 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg) disabled:hover:bg-transparent",
         !hasChildren && "invisible"
       )}
     >
@@ -532,12 +528,11 @@ function NameLink({ path, name }: { path: string; name: string }) {
 
 function Description({ text }: { text: string | null }) {
   return (
-    <span
-      title={text ?? undefined}
-      className="hidden w-[42%] shrink-0 truncate text-[13px] leading-5 text-(--pn-fg-muted) @[560px]:block"
-    >
-      {text || <Unset />}
-    </span>
+    <Hint overflowOnly label={text ?? undefined}>
+      <span className="hidden w-[42%] shrink-0 truncate text-[13px] leading-5 text-(--pn-fg-muted) @[560px]:block">
+        {text || <Unset />}
+      </span>
+    </Hint>
   )
 }
 

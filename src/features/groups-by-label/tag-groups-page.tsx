@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { Plus, Tags } from "lucide-react"
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 import {
   buttonMotion,
@@ -36,7 +36,6 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
   const canWrite = useCan("groups:labels:write")
   const canTelegram = useCan("tg:groups:manage")
   const canWhatsapp = useCan("wa:groups:manage")
-  const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState("")
   const [addOpen, setAddOpen] = useState(false)
 
@@ -80,8 +79,6 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
       <PageBar
         back={back}
         context={publication ? "Publications" : "Attributes"}
-        scrollTitleRef={titleRef}
-        scrollTitle={title}
         right={
           canWrite && (
             <>
@@ -104,7 +101,6 @@ export function TagGroupsPage({ tag, labels, groups, tgGroups }: TagGroupsPagePr
       <PageContent width="wide">
         <div className="flex flex-col gap-8">
           <RecordHeader
-            titleRef={titleRef}
             title={title}
             dot={label?.color}
             meta={

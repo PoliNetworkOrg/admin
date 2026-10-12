@@ -1,4 +1,19 @@
-const dateOptions = { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Rome" } as const
+export const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const
+
+const dateOptions = { day: "numeric", month: "numeric", year: "numeric", timeZone: "Europe/Rome" } as const
 const dateFormat = new Intl.DateTimeFormat("en-GB", dateOptions)
 const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
   ...dateOptions,
@@ -21,14 +36,22 @@ const IRREGULAR_PLURALS = new Map([
   ["entry", "entries"],
 ])
 
+function fixedMonthDate(formatter: Intl.DateTimeFormat, date: Date): string {
+  const parts = formatter.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ""
+  const day = `${Number(part("day"))} ${SHORT_MONTHS[Number(part("month")) - 1]} ${part("year")}`
+  return part("hour") ? `${day}, ${part("hour")}:${part("minute")}` : day
+}
+
 export function formatDate(date: Date, timeZone: "Europe/Rome" | "local" = "Europe/Rome"): string {
-  return timeZone === "local"
-    ? date.toLocaleDateString("en-GB", { ...dateOptions, timeZone: undefined })
-    : dateFormat.format(date)
+  return fixedMonthDate(
+    timeZone === "local" ? new Intl.DateTimeFormat("en-GB", { ...dateOptions, timeZone: undefined }) : dateFormat,
+    date
+  )
 }
 
 export function formatDateTime(date: Date): string {
-  return dateTimeFormat.format(date)
+  return fixedMonthDate(dateTimeFormat, date)
 }
 
 export function formatRange(start: Date, end: Date): string {

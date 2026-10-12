@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
+import { ShieldX } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/primitives"
 import { appToast } from "@/components/shell"
@@ -39,6 +40,7 @@ export function InterruptGrantDialog({ open, onOpenChange, userId, userName }: I
 
   return (
     <ConfirmDialog
+      icon={ShieldX}
       open={open}
       onOpenChange={onOpenChange}
       title="End grant?"

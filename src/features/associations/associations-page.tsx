@@ -7,6 +7,7 @@ import { buttonMotion, EmptyState, useEditSlot } from "@/components/primitives"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { errorHasCode } from "@/lib/errors"
+import { pluralize } from "@/lib/format"
 
 import { AssociationCard, type AssociationEditSession } from "./association-card"
 import { AssociationLinksDialog } from "./association-links-dialog"
@@ -223,16 +224,11 @@ export function AssociationsPage({ loadedAssociations: associations }: { loadedA
   return (
     <>
       <PageBar
+        description={`${pluralize(associations.length, "association")} on the website`}
         left={
           <Toolbar
             search={{ value: query, onChange: setQuery, placeholder: "Search associations…" }}
-            count={
-              needle ? (
-                <Count value={matches.length} total={associations.length} noun="association" />
-              ) : (
-                <Count value={associations.length} noun="association" />
-              )
-            }
+            count={needle ? <Count value={matches.length} total={associations.length} noun="association" /> : undefined}
           />
         }
         right={canWrite ? addButton : undefined}

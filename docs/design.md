@@ -8,13 +8,14 @@ Login and onboarding pages use the same tokens but not the shell.
 
 ## 1. Principles
 
-1. **Say it once.** Every place, control, label and number appears once per screen. No breadcrumbs, eyebrows, page
-   descriptions or `h1` on section pages; no count that repeats one already visible.
-2. **The chrome is for finding; the content is for doing.** Rail, panel and header bar locate and filter; nothing in
-   them explains. Help lives in empty states, field hints and dialog descriptions.
-3. **One accent, neutral everything else.** Brand blue marks the active location, the one primary action, links and
-   focus. Icons are `--pn-fg-muted`. The only multicolor marks are the Telegram, WhatsApp and Microsoft 365 logos.
-   Status uses the fixed tones, never ad-hoc colors.
+1. **Say it once.** Every place, control, label and number appears once per screen. Each page has one `h1` with one
+   line of context under it (a total or the page's purpose); no eyebrows, and no count that repeats one already
+   visible. Deep pages show a short breadcrumb ("Users / 5021007919") instead of a context line.
+2. **The chrome is for finding; the content is for doing.** Rail, panel, top bar and bottom nav locate; nothing in
+   them explains. Help lives in the page context line, empty states, field hints and dialog descriptions.
+3. **One accent, neutral everything else.** Brand blue marks the active location, the one primary action, links,
+   "on" states (a visible group) and focus. Icons are `--pn-fg-muted`, except group row actions (§5); the only multicolor marks are
+   the Telegram, WhatsApp and Microsoft 365 logos, wherever those services and platforms are named. Status uses the fixed tones, never ad-hoc colors.
 4. **Borders separate; shadows float.** Static surfaces (cards, tables, nav) get a 1px line; only layers above the page
    (popover, menu, dialog, sheet, toast, drag ghost) cast a shadow.
 5. **Motion confirms, never decorates.** Animate only changes the user caused, mostly on `transform`/`opacity`, short
@@ -24,90 +25,124 @@ Login and onboarding pages use the same tokens but not the shell.
 ## 2. Shell and wayfinding
 
 ```
-┌──────┬────────────────────┬──────────────────────────────────────────────────────────────────┐
-│ [PN] │ ✈ Telegram         │ [🔍 Search by name or tag…] [Labels ▾] [All|Visible|Hidden]   …  │ header bar
-│ ▦ Ov │────────────────────│                                                                  │
-│ 🔍 ⌘K│   Users            │  Group               Telegram ID   Tag      Labels         ⎘ ↗ 👁 🏷 ⇥│
-│──────│ ▌ Groups           │  Analisi Matematica  -1001234567   @am1     Didattica › …          │
-│▌✈ Tg │   Grants           │  …                                                               │
-│ ◯ Wa │                    │  Showing 1–20 of 1,318                  Rows 20 ▾   ‹ 1 2 … 66 › │
-│ ☁ M3 │                    │                                                                  │
-│ ⊕ We │                    │                                                                  │
-│ ⚑ Re │                    │                                                                  │
-│ ☾ (LC)                    │                                                                  │
-└──────┴────────────────────┴──────────────────────────────────────────────────────────────────┘
-  rail      panel                      content column: header bar + scrolling main
+┌──────┬──────────────────────┬────────────────────────────────────────────────────────────────┐
+│ (PN) │ ✈ Telegram           │  Groups                                                         │ page header:
+│  🔍  │──────────────────────│  680 groups managed by the bot                     [+ Primary]  │ h1 + context + actions
+│ ──── │   👤 Users           │                                                                │
+│▌ ✈   │ ▌ 💬 Groups          │  [🔍 Search by group name or tag…  /] [Labels ▾] [All|Visible|Hidden] │ toolbar row
+│  💬  │   🛡 Grants          │  ┌────────────────────────────────────────────────────────────┐ │
+│  ☁   │                      │  │ Group            Telegram ID   Labels        Actions       │ │
+│  🌐  │                      │  │ Analisi 1        -1001234567   Didattica…    ⎘ ↗ │ 👁 🏷 ⇥ │ │ 52px rows
+│  ⚑•  │                      │  └────────────────────────────────────────────────────────────┘ │
+│  ☀   │                      │                                                                │
+│ (GV) │                      │                                                                │
+└──────┴──────────────────────┴────────────────────────────────────────────────────────────────┘
+  rail        panel (240px)         scrolling column: page header, toolbar row, content
+```
+
+Below 760px:
+
+```
+┌──────────────────────────────────┐
+│ (PN) Telegram          🔍  ☀ (GV) │ top bar
+│ (👤 Users) (💬 Groups) (🛡 Grants) │ section pills, scroll with the page
+│ Groups                            │
+│ 680 groups managed by the bot     │
+│ [        + Primary action       ] │
+│ [🔍 Search…                      ] │
+│ ┌───────────────────────────────┐ │
+│ │ Analisi Matematica 1          │ │ tables become stacked cards
+│ │ -1001234567  @am1             │ │
+│ │ ⎘ ↗ │ 👁 🏷 ⇥                  │ │
+│ └───────────────────────────────┘ │
+│  ✈      💬      ☁      🌐     ⚑•   │ bottom nav, sticky
+└──────────────────────────────────┘
 ```
 
 Vocabulary, used throughout:
 
-- **Service**: a rail entry (Overview, Telegram, WhatsApp, Microsoft 365, Web, Reports, Account).
+- **Service**: a rail entry (Telegram, WhatsApp, Microsoft 365, Web, Reports), plus Overview (the logo) and Account
+  (the avatar).
 - **Section**: a panel entry inside a service (Telegram › Groups).
 - **Deep page**: a page under a section that is not in the panel (Telegram user, category node, tag page).
-- **Header bar**: the bar on top of the content column, rendered by each page through `PageBar`.
-- **Toolbar**: `lead` (controls that scope the page, such as the FAQ category), search, filters and `Count`; on section
-  pages it is the header bar's left slot.
+- **Page header**: the top of every page, rendered through `PageBar`: the `h1`, one line of context and the page
+  actions; deep pages show a back button and a breadcrumb instead.
+- **Toolbar**: the row under the page header: `lead` (controls that scope the page), search, filters and `Count`.
 
-Services and sections are defined once, in `src/components/shell/nav.ts`, with each section's search placeholder; rail,
-panel, sheet, command palette and Overview read from it. Services are drawn with `ServiceGlyph` (the branded logo for
-Telegram, WhatsApp and Microsoft 365, lucide otherwise): never import the SVGs.
+Services and sections are defined once, in `src/components/shell/nav.ts`, with each section's icon, search placeholder
+and whether it reads `?q=`; rail, panel, pills, bottom nav, command palette and Overview read from it. A service is
+drawn with `ServiceGlyph`: its `logo` when it has one, else its monochrome `icon`; the bottom nav uses its `short` label
+("M365").
 
 **Where each level is named**
 
-| Level   | Named by                                                                                            |
-| ------- | --------------------------------------------------------------------------------------------------- |
-| Service | the panel header (the rail only highlights it; its name is a tooltip)                               |
-| Section | the active panel item; the shell also renders an sr-only `h1`                                       |
-| Record  | the `h1` in `RecordHeader` on deep pages; the header bar shows the parent context and a back button |
-| Page    | Overview and Account have no panel, so `PageBar title` renders their `h1` in the header bar         |
+| Level   | Named by                                                                                         |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| Service | the panel header (desktop) or the top bar title (mobile); the rail only highlights it            |
+| Section | the active panel item or pill, and the page `h1` (defaults to the section title)                 |
+| Record  | the `h1` in `RecordHeader` on deep pages; the page header shows a back button and the breadcrumb |
+| Page    | Overview and Account pass their own `title` to `PageBar`                                         |
 
-**Rail.** One tab stop with roving focus (`↑/↓`, `Home/End`). A service opens the last section visited in that service
-this session, else its first. The logo is decoration (Overview right below it leads home). Theme toggle and the account
-avatar sit at the bottom; sign out lives on the Account page.
+**Rail** (64px, from 760px). One tab stop with roving focus (`↑/↓`, `Home/End`). The PoliNetwork logo is the link to
+Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the five
+services (logos for Telegram, WhatsApp and Microsoft 365). The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
+an accent dot while there are open reports. A service opens the last section visited in that service this session,
+else its first. Theme toggle and the account avatar (the same active fill and indicator while Account is open) sit at the bottom; sign out lives on
+the Account page.
 
-**Panel.** Rendered only for services with two or more sections (Telegram, Microsoft 365, Web, Reports). WhatsApp,
-Overview and Account have none, and the content column takes the width. On deep pages the parent section stays
-highlighted (`data-ancestor`). The only count in the panel is the open reports next to Reports › Open. (`nav.ts`'s
-`panelServices` are the services that have sections, for rail, sheet and palette; the panel itself needs two.)
+**Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
+Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
+the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
+and accent icon without the bar (`data-ancestor`). The only count is the open reports next to Reports › Open, as a
+small accent pill.
 
-**Header bar.** Sits outside the scroll container (`main` scrolls, the document never does), so search and actions never
-scroll away. `/` focuses the page search from anywhere; `Esc` clears it. Left/right slots per template:
+From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
+content in place. Between 760px and 1439px, the content follows the panel as it opens or closes.
 
-| Template          | Left                                                                  | Right                                               |
-| ----------------- | --------------------------------------------------------------------- | --------------------------------------------------- |
-| Section page      | `Toolbar`: lead → search → filters → `Count`                          | one primary action, at most one `outline` secondary |
-| Deep page         | `BackButton` → parent context (mono when it is an id) → `ScrollTitle` | record actions; the primary is right-most           |
-| Overview, Account | `h1`                                                                  | —                                                   |
+**Page header.** Scrolls with the page (the page, not the document, scrolls: the column below the top bar is the
+scroll container). `h1` 24px (22px on mobile) with the context line in 14px muted, actions on the right at 40px; below
+760px the actions take the full width under the title. The toolbar row follows 20px below. `/` focuses the page
+search from anywhere; `Esc` clears it. A service with a single section (WhatsApp) shows its icon in a 44px tile next to
+the `h1`.
 
-`ScrollTitle` fades the record name into the bar only while the content `h1` is scrolled out of view.
+| Template          | Header                                                       | Toolbar row                                  |
+| ----------------- | ------------------------------------------------------------ | -------------------------------------------- |
+| Section page      | `h1` + context line, one primary action, ≤ 1 `outline`       | `Toolbar`: lead → search → filters → `Count` |
+| Deep page         | `BackButton` → breadcrumb (section / parent), record actions | none; `RecordHeader` follows in the content  |
+| Overview, Account | `h1`                                                         | none                                         |
 
-**Small screens.** Below 1024px the panel leaves the layout and becomes a left `Sheet` opened from a button at the start
-of the header bar; on section pages the bar gains a first row reading "{Service} › {Section}" and the toolbar wraps
-below it. Below 640px the rail is hidden too and the sheet is the only navigation (it adds Overview, Search, Theme and
-Account rows).
+**Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
+service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
+as horizontally scrolling pills that scroll away with the page; a 64px bottom nav lists the five services (current one
+accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
+is no sheet.
 
-**Command palette** (`⌘K`/`Ctrl+K`): sections and shell actions (theme, account, sign out); records are not searchable
-there.
+**Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
+{Service} › {Section}" for every section that reads `?q=` (Telegram users and groups, WhatsApp groups), and shell
+actions (theme, account, sign out).
 
 ## 3. Page templates
 
-Wrap every page body in `PageContent` and give `PageBar` the same `width` (both default to `wide`), so bar and content
-share edges.
+Wrap every page body in `PageContent` and give `PageBar` the same `width` (both default to `wide`), so header and content
+share edges. All template names use the same 1280px maximum content width on desktop. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
+does not move when data arrives.
 
-| Template        | `width`    | Used by                                                                        |
-| --------------- | ---------- | ------------------------------------------------------------------------------ |
-| List            | `wide`     | Telegram users, groups, grants; WhatsApp groups; Members; Freshman guide; FAQs |
-| Queue           | `wide`     | Reports › Open, Reports › Closed                                               |
-| Card collection | `wide`     | Projects, Associations                                                         |
-| Grouped         | `wide`     | Microsoft 365 groups                                                           |
-| Browser         | `wide`     | Categories root and nodes, tag page                                            |
-| Tree            | `tree`     | Labels                                                                         |
-| Record          | `record`   | Telegram user                                                                  |
-| Settings        | `settings` | Account                                                                        |
-| Overview        | `overview` | Overview                                                                       |
+| Template        | `width`    | Used by                                                        |
+| --------------- | ---------- | -------------------------------------------------------------- |
+| List            | `wide`     | Telegram users, groups, grants; WhatsApp groups; Members; FAQs |
+| Queue           | `wide`     | Reports › Open, Reports › Closed                               |
+| Card collection | `wide`     | Projects, Associations                                         |
+| Grouped         | `wide`     | Microsoft 365 groups                                           |
+| Browser         | `wide`     | Categories root and nodes, tag page                            |
+| Tree            | `tree`     | Labels, Freshman guide                                         |
+| Record          | `record`   | Telegram user                                                  |
+| Settings        | `settings` | Account                                                        |
+| Overview        | `overview` | Overview                                                       |
 
-**List.** A `DataTable` with search and filters in the toolbar. One row height (44px), no dense mode. Columns declare a
-priority; the lowest hide first when the table surface narrows, never the first or the actions column. Give columns
+**List.** A `DataTable` with search and filters in the toolbar. One row height (52px), no dense mode. Columns declare a
+priority; from 760px the lowest hide first when the table surface narrows, never the first or the actions column.
+Below 760px every row is a stacked card: the first column on its own line, the others inline as 12px meta
+(`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. Give columns
 whose content length varies a `width` (the table switches to fixed layout and the title column takes the rest), so
 nothing jumps across search, filters and paging. Pagination shows in the table footer once rows exceed the smallest page
 size (20; options 20/50/100). The page resets to page 1 itself when search, filters or sort change (`DataTable`
@@ -129,10 +164,18 @@ bar's left slot holds the parent path, so the search sits in the table's `Sectio
 **Tree.** One bordered surface per section, 44px rows, indentation for depth, a rotating chevron. Expanded nodes persist
 in session storage; search force-expands.
 
-**Record.** `RecordHeader` (avatar, `h1`, meta, chips), then `SectionCard`s in one column, no summary tiles.
+**Record.** `RecordHeader` (64px avatar or label dot, 28px `h1` with an optional status badge, meta, description),
+then `SectionCard`s. The Telegram user puts recent messages and grants side by side from 1000px (1.55 : 1), with the
+audit log full width below; no summary tiles.
 
 **Settings.** `SectionCard`s in one column, each with a title and an action slot. The destructive card goes last,
 further apart, without a red border.
+
+**Overview.** A 52px search that opens the command palette; a hero card with the Telegram users total, its growth over
+the selected range and a TanStack Charts line (3M per day, 1Y per week, All per month; one 2px accent line, a light
+grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
+reports and Active grants as links on its right (a row under it on mobile); then "Areas": one card per service whose
+whole surface leads where the rail icon does, with each section as a 44px button.
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
@@ -145,30 +188,36 @@ instead.
 Use only the `--pn-*` variables (or the Tailwind utilities that resolve to them). Raw hex and Tailwind palette colors
 (`slate-*`, `amber-*`…) are defects; the one exception is label colors, which are user data and go through `LabelChip`.
 shadcn's variables (`--primary`, `--border`…) are remapped to `--pn-*` in `styles.css`, so `@/components/ui/*` re-theme
-without edits. Light borders are alpha so they composite; dark borders are solid so they don't glow.
+without edits. Light borders are alpha so they composite; dark borders are solid so they don't glow. The light canvas is `#f6f7f9`,
+card surfaces and navigation bars are `#fff`, and the section panel is `#fbfcfd` (`--pn-panel`).
 
-| Role                | Variables                                                                                                                                                                                                 |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Canvas and surfaces | `--pn-bg` canvas · `--pn-surface` cards, tables · `--pn-surface-raised` popover, menu, dialog, toast · `--pn-nav` rail and panel                                                                          |
-| Fills               | `--pn-muted` hover, skeleton, neutral fills · `--pn-nav-active` active panel item · `--pn-scrim` backdrop (no blur)                                                                                       |
-| Lines               | `--pn-line` static borders · `--pn-line-strong` inputs, dividers on muted fills                                                                                                                           |
-| Text                | `--pn-fg` · `--pn-fg-muted` secondary text and icons · `--pn-fg-subtle` placeholders, disabled, decorative glyphs; never information                                                                      |
-| Accent              | `--pn-accent(-hover)` text, icons, links · `--pn-accent-solid(-hover, -fg)` primary button · `--pn-accent-soft(-hover)` active/selected fills · `--pn-focus` · `--pn-selection`                           |
-| Status              | `--pn-{success,warning,danger}-{fg,bg,solid}`, `--pn-info-{fg,bg}`                                                                                                                                        |
-| Row-action tones    | `--pn-action-{blue,green,amber,red}`, `--pn-action-{green,amber}-tint`: only through `IconButton appearance="tinted"`                                                                                     |
-| Elevation           | `--pn-shadow-float` popover, menu, toast · `--pn-shadow-modal` dialog, sheet · `--pn-media-ring` images, avatars                                                                                          |
-| Radii               | `--pn-r-1` 4 kbd, swatches · `-2` 6 menu/panel items · `-3` 8 `sm` buttons, rail items, search field · `-4` 10 cards, tables, popovers · `-5` 12 dialogs, sheets, toasts · `-full` badges, chips, avatars |
-| Motion              | `--pn-ease-out`, `--pn-ease-in`, `--pn-ease-move`                                                                                                                                                         |
+| Role                | Variables                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canvas and surfaces | `--pn-bg` canvas · `--pn-surface` cards, tables · `--pn-surface-raised` popover, menu, dialog, toast · `--pn-nav` rail, panel, top bar, pills row, bottom nav                                                                      |
+| Fills               | `--pn-hover` every hover and menu highlight (a faint brand tint over any surface) · `--pn-hover-line` hover borders · `--pn-muted` skeleton, neutral fills · `--pn-nav-active` active panel item · `--pn-scrim` backdrop (no blur) |
+| Lines               | `--pn-line` static borders · `--pn-line-strong` inputs, dividers on muted fills                                                                                                                                                    |
+| Text                | `--pn-fg` · `--pn-fg-muted` secondary text and icons · `--pn-fg-subtle` placeholders, disabled, decorative glyphs; never information                                                                                               |
+| Accent              | `--pn-accent(-hover)` text, icons, links · `--pn-accent-solid(-hover, -fg)` primary button · `--pn-accent-soft(-hover)` active/selected fills · `--pn-focus` · `--pn-selection`                                                    |
+| Status              | `--pn-{success,warning,danger}-{fg,bg,solid}`, `--pn-info-{fg,bg}`                                                                                                                                                                 |
+| Charts              | paints are the same variables: `--pn-accent-solid` line, `--pn-line` grid, `--pn-fg-muted` labels, so charts follow the theme without rebuilding                                                                                   |
+| Elevation           | `--pn-shadow-float` popover, menu, toast · `--pn-shadow-modal` dialog, sheet · `--pn-media-ring` images, avatars                                                                                                                   |
+| Radii               | `--pn-r-1` 4 kbd, swatches · `-2` 6 menu items · `-3` 8 buttons, rail and panel items · `-4` 10 popovers, inner tiles · `-5` 12 cards, tables, toasts · 14 dialogs, hero and area cards · `-full` badges, pills, avatars           |
+| Motion              | `--pn-ease-out`, `--pn-ease-in`, `--pn-ease-move`                                                                                                                                                                                  |
 
 Nested radii: inner = outer − padding.
+
+Mix colors with `color-mix(in oklab, …)`, never `oklch`: Chrome gives a mix of two near-gray colors a missing hue,
+which renders as hue 0 (a red tint). A test enforces it.
 
 **Spacing.** 4px grid (4, 8, 12, 16, 20, 24, 32, 48). Lay out with `gap`, not per-child margins. Card padding 16px (20px
 on Settings).
 
-**Type.** DM Sans, DM Mono for identifiers only (Telegram IDs, chat ids, label paths, versions). Sizes: 12 captions,
-hints, table headers, meta · 13 table cells, rows, panel items, dialog descriptions · 14 body, inputs · 15/600 header
-bar `h1`, dialog and card titles · 18/600 empty-state titles · 20/600 `RecordHeader` `h1` · 28/600 stat numbers. Weights
-400/500/600, and never change on hover, active or selected. No uppercase (no eyebrows, no uppercase table headers; the
+**Type.** DM Sans; DM Mono for identifiers (Telegram IDs, chat ids, emails in M365, label paths, versions), counts
+next to headings and in segments, the `/` and IT/EN tags and chart axes. Sizes: 12 captions, hints, table headers,
+meta · 13 secondary rows · 14 body, table cells, panel items, inputs, dialog descriptions · 15/600 card titles · 17/600
+section headings · 18/600 dialog titles, empty-state titles · 24/600 page `h1` (22 on mobile) · 28/600 `RecordHeader`
+`h1`, stat numbers · 44/600 the Overview users total. Weights 400/500/600, and never change on hover, active or
+selected. No uppercase (no eyebrows, no uppercase table headers; the
 IT/EN language codes are the exception) and no italic. Numbers, counts and dates get `tabular-nums` and never wrap.
 Headings `text-wrap: balance`, body `pretty`. Truncate with an ellipsis plus a `title`. Use `…`, not three dots. Inputs
 are 16px on coarse pointers (no iOS zoom).
@@ -178,40 +227,71 @@ invalid fields show the danger border. Opt out only with `data-focus-ring="none"
 
 ## 5. Components
 
+Every hover is the same faint brand tint: fills use `--pn-hover`, borders `--pn-hover-line`; never `--pn-muted`, the
+solid accent or a status color. Selected and active states keep their own fills (`--pn-accent-soft`,
+`--pn-nav-active`). Destructive colors identify actions at rest and validation errors; their hover is the same blue.
+Scrollable surfaces use thin, rounded scrollbars with the theme's line color on a transparent track, including portals.
+Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
+keyboard users open it with Enter or Space and dismiss it with Escape.
+Tooltips use the same raised surface, foreground, border and corner radius as overflow popovers. Both open below
+the trigger by default (the rail uses the right side); positioning may flip only to stay inside the viewport.
+Use `Hint` for hover text, never the browser's native `title` attribute. A hint that repeats the visible text
+(names, emails, reasons) passes `overflowOnly`, so it opens only while that text is cut off.
+The document opts out of Dark Reader's recoloring with its documented `darkreader-lock` meta tag because the app
+already provides light and dark palettes; this also prevents extension-injected styles from breaking hydration.
+
 Build from `@/components/shell` and `@/components/primitives`; reach into `@/components/ui` only for what the primitives
 don't wrap. Each primitive's JSDoc states its props and rules. In the dashboard these `ui/` parts are replaced: `card`
 and `alert` by `SectionCard`/surfaces and `InlineAlert` (they remain for login and onboarding); `collapsible` and
 accordion's `AccordionContent` by `Reveal` (or Base UI `Accordion.Panel` with the grid-rows transition, as in FAQs),
 because they animate height; `skeleton` by the primitives' skeletons.
 
-**Tables (`DataTable`).** Sentence-case 12px headers, sticky. Sortable headers are buttons with `aria-sort`; an unsorted
-column shows its sort icon only on hover or focus. Numeric quantities right-aligned; identifiers mono, left-aligned. A
-clickable row is focusable, opens on `Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link
-(`rowHref`; return `null` for rows that go nowhere). Only the first column may carry a 12px secondary line. Chip lists
-never wrap (`ChipOverflow`), so rows stay 44px.
+**Tables (`DataTable`).** 12px radius surface, sentence-case 12px headers (42px, sticky), 14px cells in 52px rows, a
+visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
+hover or focus. The "Actions" header is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
+`Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
+that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
+readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
+a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`): they show what fits without cutting a chip to a stub, the rest behind "+n". Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
+first/last buttons); on narrow tables "‹ 1 of 34 ›".
+
+Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
-right. Always visible. Default `ghost` in `--pn-fg-muted`; group tables use `appearance="tinted"` with a tone per action
-(blue visible, gray hidden, green edit, amber labels, red leave/delete). In tables mixing Telegram and WhatsApp rows an
-action one platform lacks keeps an empty 36px slot, so the columns of icons align.
+right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
+including destructive actions; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
+colors at rest: labels use `--pn-warning-fg`, edit uses `--pn-success-fg`, and leave/delete use `--pn-danger-fg`.
+Visibility, labels, edit and leave/delete all hover in brand blue (`--pn-accent` on `--pn-accent-soft`);
+the hidden visibility eye and invite-link actions remain muted. Group rows separate the invite-link pair
+from the rest with a 1px divider; a group without a link shows an amber "Not shared" badge in place of the pair. In
+tables mixing Telegram and WhatsApp rows an action one platform lacks keeps an empty 36px slot, so the columns of icons
+align. Queues use labelled buttons instead (Reports: ghost "Dismiss", outline "Resolve"). Outside tables,
+`appearance="boxed"` draws a bordered 36px button (Microsoft 365 add/remove member).
 
 **Badges and chips.** `StatusBadge` (dot + label, tones `neutral`/`brand`/`success`/`warning`/`danger`) only for states:
 grant Active (success), Scheduled (brand); report Pending (warning), Resolved (success), Dismissed (neutral); session
 "Current" and guide edition "Latest" (brand); Draft (warning). Absence of a state shows nothing (no "Visible", "Public"
-or "Published" badges). `Chip` for categorical values (roles, licenses, IT/EN markers). `LabelChip` for labels.
-`CountBadge` for neutral counts such as `×3` duplicates. Platforms are a 14px `PlatformGlyph` (an image with alt text),
-not a text badge.
+or "Published" badges). `Chip` for categorical values (roles, licenses, IT/EN markers). `LabelChip` for labels: a neutral fill and readable neutral text, with a colored dot carrying the label color.
+`CountBadge` for neutral counts such as `×3` duplicates. Platforms are a 16px `PlatformGlyph` (the service's logo with an
+accessible name), not a text badge.
 
-**Buttons.** Text buttons `size="sm"` (36px), icon buttons `icon-sm` (36px); the 40px `default` size only in dialog
-footers; never `xs`. One `default` (primary) button per region (header bar, dialog footer, form card); secondaries
+**Buttons.** Text buttons `size="sm"` (36px), icon buttons `icon-sm` (36px); page-header actions and toolbar controls
+(search, filter buttons, toggles, segmented controls) are 40px, as are dialog footer buttons; never `xs`. One `default`
+(primary) button per region (page header, dialog footer, form card); secondaries
 `outline`, tertiary `ghost`. Destructive in page content is an `outline` with danger text, solid danger only inside a
 confirm dialog. Every icon button has an `aria-label` and a tooltip with the same text. A raw `ui` `Button` gets
 `className={buttonMotion}`; pending actions use `LoadingButton` (spinner, `disabled`, `aria-busy`, motion included).
 Labels are verb + object in sentence case ("Add group", "Publish 12 groups").
 
 **Dialogs.** Forms use `FormDialog` (`md` one column, `lg` two columns or steppers); confirmations use `ConfirmDialog`
-(400px `AlertDialog`, no close button, no outside-click close, focus on Cancel). Header: title + description, no icon,
-no eyebrow. Footer right-aligned: `Cancel` (`outline`) then the primary. `Enter` submits single-line fields,
+(460px `AlertDialog`, no close button, no outside-click close, focus on Cancel). 14px panel radius; header: 18px title
+and 14px description, no eyebrow; confirmations lead with a 40px icon tile (danger-tinted for destructive ones, a
+warning sign unless the action has its own icon). Footer right-aligned, buttons side by side at every width: `Cancel`
+(`outline`) then the primary (solid danger for destructive confirmations). Below 760px every dialog is a bottom sheet:
+full width, rounded top, sliding up above the navigation, with a scrolling body and a visible footer. Microsoft 365
+member pickers use the same 18px title, then radio, avatar and name with a monospace email below; names and emails
+wrap independently. Grant dialogs put Change user in the selected-user card, full-width filled date controls on mobile,
+duration shortcuts on their own row, and an always-visible "Optional · n/500" hint under the reason. `Enter` submits single-line fields,
 `⌘/Ctrl+Enter` textareas. On error an `InlineAlert` appears above the footer and the dialog stays open. On success a
 toast fires and the dialog closes: `ConfirmDialog` closes itself, `FormDialog` doesn't, so call `onOpenChange(false)`
 after the mutation, and keep the dialog's record in state after closing so its content survives the exit animation. A
@@ -220,23 +300,25 @@ Key a dialog body with `useOpenGeneration` so every opening starts clean. Autofo
 only.
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
-and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`.
+and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
+include/exclude tree open at a time, and a "Clear label filters · n groups" footer. On mobile the filter uses a
+bottom-sheet dialog with focus trapping and a reachable footer.
 
 **Inline editing** (`InlineEditCard`, `InlineEditRow`, `useEditSlot`), used by Projects, Associations, FAQs and Labels:
 
 1. `✎` among the actions enters edit mode. One item per page edits at a time; starting another closes a clean one or
    asks to discard a dirty one.
-2. Each text becomes a field in the same place, the card keeps its width and grid position, and its border turns dashed
-   accent.
-3. Footer: validation message or the shortcut hint (hidden on coarse pointers) left; tinted cancel (`X`) and save
-   (`Check`, enabled when valid and dirty) right. `Esc` cancels, `Enter`/`⌘Enter` saves. A shortcut on an unchanged
-   record closes the editor; on an invalid one it focuses the first invalid field.
+2. Each text becomes a labelled field, the card keeps its width and grid position, and gets an accent border with a
+   soft accent ring.
+3. Footer: validation message left; "Cancel" (`outline`, with an `Esc` hint) and "Save" (primary, with a `⌘ ↵` hint,
+   enabled when valid and dirty) right; the hints hide on coarse pointers. `Esc` cancels, `Enter`/`⌘Enter` saves. A
+   shortcut on an unchanged record closes the editor; on an invalid one it focuses the first invalid field.
 4. Saving shows the spinner in the save button and makes the fields read-only; errors appear in the footer, success
    closes edit mode with a toast.
 
 **Bilingual text** (`TranslationGroup`/`TranslationPanel`): one panel per language, Italian first, side by side from
-560px container width, stacked below; each panel sets `lang`. In edit mode the panel itself is the field (`bare` inputs
-where the text was), so nothing moves. Single-line list rows use IT/EN tiny chips instead.
+560px container width, stacked below; each panel sets `lang`. View: a small DM Mono "IT"/"EN" tag over the text. Edit:
+the language name over a field-like box that holds the `bare` input. Single-line list rows use IT/EN tiny chips.
 
 **Forms** (`FormField`, `fieldControl`). Label above, real `<label for>`. Required is unmarked; optional fields say
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
@@ -251,7 +333,9 @@ three, never infinite, no "Undo".
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
-never the only signal. Hit areas are at least 36px. DOM order matches visual order.
+never the only signal. Hit areas are at least 36px, including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF
+links, label chips that remove a selection and tree expanders. Enlarge the clickable area independently of the icon.
+DOM order matches visual order.
 
 ## 6. Motion
 
@@ -264,13 +348,13 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Tooltip                                                                                | 100ms delay (`TOOLTIP_DELAY`), 400ms on the rail (`TOOLTIP_DELAY_SLOW`); siblings open instantly within 300ms                                                                                                            |
 | Popover, menu, combobox list                                                           | opacity + scale .97→1 from the trigger, 160ms in / 120ms out (`floatingMotion`)                                                                                                                                          |
 | Dialog and scrim                                                                       | opacity (+ scale .97 on the panel), 200ms in / 150ms out (`dialogMotion`)                                                                                                                                                |
-| Sheet                                                                                  | slide from the left, 200ms in / 150ms out                                                                                                                                                                                |
-| Panel appearing or leaving                                                             | panel and content column slide together as transforms, 220ms in / 180ms out; the leaving panel leaves the flow at once, so width never animates                                                                          |
+| Bottom sheet (dialogs below 760px)                                                     | slide up with the dialog fade, 200ms in / 150ms out                                                                                                                                                                      |
+| Panel appearing or leaving                                                             | panel slides as a transform, 220ms in / 180ms out; below 1440px the content follows; from 1440px its reserved slot keeps content stationary; width never animates                                                        |
 | Accordion, collapsible, tree                                                           | `grid-template-rows` 0fr→1fr 200ms (`--pn-ease-move`) + content opacity; chevron rotates                                                                                                                                 |
 | Drag (Projects)                                                                        | ghost lifts instantly; siblings move 160ms; drop settles 200ms                                                                                                                                                           |
 | Optimistic row removal                                                                 | opacity out 120ms, then unmount without height animation                                                                                                                                                                 |
 | Copy feedback (invite link)                                                            | icon swap with a short bounce-free spring                                                                                                                                                                                |
-| `ScrollTitle`                                                                          | opacity + 4px rise, 150ms in / 100ms out                                                                                                                                                                                 |
+| Chart tooltip and hover guide                                                          | none: they follow the pointer or keyboard focus                                                                                                                                                                          |
 | Skeleton                                                                               | opacity pulse 1.4s; the only loop besides spinners                                                                                                                                                                       |
 | Theme toggle                                                                           | light-bulb reveal: a View Transition `clip-path` circle from the toggle (700ms to light, 520ms to dark), reversible mid-way; element transitions are off while it runs (`data-theme-switching`). Go through `useTheme()` |
 | Navigation, sort, filter, paging, inline-edit swap, command palette, active indicators | none                                                                                                                                                                                                                     |
@@ -293,37 +377,61 @@ the theme reveal and the skeleton pulse switch off.
   widen the filter. Action: the page's create action as `outline` (the header primary stays), or a `ghost` "Clear
   search"/"Clear filters".
 - **Counts** (`Count`, `Intl.PluralRules`): "{n} {noun}" or "{n} of {total} {noun}", joined with " · ", never "results".
-  Segmented filters show a bare total per option over the whole list. Next to such a filter the toolbar `Count` appears
+  The page header's context line carries the list's total, so the toolbar `Count` appears only while search or a
+  filter narrows the list ("12 of 680 groups"). Segmented filters show a bare total per option over the whole list. Next to such a filter the toolbar `Count` appears
   only while search or another filter narrows the list further.
-- **Dates** (`src/lib/format.ts`): "6 Oct 2026", "6 Oct 2026, 09:00", ranges with " → ". Always `Europe/Rome` and
+- **Dates** (`src/lib/format.ts`): "6 Oct 2026", "6 Oct 2026, 09:00", ranges with " → ". Fixed English month names (`Jan`…`Sep`…`Dec`), with unpadded days. Always `Europe/Rome` and
   `en-GB`, so server and browser render the same text; inputs use the local timezone. No relative times in tables.
 - **Unset values:** `Unset` renders `—` (muted, `aria-label="Not set"`) instead of "Not set", "No description" and the
   like. Fallbacks that name a thing stay words: "Unnamed passkey", "Unknown device", "User {id}".
 
 ## 8. Page notes
 
+- **Telegram user messages**: a spaced feed with the group above each message, a borderless message bubble, and
+  the timestamp and Telegram link below. Chat IDs stay in the group tooltip; message IDs name the accessible link.
+  Message text preserves line breaks and wraps long words and URLs.
+
 Rules that the templates above don't imply.
 
-- **Overview**: stat tiles link to their section; "Needs attention" rows come from loader counts and drop at zero
-  (hidden groups link with `?visibility=hidden`). A service that failed to load shows `—` and one warning alert with
-  Retry.
+- **Overview**: the hero stats link to their section; a service that failed to load shows `—` and one warning alert
+  with Retry. The users chart reads `tg.users.getCreationHistory` (new users per Europe/Rome day, from `created_at`)
+  through `getTelegramUserHistory`; the range buckets are computed in the browser. The chart is 200px high on mobile,
+  marks the latest point and pins the tooltip/crosshair on tap (tap again, outside, or Esc dismisses). Only
+  keyboard `:focus-visible` draws the app focus ring. Without `tg:users:read` the hero
+  shows only the stats; while the backend lacks the procedure, or refuses it as unauthenticated (agent mode calls
+  the backend anonymously and the procedure is token-only), the chart is left out and the total stays.
 - **Account**: the exemplar Settings page. Passkeys and sessions load together and share one Retry. Sign out needs no
   confirmation (signing in again undoes it).
 - **Telegram users**: no create action (users appear once the bot sees them); search strips a leading `@`.
-- **Telegram user**: grant actions (End grant, Add grant) are the header bar actions, as grants are the main act on a
+- **Telegram user**: grant actions (End grant, Add grant) are the page header actions, as grants are the main act on a
   user. Role buttons disable with a tooltip explaining why instead of hiding.
 - **Grants**: a row opens the grantee; "Authorized by" links to the grantor.
 - **Telegram and WhatsApp groups**: `?q=` prefills the search and `?visibility=` the segment (Reports, Overview and the
   user page link here that way). Telegram groups are bot-managed: no create action, the destructive action is "Leave".
   The visibility toggle is optimistic with one request in flight.
 - **Microsoft 365 members**: the member ID edit is optimistic.
-- **Projects**: one column at every width, because card order is the order on the website; drag to reorder (handle
-  only), a failed reorder reverts. Segments replace `Count`.
-- **Associations**: links are edited in their own dialog, not inline.
-- **FAQs**: the category picker and its edit/delete buttons form one grouped control in the toolbar `lead`.
+- **Projects**: one column at every width, because card order is the order on the website; the whole card drags to
+  reorder (pointer after 5px, so its buttons and links still click; touch after a 250ms press; keyboard with
+  Space/Enter on the focused card). A grip marks the card's left edge from 760px and its border takes the hover line.
+  A failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
+- **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
+  with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
+  own dialog, not inline.
+- **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px) ending in a
+  dashed "Add category"; the selected category's header holds its edit and delete actions and the question search.
+- **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All
+  editions" table. Mobile editions remain compact single rows: version, date, PDF and delete.
+- **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their
+  group counts and "+ n more".
 - **Labels**: three kinds (categories, attributes, publications), each a `SectionHeading` with a one-line description:
   the only section descriptions in the app, because users confuse the kinds.
-- **Categories and tag pages**: a node lists only groups tagged with exactly that path. Publishing a tag acts on every
+- **Categories and tag pages**: a node lists only groups tagged with exactly that path. Category titles are 28px on
+  mobile; sub-category cards show a dot and the count below the name. The Groups heading has the direct count, with
+  full-width search below it on mobile. Publishing a tag acts on every
   row, not the searched subset.
 - **Reports**: rows group duplicates (`×n`), but counts and the panel badge count individual reports. Open is
-  oldest-first, Closed newest-first.
+  oldest-first, Closed newest-first. Closed columns are Reference, Status, Issue, Details, Date; mobile status and issue sit at the
+  top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
+  their own icon. The rail and bottom nav show a dot on Reports while any report is open.
+- **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
+  the service icon.

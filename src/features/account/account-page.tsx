@@ -1,6 +1,22 @@
-import { ExternalLink, Info, LogOut } from "lucide-react"
+import {
+  Cloud,
+  ExternalLink,
+  Globe,
+  Info,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  type LucideIcon,
+  MessageCircle,
+  Send,
+  Tags,
+} from "lucide-react"
 
+import azureLogo from "@/assets/svg/azure.svg"
+import telegramLogo from "@/assets/svg/telegram.svg"
+import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { buttonMotion, Chip, initialsOf, KeyValueList, LoadingButton, SectionCard } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { PageBar, PageContent, useSignOut } from "@/components/shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -59,12 +75,12 @@ function ProfileCard({ user, accountUrl }: { user: DashboardUser; accountUrl: st
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col">
-            <p className="truncate text-sm leading-5 font-medium" title={user.name}>
-              {user.name || user.email}
-            </p>
-            <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)" title={user.email}>
-              {user.email}
-            </p>
+            <Hint overflowOnly label={user.name}>
+              <p className="truncate text-sm leading-5 font-medium">{user.name || user.email}</p>
+            </Hint>
+            <Hint overflowOnly label={user.email}>
+              <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)">{user.email}</p>
+            </Hint>
           </div>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
@@ -103,15 +119,55 @@ function TelegramCard({ telegramId, accountUrl }: { telegramId: string | null; a
   )
 }
 
+/** Permission prefixes → the area they unlock, in rail order; unknown prefixes fall under "Other". */
+const PERMISSION_AREAS: { prefix: string; area: string; icon: LucideIcon; logo?: string }[] = [
+  { prefix: "admin", area: "Dashboard", icon: LayoutDashboard },
+  { prefix: "tg", area: "Telegram", icon: Send, logo: telegramLogo },
+  { prefix: "wa", area: "WhatsApp", icon: MessageCircle, logo: whatsappLogo },
+  { prefix: "groups", area: "Group labels", icon: Tags },
+  { prefix: "azure", area: "Microsoft 365", icon: Cloud, logo: azureLogo },
+  { prefix: "web", area: "Web", icon: Globe },
+]
+
+function groupPermissions(permissions: readonly string[]) {
+  const known = PERMISSION_AREAS.map((area) => ({
+    ...area,
+    items: permissions.filter((permission) => permission.split(":")[0] === area.prefix),
+  }))
+  const other = permissions.filter(
+    (permission) => !PERMISSION_AREAS.some((area) => permission.split(":")[0] === area.prefix)
+  )
+  return [...known, { prefix: "", area: "Other", icon: KeyRound, items: other }].filter((area) => area.items.length > 0)
+}
+
 function PermissionsCard({ permissions }: { permissions: readonly string[] }) {
   return (
     <SectionCard title="Permissions" count={permissions.length} padding="settings">
       <div className="flex flex-col gap-4">
-        <span className="flex flex-wrap gap-1.5">
-          {permissions.map((permission) => (
-            <Chip key={permission}>{permission}</Chip>
+        <dl className="flex flex-col">
+          {groupPermissions(permissions).map(({ area, icon: Icon, logo, items }) => (
+            <div
+              key={area}
+              className="grid items-center gap-x-4 gap-y-2 border-b border-(--pn-line) py-3 first:pt-0 shell:grid-cols-[160px_minmax(0,1fr)]"
+            >
+              <dt className="flex items-center gap-2 font-medium text-(--pn-fg)">
+                {logo ? (
+                  <img src={logo} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
+                ) : (
+                  <Icon aria-hidden strokeWidth={1.75} className="size-4 text-(--pn-fg-muted)" />
+                )}
+                {area}
+              </dt>
+              <dd className="flex flex-wrap gap-1.5">
+                {items.map((permission) => (
+                  <Chip key={permission} className="font-mono text-xs">
+                    {permission}
+                  </Chip>
+                ))}
+              </dd>
+            </div>
           ))}
-        </span>
+        </dl>
         <p className="flex items-center gap-1.5 text-xs text-(--pn-fg-muted)">
           <Info aria-hidden className="size-3.5 shrink-0" />
           Permissions come from your roles in PoliNetwork Auth.

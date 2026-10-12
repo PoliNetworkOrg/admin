@@ -2,6 +2,7 @@ import { ChevronRight, Database, UserMinus, UserPlus } from "lucide-react"
 import { type ReactNode, useDeferredValue, useId, useLayoutEffect, useMemo, useState } from "react"
 
 import { AvatarGroup, EmptyState, IconButton, Reveal, SectionEmpty, Unset } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
@@ -64,6 +65,7 @@ export function AzureGroupsPage({
   const multi = visible.filter((group) => group.members.length > 1)
   const single = visible.filter((group) => group.members.length <= 1)
   const memberships = visible.reduce((sum, group) => sum + group.members.length, 0)
+  const totalMemberships = groups.reduce((sum, group) => sum + group.members.length, 0)
   const searching = deferredQuery !== ""
 
   function toggle(section: SectionId) {
@@ -142,16 +144,19 @@ export function AzureGroupsPage({
   return (
     <>
       <PageBar
+        description={`${pluralize(groups.length, "group")} · ${pluralize(totalMemberships, "membership")}`}
         left={
           <Toolbar
             search={{ value: query, onChange: setQuery }}
             count={
-              <Count
-                value={visible.length}
-                total={searching ? groups.length : undefined}
-                noun="group"
-                parts={[{ value: memberships, noun: "membership" }]}
-              />
+              searching ? (
+                <Count
+                  value={visible.length}
+                  total={groups.length}
+                  noun="group"
+                  parts={[{ value: memberships, noun: "membership" }]}
+                />
+              ) : undefined
             }
           />
         }
@@ -172,7 +177,7 @@ export function AzureGroupsPage({
 }
 
 function Surface({ children }: { children: ReactNode }) {
-  return <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">{children}</div>
+  return <div className="rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)">{children}</div>
 }
 
 type RowActionsProps = {
@@ -193,14 +198,14 @@ type GroupSectionProps = RowActionsProps & {
 function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassName, ...rowProps }: GroupSectionProps) {
   const contentId = useId()
   return (
-    <section className="overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface)">
+    <section className="overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)">
       <h2>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={contentId}
           onClick={onToggle}
-          className="flex h-12 w-full items-center gap-2 px-5 text-left transition-[background-color] duration-120 hover:bg-(--pn-muted)"
+          className="flex h-13 w-full items-center gap-2.5 px-4.5 text-left transition-[background-color] duration-120 hover:bg-(--pn-hover)"
         >
           <ChevronRight
             aria-hidden
@@ -210,8 +215,8 @@ function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassNa
               revealClassName
             )}
           />
-          <span className="text-[14px] leading-5 font-medium text-(--pn-fg)">{title}</span>
-          <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">{groups.length}</span>
+          <span className="text-[15px] leading-5 font-semibold text-(--pn-fg)">{title}</span>
+          <span className="font-mono text-xs text-(--pn-fg-muted) tabular-nums">{groups.length}</span>
         </button>
       </h2>
       <Reveal open={open} lazy className={revealClassName}>
@@ -239,31 +244,32 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
   )
   const empty = group.members.length === 0
   return (
-    <li className="@container flex h-14 items-center gap-4 border-b border-(--pn-line) px-5 transition-[background-color] duration-120 last:border-b-0 hover:bg-(--pn-muted)">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span title={group.displayName} className="truncate text-[13px] leading-5 font-medium text-(--pn-fg)">
-          {group.displayName}
-        </span>
+    <li className="@container flex min-h-15 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--pn-line) px-4.5 py-2 transition-[background-color] duration-120 last:border-b-0 hover:bg-(--pn-hover) max-shell:px-3.5 max-shell:py-3">
+      <div className="flex min-w-0 flex-1 flex-col max-shell:basis-full">
+        <Hint overflowOnly label={group.displayName}>
+          <span className="truncate text-[14px] leading-5 font-medium text-(--pn-fg)">{group.displayName}</span>
+        </Hint>
         {group.mailAddress ? (
-          <span title={group.mailAddress} className="truncate text-xs leading-4 text-(--pn-fg-muted)">
-            {group.mailAddress}
-          </span>
+          <Hint overflowOnly label={group.mailAddress}>
+            <span className="truncate font-mono text-xs leading-4 text-(--pn-fg-muted)">{group.mailAddress}</span>
+          </Hint>
         ) : (
           <Unset className="text-xs leading-4" />
         )}
       </div>
-      <span className="w-24 shrink-0 text-right text-xs whitespace-nowrap text-(--pn-fg-muted) tabular-nums">
-        {pluralize(group.members.length, "member")}
-      </span>
       <div className="hidden w-[212px] justify-end @min-[520px]:flex">
         <AvatarGroup people={people} listLabel={`Members of ${group.displayName}`} />
       </div>
+      <span className="w-24 shrink-0 text-right text-[14px] whitespace-nowrap text-(--pn-fg) tabular-nums max-shell:w-auto max-shell:flex-1 max-shell:text-left max-shell:text-[13px] max-shell:text-(--pn-fg-muted)">
+        {pluralize(group.members.length, "member")}
+      </span>
       {canWrite ? (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <IconButton
             label={canAdd ? "Add member" : "Adding members needs access to the member directory"}
             ariaLabel={canAdd ? `Add a member to ${group.displayName}` : undefined}
             icon={UserPlus}
+            appearance="boxed"
             disabled={!canAdd}
             focusableWhenDisabled
             onClick={() => onOpenDialog(group.id, "add")}
@@ -272,6 +278,8 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
             label={empty ? "No members to remove" : "Remove member"}
             ariaLabel={empty ? "No members to remove" : `Remove a member from ${group.displayName}`}
             icon={UserMinus}
+            appearance="boxed"
+            tone="danger"
             disabled={empty}
             focusableWhenDisabled
             onClick={() => onOpenDialog(group.id, "remove")}

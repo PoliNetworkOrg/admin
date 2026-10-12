@@ -13,6 +13,7 @@ import {
   TranslationPanel,
   TranslationText,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
@@ -73,30 +74,36 @@ export function AssociationCard({
   }, [editing])
 
   const viewHeader = (
-    <div className="flex h-10 min-w-0 items-center gap-3">
+    <div className="flex min-h-10 min-w-0 items-center gap-3">
       <WebLogo src={association.logo} name={association.name} fallback="AS" />
-      <p title={association.name} className="truncate text-sm leading-5 font-medium text-(--pn-fg)">
-        {association.name}
-      </p>
+      <Hint overflowOnly label={association.name}>
+        <p className="min-w-0 text-[17px] leading-6 font-semibold break-words text-(--pn-fg)">{association.name}</p>
+      </Hint>
     </div>
   )
 
   const view = (
     <>
-      <TranslationGroup>
-        <TranslationPanel lang="it">
-          <TranslationText lines={5}>{association.descriptionIt}</TranslationText>
-        </TranslationPanel>
-        <TranslationPanel lang="en">
-          <TranslationText lines={5}>{association.descriptionEn}</TranslationText>
-        </TranslationPanel>
-      </TranslationGroup>
-      {/* Pinned to the bottom so cards sharing a grid row line their footers up. */}
-      <div className="mt-auto flex min-h-9 items-center gap-2">
-        <Count value={publicLinkCount(association)} noun="public link" className="text-xs" />
+      <div className="flex flex-col gap-3">
+        {(
+          [
+            { lang: "it", text: association.descriptionIt },
+            { lang: "en", text: association.descriptionEn },
+          ] as const
+        ).map(({ lang, text }) => (
+          <div key={lang} lang={lang} className="flex items-start gap-2.5">
+            <span className="mt-0.5 inline-flex h-4.5 shrink-0 items-center rounded-(--pn-r-1) border border-(--pn-line) px-1.25 font-mono text-[10px] text-(--pn-fg-muted)">
+              {lang.toUpperCase()}
+            </span>
+            <TranslationText>{text}</TranslationText>
+          </div>
+        ))}
+      </div>
+      <div className="mt-auto -mx-4 -mb-4 flex min-h-12 items-center justify-between gap-2 border-t border-(--pn-line) px-4 py-2">
+        <Count value={publicLinkCount(association)} noun="public link" className="text-[13px]" />
         {canWrite && (
           <Button variant="ghost" size="sm" onClick={onManageLinks} className={buttonMotion}>
-            <Link2 data-icon="inline-start" />
+            <Link2 aria-hidden data-icon="inline-start" />
             Manage links
           </Button>
         )}
@@ -185,6 +192,7 @@ export function AssociationCard({
       }
       viewHeader={viewHeader}
       view={view}
+
       edit={edit}
     />
   )

@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router"
-import { Plus, UsersRound } from "lucide-react"
+import { Check, Plus, UsersRound } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -9,14 +9,16 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  initialsOf,
   type TableSort,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
 import type { AzureMember } from "@/lib/api/types"
-import { formatLicense } from "@/lib/format"
+import { formatLicense, pluralize } from "@/lib/format"
 
 import { MemberDialog } from "./member-dialog"
 
@@ -54,7 +56,14 @@ const columns: DataTableColumn<AzureMember>[] = [
     align: "end",
     minWidth: 120,
     className: "w-[120px]",
-    cell: (member) => member.employeeId ?? <Unset />,
+    // Cards: a short muted "#id" before the name on the first line.
+    mobile: "meta",
+    cell: (member) =>
+      member.employeeId ? (
+        <span className="font-mono text-[13px] text-(--pn-fg-muted)">#{member.employeeId}</span>
+      ) : (
+        <Unset />
+      ),
   },
   {
     id: "displayName",
@@ -62,9 +71,18 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     minWidth: 180,
     fill: true,
+    mobile: "inline",
     cell: (member) => (
-      <span title={memberName(member)} className="block truncate">
-        {memberName(member)}
+      <span className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden
+          className="grid size-8 shrink-0 place-items-center rounded-full border border-(--pn-line-strong) bg-(--pn-muted) text-[11px] font-semibold text-(--pn-fg-muted)"
+        >
+          {initialsOf(memberName(member), member.mail ?? "")}
+        </span>
+        <Hint overflowOnly label={memberName(member)}>
+          <span className="truncate">{memberName(member)}</span>
+        </Hint>
       </span>
     ),
   },
@@ -74,11 +92,12 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     priority: 1,
     minWidth: 220,
+    mobile: "full",
     cell: (member) =>
       member.mail ? (
-        <span title={member.mail} className="block max-w-[280px] truncate">
-          {member.mail}
-        </span>
+        <Hint overflowOnly label={member.mail}>
+          <span className="block max-w-[280px] truncate font-mono text-[13px]">{member.mail}</span>
+        </Hint>
       ) : (
         <Unset />
       ),
@@ -88,15 +107,22 @@ const columns: DataTableColumn<AzureMember>[] = [
     label: "Licenses",
     priority: 2,
     minWidth: 260,
+    mobile: "full",
     cell: (member) =>
       member.assignedLicensesIds.length ? (
         <ChipOverflow
           items={member.assignedLicensesIds}
           itemLabel={formatLicense}
-          renderItem={(license) => <Chip key={license}>{formatLicense(license)}</Chip>}
+          renderItem={(license) => (
+            <Chip key={license} className="h-6 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal">
+              {formatLicense(license)}
+            </Chip>
+          )}
         />
       ) : (
-        <Unset />
+        <span className="inline-flex h-5.5 items-center rounded-full bg-(--pn-warning-bg) px-2 text-xs font-medium whitespace-nowrap text-(--pn-warning-fg)">
+          No license
+        </span>
       ),
   },
 ]
@@ -118,6 +144,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
   const licenses = filtered.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
+  const allLicenses = shown.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
   const filteredView = deferredQuery !== "" || membersOnly
 
   async function onSaved() {
@@ -156,10 +183,15 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   return (
     <>
       <PageBar
+        description={
+          members === null
+            ? "Create association members in Microsoft Entra"
+            : `${pluralize(shown.length, "member")} · ${pluralize(allLicenses, "license")}`
+        }
         left={
           members !== null ? (
             <Toolbar
-              search={{ value: query, onChange: changeQuery, className: "xl:w-80" }}
+              search={{ value: query, onChange: changeQuery }}
               filters={
                 <Toggle
                   variant="outline"
@@ -169,18 +201,21 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                     setMembersOnly(pressed)
                     setPage(1)
                   }}
-                  className="h-9 shrink-0 rounded-(--pn-r-3) border-(--pn-line-strong) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-muted) aria-pressed:border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                  className="h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-hover) aria-pressed:border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
                 >
+                  {membersOnly ? <Check aria-hidden strokeWidth={2} className="size-4" /> : null}
                   Members only
                 </Toggle>
               }
               count={
-                <Count
-                  value={filtered.length}
-                  total={filteredView ? shown.length : undefined}
-                  noun="member"
-                  parts={[{ value: licenses, noun: "license" }]}
-                />
+                filteredView ? (
+                  <Count
+                    value={filtered.length}
+                    total={shown.length}
+                    noun="member"
+                    parts={[{ value: licenses, noun: "license" }]}
+                  />
+                ) : undefined
               }
             />
           ) : undefined

@@ -25,12 +25,12 @@ export {
   type PageBarBack,
   type PageBarProps,
   PageContent,
-  ScrollTitle,
   SearchField,
   type SearchFieldProps,
   Toolbar,
   type ToolbarProps,
   useInShell,
+  useShellFrame,
 } from "./page-bar"
 export { ServiceGlyph } from "./service-glyph"
 export { DashboardShell, type DashboardShellProps } from "./shell"

@@ -146,7 +146,7 @@ export function PublishEditionDialog({
                 size="sm"
                 className={cn(
                   buttonMotion,
-                  "w-full justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-muted) dark:bg-(--pn-surface)"
+                  "w-full justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-hover) dark:bg-(--pn-surface)"
                 )}
               />
             }

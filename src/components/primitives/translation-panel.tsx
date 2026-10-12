@@ -1,4 +1,3 @@
-import { Languages } from "lucide-react"
 import type { MouseEvent, ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -14,7 +13,7 @@ export type TranslationLanguage = keyof typeof LANGUAGE_NAMES
 export function TranslationGroup({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn("@container min-w-0", className)}>
-      <div className="grid gap-3 @min-[560px]:grid-cols-2">{children}</div>
+      <div className="grid gap-4 @min-[560px]:grid-cols-2">{children}</div>
     </div>
   )
 }
@@ -22,9 +21,9 @@ export function TranslationGroup({ children, className }: { children: ReactNode;
 type TranslationPanelProps = {
   lang: TranslationLanguage
   /**
-   * Edit mode: the panel is the field (pair it with `bare` fields). Same size and background as view mode; only the
-   * accent border and label appear, stronger while a field inside has focus, and a click on the panel focuses its
-   * first field.
+   * Edit mode: the panel is the field (pair it with `bare` fields), labelled with the language's name ("Italian"):
+   * a sunken box with the input border, the focus ring while a field inside has focus, and a click on the panel
+   * focuses its first field.
    */
   editing?: boolean
   children: ReactNode
@@ -32,34 +31,43 @@ type TranslationPanelProps = {
 }
 
 /**
- * One language of a bilingual text: a `Languages` icon + "IT"/"EN" header over the content. `lang` is set on
- * the panel, so screen readers and the textarea spellchecker use the right language.
+ * One language of a bilingual text. View: a small DM Mono "IT"/"EN" tag over the text. Edit: the language name over a
+ * field-like box. `lang` is set on the panel, so screen readers and the textarea spellchecker use the right language.
  */
 export function TranslationPanel({ lang, editing = false, children, className }: TranslationPanelProps) {
+  if (editing) {
+    return (
+      <div
+        role="group"
+        aria-label={LANGUAGE_NAMES[lang]}
+        lang={lang}
+        className={cn("flex min-w-0 flex-col gap-1.5", className)}
+      >
+        <p aria-hidden className="text-[13px] font-medium text-(--pn-fg)">
+          {LANGUAGE_NAMES[lang]}
+        </p>
+        <div
+          onMouseDown={focusFirstField}
+          className="flex min-h-23 cursor-text flex-col rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-sunken) px-3 py-2.5 transition-[border-color,box-shadow] duration-120 focus-within:border-(--pn-focus) focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--pn-focus)_25%,transparent)] has-aria-invalid:border-(--pn-danger-solid)"
+        >
+          {children}
+        </div>
+      </div>
+    )
+  }
   return (
     <div
       role="group"
       aria-label={LANGUAGE_NAMES[lang]}
       lang={lang}
-      onMouseDown={editing ? focusFirstField : undefined}
-      className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-(--pn-r-3) border bg-(--pn-muted)/60 p-3 transition-[border-color,background-color,box-shadow] duration-120",
-        editing
-          ? "cursor-text border-[color-mix(in_oklch,var(--pn-accent)_35%,var(--pn-line))] focus-within:border-(--pn-focus) focus-within:bg-(--pn-muted) focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--pn-focus)_25%,transparent)] has-aria-invalid:border-(--pn-danger-solid)"
-          : "border-transparent",
-        className
-      )}
+      className={cn("flex min-w-0 flex-col gap-1.5", className)}
     >
-      <p
+      <span
         aria-hidden
-        className={cn(
-          "flex items-center gap-1.5 text-[11px] leading-4 font-semibold tracking-[0.08em]",
-          editing ? "text-(--pn-accent)" : "text-(--pn-fg-muted)"
-        )}
+        className="inline-flex h-4.5 items-center self-start rounded-(--pn-r-1) border border-(--pn-line) px-1.25 font-mono text-[10px] tracking-[0.06em] text-(--pn-fg-muted)"
       >
-        <Languages className="size-3.5 shrink-0 text-(--pn-accent)" />
         {lang.toUpperCase()}
-      </p>
+      </span>
       {children}
     </div>
   )
@@ -82,7 +90,7 @@ export function TranslationText({ children, lines }: { children: ReactNode; line
   return (
     <p
       className={cn(
-        "text-[13px] leading-5 text-pretty whitespace-pre-line text-(--pn-fg)",
+        "text-[13px] leading-[1.55] text-pretty whitespace-pre-line text-(--pn-fg)",
         lines === 4 && "line-clamp-4",
         lines === 5 && "line-clamp-5"
       )}
