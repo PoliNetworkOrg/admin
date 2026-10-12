@@ -26,8 +26,42 @@ Copy `.env.example` to `.env`, then choose one local mode:
   Use a dedicated local Redis via `REDIS_URL`. The IdP must register this development client with callback
   `http://localhost:3001/auth/callback`, logout redirect `http://localhost:3001/login`, the scopes and backend
   resource listed below. Set `APP_URL` and the registered redirects to your actual local origin if you change `PORT`.
-  A contributor needs credentials for a development client from the IdP administrators; a personal PoliNetwork
-  account alone cannot act as an OIDC client. Keep credentials in the ignored `.env` file.
+  Against a shared IdP, a contributor needs credentials for a registered development client from its administrators;
+  a personal PoliNetwork account alone cannot act as an OIDC client. For a fully local IdP, follow the steps below.
+  Keep credentials in the ignored `.env` file.
+
+### Local OIDC across Auth, backend and admin
+
+You can run the full sign-in flow locally with [PoliNetwork Auth](https://github.com/PoliNetworkOrg/auth)'s development
+personas. Use separate ports: backend `3000`, admin `3001`, Auth `3002`. This exercises the OIDC code flow and backend
+permission checks without using the admin's `AGENT_MODE`.
+
+1. Clone Auth alongside this repository. In Auth, copy `.env.local.example` to `.env.local`, set
+   `BETTER_AUTH_URL=http://localhost:3002` and `PORT=3002`, and add
+   `OAUTH_BACKEND_RESOURCE_URI=https://backend.internal.polinetwork.org` and
+   `OAUTH_INTERNAL_RESOURCE_URI=https://auth.polinetwork.org/api/internal`. These two HTTPS URLs are audience
+   identifiers; they do not need to resolve locally. Run `pnpm install`, `pnpm run dev:setup`, then `pnpm run dev`.
+2. Start two separate local Redis instances, one for backend on port `6379` and one for admin on port `6380`.
+   For example, run `docker run -d --rm --name pn-backend-redis -p 127.0.0.1:6379:6379 redis:7-alpine` and
+   `docker run -d --rm --name pn-admin-redis -p 127.0.0.1:6380:6379 redis:7-alpine`.
+3. Open `http://localhost:3002/api/dev/login?as=admin&redirect=/applications` and register two applications in
+   Auth. **Admin Dashboard local** signs people in, uses a client secret, allows localhost redirects (`native`
+   application type), requests `openid profile email offline_access` and delegated `backend:admin`, and enables
+   end-session. Set its callback to `http://localhost:3001/auth/callback` and logout redirect to
+   `http://localhost:3001/login`. **Backend snapshot local** acts as itself, uses `private_key_jwt`, and requests
+   `idp:access:read` for the internal resource. Generate a separate Ed25519 key pair for it: enter only the public
+   JWKS in Auth and retain the private JWK for backend. Copy both generated client IDs and the dashboard secret.
+4. In backend's ignored `.env`, set `IDP_PUBLIC_URL=http://localhost:3002`,
+   `OAUTH_BACKEND_RESOURCE_URI=https://backend.internal.polinetwork.org`,
+   `OAUTH_INTERNAL_RESOURCE_URI=https://auth.polinetwork.org/api/internal`, `OAUTH_BACKEND_CLIENT_ID` to the backend
+   application ID, and `OAUTH_BACKEND_PRIVATE_JWK` to its private JWK JSON (single-quote the JSON for Bun's `.env`
+   parser). Set Auth's `OAUTH_BACKEND_CLIENT_ID` to that same ID and restart both services. Backend should log an
+   IdP snapshot with `fresh: true`.
+5. In admin's ignored `.env`, set `AGENT_MODE=false`, `APP_URL=http://localhost:3001`, `IDP_URL=http://localhost:3002`,
+   `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` to the dashboard application's credentials,
+   `BACKEND_RESOURCE=https://backend.internal.polinetwork.org`, `REDIS_URL=redis://localhost:6380`, and a fresh
+   `SESSION_SECRET` of at least 32 characters. Run `pnpm dev`, open `http://localhost:3001/login`, and choose
+   **Ada Admin** on Auth's development sign-in page. Other personas may correctly lack `admin:access`.
 
 Set the following runtime variables (the build does not need secrets):
 
