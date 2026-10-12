@@ -53,9 +53,14 @@ export type TelegramUserHistory =
   | { status: "ok"; days: UserCreationDay[]; today: string }
   | { status: "forbidden" | "unavailable" | "error" }
 
+const creationDaysSchema = z.array(
+  z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), count: z.number().int().nonnegative() })
+)
+
 const creationHistorySchema = z.union([
+  creationDaysSchema.transform((days) => ({ days, error: null })),
   z.object({
-    days: z.array(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), count: z.number().int().nonnegative() })),
+    days: creationDaysSchema,
     error: z.null(),
   }),
   z.object({ error: z.string(), days: z.null().optional() }),
