@@ -1,6 +1,5 @@
 import type { ReactElement } from "react"
 
-import { Badge } from "@/components/ui/badge"
 import { getGroupLabelColor } from "@/features/group-labels/group-labels.constants"
 import { formatLabelCompact, isCategoryLabel } from "@/features/group-labels/label-tree"
 import type { GroupLabel } from "@/features/group-labels/types"
@@ -23,9 +22,6 @@ export function LabelDot({ color, className }: LabelDotProps) {
   )
 }
 
-/** Production pill text that sits at the 4.5:1 edge on the light surface (green-700 on green-500/10 is 4.50). */
-const TEXT_CONTRAST_FIXES = new Map([["Green", "text-green-800"]])
-
 type LabelChipProps = {
   label: GroupLabel
   href?: string
@@ -35,37 +31,23 @@ type LabelChipProps = {
 }
 
 /**
- * Categories: outlined chip with a color dot and the last two segments. Tags: pill tinted in the label color,
- * publications without their `release-` prefix.
+ * A neutral chip with the label's color as a dot, so the text keeps the chip's contrast in both themes. Categories show
+ * their last two segments, publications drop the `release-` prefix.
  */
 export function LabelChip({ label, href, render, className }: LabelChipProps) {
   const link = render ?? (href === undefined ? undefined : <a href={href} />)
   const title = labelDisplayName(label.label)
-
-  if (isCategoryLabel(label.label)) {
-    return (
-      <Chip render={link} title={title} className={cn("max-w-56 min-w-0 shrink", className)}>
-        <LabelDot color={label.color} />
-        <span className="truncate">{formatLabelCompact(label.label)}</span>
-      </Chip>
-    )
-  }
-
-  const swatch = getGroupLabelColor(label.color)
   return (
-    <Badge
-      variant="link"
+    <Chip
       render={link}
       title={title}
       className={cn(
-        "h-[22px] max-w-56 min-w-0 shrink rounded-(--pn-r-full) px-2 text-xs font-medium underline-offset-2 transition-none",
-        swatch.badgeClassName,
-        TEXT_CONTRAST_FIXES.get(swatch.label),
+        "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-fg-subtle) [a]:hover:bg-(--pn-muted)",
         className
       )}
-      style={swatch.badgeStyle}
     >
-      <span className="truncate">{title}</span>
-    </Badge>
+      <LabelDot color={label.color} />
+      <span className="truncate">{isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title}</span>
+    </Chip>
   )
 }
