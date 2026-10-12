@@ -111,8 +111,8 @@ export function TelegramGroupsPage({
       id: "title",
       label: "Group",
       sortable: true,
-      // 208px of title plus cell padding.
-      minWidth: 244,
+      // 168px of title plus cell padding.
+      minWidth: 200,
       fill: true,
       cell: (row) => (
         <span title={row.title} className="block truncate">
@@ -135,7 +135,7 @@ export function TelegramGroupsPage({
       sortable: true,
       mono: true,
       priority: 3,
-      width: 176,
+      width: 128,
       cell: (row) =>
         row.tag ? (
           <CopyableText value={row.tag} what="Tag">
@@ -149,7 +149,7 @@ export function TelegramGroupsPage({
       id: "labels",
       label: "Labels",
       priority: 1,
-      width: 320,
+      width: 280,
       mobile: "full",
       cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
     },
