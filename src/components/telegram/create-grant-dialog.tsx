@@ -171,14 +171,6 @@ function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGr
       canSubmit={step === "user" ? selectedUser !== null : detailsValid}
       submitOnEnter={step !== "user"}
       onSubmit={submit}
-      footerStart={
-        !fixedUser && step === "details" ? (
-          <Button type="button" variant="ghost" className={buttonMotion} onClick={() => setStep("user")}>
-            <ArrowLeft aria-hidden data-icon="inline-start" />
-            Change user
-          </Button>
-        ) : undefined
-      }
     >
       {!fixedUser && <GrantStepper step={step} canOpenDetails={selectedUser !== null} onStepChange={setStep} />}
 
@@ -261,6 +253,18 @@ function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGr
           {selectedUser && (
             <div className="rounded-(--pn-r-3) bg-(--pn-muted) p-3 text-[13px] leading-5">
               <SelectedUser user={selectedUser} />
+              {!fixedUser && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(buttonMotion, "mt-2")}
+                  onClick={() => setStep("user")}
+                >
+                  <ArrowLeft aria-hidden data-icon="inline-start" />
+                  Change user
+                </Button>
+              )}
             </div>
           )}
           <GrantDateTimeFields
@@ -273,20 +277,19 @@ function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGr
             invalidStart={invalidStart}
             invalidEnd={invalidEnd}
           />
-          <FormField
-            label="Motivation"
-            htmlFor="grant-reason"
-            optional
-            counter={{ length: reason.length, max: REASON_MAX }}
-          >
+          <FormField label="Motivation" htmlFor="grant-reason">
             <Textarea
               id="grant-reason"
+              aria-describedby="grant-reason-hint"
               value={reason}
               maxLength={REASON_MAX}
               onChange={(event) => setReason(event.target.value)}
               placeholder="Why is this grant authorized?"
               className={cn("min-h-[76px]", fieldControl)}
             />
+            <p id="grant-reason-hint" className="text-xs text-(--pn-fg-muted) tabular-nums">
+              Optional · {reason.length}/{REASON_MAX}
+            </p>
           </FormField>
         </>
       )}
