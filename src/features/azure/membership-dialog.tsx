@@ -10,14 +10,13 @@ import {
   dialogFooterButton,
   dialogMotion,
   dialogPanel,
-  dialogTitleText,
-  dialogDescriptionText,
   IconButton,
   InlineAlert,
   initialsOf,
   LoadingButton,
   scrimClasses,
 } from "@/components/primitives"
+import { dialogTitleText, dialogDescriptionText } from "@/components/primitives/confirm-dialog"
 import { appToast } from "@/components/shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
