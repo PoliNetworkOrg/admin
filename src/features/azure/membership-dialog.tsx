@@ -245,13 +245,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                 >
                   Keep member
                 </Button>
-                <LoadingButton
-                  size="default"
-                  tone="dangerSolid"
-                  pending={pending}
-                  onClick={() => void submit()}
-                  className="w-full min-[480px]:w-auto"
-                >
+                <LoadingButton size="default" tone="dangerSolid" pending={pending} onClick={() => void submit()}>
                   Remove member
                 </LoadingButton>
               </>
@@ -267,13 +261,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   Cancel
                 </Button>
                 {adding ? (
-                  <LoadingButton
-                    size="default"
-                    pending={pending}
-                    disabled={!selected}
-                    onClick={() => void submit()}
-                    className="w-full min-[480px]:w-auto"
-                  >
+                  <LoadingButton size="default" pending={pending} disabled={!selected} onClick={() => void submit()}>
                     Add member
                   </LoadingButton>
                 ) : null}

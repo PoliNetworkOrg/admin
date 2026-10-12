@@ -13,7 +13,15 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-import { ConfirmDialog, dialogFooter, dialogFooterButton, dialogPanel, FALLBACK_ERROR } from "./confirm-dialog"
+import {
+  ConfirmDialog,
+  dialogDescriptionText,
+  dialogFooter,
+  dialogFooterButton,
+  dialogPanel,
+  dialogTitleText,
+  FALLBACK_ERROR,
+} from "./confirm-dialog"
 import { IconButton } from "./icon-button"
 import { InlineAlert } from "./inline-alert"
 import { LoadingButton } from "./loading-button"
@@ -136,15 +144,9 @@ export function FormDialog({
           initialFocus={initialFocus}
           className={cn(dialogPanel, dialogMotion, sizes[size])}
         >
-          <header className="relative flex shrink-0 flex-col gap-1.5 px-5 pt-5 pr-14">
-            <DialogTitle className="text-[15px] leading-[22px] font-semibold tracking-[-0.005em] text-balance">
-              {title}
-            </DialogTitle>
-            {description && (
-              <DialogDescription className="text-[13px] leading-5 text-pretty text-(--pn-fg-muted)">
-                {description}
-              </DialogDescription>
-            )}
+          <header className="relative flex shrink-0 flex-col gap-1 px-5.5 pt-5 pr-14">
+            <DialogTitle className={dialogTitleText}>{title}</DialogTitle>
+            {description && <DialogDescription className={dialogDescriptionText}>{description}</DialogDescription>}
             <IconButton label="Close" icon={X} onClick={requestClose} className="absolute top-3 right-3" />
           </header>
           <form
@@ -156,28 +158,22 @@ export function FormDialog({
             onKeyDown={onFormKeyDown}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div ref={bodyRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+            <div ref={bodyRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5.5 py-4.5">
               {children}
             </div>
             {(shownError || notice) && (
-              <div className="flex shrink-0 flex-col gap-2 px-5 pb-4">
+              <div className="flex shrink-0 flex-col gap-2 px-5.5 pb-4">
                 {notice}
                 {shownError && <InlineAlert>{shownError}</InlineAlert>}
               </div>
             )}
             <div className={dialogFooter}>
-              {footerStart && <div className="flex gap-2 min-[480px]:mr-auto">{footerStart}</div>}
+              {footerStart && <div className="mr-auto flex gap-2 max-shell:flex-none">{footerStart}</div>}
               <Button type="button" variant="outline" onClick={requestClose} className={dialogFooterButton}>
                 Cancel
               </Button>
               {submitLabel !== undefined && (
-                <LoadingButton
-                  type="submit"
-                  size="default"
-                  pending={pending}
-                  disabled={!canSubmit}
-                  className="w-full min-[480px]:w-auto"
-                >
+                <LoadingButton type="submit" size="default" pending={pending} disabled={!canSubmit}>
                   {submitLabel}
                 </LoadingButton>
               )}
