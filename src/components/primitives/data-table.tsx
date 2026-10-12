@@ -80,6 +80,8 @@ type DataTableProps<T> = {
   error?: DataTableError
   selectedRowId?: string | number
   className?: string
+  /** Keep short edition rows in one line on mobile. */
+  compactMobile?: boolean
 }
 
 const DEFAULT_MIN_WIDTH = 140
@@ -200,6 +202,7 @@ export function DataTable<T>({
   error,
   selectedRowId,
   className,
+  compactMobile = false,
 }: DataTableProps<T>) {
   const { tableRef, fits } = useTableFits()
   const hasActions = actions !== undefined
@@ -356,6 +359,8 @@ export function DataTable<T>({
     <div
       className={cn(
         "@container overflow-clip rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg)",
+        compactMobile &&
+          "max-shell:[&_tbody_tr]:flex-nowrap max-shell:[&_tbody_td]:basis-auto max-shell:[&_tbody_td:first-child]:min-w-0 max-shell:[&_tbody_td:first-child]:flex-1 max-shell:[&_tbody_td:last-child]:shrink-0 max-shell:[&_tbody_td]:text-xs",
         className
       )}
     >

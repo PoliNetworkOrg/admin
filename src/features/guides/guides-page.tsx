@@ -68,8 +68,15 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
       minWidth: 200,
       cell: (guide) => (
         <span className="flex items-center gap-2">
-          <span className="whitespace-nowrap">Version {guide.version}</span>
-          {guide.id === latestId && <StatusBadge tone="brand">Latest</StatusBadge>}
+          <span className="font-mono whitespace-nowrap">
+            <span className="max-shell:hidden">Version </span>
+            {guide.version}
+          </span>
+          {guide.id === latestId && (
+            <span className="max-shell:hidden">
+              <StatusBadge tone="brand">Latest</StatusBadge>
+            </span>
+          )}
         </span>
       ),
     },
@@ -90,7 +97,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
           render={<a href={guide.file} target="_blank" rel="noreferrer" />}
           className={cn(
             buttonMotion,
-            "h-7 gap-1.5 rounded-(--pn-r-2) px-2.5 text-[13px] has-data-[icon=inline-start]:pl-2 [&_svg]:text-(--pn-fg-muted)"
+            "h-9 gap-1.5 rounded-(--pn-r-2) px-2.5 text-[13px] has-data-[icon=inline-start]:pl-2 [&_svg]:text-(--pn-fg-muted)"
           )}
         >
           <Download aria-hidden data-icon="inline-start" />
@@ -153,6 +160,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
           </div>
           <DataTable
             label="Freshman guide editions"
+            compactMobile
             columns={columns}
             rows={rows}
             getRowId={(guide) => String(guide.id)}
