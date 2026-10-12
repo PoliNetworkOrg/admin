@@ -18,6 +18,8 @@ import type { GroupWithLabels } from "@/lib/api/types"
 /** Verbatim production copy, shown for any visibility failure (server codes are not user-facing). */
 const VISIBILITY_ERROR = "The visibility setting could not be updated. Check your permissions and try again."
 
+const groupActionHover = "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)"
+
 export function groupKey(group: Pick<GroupWithLabels, "type" | "id">) {
   return `${group.type}:${group.id}`
 }
@@ -227,6 +229,7 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
           name={group.title}
           visible={!controller.isHidden(group)}
           pending={controller.isToggling(group)}
+          className={groupActionHover}
           onToggle={() => void controller.toggleVisibility(group)}
         />
       )}
@@ -235,6 +238,8 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
           label="Edit labels"
           ariaLabel={`Edit labels for ${group.title}`}
           icon={Tags}
+          tone="warning"
+          className={`text-(--pn-warning-fg) ${groupActionHover}`}
           onClick={() => controller.show("labels", group)}
         />
       )}
@@ -244,6 +249,8 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             label="Edit group"
             ariaLabel={`Edit ${group.title}`}
             icon={Pencil}
+            tone="success"
+            className={`text-(--pn-success-fg) ${groupActionHover}`}
             onClick={() => controller.show("edit", group)}
           />
         ) : (
@@ -256,6 +263,7 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             ariaLabel={`Leave ${group.title}`}
             icon={LogOut}
             tone="danger"
+            className={`text-(--pn-danger-fg) ${groupActionHover}`}
             onClick={(event) => controller.show("leave", group, event.currentTarget)}
           />
         ) : (
@@ -264,6 +272,7 @@ export function GroupRowActions({ group, controller, alignEdit = false }: GroupR
             ariaLabel={`Delete ${group.title}`}
             icon={Trash2}
             tone="danger"
+            className={`text-(--pn-danger-fg) ${groupActionHover}`}
             onClick={(event) => controller.show("delete", group, event.currentTarget)}
           />
         ))}

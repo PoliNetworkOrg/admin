@@ -14,7 +14,7 @@ Login and onboarding pages use the same tokens but not the shell.
 2. **The chrome is for finding; the content is for doing.** Rail, panel, top bar and bottom nav locate; nothing in
    them explains. Help lives in the page context line, empty states, field hints and dialog descriptions.
 3. **One accent, neutral everything else.** Brand blue marks the active location, the one primary action, links,
-   "on" states (a visible group) and focus. Icons are `--pn-fg-muted`; the only multicolor marks are
+   "on" states (a visible group) and focus. Icons are `--pn-fg-muted`, except group row actions (§5); the only multicolor marks are
    the Telegram, WhatsApp and Microsoft 365 logos, wherever those services and platforms are named. Status uses the fixed tones, never ad-hoc colors.
 4. **Borders separate; shadows float.** Static surfaces (cards, tables, nav) get a 1px line; only layers above the page
    (popover, menu, dialog, sheet, toast, drag ghost) cast a shadow.
@@ -238,7 +238,10 @@ first/last buttons); on narrow tables "‹ 1 of 34 ›".
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
 right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts: `tone="danger"` (and success/warning) only tints
-the hover; `tone="info"` marks an "on" state in accent (the visibility eye). Group rows separate the invite-link pair
+the hover; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
+colors at rest: labels use `--pn-warning-fg`, edit uses `--pn-success-fg`, and leave/delete use `--pn-danger-fg`.
+Visibility, labels, edit and leave/delete all hover in brand blue (`--pn-accent` on `--pn-accent-soft`);
+the hidden visibility eye and invite-link actions remain muted. Group rows separate the invite-link pair
 from the rest with a 1px divider; a group without a link shows an amber "Not shared" badge in place of the pair. In
 tables mixing Telegram and WhatsApp rows an action one platform lacks keeps an empty 36px slot, so the columns of icons
 align. Queues use labelled buttons instead (Reports: ghost "Dismiss", outline "Resolve"). Outside tables,
