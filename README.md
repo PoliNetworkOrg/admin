@@ -17,6 +17,18 @@ pnpm install
 pnpm dev
 ```
 
+Copy `.env.example` to `.env`, then choose one local mode:
+
+- **Preview with a fake administrator:** set `AGENT_MODE=true`, run `pnpm dev`, and open `/dashboard` or `/login`.
+  No OIDC client or Redis is needed. Pages still load data from `BACKEND_URL`, so use a local fake or test backend.
+- **Sign in as a real user:** keep `AGENT_MODE=false` and set `OIDC_CLIENT_ID`, exactly one of
+  `OIDC_CLIENT_PRIVATE_JWK` or `OIDC_CLIENT_SECRET`, and an independent `SESSION_SECRET` of at least 32 characters.
+  Use a dedicated local Redis via `REDIS_URL`. The IdP must register this development client with callback
+  `http://localhost:3001/auth/callback`, logout redirect `http://localhost:3001/login`, the scopes and backend
+  resource listed below. Set `APP_URL` and the registered redirects to your actual local origin if you change `PORT`.
+  A contributor needs credentials for a development client from the IdP administrators; a personal PoliNetwork
+  account alone cannot act as an OIDC client. Keep credentials in the ignored `.env` file.
+
 Set the following runtime variables (the build does not need secrets):
 
 | Variable                  | Meaning                                                                                                                                                                                                                                              |
