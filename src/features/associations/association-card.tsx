@@ -97,6 +97,15 @@ export function AssociationCard({
             <TranslationText>{text}</TranslationText>
           </div>
         ))}
+      </div>{" "}
+      <div className="mt-auto -mx-4 -mb-4 flex min-h-12 items-center justify-between gap-2 border-t border-(--pn-line) px-4 py-2">
+        <Count value={publicLinkCount(association)} noun="public link" className="text-[13px]" />
+        {canWrite && (
+          <Button variant="ghost" size="sm" onClick={onManageLinks} className={buttonMotion}>
+            <Link2 aria-hidden data-icon="inline-start" />
+            Manage links
+          </Button>
+        )}
       </div>
     </>
   )
@@ -182,16 +191,7 @@ export function AssociationCard({
       }
       viewHeader={viewHeader}
       view={view}
-      viewFooter={
-        canWrite ? (
-          <Button variant="ghost" size="sm" onClick={onManageLinks} className={buttonMotion}>
-            <Link2 aria-hidden data-icon="inline-start" />
-            Manage links
-          </Button>
-        ) : (
-          <Count value={publicLinkCount(association)} noun="public link" className="text-xs" />
-        )
-      }
+
       edit={edit}
     />
   )

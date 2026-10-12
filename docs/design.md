@@ -384,7 +384,8 @@ Rules that the templates above don't imply.
 - **Projects**: one column at every width, because card order is the order on the website; drag to reorder (handle
   only; the handle hides on mobile), a failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
 - **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
-  with Manage links and edit/delete at opposite ends. Links are edited in their own dialog, not inline.
+  with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
+  own dialog, not inline.
 - **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px) ending in a
   dashed "Add category"; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All

@@ -39,8 +39,6 @@ type InlineEditProps = {
    * so view and edit bodies are equally wide. Without it the actions take a column next to the whole view.
    */
   viewHeader?: ReactNode
-  /** When present, move view actions into a divided footer beside this content. */
-  viewFooter?: ReactNode
   edit: ReactNode
   /** View-mode actions before Edit (e.g. "Move project"). Order: these → Edit → `deleteAction` → `actions`. */
   leadingActions?: ReactNode
@@ -197,7 +195,7 @@ export function InlineEditCard(props: InlineEditProps) {
         <>
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">{props.viewHeader}</div>
-            {!props.readOnly && props.viewFooter === undefined && <ViewActions {...props} />}
+            {!props.readOnly && <ViewActions {...props} />}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-3">{props.view}</div>
         </>
@@ -207,12 +205,6 @@ export function InlineEditCard(props: InlineEditProps) {
             {editing ? <SavingContext value={props.saving}>{props.edit}</SavingContext> : props.view}
           </div>
           {!editing && !props.readOnly && <ViewActions {...props} />}
-        </div>
-      )}
-      {!editing && props.viewFooter !== undefined && (
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-(--pn-line) pt-3">
-          {props.viewFooter}
-          {!props.readOnly && <ViewActions {...props} />}
         </div>
       )}
       {editing && <EditFooter {...props} />}
@@ -228,7 +220,7 @@ export function InlineEditRow(props: InlineEditProps) {
       <div onKeyDown={onKeyDown} className={cn("flex min-h-11 items-center gap-3 px-4", props.className)}>
         {!props.readOnly && props.handle}
         <div className="flex min-w-0 flex-1 items-center gap-3">{props.view}</div>
-        {!props.readOnly && props.viewFooter === undefined && <ViewActions {...props} />}
+        {!props.readOnly && <ViewActions {...props} />}
       </div>
     )
   }
