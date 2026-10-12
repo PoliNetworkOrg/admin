@@ -82,7 +82,7 @@ function OverviewSearch() {
       type="button"
       onClick={openPalette}
       aria-haspopup="dialog"
-      className="-mt-2 flex h-13 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line-strong) bg-(--pn-surface) px-4 text-left text-[15px] text-(--pn-fg-subtle) transition-[border-color] duration-120 hover:border-(--pn-fg-subtle) max-shell:h-11"
+      className="-mt-2 flex h-13 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line-strong) bg-(--pn-surface) px-4 text-left text-[15px] text-(--pn-fg-muted) transition-[border-color] duration-120 hover:border-(--pn-fg-subtle) max-shell:h-11"
     >
       <Search aria-hidden strokeWidth={1.75} className="size-5 shrink-0 text-(--pn-fg-muted)" />
       <span className="min-w-0 flex-1 truncate">Search users, groups, members or pages…</span>
