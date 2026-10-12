@@ -48,7 +48,7 @@ export function TranslationPanel({ lang, editing = false, children, className }:
         </p>
         <div
           onMouseDown={focusFirstField}
-          className="flex min-h-23 cursor-text flex-col rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-bg) px-3 py-2.5 transition-[border-color,box-shadow] duration-120 focus-within:border-(--pn-focus) focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--pn-focus)_25%,transparent)] has-aria-invalid:border-(--pn-danger-solid)"
+          className="flex min-h-23 cursor-text flex-col rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-sunken) px-3 py-2.5 transition-[border-color,box-shadow] duration-120 focus-within:border-(--pn-focus) focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--pn-focus)_25%,transparent)] has-aria-invalid:border-(--pn-danger-solid)"
         >
           {children}
         </div>

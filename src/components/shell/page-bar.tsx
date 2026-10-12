@@ -162,7 +162,13 @@ export function PageBar({
     )
   } else {
     head = (
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 shell:min-h-14">
+      <div
+        className={cn(
+          "flex flex-wrap items-end justify-between gap-x-4 gap-y-3",
+          // A bare h1 (Overview, Account) sits at the top; with context or actions the row keeps 56px.
+          (description || right) && "shell:min-h-14"
+        )}
+      >
         <div className="flex min-w-0 items-center gap-3.5">
           {serviceTile ? (
             <span className="grid size-11 shrink-0 place-items-center rounded-[11px] border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg) max-shell:hidden">

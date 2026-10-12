@@ -108,7 +108,7 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
     <aside
       data-shell-panel=""
       className={cn(
-        "flex h-full w-60 shrink-0 flex-col border-r border-(--pn-line) bg-(--pn-nav) select-none max-[1100px]:w-50",
+        "flex h-full w-60 shrink-0 flex-col border-r border-(--pn-line) bg-(--pn-panel) select-none max-[1100px]:w-50",
         className
       )}
     >
@@ -134,7 +134,7 @@ export function SectionPills({ service, match, pendingReports, className }: Pane
       aria-label={`${service.title} sections`}
       onKeyDown={onSectionListKeyDown}
       className={cn(
-        "flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-nav) px-4 py-2.5 [scrollbar-width:none]",
+        "flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
         className
       )}
     >

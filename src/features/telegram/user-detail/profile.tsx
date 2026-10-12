@@ -199,7 +199,7 @@ function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
       ) : (
         <ul className="flex flex-col gap-3 p-4">
           {ongoing ? (
-            <li className="flex flex-col gap-2.5 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-bg) p-3.5">
+            <li className="flex flex-col gap-2.5 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-sunken) p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold">Ongoing</span>
                 <StatusBadge tone="success">Active</StatusBadge>
@@ -262,7 +262,7 @@ function MessageRow({ message }: { message: Message }) {
           {formatDateTime(message.timestamp)}
         </time>
       </div>
-      <blockquote className="rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-bg) px-3 py-2.5 text-[14px] leading-5 text-pretty whitespace-pre-wrap text-(--pn-fg)">
+      <blockquote className="rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-sunken) px-3 py-2.5 text-[14px] leading-5 text-pretty whitespace-pre-wrap text-(--pn-fg)">
         {message.message}
       </blockquote>
       <div className="flex items-center justify-between gap-3 text-xs">

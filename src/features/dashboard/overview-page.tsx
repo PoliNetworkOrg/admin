@@ -135,7 +135,7 @@ function Hero({ counts, userHistory }: OverviewPageProps) {
             <Link
               key={stat.label}
               to={stat.to}
-              className="group/stat flex min-w-0 items-center gap-3 rounded-(--pn-r-4) px-5 py-4.5 text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-surface-raised) max-shell:flex-1 max-shell:px-3 max-shell:py-2.5 dark:hover:bg-(--pn-muted)"
+              className="group/stat flex min-w-0 items-center gap-3 rounded-(--pn-r-4) px-5 py-4.5 text-(--pn-fg) transition-[background-color] duration-120 hover:bg-[color-mix(in_oklch,var(--pn-muted)_70%,var(--pn-surface))] max-shell:flex-1 max-shell:px-3 max-shell:py-2.5"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-[13px] text-(--pn-fg-muted)">{stat.label}</span>

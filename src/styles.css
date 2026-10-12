@@ -41,10 +41,12 @@
   --pn-n-950: #060e16;
 
   /* Semantic, light */
-  --pn-bg: var(--pn-n-0);
+  --pn-bg: #f6f7f9;
   --pn-surface: var(--pn-n-0);
   --pn-surface-raised: var(--pn-n-0);
-  --pn-nav: var(--pn-n-50);
+  --pn-nav: var(--pn-n-0);
+  --pn-panel: #fbfcfd;
+  --pn-sunken: var(--pn-n-50);
   --pn-nav-active: var(--pn-n-200);
   --pn-muted: var(--pn-n-100);
   --pn-line: oklch(0.22 0.024 250 / 0.1);
@@ -140,6 +142,8 @@
   --pn-surface: #11181f;
   --pn-surface-raised: #192028;
   --pn-nav: #060b11;
+  --pn-panel: #0b1218;
+  --pn-sunken: #0d141a;
   --pn-nav-active: oklch(1 0 0 / 0.08);
   --pn-muted: #1b222a;
   --pn-line: #262f38;
