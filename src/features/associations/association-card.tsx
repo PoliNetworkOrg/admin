@@ -73,9 +73,9 @@ export function AssociationCard({
   }, [editing])
 
   const viewHeader = (
-    <div className="flex h-10 min-w-0 items-center gap-3">
+    <div className="flex min-h-10 min-w-0 items-center gap-3">
       <WebLogo src={association.logo} name={association.name} fallback="AS" />
-      <p title={association.name} className="text-[17px] leading-6 font-semibold text-(--pn-fg)">
+      <p title={association.name} className="min-w-0 text-[17px] leading-6 font-semibold break-words text-(--pn-fg)">
         {association.name}
       </p>
     </div>
@@ -97,7 +97,7 @@ export function AssociationCard({
             <TranslationText>{text}</TranslationText>
           </div>
         ))}
-      </div>{" "}
+      </div>
       <div className="mt-auto -mx-4 -mb-4 flex min-h-12 items-center justify-between gap-2 border-t border-(--pn-line) px-4 py-2">
         <Count value={publicLinkCount(association)} noun="public link" className="text-[13px]" />
         {canWrite && (
