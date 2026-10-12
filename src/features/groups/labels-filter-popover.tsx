@@ -1,10 +1,13 @@
-import { ChevronDown, Tags } from "lucide-react"
+import { ChevronDown, Tags, X } from "lucide-react"
 import { useDeferredValue, useEffect, useState } from "react"
 
 import {
   buttonMotion,
   floatingMotion,
   FormDialog,
+  IconButton,
+  LabelChip,
+  Reveal,
   LabelTreeSelector,
   PAGE_SIZES,
   raisedSurface,
@@ -162,6 +165,7 @@ type LabelsFilterPopoverProps = {
  */
 export function LabelsFilterPopover({ labels, value, onChange, groupCount }: LabelsFilterPopoverProps) {
   const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState<"include" | "exclude" | null>(null)
   const [mobile, setMobile] = useState(false)
   useEffect(() => {
     const query = window.matchMedia("(width < 760px)")
@@ -179,24 +183,49 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
         <SectionEmpty title="No labels have been created yet" className="px-1 py-4" />
       ) : (
         <>
-          <section className="flex flex-col gap-1.5">
-            <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">Must have</h2>
-            <LabelTreeSelector
-              allLabels={labels.filter((label) => !value.exclude.includes(label.label))}
-              selected={value.include}
-              onToggleMany={(picked, select) => onChange({ ...value, include: toggled(value.include, picked, select) })}
-              className="h-52 max-shell:h-44"
-            />
-          </section>
-          <section className="flex flex-col gap-1.5">
-            <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">Must not have</h2>
-            <LabelTreeSelector
-              allLabels={labels.filter((label) => !value.include.includes(label.label))}
-              selected={value.exclude}
-              onToggleMany={(picked, select) => onChange({ ...value, exclude: toggled(value.exclude, picked, select) })}
-              className="h-52 max-shell:h-44"
-            />
-          </section>
+          {(["include", "exclude"] as const).map((side) => (
+            <section key={side} className="flex flex-col gap-1.5">
+              <h2 className="text-[13px] leading-5 font-medium text-(--pn-fg)">
+                {side === "include" ? "Must have" : "Must not have"}
+              </h2>
+              <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-(--pn-r-3) border border-(--pn-line-strong) bg-(--pn-surface) px-2 py-1">
+                {value[side].map((path) => {
+                  const label = labels.find((candidate) => candidate.label === path)
+                  return label ? (
+                    <span key={path} className="inline-flex min-w-0 items-center">
+                      <LabelChip label={label} />
+                      <IconButton
+                        icon={X}
+                        label={`Remove ${path} filter`}
+                        onClick={() => onChange({ ...value, [side]: value[side].filter((item) => item !== path) })}
+                      />
+                    </span>
+                  ) : null
+                })}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(buttonMotion, "text-(--pn-fg-muted)")}
+                  aria-expanded={expanded === side}
+                  onClick={() => setExpanded(expanded === side ? null : side)}
+                >
+                  {expanded === side ? "Close picker" : "Add…"}
+                </Button>
+              </div>
+              <Reveal open={expanded === side}>
+                <LabelTreeSelector
+                  allLabels={labels.filter(
+                    (label) => !value[side === "include" ? "exclude" : "include"].includes(label.label)
+                  )}
+                  selected={value[side]}
+                  onToggleMany={(picked, select) =>
+                    onChange({ ...value, [side]: toggled(value[side], picked, select) })
+                  }
+                  className="h-52 max-shell:h-44"
+                />
+              </Reveal>
+            </section>
+          ))}
           <div className="flex items-center justify-between border-t border-(--pn-line) pt-2">
             <Button
               variant="ghost"
@@ -286,7 +315,6 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
         className={cn(
           raisedSurface,
           floatingMotion,
-          FormDialog,
           "max-h-(--available-height) w-80 gap-3 overflow-y-auto rounded-(--pn-r-4) p-3 max-lg:max-w-[calc(100vw-2rem)]"
         )}
       >

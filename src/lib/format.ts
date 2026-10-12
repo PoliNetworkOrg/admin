@@ -39,7 +39,7 @@ const IRREGULAR_PLURALS = new Map([
 function fixedMonthDate(formatter: Intl.DateTimeFormat, date: Date): string {
   const parts = formatter.formatToParts(date)
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ""
-  const day = `${part("day")} ${SHORT_MONTHS[Number(part("month")) - 1]} ${part("year")}`
+  const day = `${Number(part("day"))} ${SHORT_MONTHS[Number(part("month")) - 1]} ${part("year")}`
   return part("hour") ? `${day}, ${part("hour")}:${part("minute")}` : day
 }
 

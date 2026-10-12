@@ -228,19 +228,20 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
       label: "Reference",
       minWidth: 220,
       fill: true,
-      className: "max-sm:py-2",
+      className: "max-shell:min-w-0 max-shell:w-full",
       cell: ({ latest, ids }) => {
         const text = reference(latest)
         return (
           <span className="block min-w-0">
             <span className="flex min-w-0 items-start gap-2">
               {text ? (
-                <span title={text} className="truncate">
+                <span title={text} className="min-w-0 flex-1 truncate">
                   {text}
                 </span>
               ) : (
                 <Unset />
               )}
+              {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
               {!open && (
                 <span className="ml-auto flex shrink-0 flex-col items-end gap-1 shell:hidden">
                   <StatusBadge tone={latest.status === "resolved" ? "success" : "neutral"}>
@@ -251,7 +252,6 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
                   </span>
                 </span>
               )}
-              {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
             </span>
             <span
               className={cn(
@@ -271,7 +271,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
           {
             id: "status",
             label: "Status",
-            mobile: "hidden",
+            mobile: "hidden" as const,
             priority: 1,
             minWidth: 120,
             cell: ({ latest }: ReportGroup) =>
