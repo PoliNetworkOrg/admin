@@ -96,6 +96,9 @@ the current one has a muted fill, an accent icon and a 3px accent bar; on deep p
 and accent icon without the bar (`data-ancestor`). The only count is the open reports next to Reports › Open, as a
 small accent pill.
 
+From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
+content in place. Between 760px and 1439px, the content follows the panel as it opens or closes.
+
 **Page header.** Scrolls with the page (the page, not the document, scrolls: the column below the top bar is the
 scroll container). `h1` 24px (22px on mobile) with the context line in 14px muted, actions on the right at 40px; below
 760px the actions take the full width under the title. The toolbar row follows 20px below. `/` focuses the page
@@ -330,7 +333,7 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Popover, menu, combobox list                                                           | opacity + scale .97→1 from the trigger, 160ms in / 120ms out (`floatingMotion`)                                                                                                                                          |
 | Dialog and scrim                                                                       | opacity (+ scale .97 on the panel), 200ms in / 150ms out (`dialogMotion`)                                                                                                                                                |
 | Bottom sheet (dialogs below 760px)                                                     | slide up with the dialog fade, 200ms in / 150ms out                                                                                                                                                                      |
-| Panel appearing or leaving                                                             | panel and content column slide together as transforms, 220ms in / 180ms out; the leaving panel leaves the flow at once, so width never animates                                                                          |
+| Panel appearing or leaving                                                             | panel slides as a transform, 220ms in / 180ms out; below 1440px the content follows; from 1440px its reserved slot keeps content stationary; width never animates                                                        |
 | Accordion, collapsible, tree                                                           | `grid-template-rows` 0fr→1fr 200ms (`--pn-ease-move`) + content opacity; chevron rotates                                                                                                                                 |
 | Drag (Projects)                                                                        | ghost lifts instantly; siblings move 160ms; drop settles 200ms                                                                                                                                                           |
 | Optimistic row removal                                                                 | opacity out 120ms, then unmount without height animation                                                                                                                                                                 |
