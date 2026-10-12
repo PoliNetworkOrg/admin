@@ -1,122 +1,88 @@
-# Identity Provider PoliNetwork — schema dati e contratti
+# Modello dati e contratti — Identity Provider PoliNetwork
 
-**Documenti collegati:** [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) · [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md)
-**Versione:** 1.1
-**Data:** 30 settembre 2026
-**A cosa serve:** i due documenti collegati dicono *cosa* costruire. Questo dice *con che forma esatta*, così chi lavora sul backend (`@polinetwork/backend`, Drizzle/Postgres) e chi lavora sulla dashboard (`admin`) partono dagli stessi campi e dagli stessi contratti, invece di doverli inventare mentre scrivono.
+**Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §2.6 · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md)
+**Versione:** 2.0
+**Data:** 12 ottobre 2026
 
-Le tabelle seguono lo stile già in uso nel backend (vedi `tg/link.ts`, che implementa lo stesso pattern codice+TTL per il collegamento Telegram) — non introducono un modo nuovo di lavorare, solo tre tabelle nuove più una di configurazione.
+## 0. Stato e responsabilità
 
----
+Il modello implementato vive nella repository autonoma `auth`, nel proprio database Postgres/Drizzle. Questa revisione segue il codice integrato agli SHA del PRD §20; non certifica migrazioni o configurazioni di produzione.
 
-## 1. Tabelle nuove
+La precedente proposta `capability_grant`, `institutional_email_link`, `institutional_email_domain` non è stata adottata. I nomi di endpoint proposti (`authorization.getCapabilities`, `rbac.grantCapability`, ecc.) non sono contratti disponibili. Non creare queste tabelle per integrare un nuovo consumer: usare OIDC/OAuth, i permessi IdP e il contratto della RFC v3.
 
-### `capability_grant`
+## 1. Schema implementato in auth
 
-Una riga = una capacità assegnata a una persona (RBAC, §4 di `IdentityProvider_Design.md`).
+Fonti: `src/db/auth-schema.ts`, `src/db/evidence.ts`, `src/db/rbac.ts`, `src/db/access-snapshot.ts`.
 
-| Campo | Tipo | Note |
-|---|---|---|
-| `id` | uuid, PK | |
-| `subjectUserId` | FK → `user.id` | a chi è assegnata |
-| `capability` | text | chiave del catalogo in `RBAC_Ruoli_Permessi.md` §1 (es. `members`, `members.sensitive`, `telegram.groups`, `rbac.manage`) |
-| `level` | text | livello concesso, tra quelli previsti dalla riga di catalogo: `read` \| `write` \| `approve` \| `publish` \| `send` |
-| `scopeType` | text, nullable | `none` \| `course` \| `team` — vuoto per capacità globali |
-| `scopeValue` | text, nullable | es. id del corso o del team, coerente con `scopeType` |
-| `grantedBy` | FK → `user.id` | chi ha fatto l'assegnazione |
-| `grantedAt` | timestamp | |
-| `revokedBy` | FK → `user.id`, nullable | |
-| `revokedAt` | timestamp, nullable | una riga con `revokedAt` valorizzato è ignorata in fase di calcolo permessi, non va cancellata (storicizzazione, coerente con il vincolo di storicizzazione del PRD §3.1) |
+### 1.1 Identità ed evidenze
 
-Vincolo applicativo (non a livello DB): non può esistere più di una riga attiva (`revokedAt IS NULL`) con la stessa combinazione `subjectUserId`+`capability`+`level`+`scopeType`+`scopeValue` — evita ambiguità su quale riga è quella "vera".
+- **`user` e `account`:** identità locale e collegamenti provider; ownership del collegamento necessaria prima di usare un'evidenza. Matching di email non unisce utenti automaticamente.
+- **`identity_evidence`:** PK `(issuer, subject)`, `provider_id`, `external_id`, lista `states`, `valid_until`, `telegram_id`, `telegram_username`, `email`. Indice univoco parziale su `telegram_id` non nullo. Username/email sono dati di visualizzazione; l'autorizzazione usa identificativi verificati, non lo username.
+- **`student_verification_challenge`:** PK `user_id` con FK a `user`, `email` univoca, `code_hash`, `attempts`, `expires_at`, `last_sent_at`. Hash HMAC, TTL 10 minuti, cinque tentativi e cooldown 60 secondi. Dominio ammesso: solo `mail.polimi.it`. Alla conferma viene creato l'account `polimi-email` e la relativa evidenza Student.
+- **Account/session/passkey e tabelle OAuth:** gestite dall'IdP e dal provider. Socio/Direttivo provengono dai gruppi Entra, ricontrollati per autorizzare; l'evidenza memorizzata non prolunga la freschezza della verifica.
 
-Cosa **non** finisce in questa tabella:
+Queste tabelle non includono un registro di quote annuali, numeri associativi o censimento organizzativo.
 
-- i **ruoli** (preset di `RBAC_Ruoli_Permessi.md` §2–§3): assegnare un ruolo crea le righe delle sue capacità, il ruolo in sé non è salvato;
-- le capacità `membership.self*`: derivano dal claim del tesseramento (`membership_claim`), non da un grant, e `rbac.grantCapability` deve rifiutarle (`RBAC_Ruoli_Permessi.md` §4);
-- le capacità implicite dei ruoli Telegram legacy: vengono calcolate a runtime da `authorization.getCapabilities`.
+### 1.2 RBAC globale
 
-### `institutional_email_link`
+| Tabella | Significato |
+|---|---|
+| `permission` | Chiave stabile univoca, nome/descrizione, flag managed |
+| `permission_implication` | Permesso → permesso implicato; transitiva, senza cicli |
+| `role` | Bundle con chiave univoca, flag managed e possibile `source_state` |
+| `role_parent` | Ruolo → ruolo ereditato; transitiva, senza cicli |
+| `role_permission` | Collegamenti tra ruoli e permessi |
+| `user_role` | Assegnazione manuale utente→ruolo con `assigned_by`, `assigned_at`; i ruoli gestiti non sono assegnazioni manuali |
+| `rbac_audit_event` | Attore, operazione, target, prima/dopo JSON, data; append-only, scritto nella transazione della mutazione |
 
-Una riga = un tentativo di collegamento di un'email istituzionale (§2 di `IdentityProvider_Design.md`).
+Nel modello implementato non ci sono campi `level`, `scope_type`, `scope_value`, revoca temporale del grant o assegnazione diretta di permessi a utenti come prevedeva la proposta originaria. La rimozione di un'assegnazione viene tracciata nell'audit. Gli scope di OAuth delimitano il client, non il corso/team dei record.
 
-| Campo | Tipo | Note |
-|---|---|---|
-| `id` | uuid, PK | |
-| `userId` | FK → `user.id` | |
-| `email` | text | l'indirizzo istituzionale inserito |
-| `domain` | text | dominio estratto da `email`, deve comparire in `institutional_email_domain` |
-| `codeHash` | text | **hash del codice, mai il codice in chiaro** — stesso principio di sicurezza di qualunque OTP |
-| `expiresAt` | timestamp | TTL breve, indicativamente 10 minuti |
-| `attempts` | integer, default 0 | tentativi di verifica falliti, per il rate limit (§3) |
-| `verifiedAt` | timestamp, nullable | |
-| `createdAt` | timestamp | |
+I ruoli gestiti sono Master Admin (wildcard da configurazione), Socio/Direttivo (Entra), Student (email verificata). Il permesso `membership:read` non implementa da solo l'area tesseramento o i rinnovi. Implicazioni e ruoli personalizzati possono concedere accesso senza costituire prova dello stato associativo: distinguere `states`, `roles` e `permissions`.
 
-Quando `verifiedAt` viene impostato, il valore va anche copiato su `user.institutionalEmail` / `user.institutionalEmailVerifiedAt` (colonne dirette sulla riga `user`, stesso pattern di `telegramId`/`telegramUsername` già esistenti) — questa tabella resta lo storico dei tentativi, `user` resta la fonte per "qual è lo stato attuale".
+### 1.3 Snapshot e notifiche
 
-### `institutional_email_domain`
+L'IdP pubblica snapshot versionati/proiettati per client e notifiche da outbox; il backend effettua anche polling. La relazione Telegram→identità deriva dai collegamenti verificati, non da import di vecchi codici. Per campi wire, validità per fonte e comportamento in caso di outage si segue la RFC v3 §§5–7 e il codice, evitando un secondo schema divergente in questo PRD.
 
-Configurazione dei domini ammessi — tabella, non valore hardcoded, perché la lista può crescere.
+## 2. Contratti implementati fra servizi
 
-| Campo | Tipo | Note |
-|---|---|---|
-| `domain` | text, PK | es. `mail.polimi.it`, `polimi.it` |
-| `label` | text | es. "Politecnico di Milano", per la UI |
-| `active` | boolean, default true | disattivabile senza cancellare lo storico dei collegamenti già fatti |
+- **OIDC persone:** Authorization Code/PKCE e refresh token. I consumer verificano issuer, audience, firma e claim; `polinetwork:identity` espone stati, ruoli, permessi e Telegram ID. Per API backend l'autorità corrente viene verificata tramite snapshot, non soltanto dai claim di un vecchio ID token.
+- **OAuth servizi:** client credentials con `private_key_jwt`, risorsa/audience e scope assegnati al client. Token personali e di servizio hanno tipi attore distinti.
+- **Backend tRPC:** `me.access` restituisce l'accesso corrente della persona. Ogni procedura ha policy per tipo attore, scope e permesso. Il bot può usare `X-PN-Actor: telegram:<id>` solo con il relativo scope act-as.
+- **Snapshot IdP:** lettura di servizio autenticata, proiezione configurata per client e notifiche interne; il backend conserva in `common_idp_state` l'ultimo snapshot/chiavi validi per un uso limitato nel tempo.
+- **Dashboard BFF:** sessione in Redis, token solo sul server; le funzioni server applicano middleware e inoltrano bearer token al backend.
 
-Righe iniziali: `mail.polimi.it`, `polimi.it` (gli unici confermati finora).
+La compatibilità legacy senza token resta configurabile nel backend; un token invalido viene rifiutato e non ripiega sul legacy. Le nuove procedure IdP, incluso lo storico giornaliero utenti Telegram, non accettano chiamate anonime.
 
-### `membership_claim`
+## 3. Dati backend implementati per la transizione
 
-Una riga = un codice di claim del tesseramento (§3 di `IdentityProvider_Design.md`).
+- **Audit Telegram:** attore IdP (`actor_sub`), ID Telegram opzionale, client, `basis`, eventuale review e chiave di idempotenza; le azioni automatiche/native Telegram sono distinte da quelle autorizzate per permesso IdP.
+- **Grant:** `tg_grants_v2` per i caller token, con attori IdP; il backend considera anche i grant legacy fino al cleanup. Non dedurre dai nuovi campi che la vecchia tabella sia già eliminata.
+- **Contenuti:** colonne `*_by_sub` per l'autore IdP; non costituiscono un audit unificato prima/dopo di ogni modifica.
+- **Microsoft 365:** lettura directory, workflow dedicato di creazione e membership dei gruppi tramite Graph, con permessi separati. Non è lo schema del registro associativo PoliNetwork.
 
-| Campo | Tipo | Note |
-|---|---|---|
-| `id` | uuid, PK | |
-| `numeroAssociativo` | FK → record Anagrafica Soci | generato al momento dell'approvazione dell'iscrizione (§3.1 del PRD) |
-| `email` | text | indirizzo fornito in fase di iscrizione, destinatario del codice |
-| `codeHash` | text | hash, non chiaro |
-| `expiresAt` | timestamp | TTL più lungo del solito — indicativamente alcuni giorni, perché la persona potrebbe non avere ancora un'identità PoliNetwork quando il codice arriva |
-| `attempts` | integer, default 0 | |
-| `claimedByUserId` | FK → `user.id`, nullable | valorizzato al claim riuscito |
-| `claimedAt` | timestamp, nullable | |
-| `createdAt` | timestamp | |
+## 4. Proposta residua: registro associativo e claim
 
-Al claim riuscito, il record Anagrafica Soci corrispondente a `numeroAssociativo` va collegato a `claimedByUserId` (campo `userId` da aggiungere alla tabella Anagrafica Soci stessa, non qui) — è quel collegamento che dà alla persona le capacità `membership.self*` (`RBAC_Ruoli_Permessi.md` §1).
+Lo schema definitivo del registro del PRD §3.1 va deciso prima delle FK. Conservare un identificativo associativo univoco, stati e annualità storicizzati, consensi versionati e collegamento opzionale all'identità IdP; nessuna dipendenza obbligatoria da account Entra/Telegram.
 
----
+Una possibile futura tabella **`membership_claim`** (non implementata) conserva:
 
-## 2. Contratti (endpoint / funzioni)
+| Campo logico | Requisito proposto |
+|---|---|
+| ID | Identificativo univoco del claim |
+| Record socio / numero associativo | Riferimento al registro futuro |
+| Email destinatario | Indirizzo verificato dal processo di iscrizione |
+| Hash codice | Mai codice in chiaro |
+| Scadenza e tentativi | TTL e limite da definire; uso singolo e invalidazione del precedente codice |
+| Identità richiedente e data claim | `user.id` dell'IdP, valorizzato solo dopo verifica e controllo conflitti |
+| Creazione / attore emissione | Tracciabilità dell'emissione e dei re-invii |
 
-Stesso stile dei plugin Better Auth già presenti (`telegram.link.start` / `telegram.link.verify` in `src/lib/auth-plugins.ts`) — non un'API a parte, si aggiungono come nuove funzioni sullo stesso client di autenticazione.
+Il claim deve collegare il record alla persona senza duplicare l'identità, rifiutare conflitti e concedere solo accesso ai propri dati. Emissione come effetto dell'approvazione o azione manuale, re-invio, TTL e riconciliazione con lo stato Socio Entra restano aperti. Non sono disponibili oggi endpoint `identity.membershipClaim.*`.
 
-| Funzione | Chi può chiamarla | Input | Output | Errori attesi |
-|---|---|---|---|---|
-| `identity.institutionalEmail.start` | Chiunque abbia una sessione attiva | `{ email }` | `{ expiresAt }` | dominio non in allowlist; email già verificata su un altro account |
-| `identity.institutionalEmail.verify` | Chiunque abbia una sessione attiva e un tentativo pendente | `{ code }` | `{ verified: true, email }` | codice errato/scaduto; troppi tentativi (§3) |
-| `identity.membershipClaim.verify` | Chiunque abbia una sessione attiva | `{ code }` | `{ verified: true, numeroAssociativo }` | codice errato/scaduto/già usato |
-| `authorization.getCapabilities` | Chiunque abbia una sessione attiva | — (usa la sessione) | elenco capacità effettive (merge di `capability_grant` + ruoli Telegram legacy mappati, §4 di `IdentityProvider_Design.md` + capacità `membership.self*` se c'è un claim riuscito) | — |
-| `rbac.grantCapability` | Richiede `rbac.manage` | `{ subjectUserId, capability, level, scopeType?, scopeValue? }` | riga `capability_grant` creata | permesso mancante; combinazione già attiva; capacità `self`; scope mancante su capacità che lo richiede (`capoadmin_view`, `teams`) |
-| `rbac.revokeCapability` | Richiede `rbac.manage` | `{ grantId }` | conferma | permesso mancante; grant già revocato |
+## 5. Modello ancora da definire
 
-`identity.membershipClaim.start` **non** è una funzione chiamata da un utente: è un effetto collaterale interno del flusso di approvazione iscrizione (§3.1 del PRD) — va agganciata lì, non esposta come endpoint pubblico a sé.
-
-Ogni chiamata che scrive (`verify`, `grantCapability`, `revokeCapability`) produce una voce nell'audit unificato (§2.2 del PRD) — questo dipende dal fatto che l'audit sia già definito; se non lo è ancora, va almeno previsto un evento generico "identity mutation" da poter arricchire dopo.
-
----
-
-## 3. Sicurezza dei codici (comune alle tre tabelle a codice)
-
-- **Mai salvare il codice in chiaro** — solo l'hash (es. stesso schema di hashing già usato da Better Auth per le proprie credenziali).
-- **Un solo codice attivo per volta** per la stessa combinazione utente+risorsa: generarne uno nuovo invalida il precedente (evita confusione su "quale email ho ricevuto per ultima").
-- **Rate limit sui tentativi di verifica** (campo `attempts`): bloccare dopo un numero contenuto di tentativi falliti (es. 5), non solo sul TTL — altrimenti il codice a 6 cifre è indovinabile per forza bruta entro il TTL.
-- **Uso singolo**: un codice verificato con successo non deve poter essere riusato (per `membership_claim` il vincolo naturale è `claimedAt IS NULL`; per `institutional_email_link` è `verifiedAt IS NULL`).
-
----
-
-## 4. Punti da verificare col team backend prima di scrivere codice
-
-1. Dove vive esattamente la tabella Anagrafica Soci (non ancora costruita, §3 del PRD) — `membership_claim.numeroAssociativo` e il nuovo campo `userId` su quella tabella dipendono dalla sua forma finale.
-2. Se l'hashing dei codici deve riusare una utility già presente in Better Auth/backend o va scritta ad hoc.
-3. Il formato esatto dell'evento di audit (§2.2) — questo documento assume che esista un modo generico per scrivere "chi ha fatto cosa, quando, su cosa", ma la forma precisa non è ancora definita altrove.
-4. TTL esatti (10 minuti per Politecnico, "alcuni giorni" per il claim socio sono indicativi, non vincolanti) — da confermare con chi gestisce l'invio email via Microsoft Graph, per capire se ci sono limiti di throughput/costo da considerare.
+1. Schema Anagrafica Soci/Censimento, annualità, collegamento fra database e retention dei dati.
+2. Scope corso/team, relazioni di responsabilità e policy dei record lato backend: il RBAC globale non li rappresenta.
+3. Consensi/firme e testo versionato, audit amministrativo comune oltre al solo RBAC/moderazione.
+4. Catalogo IdP dei nuovi moduli: sostituire le chiavi descrittive della roadmap con permessi esatti condivisi tra UI e backend.
+5. Modalità sicura di claim e merge ownership-verified, che non esiste nel semplice collegamento account corrente.
+6. Conferma operativa delle fasi 5–6: backup e rimozione delle tabelle legacy restano separati da questa revisione documentale.
