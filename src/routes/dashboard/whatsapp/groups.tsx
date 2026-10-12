@@ -23,7 +23,7 @@ export const Route = createFileRoute("/dashboard/whatsapp/groups")({
   },
   pendingComponent: () => (
     <>
-      <PageBar width="wide" />
+      <PageBar width="wide" title="WhatsApp groups" />
       <PageContent width="wide">
         <TableSkeleton columns={3} label="Loading groups…" />
       </PageContent>

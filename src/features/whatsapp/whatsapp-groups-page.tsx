@@ -32,6 +32,7 @@ import {
 import { matchesVisibility, type VisibilityFilter, visibilityItems } from "@/features/groups/visibility"
 import { WhatsappGroupDialog } from "@/features/whatsapp/whatsapp-group-dialog"
 import type { GroupWithLabels, WaGroup } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
 
 type WhatsappGroupsPageProps = {
   groups: WaGroup[]
@@ -111,6 +112,7 @@ export function WhatsappGroupsPage({
       label: "Labels",
       priority: 1,
       width: 320,
+      mobile: "full",
       cell: (row) => <GroupLabelBadges labels={resolveLabels(row.labels, labelsByPath)} renderLink={labelLink} />,
     },
   ]
@@ -146,6 +148,8 @@ export function WhatsappGroupsPage({
   return (
     <>
       <PageBar
+        title="WhatsApp groups"
+        description={`${pluralize(all.length, "group")}, registered by hand`}
         left={
           <Toolbar
             search={{ value: list.query, onChange: list.setQuery, placeholder: "Search by group name…" }}

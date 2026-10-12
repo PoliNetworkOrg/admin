@@ -126,8 +126,10 @@ export function PageBar({
   context,
   contextMono = false,
 }: PageBarProps) {
-  const { section } = useShellFrame()
+  const { service, section } = useShellFrame()
   const heading = title ?? section?.title
+  // A service with a single section has no panel to name it: its icon heads the page instead (WhatsApp).
+  const serviceTile = section !== null && !servicePanelVisible(service)
 
   let head: ReactNode
   if (back) {
@@ -161,9 +163,16 @@ export function PageBar({
   } else {
     head = (
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 shell:min-h-14">
-        <div className="min-w-0">
-          <h1 className={titleText}>{heading}</h1>
-          {description ? <p className="mt-0.5 text-[14px] text-(--pn-fg-muted) tabular-nums">{description}</p> : null}
+        <div className="flex min-w-0 items-center gap-3.5">
+          {serviceTile ? (
+            <span className="grid size-11 shrink-0 place-items-center rounded-[11px] border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg) max-shell:hidden">
+              <service.icon aria-hidden strokeWidth={1.75} className="size-5.5" />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className={titleText}>{heading}</h1>
+            {description ? <p className="mt-0.5 text-[14px] text-(--pn-fg-muted) tabular-nums">{description}</p> : null}
+          </div>
         </div>
         {right ? <div className={headerActions}>{right}</div> : null}
       </div>
