@@ -29,16 +29,43 @@ export function parseDay(date: string) {
   return Date.UTC(year, month - 1, day)
 }
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
-const shortDayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
-const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })
-// Three-letter months ("Sep", not en-GB's "Sept"), so axis labels share one width.
+// Labels are built from fixed English names, not Intl: ICU versions differ ("Sep" or "Sept"), and the axis, the tooltip
+// and the server render must agree.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-const tickYearFormat = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: "UTC" })
+const MONTHS_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+]
 
+/** "11 Oct 2026"; without the year, "11 Oct". */
+function dayLabel(time: number, withYear = true) {
+  const date = new Date(time)
+  const day = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`
+  return withYear ? `${day} ${date.getUTCFullYear()}` : day
+}
+
+/** "September 2026". */
+function monthLabel(time: number) {
+  const date = new Date(time)
+  return `${MONTHS_LONG[date.getUTCMonth()]} ${date.getUTCFullYear()}`
+}
+
+/** The same day `months` later (or earlier), clamped to the target month's last day: 31 Dec − 3 months is 30 Sep. */
 function addMonths(time: number, months: number) {
   const date = new Date(time)
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate())
+  const target = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1)
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months + 1, 0)).getUTCDate()
+  return target + (Math.min(date.getUTCDate(), lastDay) - 1) * DAY
 }
 
 function monthStart(time: number) {
@@ -64,46 +91,56 @@ function totalsAt(days: readonly UserCreationDay[], times: readonly number[]) {
 
 /**
  * The cumulative number of Telegram users over `range`, ending `today`: one point per day for 3 months, per week for
- * a year, per month for all time. Days without new users carry the previous total.
+ * a year, per month for all time. Days without new users carry the previous total. `added` is the growth over exactly
+ * the labelled range: the users created after the same day 3 or 12 months earlier, through today (all of them for
+ * All).
  */
 export function growthSeries(days: readonly UserCreationDay[], today: string, range: GrowthRange): GrowthSeries {
   const end = parseDay(today)
   const first = days.reduce((min, day) => Math.min(min, parseDay(day.date)), end)
 
-  // Bucket ends, ascending, plus the day before the first bucket (the baseline its `added` is measured from).
+  // Bucket ends, ascending; `bucketBase` is the day before the first bucket (what its own `added` is measured from)
+  // and `rangeBase` the day the labelled range is measured from.
   let ends: number[]
-  let baseline: number
+  let bucketBase: number
+  let rangeBase: number
   if (range === "3m") {
     const start = addMonths(end, -3)
     ends = []
-    for (let time = start; time <= end; time += DAY) ends.push(time)
-    baseline = start - DAY
+    for (let time = start + DAY; time <= end; time += DAY) ends.push(time)
+    bucketBase = start
+    rangeBase = start
   } else if (range === "1y") {
     const start = addMonths(end, -12)
     ends = []
-    for (let time = end; time >= start; time -= 7 * DAY) ends.unshift(time)
-    baseline = (ends[0] ?? end) - 7 * DAY
+    for (let time = end; time > start; time -= 7 * DAY) ends.unshift(time)
+    bucketBase = (ends[0] ?? end) - 7 * DAY
+    rangeBase = start
   } else {
     ends = []
     for (let month = monthStart(first); month <= end; month = addMonths(month, 1)) {
       ends.push(Math.min(addMonths(month, 1) - DAY, end))
     }
-    baseline = monthStart(first) - DAY
+    bucketBase = monthStart(first) - DAY
+    rangeBase = bucketBase
   }
 
-  const [base = 0, ...totals] = totalsAt(days, [baseline, ...ends])
+  const [rangeStartTotal = 0] = totalsAt(days, [rangeBase])
+  const [bucketStartTotal = 0] = totalsAt(days, [bucketBase])
+  const endTotals = totalsAt(days, ends)
   const points = ends.map((time, index): GrowthPoint => {
-    const total = totals[index] ?? 0
-    const previous = index === 0 ? base : (totals[index - 1] ?? 0)
+    const total = endTotals[index] ?? 0
+    const previous = index === 0 ? bucketStartTotal : (endTotals[index - 1] ?? 0)
     let label: string
-    if (range === "3m") label = dayFormat.format(time)
-    else if (range === "1y") label = `${shortDayFormat.format(time - 6 * DAY)} → ${dayFormat.format(time)}`
-    else label = monthFormat.format(time)
+    if (range === "3m") label = dayLabel(time)
+    else if (range === "1y") label = `${dayLabel(time - 6 * DAY, false)} → ${dayLabel(time)}`
+    else label = monthLabel(time)
     return { time, total, added: total - previous, label }
   })
 
   const from = ends[0] ?? end
   const years = (end - from) / (365 * DAY)
+  const crossesYear = new Date(from).getUTCFullYear() !== new Date(end).getUTCFullYear()
   const ticks: number[] = []
   for (let month = monthStart(from); month <= end; month = addMonths(month, 1)) {
     if (month < from) continue
@@ -114,7 +151,13 @@ export function growthSeries(days: readonly UserCreationDay[], today: string, ra
   return {
     points,
     ticks,
-    tickLabel: (time) => (years > 2 ? tickYearFormat.format(time) : (MONTHS[new Date(time).getUTCMonth()] ?? "")),
-    added: (points.at(-1)?.total ?? base) - base,
+    // Long spans label years; otherwise months, with the year on January when the range spans two years.
+    tickLabel: (time) => {
+      const date = new Date(time)
+      if (years > 2) return String(date.getUTCFullYear())
+      const month = MONTHS[date.getUTCMonth()] ?? ""
+      return crossesYear && date.getUTCMonth() === 0 ? `${month} ${date.getUTCFullYear()}` : month
+    },
+    added: (endTotals.at(-1) ?? rangeStartTotal) - rangeStartTotal,
   }
 }
