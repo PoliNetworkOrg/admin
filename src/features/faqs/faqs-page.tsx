@@ -118,7 +118,8 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
     categories.length === 0 ? (
       <Hint label="Create a category first">
         <span tabIndex={0} aria-label="Add FAQ (create a category first)" className="inline-flex rounded-(--pn-r-3)">
-          <Button size="sm" disabled className={buttonMotion}>
+          {/* The Hint's span sits between the header and the button, so it takes the header's 40px itself. */}
+          <Button size="sm" disabled className={cn(buttonMotion, "h-10 px-3.5 text-[14px]")}>
             <Plus aria-hidden data-icon="inline-start" />
             Add FAQ
           </Button>
@@ -139,13 +140,6 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
     </Button>
   )
 
-  const addCategoryButton = (
-    <Button variant="outline" size="sm" className={buttonMotion} onClick={() => openCategoryDialog(null)}>
-      <FolderPlus aria-hidden data-icon="inline-start" />
-      Add category
-    </Button>
-  )
-
   const totalFaqs = categories.reduce((sum, item) => sum + item.faqs.length, 0)
 
   const faqList = (
@@ -158,8 +152,8 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
         <EmptyState
           icon={CircleQuestionMark}
           title="No categories yet"
+          // No action here: writers have "Add category" at the end of the category list beside it.
           text="Create a category to start adding FAQs."
-          action={canWrite ? addCategoryButton : undefined}
         />
       ) : visible.length === 0 && !drafting ? (
         deferredQuery ? (
