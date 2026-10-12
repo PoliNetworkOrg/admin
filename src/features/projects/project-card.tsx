@@ -85,11 +85,16 @@ export function ProjectCard({
   const editing = session !== null
   // A move writes the whole record with its old values, so edit, delete and drag wait for it to finish.
   const [moving, setMoving] = useState(false)
-  const { ref, handleRef, isDragging, isDropping } = useSortable({
+  // Layout follows `draggable`, so a pending move (which pauses sorting) doesn't shift the card's content.
+  const draggable = canWrite && !draft && !editing
+  const sortable = draggable && !moving
+  // The whole card is the drag source: a pointer drags it after 5px (buttons and links still click), touch after a
+  // 250ms press, and the keyboard picks it up with Space/Enter while the card itself has focus.
+  const { ref, isDragging, isDropping } = useSortable({
     id: project.id,
     index,
     group: project.category,
-    disabled: draft || editing || moving || !canWrite,
+    disabled: !sortable,
     transition: reduceMotion ? null : SORT_TRANSITION,
   })
   const titleRef = useRef<HTMLInputElement>(null)
@@ -105,21 +110,17 @@ export function ProjectCard({
   }
 
   const handle = (
-    <button
-      ref={handleRef}
-      type="button"
-      aria-label={`Reorder ${project.title}`}
-      className="absolute top-4 left-0 grid max-shell:hidden h-10 w-4 cursor-grab touch-none place-items-center rounded-(--pn-r-1) text-(--pn-fg-subtle) transition-[color] duration-120 hover:text-(--pn-fg) focus-visible:text-(--pn-fg) after:absolute after:inset-y-0 after:left-0 after:w-9 active:cursor-grabbing"
-    >
-      <GripVertical aria-hidden className="size-4" />
-    </button>
+    <GripVertical
+      aria-hidden
+      className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-(--pn-fg-subtle) transition-[color] duration-120 group-hover/project:text-(--pn-fg-muted) max-shell:hidden"
+    />
   )
 
   const viewHeader = (
     <div className="flex min-w-0 items-center gap-3.5">
       <WebLogo src={project.logo} name={project.title} fallback="PR" className="size-12 rounded-(--pn-r-4)" />
       <div className="flex min-w-0 flex-col">
-        <Hint label={project.title}>
+        <Hint overflowOnly label={project.title}>
           <h3 className="truncate text-[16px] leading-6 font-semibold text-(--pn-fg)">{project.title}</h3>
         </Hint>
         {project.link ? (
@@ -271,13 +272,21 @@ export function ProjectCard({
   return (
     <div
       ref={ref}
+      role={sortable ? "group" : undefined}
+      aria-label={sortable ? project.title : undefined}
+      aria-roledescription={sortable ? "sortable project" : undefined}
       className={cn(
-        "rounded-(--pn-r-4)",
+        "group/project rounded-(--pn-r-5)",
+        sortable && "cursor-grab select-none active:cursor-grabbing",
         (isDragging || isDropping) && "z-10 scale-[1.01] opacity-90 shadow-(--pn-shadow-float)"
       )}
     >
       <InlineEditCard
-        className="relative"
+        className={cn(
+          "relative transition-[border-color] duration-120",
+          draggable && "shell:pl-8",
+          sortable && "group-hover/project:border-(--pn-hover-line)"
+        )}
         readOnly={!canWrite}
         editing={editing}
         onEdit={onEdit}

@@ -11,13 +11,13 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-[0_1px_2px_rgb(15_23_42/8%)] hover:bg-primary/90 dark:shadow-none",
         outline:
-          "border-border bg-card text-foreground shadow-[0_1px_2px_rgb(15_23_42/3%)] hover:border-(--pn-accent) hover:bg-(--pn-accent-soft) aria-expanded:bg-muted aria-expanded:text-foreground dark:shadow-none",
+          "border-border bg-card text-foreground shadow-[0_1px_2px_rgb(15_23_42/3%)] hover:border-(--pn-hover-line) hover:bg-(--pn-hover) aria-expanded:bg-muted aria-expanded:text-foreground dark:shadow-none",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-(--pn-hover) aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent) aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-(--pn-accent-soft)",
+          "hover:bg-(--pn-hover) hover:text-(--pn-accent) aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-(--pn-hover)",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-(--pn-accent-soft) hover:text-(--pn-accent) focus-visible:border-ring focus-visible:ring-ring/20 dark:bg-destructive/20 dark:hover:bg-(--pn-accent-soft) dark:focus-visible:ring-ring/40",
+          "bg-destructive/10 text-destructive hover:bg-(--pn-hover) hover:text-(--pn-accent) focus-visible:border-ring focus-visible:ring-ring/20 dark:bg-destructive/20 dark:hover:bg-(--pn-hover) dark:focus-visible:ring-ring/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -41,7 +41,7 @@ export function NavCard({
     render: render ?? fallback,
     props: {
       className: cn(
-        "group/nav-card flex min-h-14 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) px-4 py-3 text-left text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-accent-soft)",
+        "group/nav-card flex min-h-14 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) px-4 py-3 text-left text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-hover)",
         className
       ),
       onClick: onClick && (() => onClick()),

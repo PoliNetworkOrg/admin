@@ -67,7 +67,7 @@ export function FileButton({
         {file && (
           <span className="inline-flex h-7 max-w-64 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-0.5 pl-2.5 text-xs font-medium text-(--pn-fg)">
             <FileText aria-hidden className="size-3.5 shrink-0 text-(--pn-fg-muted)" />
-            <Hint label={file.name}>
+            <Hint overflowOnly label={file.name}>
               <span className="truncate">{file.name}</span>
             </Hint>
             <Hint label="Remove file">
@@ -75,7 +75,7 @@ export function FileButton({
                 type="button"
                 aria-label="Remove file"
                 onClick={clear}
-                className="relative flex size-6 shrink-0 items-center justify-center rounded-full text-(--pn-fg-muted) transition-[background-color,color] duration-120 after:absolute after:-inset-1.5 hover:bg-(--pn-nav-active) hover:text-(--pn-fg)"
+                className="relative flex size-6 shrink-0 items-center justify-center rounded-full text-(--pn-fg-muted) transition-[background-color,color] duration-120 after:absolute after:-inset-1.5 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
               >
                 <X aria-hidden className="size-3.5" />
               </button>

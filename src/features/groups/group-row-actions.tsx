@@ -18,7 +18,7 @@ import type { GroupWithLabels } from "@/lib/api/types"
 /** Verbatim production copy, shown for any visibility failure (server codes are not user-facing). */
 const VISIBILITY_ERROR = "The visibility setting could not be updated. Check your permissions and try again."
 
-const groupActionHover = "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)"
+const groupActionHover = "hover:bg-(--pn-hover) hover:text-(--pn-accent)"
 
 export function groupKey(group: Pick<GroupWithLabels, "type" | "id">) {
   return `${group.type}:${group.id}`

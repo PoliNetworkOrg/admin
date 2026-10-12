@@ -29,15 +29,14 @@ type IconButtonProps = Omit<React.ComponentProps<typeof Button>, "size" | "varia
 }
 
 const toneClasses = {
-  default:
-    "hover:bg-(--pn-accent-soft) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
-  info: "text-(--pn-accent) hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
-  success: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
-  warning: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
-  danger: "hover:bg-(--pn-accent-soft) hover:text-(--pn-accent)",
+  default: "hover:bg-(--pn-hover) hover:text-(--pn-fg) aria-expanded:bg-(--pn-muted) aria-expanded:text-(--pn-fg)",
+  info: "text-(--pn-accent) hover:bg-(--pn-hover) hover:text-(--pn-accent)",
+  success: "hover:bg-(--pn-hover) hover:text-(--pn-accent)",
+  warning: "hover:bg-(--pn-hover) hover:text-(--pn-accent)",
+  danger: "hover:bg-(--pn-hover) hover:text-(--pn-accent)",
 }
 
-const boxedClasses = "border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg) hover:border-(--pn-accent)"
+const boxedClasses = "border border-(--pn-line) bg-(--pn-surface) text-(--pn-fg) hover:border-(--pn-hover-line)"
 
 /** 36px monochrome icon button with matching `aria-label` and tooltip. */
 export function IconButton({

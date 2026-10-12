@@ -18,7 +18,8 @@ export function ThemeToggle() {
         data-theme-toggle=""
         aria-label={label}
       >
-        {theme === "dark" ? <Sun /> : <Moon />}
+        <Sun className="hidden dark:block" />
+        <Moon className="dark:hidden" />
       </Button>
     </Hint>
   )

@@ -58,11 +58,8 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
         onClick={toggleTheme}
         className={barButton}
       >
-        {theme === "dark" ? (
-          <Sun aria-hidden strokeWidth={1.75} className="size-5" />
-        ) : (
-          <Moon aria-hidden strokeWidth={1.75} className="size-5" />
-        )}
+        <Sun aria-hidden strokeWidth={1.75} className="hidden size-5 dark:block" />
+        <Moon aria-hidden strokeWidth={1.75} className="size-5 dark:hidden" />
       </Button>
       <Link
         to="/dashboard/account"

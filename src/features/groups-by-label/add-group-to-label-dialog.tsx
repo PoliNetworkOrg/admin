@@ -371,7 +371,7 @@ export function AddGroupToLabelDialog({
                         aria-label={`Remove ${ref.title}`}
 
                         onClick={() => toggle(ref)}
-                        className="inline-flex h-6 max-w-56 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
+                        className="inline-flex h-6 max-w-56 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-hover)"
                       >
                         <PlatformGlyph platform={ref.type} className="size-3" />
                         <span className="truncate">{ref.title}</span>
@@ -398,9 +398,9 @@ export function AddGroupToLabelDialog({
                       type="button"
                       aria-pressed={pressed}
                       onClick={() => toggle(group)}
-                      className="flex h-10 w-full min-w-0 items-center gap-3 rounded-(--pn-r-2) px-3 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-accent-soft) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                      className="flex h-10 w-full min-w-0 items-center gap-3 rounded-(--pn-r-2) px-3 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-hover) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
                     >
-                      <Hint label={group.title}>
+                      <Hint overflowOnly label={group.title}>
                         <span className="min-w-0 flex-1 truncate">{group.title}</span>
                       </Hint>
                       {tag && <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted)">@{tag}</span>}

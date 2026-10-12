@@ -105,7 +105,7 @@ export function servicePanelVisible(service: Service) {
 
 /** Header actions are 40px like the toolbar controls; below 760px they share the full width under the title. */
 const headerActions =
-  "flex flex-wrap items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:px-3.5 [&>[data-slot=button]]:text-[14px]"
+  "flex flex-wrap items-center justify-end gap-2 max-shell:w-full max-shell:[&>*]:flex-1 [&>:is([data-slot=button],[data-slot=dropdown-menu-trigger])]:h-10 [&>:is([data-slot=button],[data-slot=dropdown-menu-trigger])]:px-3.5 [&>:is([data-slot=button],[data-slot=dropdown-menu-trigger])]:text-[14px]"
 
 /** Record actions on deep pages keep their own width on phones, left-aligned under the breadcrumb. */
 const deepHeaderActions = "max-shell:justify-start max-shell:[&>*]:flex-none"
@@ -214,7 +214,7 @@ export function BackButton({ label, link }: PageBarBack) {
             data-slot="button"
             className={cn(
               buttonVariants({ variant: "outline", size: "icon-sm" }),
-              "border-(--pn-line-strong) bg-(--pn-surface) text-(--pn-fg) hover:bg-(--pn-accent-soft) active:translate-y-0"
+              "border-(--pn-line-strong) bg-(--pn-surface) text-(--pn-fg) hover:bg-(--pn-hover) active:translate-y-0"
             )}
           />
         }
@@ -306,14 +306,14 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
         autoComplete="off"
         spellCheck={false}
         data-page-search=""
-        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-accent) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-hover-line) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value !== "" ? (
         <button
           type="button"
           onClick={() => onChange("")}
           aria-label="Clear search"
-          className="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
+          className="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
         >
           <X className="size-3.5" />
         </button>

@@ -181,7 +181,7 @@ export function InlineEditCard(props: InlineEditProps) {
         "flex flex-col gap-3 rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) p-4 text-(--pn-fg)",
         // Edit mode (drafts included): an accent border and soft ring set the card being edited apart.
         editing &&
-          "gap-4 border-[color-mix(in_oklch,var(--pn-accent)_55%,transparent)] shadow-[0_0_0_3px_color-mix(in_oklch,var(--pn-accent-solid)_14%,transparent)]",
+          "gap-4 border-[color-mix(in_oklab,var(--pn-accent)_55%,transparent)] shadow-[0_0_0_3px_color-mix(in_oklab,var(--pn-accent-solid)_14%,transparent)]",
         props.className
       )}
     >

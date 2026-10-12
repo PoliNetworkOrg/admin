@@ -12,7 +12,7 @@ const bodyPadding = {
 const headerPadding = {
   default: "px-4",
   settings: "px-5",
-  flush: "px-4.5",
+  flush: "px-4",
 }
 
 type SectionCardProps = {

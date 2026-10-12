@@ -358,7 +358,7 @@ const auditColumns: DataTableColumn<Audit>[] = [
     mobile: "text",
     cell: (audit) =>
       audit.reason ? (
-        <Hint label={audit.reason}>
+        <Hint overflowOnly label={audit.reason}>
           <span className="block truncate max-shell:whitespace-normal">{audit.reason}</span>
         </Hint>
       ) : (
@@ -374,7 +374,7 @@ const auditColumns: DataTableColumn<Audit>[] = [
     cell: (audit) =>
       audit.groupTitle && audit.groupId !== null ? (
         <span className="flex min-w-0 items-baseline gap-1">
-          <Hint label={audit.groupTitle}>
+          <Hint overflowOnly label={audit.groupTitle}>
             <span className="truncate">{audit.groupTitle}</span>
           </Hint>
           <span className="shrink-0 text-(--pn-fg-muted)">·</span>

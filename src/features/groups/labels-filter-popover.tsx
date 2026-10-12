@@ -265,7 +265,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
             buttonMotion,
             "h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] data-popup-open:bg-(--pn-muted)",
             active &&
-              "border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklch,var(--pn-accent)_60%,transparent)]"
+              "border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklab,var(--pn-accent)_60%,transparent)]"
           )}
           onClick={() => setOpen(true)}
         >
@@ -305,7 +305,7 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
               buttonMotion,
               "h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] data-popup-open:bg-(--pn-muted)",
               active &&
-                "border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklch,var(--pn-accent)_60%,transparent)]"
+                "border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] hover:border-[color-mix(in_oklab,var(--pn-accent)_60%,transparent)]"
             )}
           />
         }

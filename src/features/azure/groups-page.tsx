@@ -205,7 +205,7 @@ function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassNa
           aria-expanded={open}
           aria-controls={contentId}
           onClick={onToggle}
-          className="flex h-13 w-full items-center gap-2.5 px-4.5 text-left transition-[background-color] duration-120 hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]"
+          className="flex h-13 w-full items-center gap-2.5 px-4.5 text-left transition-[background-color] duration-120 hover:bg-(--pn-hover)"
         >
           <ChevronRight
             aria-hidden
@@ -244,13 +244,13 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
   )
   const empty = group.members.length === 0
   return (
-    <li className="@container flex min-h-15 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--pn-line) px-4.5 py-2 transition-[background-color] duration-120 last:border-b-0 hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))] max-shell:px-3.5 max-shell:py-3">
+    <li className="@container flex min-h-15 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--pn-line) px-4.5 py-2 transition-[background-color] duration-120 last:border-b-0 hover:bg-(--pn-hover) max-shell:px-3.5 max-shell:py-3">
       <div className="flex min-w-0 flex-1 flex-col max-shell:basis-full">
-        <Hint label={group.displayName}>
+        <Hint overflowOnly label={group.displayName}>
           <span className="truncate text-[14px] leading-5 font-medium text-(--pn-fg)">{group.displayName}</span>
         </Hint>
         {group.mailAddress ? (
-          <Hint label={group.mailAddress}>
+          <Hint overflowOnly label={group.mailAddress}>
             <span className="truncate font-mono text-xs leading-4 text-(--pn-fg-muted)">{group.mailAddress}</span>
           </Hint>
         ) : (

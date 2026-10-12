@@ -129,7 +129,7 @@ export function FaqCategoryDialog({ open, onOpenChange, category, onSaved }: Faq
                     )
                   }}
                   className={cn(
-                    "grid size-9 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)",
+                    "grid size-9 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)",
                     selected &&
                       "bg-(--pn-accent-soft) text-(--pn-accent) ring-1 ring-(--pn-accent) ring-inset hover:bg-(--pn-accent-soft-hover) hover:text-(--pn-accent)"
                   )}

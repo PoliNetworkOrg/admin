@@ -38,17 +38,18 @@ type LabelChipProps = {
 export function LabelChip({ label, href, render, className }: LabelChipProps) {
   const link = render ?? (href === undefined ? undefined : <a href={href} />)
   const title = labelDisplayName(label.label)
+  const text = isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title
   return (
-    <Hint label={title}>
+    <Hint label={title} overflowOnly={text === title}>
       <Chip
         render={link}
         className={cn(
-          "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-accent) [a]:hover:bg-(--pn-accent-soft)",
+          "h-6 max-w-56 min-w-0 shrink gap-1.5 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal [a]:hover:border-(--pn-hover-line) [a]:hover:bg-(--pn-hover)",
           className
         )}
       >
         <LabelDot color={label.color} />
-        <span className="truncate">{isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title}</span>
+        <span className="truncate">{text}</span>
       </Chip>
     </Hint>
   )

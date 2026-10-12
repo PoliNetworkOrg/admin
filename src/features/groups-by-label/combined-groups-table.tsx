@@ -92,7 +92,7 @@ export function CombinedGroupsTable({ rows, empty, canWrite, labels, tgGroups, s
       cell: (row) => (
         <span className="flex min-w-0 items-center gap-2">
           <PlatformGlyph platform={row.type} />
-          <Hint label={row.title}>
+          <Hint overflowOnly label={row.title}>
             <span className="min-w-0 truncate">{row.title}</span>
           </Hint>
         </span>

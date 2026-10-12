@@ -17,14 +17,31 @@ type HintProps = {
   /** Overrides the provider delay; pass `TOOLTIP_DELAY_SLOW` only where the pointer often passes over the trigger. */
   delay?: number
   side?: "top" | "bottom" | "left" | "right"
+  /** Opens only while the trigger (or text inside it) is cut off: for hints that repeat the visible text. */
+  overflowOnly?: boolean
   className?: string
 }
 
+/** True when `element` or any element inside it clips its content (ellipsis or line clamp). */
+function isClipped(element: Element) {
+  return [element, ...element.querySelectorAll("*")].some(
+    (node) => node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1
+  )
+}
+
 /** Tooltip around a single trigger element; the trigger keeps its own `aria-label`. */
-export function Hint({ label, children, side = "bottom", delay, className }: HintProps) {
+export function Hint({ label, children, side = "bottom", delay, overflowOnly = false, className }: HintProps) {
   if (label === undefined || label === null || label === "") return children
   return (
-    <Tooltip>
+    <Tooltip
+      onOpenChange={
+        overflowOnly
+          ? (open, details) => {
+              if (open && details.trigger && !isClipped(details.trigger)) details.cancel()
+            }
+          : undefined
+      }
+    >
       <TooltipTrigger render={children} delay={delay} />
       <TooltipContent side={side} sideOffset={6} className={cn(tooltipMotion, className)}>
         {label}

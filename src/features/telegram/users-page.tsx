@@ -33,7 +33,7 @@ const columns: DataTableColumn<TgUser>[] = [
           >
             {initialsOf(name)}
           </span>
-          <Hint label={name}>
+          <Hint overflowOnly label={name}>
             <span className="truncate">{name}</span>
           </Hint>
         </span>

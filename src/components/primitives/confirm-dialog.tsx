@@ -123,7 +123,7 @@ export function ConfirmDialog({
                 className={cn(
                   "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border",
                   tone === "danger"
-                    ? "border-[color-mix(in_oklch,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
+                    ? "border-[color-mix(in_oklab,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
                     : "border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)"
                 )}
               >

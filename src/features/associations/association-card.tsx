@@ -76,7 +76,7 @@ export function AssociationCard({
   const viewHeader = (
     <div className="flex min-h-10 min-w-0 items-center gap-3">
       <WebLogo src={association.logo} name={association.name} fallback="AS" />
-      <Hint label={association.name}>
+      <Hint overflowOnly label={association.name}>
         <p className="min-w-0 text-[17px] leading-6 font-semibold break-words text-(--pn-fg)">{association.name}</p>
       </Hint>
     </div>

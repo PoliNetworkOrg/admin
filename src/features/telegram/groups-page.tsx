@@ -116,7 +116,7 @@ export function TelegramGroupsPage({
       minWidth: 200,
       fill: true,
       cell: (row) => (
-        <Hint label={row.title}>
+        <Hint overflowOnly label={row.title}>
           <span className="block truncate">{row.title}</span>
         </Hint>
       ),

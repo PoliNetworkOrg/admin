@@ -191,20 +191,23 @@ shadcn's variables (`--primary`, `--border`…) are remapped to `--pn-*` in `sty
 without edits. Light borders are alpha so they composite; dark borders are solid so they don't glow. The light canvas is `#f6f7f9`,
 card surfaces and navigation bars are `#fff`, and the section panel is `#fbfcfd` (`--pn-panel`).
 
-| Role                | Variables                                                                                                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Canvas and surfaces | `--pn-bg` canvas · `--pn-surface` cards, tables · `--pn-surface-raised` popover, menu, dialog, toast · `--pn-nav` rail, panel, top bar, pills row, bottom nav                                                            |
-| Fills               | `--pn-muted` hover, skeleton, neutral fills · `--pn-nav-active` active panel item · `--pn-scrim` backdrop (no blur)                                                                                                      |
-| Lines               | `--pn-line` static borders · `--pn-line-strong` inputs, dividers on muted fills                                                                                                                                          |
-| Text                | `--pn-fg` · `--pn-fg-muted` secondary text and icons · `--pn-fg-subtle` placeholders, disabled, decorative glyphs; never information                                                                                     |
-| Accent              | `--pn-accent(-hover)` text, icons, links · `--pn-accent-solid(-hover, -fg)` primary button · `--pn-accent-soft(-hover)` active/selected fills · `--pn-focus` · `--pn-selection`                                          |
-| Status              | `--pn-{success,warning,danger}-{fg,bg,solid}`, `--pn-info-{fg,bg}`                                                                                                                                                       |
-| Charts              | paints are the same variables: `--pn-accent-solid` line, `--pn-line` grid, `--pn-fg-muted` labels, so charts follow the theme without rebuilding                                                                         |
-| Elevation           | `--pn-shadow-float` popover, menu, toast · `--pn-shadow-modal` dialog, sheet · `--pn-media-ring` images, avatars                                                                                                         |
-| Radii               | `--pn-r-1` 4 kbd, swatches · `-2` 6 menu items · `-3` 8 buttons, rail and panel items · `-4` 10 popovers, inner tiles · `-5` 12 cards, tables, toasts · 14 dialogs, hero and area cards · `-full` badges, pills, avatars |
-| Motion              | `--pn-ease-out`, `--pn-ease-in`, `--pn-ease-move`                                                                                                                                                                        |
+| Role                | Variables                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canvas and surfaces | `--pn-bg` canvas · `--pn-surface` cards, tables · `--pn-surface-raised` popover, menu, dialog, toast · `--pn-nav` rail, panel, top bar, pills row, bottom nav                                                                      |
+| Fills               | `--pn-hover` every hover and menu highlight (a faint brand tint over any surface) · `--pn-hover-line` hover borders · `--pn-muted` skeleton, neutral fills · `--pn-nav-active` active panel item · `--pn-scrim` backdrop (no blur) |
+| Lines               | `--pn-line` static borders · `--pn-line-strong` inputs, dividers on muted fills                                                                                                                                                    |
+| Text                | `--pn-fg` · `--pn-fg-muted` secondary text and icons · `--pn-fg-subtle` placeholders, disabled, decorative glyphs; never information                                                                                               |
+| Accent              | `--pn-accent(-hover)` text, icons, links · `--pn-accent-solid(-hover, -fg)` primary button · `--pn-accent-soft(-hover)` active/selected fills · `--pn-focus` · `--pn-selection`                                                    |
+| Status              | `--pn-{success,warning,danger}-{fg,bg,solid}`, `--pn-info-{fg,bg}`                                                                                                                                                                 |
+| Charts              | paints are the same variables: `--pn-accent-solid` line, `--pn-line` grid, `--pn-fg-muted` labels, so charts follow the theme without rebuilding                                                                                   |
+| Elevation           | `--pn-shadow-float` popover, menu, toast · `--pn-shadow-modal` dialog, sheet · `--pn-media-ring` images, avatars                                                                                                                   |
+| Radii               | `--pn-r-1` 4 kbd, swatches · `-2` 6 menu items · `-3` 8 buttons, rail and panel items · `-4` 10 popovers, inner tiles · `-5` 12 cards, tables, toasts · 14 dialogs, hero and area cards · `-full` badges, pills, avatars           |
+| Motion              | `--pn-ease-out`, `--pn-ease-in`, `--pn-ease-move`                                                                                                                                                                                  |
 
 Nested radii: inner = outer − padding.
+
+Mix colors with `color-mix(in oklab, …)`, never `oklch`: Chrome gives a mix of two near-gray colors a missing hue,
+which renders as hue 0 (a red tint). A test enforces it.
 
 **Spacing.** 4px grid (4, 8, 12, 16, 20, 24, 32, 48). Lay out with `gap`, not per-child margins. Card padding 16px (20px
 on Settings).
@@ -224,13 +227,16 @@ invalid fields show the danger border. Opt out only with `data-focus-ring="none"
 
 ## 5. Components
 
-Hover borders use `--pn-accent`; destructive colors identify actions at rest and validation errors, while their hover uses brand blue.
+Every hover is the same faint brand tint: fills use `--pn-hover`, borders `--pn-hover-line`; never `--pn-muted`, the
+solid accent or a status color. Selected and active states keep their own fills (`--pn-accent-soft`,
+`--pn-nav-active`). Destructive colors identify actions at rest and validation errors; their hover is the same blue.
 Scrollable surfaces use thin, rounded scrollbars with the theme's line color on a transparent track, including portals.
 Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
 keyboard users open it with Enter or Space and dismiss it with Escape.
 Tooltips use the same raised surface, foreground, border and corner radius as overflow popovers. Both open below
 the trigger by default (the rail uses the right side); positioning may flip only to stay inside the viewport.
-Use `Hint` for hover text, never the browser's native `title` attribute.
+Use `Hint` for hover text, never the browser's native `title` attribute. A hint that repeats the visible text
+(names, emails, reasons) passes `overflowOnly`, so it opens only while that text is cut off.
 The document opts out of Dark Reader's recoloring with its documented `darkreader-lock` meta tag because the app
 already provides light and dark palettes; this also prevents extension-injected styles from breaking hydration.
 
@@ -242,11 +248,11 @@ because they animate height; `skeleton` by the primitives' skeletons.
 
 **Tables (`DataTable`).** 12px radius surface, sentence-case 12px headers (42px, sticky), 14px cells in 52px rows, a
 visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
-hover or focus. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
+hover or focus. The "Actions" header is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
 `Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
 that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
 readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
-a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`). Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
+a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`): they show what fits without cutting a chip to a stub, the rest behind "+n". Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
 first/last buttons); on narrow tables "‹ 1 of 34 ›".
 
 Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
@@ -404,8 +410,10 @@ Rules that the templates above don't imply.
   user page link here that way). Telegram groups are bot-managed: no create action, the destructive action is "Leave".
   The visibility toggle is optimistic with one request in flight.
 - **Microsoft 365 members**: the member ID edit is optimistic.
-- **Projects**: one column at every width, because card order is the order on the website; drag to reorder (handle
-  only; the handle hides on mobile), a failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
+- **Projects**: one column at every width, because card order is the order on the website; the whole card drags to
+  reorder (pointer after 5px, so its buttons and links still click; touch after a 250ms press; keyboard with
+  Space/Enter on the focused card). A grip marks the card's left edge from 760px and its border takes the hover line.
+  A failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
 - **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
   with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
   own dialog, not inline.

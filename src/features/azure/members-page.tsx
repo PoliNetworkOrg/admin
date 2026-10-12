@@ -80,7 +80,7 @@ const columns: DataTableColumn<AzureMember>[] = [
         >
           {initialsOf(memberName(member), member.mail ?? "")}
         </span>
-        <Hint label={memberName(member)}>
+        <Hint overflowOnly label={memberName(member)}>
           <span className="truncate">{memberName(member)}</span>
         </Hint>
       </span>
@@ -95,7 +95,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     mobile: "full",
     cell: (member) =>
       member.mail ? (
-        <Hint label={member.mail}>
+        <Hint overflowOnly label={member.mail}>
           <span className="block max-w-[280px] truncate font-mono text-[13px]">{member.mail}</span>
         </Hint>
       ) : (
@@ -201,7 +201,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                     setMembersOnly(pressed)
                     setPage(1)
                   }}
-                  className="h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-accent-soft) aria-pressed:border-[color-mix(in_oklch,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
+                  className="h-10 shrink-0 gap-2 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3.5 text-[14px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-hover) aria-pressed:border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] aria-pressed:bg-(--pn-accent-soft) aria-pressed:text-(--pn-accent) aria-pressed:hover:bg-(--pn-accent-soft-hover)"
                 >
                   {membersOnly ? <Check aria-hidden strokeWidth={2} className="size-4" /> : null}
                   Members only

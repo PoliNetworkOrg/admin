@@ -7,7 +7,7 @@ import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } fr
 import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
-  "relative flex h-9.5 items-center gap-2.5 rounded-(--pn-r-3) px-2.5 text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
+  "relative flex h-9.5 items-center gap-2.5 rounded-(--pn-r-3) px-2.5 text-[14px] font-medium text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
 
 // Active and ancestor share the fill and the accent icon; only the current page gets the indicator on the panel's
 // left edge (items are inset 12px, hence -left-3).
@@ -53,7 +53,7 @@ export type SectionItemsProps = {
 const pillClass =
   "inline-flex h-9 shrink-0 items-center gap-1.75 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[13px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color,border-color] duration-120 hover:text-(--pn-fg)"
 const pillActiveClass =
-  "border-[color-mix(in_oklch,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
+  "border-[color-mix(in_oklab,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
 
 /** The section links of one service; shared by the panel and the mobile section pills. */
 export function SectionItems({ service, match, pendingReports, variant = "panel" }: SectionItemsProps) {

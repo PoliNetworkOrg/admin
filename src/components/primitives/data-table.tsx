@@ -304,7 +304,7 @@ export function DataTable<T>({
           className={cn(
             "h-13 border-(--pn-line) transition-[background-color] duration-120",
             mobileRow,
-            interactive || hasActions ? "hover:bg-(--pn-accent-soft)" : "hover:bg-transparent",
+            interactive || hasActions ? "hover:bg-(--pn-hover)" : "hover:bg-transparent",
             interactive && "cursor-pointer",
             selectedRowId === id && "bg-(--pn-accent-soft) hover:bg-(--pn-accent-soft-hover)",
             extra?.className
@@ -414,7 +414,7 @@ export function DataTable<T>({
             })}
             {hasActions && (
               <TableHead
-                className="h-10.5 w-px pr-4 pl-4 text-xs font-medium text-(--pn-fg-muted)"
+                className="h-10.5 w-px pr-4 pl-4 text-right text-xs font-medium text-(--pn-fg-muted)"
                 style={fixedLayout ? { width: actionsWidth } : undefined}
               >
                 Actions

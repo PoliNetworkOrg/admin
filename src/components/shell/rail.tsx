@@ -25,7 +25,7 @@ import { themeToggleLabel, useTheme } from "./theme"
 import { useVisibleServices } from "./use-can"
 
 const railItemClass =
-  "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-accent-soft) hover:text-(--pn-fg)"
+  "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
 
 // The 3px indicator sits on the rail's left edge: items are inset 12px, hence -left-3.
 const railIndicator =
@@ -250,7 +250,9 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, 
         target={{ kind: "button", onClick: toggleTheme }}
         themeToggle
       >
-        {theme === "dark" ? <Sun {...iconProps} /> : <Moon {...iconProps} />}
+        {/* Both icons render and the theme class picks one, so the server-rendered icon is right before hydration. */}
+        <Sun strokeWidth={1.75} className="hidden size-5 dark:block" />
+        <Moon strokeWidth={1.75} className="size-5 dark:hidden" />
       </RailItem>
 
       <RailItem

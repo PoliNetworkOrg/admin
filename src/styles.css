@@ -91,6 +91,9 @@
   --pn-accent-solid-fg: #ffffff;
   --pn-accent-soft: var(--pn-brand-50);
   --pn-accent-soft-hover: var(--pn-brand-100);
+  /* Hover: a faint brand tint over any surface, and a half-strength brand border. Selected states keep accent-soft. */
+  --pn-hover: color-mix(in oklab, var(--pn-brand-500) 6%, var(--pn-surface));
+  --pn-hover-line: color-mix(in oklab, var(--pn-accent) 40%, var(--pn-line-strong));
   --pn-selection: var(--pn-brand-200);
   --pn-focus: var(--pn-brand-500);
   --pn-success-fg: #00642b;
@@ -157,7 +160,7 @@
   --secondary-foreground: var(--pn-fg);
   --muted: var(--pn-muted);
   --muted-foreground: var(--pn-fg-muted);
-  --accent: var(--pn-accent-soft);
+  --accent: var(--pn-hover);
   --accent-foreground: var(--pn-accent);
   --destructive: var(--pn-danger-solid);
   --border: var(--pn-line);
@@ -188,6 +191,8 @@
   --pn-accent-solid-fg: var(--pn-n-950);
   --pn-accent-soft: var(--pn-brand-900);
   --pn-accent-soft-hover: var(--pn-brand-950);
+  --pn-hover: color-mix(in oklab, var(--pn-brand-300) 7%, var(--pn-surface-raised));
+  --pn-hover-line: color-mix(in oklab, var(--pn-accent) 35%, var(--pn-line-strong));
   --pn-selection: var(--pn-brand-800);
   --pn-focus: var(--pn-brand-300);
   --pn-success-fg: #83d494;
@@ -323,7 +328,7 @@ p {
 :is(input, textarea, [data-slot="combobox-input"]):focus-visible:not([data-focus-ring="none"]) {
   outline: none;
   border-color: var(--pn-focus);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--pn-focus) 25%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-focus) 25%, transparent);
 }
 
 tr:focus-visible {
@@ -345,7 +350,7 @@ tr:focus-visible {
   ) {
   outline: none;
   border-color: var(--pn-danger-solid);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--pn-danger-solid) 25%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-danger-solid) 25%, transparent);
 }
 
 /* A dialog panel that takes focus itself (no focusable field) never shows a ring; its children keep theirs. */
@@ -378,7 +383,7 @@ tr:focus-visible {
 }
 
 [data-slot="button"].bg-primary:is(:disabled, [data-disabled]) {
-  background: color-mix(in oklch, var(--pn-accent-solid) 50%, var(--pn-surface));
+  background: color-mix(in oklab, var(--pn-accent-solid) 50%, var(--pn-surface));
   color: var(--pn-accent-solid-fg);
 }
 

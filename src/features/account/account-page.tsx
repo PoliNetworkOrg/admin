@@ -75,10 +75,10 @@ function ProfileCard({ user, accountUrl }: { user: DashboardUser; accountUrl: st
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col">
-            <Hint label={user.name}>
+            <Hint overflowOnly label={user.name}>
               <p className="truncate text-sm leading-5 font-medium">{user.name || user.email}</p>
             </Hint>
-            <Hint label={user.email}>
+            <Hint overflowOnly label={user.email}>
               <p className="truncate text-[13px] leading-5 text-(--pn-fg-muted)">{user.email}</p>
             </Hint>
           </div>

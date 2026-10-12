@@ -78,7 +78,7 @@ const columns: DataTableColumn<Row>[] = [
       const name = userName(user, grant.userId)
       return (
         <span className="flex min-w-0 flex-col">
-          <Hint label={name}>
+          <Hint overflowOnly label={name}>
             <span className="truncate">{name}</span>
           </Hint>
           <span className="truncate text-xs leading-4 font-normal text-(--pn-fg-muted)">
@@ -119,7 +119,7 @@ const columns: DataTableColumn<Row>[] = [
     mobile: "text",
     cell: ({ grant }) =>
       grant.reason ? (
-        <Hint label={grant.reason}>
+        <Hint overflowOnly label={grant.reason}>
           <span className="block truncate max-shell:whitespace-normal">{grant.reason}</span>
         </Hint>
       ) : (

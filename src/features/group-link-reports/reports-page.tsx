@@ -236,7 +236,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
           <span className="block min-w-0">
             <span className="flex min-w-0 items-start gap-2">
               {text ? (
-                <Hint label={text}>
+                <Hint overflowOnly label={text}>
                   <span className="min-w-0 flex-1 truncate">{text}</span>
                 </Hint>
               ) : (
@@ -304,7 +304,7 @@ export function ReportsPage({ status, reports }: { status: ReportStatus; reports
         const text = link ?? latest.details
         if (!text) return open ? <Unset /> : null
         return (
-          <Hint label={text}>
+          <Hint overflowOnly label={text}>
             <span className={cn("block max-w-[320px] truncate", link && "font-mono")}>
               {link ? shortLink(link) : text}
             </span>

@@ -363,7 +363,7 @@ function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListPr
             aria-current={current ? "true" : undefined}
             onClick={() => onSelect(item.categoryId)}
             className={cn(
-              "group/cat flex h-9 shrink-0 items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:w-full min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-[color-mix(in_oklch,var(--pn-muted)_55%,var(--pn-surface))]",
+              "group/cat flex h-9 shrink-0 items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:w-full min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-(--pn-hover)",
               current &&
                 "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-(--pn-line-strong) max-[1099px]:bg-(--pn-muted) max-[1099px]:text-(--pn-fg)"
             )}
@@ -387,7 +387,7 @@ function CategoryList({ categories, currentId, onSelect, onAdd }: CategoryListPr
           onClick={onAdd}
           className={cn(
             buttonMotion,
-            "h-9 shrink-0 rounded-full border border-dashed border-(--pn-line-strong) text-(--pn-fg-muted) hover:border-(--pn-accent) hover:text-(--pn-fg) min-[1100px]:mt-1.5 min-[1100px]:h-10 min-[1100px]:rounded-(--pn-r-3)"
+            "h-9 shrink-0 rounded-full border border-dashed border-(--pn-line-strong) text-(--pn-fg-muted) hover:border-(--pn-hover-line) hover:text-(--pn-fg) min-[1100px]:mt-1.5 min-[1100px]:h-10 min-[1100px]:rounded-(--pn-r-3)"
           )}
         >
           <FolderPlus aria-hidden data-icon="inline-start" />

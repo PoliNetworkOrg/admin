@@ -82,11 +82,11 @@ function OverviewSearch() {
       type="button"
       onClick={openPalette}
       aria-haspopup="dialog"
-      className="-mt-2 flex h-13 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line-strong) bg-(--pn-surface) px-4 text-left text-[15px] text-(--pn-fg-muted) transition-[border-color] duration-120 hover:border-(--pn-accent) max-shell:h-11"
+      className="-mt-2 flex h-13 w-full items-center gap-3 rounded-(--pn-r-5) border border-(--pn-line-strong) bg-(--pn-surface) px-4 text-left text-[15px] text-(--pn-fg-muted) transition-[border-color] duration-120 hover:border-(--pn-hover-line) max-shell:h-11"
     >
       <Search aria-hidden strokeWidth={1.75} className="size-5 shrink-0 text-(--pn-fg-muted)" />
       <span className="min-w-0 flex-1 truncate">Search users, groups, members or pages…</span>
-      <kbd className="rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) pointer-coarse:hidden">
+      <kbd className="rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) pointer-coarse:hidden max-shell:hidden">
         {modifierKey === "⌘" ? "⌘K" : "Ctrl K"}
       </kbd>
     </button>
@@ -135,10 +135,13 @@ function Hero({ counts, userHistory }: OverviewPageProps) {
             <Link
               key={stat.label}
               to={stat.to}
-              className="group/stat flex min-w-0 items-center gap-3 rounded-(--pn-r-4) px-5 py-4.5 text-(--pn-fg) transition-[background-color] duration-120 hover:bg-[color-mix(in_oklch,var(--pn-muted)_70%,var(--pn-surface))] max-shell:flex-1 max-shell:px-3 max-shell:py-2.5"
+              className="group/stat flex min-w-0 items-center gap-3 rounded-(--pn-r-4) px-5 py-4.5 text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-hover) max-shell:min-w-0 max-shell:flex-1 max-shell:items-start max-shell:px-3 max-shell:py-2.5"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-[13px] text-(--pn-fg-muted)">{stat.label}</span>
+                {/* Two reserved lines on mobile, so the three numbers share a baseline when a label wraps. */}
+                <span className="text-[13px] text-(--pn-fg-muted) max-shell:min-h-8 max-shell:text-xs max-shell:leading-4">
+                  {stat.label}
+                </span>
                 <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                   {stat.value === null ? (
                     <span
@@ -153,7 +156,7 @@ function Hero({ counts, userHistory }: OverviewPageProps) {
                       {formatNumber(stat.value ?? 0)}
                     </span>
                   )}
-                  {stat.flag}
+                  <span className="contents max-shell:hidden">{stat.flag}</span>
                 </span>
               </span>
               <ChevronRight
@@ -278,7 +281,7 @@ function AreaCard({ service, openReports }: { service: Service; openReports: Ove
   return (
     <li
       className={cn(
-        "group/area relative flex flex-col gap-4 rounded-[14px] border border-(--pn-line) bg-(--pn-surface) p-4.5 transition-[background-color,border-color] duration-120 hover:border-(--pn-accent) hover:bg-(--pn-accent-soft)",
+        "group/area relative flex flex-col gap-4 rounded-[14px] border border-(--pn-line) bg-(--pn-surface) p-4.5 transition-[background-color,border-color] duration-120 hover:border-(--pn-hover-line) hover:bg-(--pn-hover)",
         wide && "min-[980px]:col-span-2"
       )}
     >
@@ -300,12 +303,12 @@ function AreaCard({ service, openReports }: { service: Service; openReports: Ove
           className="size-4.5 shrink-0 text-(--pn-fg-subtle) transition-[transform,color] duration-120 group-hover/area:translate-x-0.5 group-hover/area:text-(--pn-fg)"
         />
       </div>
-      <div className={cn("grid gap-1.5", wide && "grid-cols-2")}>
+      <div className={cn("grid gap-1.5 max-shell:grid-cols-2", wide && "grid-cols-2")}>
         {service.sections.map((section) => (
           <Link
             key={section.id}
             to={section.path}
-            className="group/section relative z-[1] flex h-11 min-w-0 items-center gap-2.5 rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-muted) px-3 text-[14px] font-medium text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:border-(--pn-accent) hover:bg-(--pn-nav-active)"
+            className="group/section relative z-[1] flex h-11 min-w-0 items-center gap-2.5 rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-muted) px-3 text-[14px] font-medium text-(--pn-fg) transition-[background-color,border-color] duration-120 hover:border-(--pn-hover-line) hover:bg-(--pn-hover)"
           >
             <section.icon
               aria-hidden
