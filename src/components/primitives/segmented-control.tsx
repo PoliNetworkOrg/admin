@@ -55,7 +55,7 @@ export function SegmentedControl<T extends string>({
       }}
       disabled={disabled}
       className={cn(
-        "inline-flex h-10 w-fit shrink-0 items-center gap-0.5 rounded-[9px] border border-(--pn-line) bg-(--pn-muted) p-[3px] data-disabled:opacity-100 dark:bg-(--pn-surface)",
+        "inline-flex h-10 w-fit shrink-0 items-center gap-0.5 rounded-[9px] border border-(--pn-line) bg-(--pn-muted) p-[3px] max-shell:p-px data-disabled:opacity-100 dark:bg-(--pn-surface)",
         className
       )}
     >
@@ -65,14 +65,14 @@ export function SegmentedControl<T extends string>({
           value={item.value}
           aria-label={item.ariaLabel}
           className={cn(
-            "group/segment inline-flex h-8 items-center justify-center gap-1.5 rounded-(--pn-r-2) px-3 text-[13px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color,box-shadow] duration-120 hover:text-(--pn-fg) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:text-(--pn-fg-subtle) data-pressed:bg-(--pn-surface) data-pressed:text-(--pn-fg) data-pressed:shadow-[0_1px_2px_oklch(0.22_0.024_250/0.12)] dark:data-pressed:bg-(--pn-line) dark:data-pressed:shadow-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+            "group/segment inline-flex h-8 max-shell:h-9 min-w-9 items-center justify-center gap-1.5 rounded-(--pn-r-2) px-3 text-[13px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color,box-shadow] duration-120 hover:text-(--pn-fg) data-disabled:text-(--pn-fg-subtle) data-disabled:hover:text-(--pn-fg-subtle) data-pressed:bg-(--pn-surface) data-pressed:text-(--pn-fg) data-pressed:shadow-[0_1px_2px_oklch(0.22_0.024_250/0.12)] dark:data-pressed:bg-(--pn-line) dark:data-pressed:shadow-none [&_svg]:size-3.5 [&_svg]:shrink-0",
             itemClassName
           )}
         >
           {item.icon}
           {item.label}
           {item.count !== undefined && (
-            <span className="font-mono text-[11px] font-normal text-(--pn-fg-subtle) tabular-nums group-data-pressed/segment:text-(--pn-accent)">
+            <span className="font-mono text-[11px] font-normal text-(--pn-fg-muted) tabular-nums group-data-pressed/segment:text-(--pn-accent)">
               {formatNumber(item.count)}
             </span>
           )}

@@ -28,7 +28,7 @@ function labelChipText(path: string) {
 }
 
 const rowClasses =
-  "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover) aria-[pressed=mixed]:bg-(--pn-accent-soft)"
+  "flex h-8 max-shell:h-9 min-w-0 flex-1 items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[13px] text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-muted) aria-pressed:bg-(--pn-accent-soft) aria-pressed:hover:bg-(--pn-accent-soft-hover) aria-[pressed=mixed]:bg-(--pn-accent-soft)"
 
 function SectionTitle({ children }: { children: string }) {
   return <p className="px-2 pt-2 pb-1 text-xs font-medium text-(--pn-fg-muted)">{children}</p>
@@ -59,7 +59,7 @@ function TreeNode({ node, depth, isSelected, onToggleMany }: TreeNodeProps) {
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)",
+            "flex size-8 max-shell:size-9 shrink-0 items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-muted) hover:text-(--pn-fg)",
             !hasChildren && "invisible"
           )}
         >
@@ -212,7 +212,7 @@ export function LabelTreeSelector({
                 aria-label={`Remove ${labelDisplayName(label.label)}`}
                 title={labelDisplayName(label.label)}
                 onClick={() => onToggleMany([label], false)}
-                className="inline-flex h-6 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
+                className="inline-flex h-6 max-shell:min-h-9 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-1.5 pl-2 text-xs font-medium text-(--pn-fg) transition-[background-color] duration-120 hover:bg-(--pn-nav-active)"
               >
                 <LabelDot color={label.color} />
                 {labelChipText(label.label)}
