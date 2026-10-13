@@ -1,4 +1,4 @@
-import { ChevronRight, Database, UserMinus, UserPlus } from "lucide-react"
+import { ChevronRight, Database, UserMinus, UserPlus, UsersRound } from "lucide-react"
 import { type ReactNode, useDeferredValue, useId, useLayoutEffect, useMemo, useState } from "react"
 
 import { AvatarGroup, EmptyState, IconButton, Reveal, SectionEmpty, Unset } from "@/components/primitives"
@@ -263,29 +263,40 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
       <span className="w-24 shrink-0 text-right text-[14px] whitespace-nowrap text-(--pn-fg) tabular-nums max-shell:w-auto max-shell:flex-1 max-shell:text-left max-shell:text-[13px] max-shell:text-(--pn-fg-muted)">
         {pluralize(group.members.length, "member")}
       </span>
-      {canWrite ? (
-        <div className="flex items-center gap-1.5">
-          <IconButton
-            label={canAdd ? "Add member" : "Adding members needs access to the member directory"}
-            ariaLabel={canAdd ? `Add a member to ${group.displayName}` : undefined}
-            icon={UserPlus}
-            appearance="boxed"
-            disabled={!canAdd}
-            focusableWhenDisabled
-            onClick={() => onOpenDialog(group.id, "add")}
-          />
-          <IconButton
-            label={empty ? "No members to remove" : "Remove member"}
-            ariaLabel={empty ? "No members to remove" : `Remove a member from ${group.displayName}`}
-            icon={UserMinus}
-            appearance="boxed"
-            tone="danger"
-            disabled={empty}
-            focusableWhenDisabled
-            onClick={() => onOpenDialog(group.id, "remove")}
-          />
-        </div>
-      ) : null}
+      <div className="flex items-center gap-1.5">
+        <IconButton
+          label={empty ? "No members to show" : "View members"}
+          ariaLabel={empty ? "No members to show" : `View the members of ${group.displayName}`}
+          icon={UsersRound}
+          appearance="boxed"
+          disabled={empty}
+          focusableWhenDisabled
+          onClick={() => onOpenDialog(group.id, "view")}
+        />
+        {canWrite ? (
+          <>
+            <IconButton
+              label={canAdd ? "Add member" : "Adding members needs access to the member directory"}
+              ariaLabel={canAdd ? `Add a member to ${group.displayName}` : undefined}
+              icon={UserPlus}
+              appearance="boxed"
+              disabled={!canAdd}
+              focusableWhenDisabled
+              onClick={() => onOpenDialog(group.id, "add")}
+            />
+            <IconButton
+              label={empty ? "No members to remove" : "Remove member"}
+              ariaLabel={empty ? "No members to remove" : `Remove a member from ${group.displayName}`}
+              icon={UserMinus}
+              appearance="boxed"
+              tone="danger"
+              disabled={empty}
+              focusableWhenDisabled
+              onClick={() => onOpenDialog(group.id, "remove")}
+            />
+          </>
+        ) : null}
+      </div>
     </li>
   )
 }

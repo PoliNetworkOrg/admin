@@ -24,9 +24,10 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@
 import { Dialog, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { addAzureGroupMember, removeAzureGroupMember } from "@/features/azure/groups.functions"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-export type MembershipMode = "add" | "remove"
+export type MembershipMode = "add" | "remove" | "view"
 
 type Choice = { id: string; name: string | null; mail: string | null }
 
@@ -40,16 +41,23 @@ type MembershipDialogProps = {
 
 const copy = {
   add: {
-    title: "Add a group member",
+    title: "Add a member to",
     lead: "Choose a directory user to add to",
     tail: "",
     heading: "Available users",
     empty: "No available users found.",
   },
   remove: {
-    title: "Remove a group member",
+    title: "Remove a member from",
     lead: "Choose a member to remove from",
     tail: " Their Microsoft 365 account is not deleted.",
+    heading: "Current members",
+    empty: "No group members found.",
+  },
+  view: {
+    title: "Members of",
+    lead: "",
+    tail: "",
     heading: "Current members",
     empty: "No group members found.",
   },
@@ -57,7 +65,10 @@ const copy = {
 
 const PERMISSION_ERROR = "You don't have permission to manage this group."
 
-/** Add or remove one Microsoft 365 group member; removal swaps to a confirmation before it runs. */
+/**
+ * Add or remove one Microsoft 365 group member, or just list them (`view`); removal swaps to a confirmation before it
+ * runs.
+ */
 export function MembershipDialog({ group, directoryMembers, mode, open, onOpenChange }: MembershipDialogProps) {
   const router = useRouter()
   const addMember = useServerFn(addAzureGroupMember)
@@ -70,6 +81,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
   const inputRef = useRef<HTMLInputElement>(null)
   const keepRef = useRef<HTMLButtonElement>(null)
   const adding = mode === "add"
+  const viewing = mode === "view"
   const text = copy[mode]
 
   const choices = useMemo<Choice[]>(() => {
@@ -172,13 +184,22 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
         >
           <header className="relative flex shrink-0 flex-col gap-1.5 px-5 pt-5 pr-14">
             <DialogTitle className={dialogTitleText}>
-              {confirming
-                ? `Remove ${selectedName}?`
-                : `${adding ? "Add a member to" : "Remove a member from"} ${group.displayName}`}
+              {confirming ? `Remove ${selectedName}?` : `${text.title} ${group.displayName}`}
             </DialogTitle>
             <DialogDescription className={dialogDescriptionText}>
               {confirming ? (
                 "They lose access to this Microsoft 365 group. Their account is not deleted."
+              ) : viewing ? (
+                <>
+                  {pluralize(group.members.length, "member")}
+                  {group.mailAddress ? (
+                    <>
+                      {" "}
+                      on <span className="font-medium text-(--pn-fg)">{group.mailAddress}</span>
+                    </>
+                  ) : null}
+                  .
+                </>
               ) : (
                 <>
                   {text.lead} <span className="font-medium text-(--pn-fg)">{group.displayName}</span>.{text.tail}
@@ -217,20 +238,22 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                         key={choice.id}
                         value={`${choice.name ?? "Unnamed user"} ${choice.mail ?? ""} ${choice.id}`}
                         data-checked={selected?.id === choice.id}
-                        onSelect={() => choose(choice)}
+                        onSelect={viewing ? undefined : () => choose(choice)}
                         className="min-h-15 gap-2.5 rounded-(--pn-r-2) px-2 py-2 data-selected:bg-(--pn-muted) data-[checked=true]:bg-(--pn-accent-soft) [&>svg:last-child]:text-(--pn-accent)"
                       >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "grid size-4 shrink-0 place-items-center rounded-full border border-(--pn-line-strong)",
-                            selected?.id === choice.id && "border-(--pn-accent)"
-                          )}
-                        >
-                          {selected?.id === choice.id && (
-                            <span className="size-2 rounded-full bg-(--pn-accent-solid)" />
-                          )}
-                        </span>
+                        {viewing ? null : (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "grid size-4 shrink-0 place-items-center rounded-full border border-(--pn-line-strong)",
+                              selected?.id === choice.id && "border-(--pn-accent)"
+                            )}
+                          >
+                            {selected?.id === choice.id && (
+                              <span className="size-2 rounded-full bg-(--pn-accent-solid)" />
+                            )}
+                          </span>
+                        )}
                         <PersonLine choice={choice} />
                       </CommandItem>
                     ))}
@@ -272,7 +295,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   onClick={close}
                   className={dialogFooterButton}
                 >
-                  Cancel
+                  {viewing ? "Close" : "Cancel"}
                 </Button>
                 {adding ? (
                   <LoadingButton size="default" pending={pending} disabled={!selected} onClick={() => void submit()}>
