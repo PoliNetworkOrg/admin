@@ -114,7 +114,8 @@ the `h1`.
 
 **Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
 service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
-as horizontally scrolling pills that scroll away with the page, scrolled so the current one is in view; a 64px bottom nav lists the five services (current one
+as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
+font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the five services (current one
 accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
 is no sheet.
 

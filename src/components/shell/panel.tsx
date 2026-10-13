@@ -4,6 +4,7 @@ import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, u
 import { cn } from "@/lib/utils"
 
 import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } from "./nav"
+import { observeSectionScroll } from "./section-scroll"
 import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
@@ -132,25 +133,10 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
 export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
   const ref = useRef<HTMLElement>(null)
   const currentPath = sectionFor(match)?.path
-  // Keep the current pill in view: a section past the screen edge would otherwise look unselected. Re-run when the
-  // section changes (the shell stays mounted between sections) and once the web font has settled the pill widths.
   useLayoutEffect(() => {
     const nav = ref.current
     if (!nav) return
-    const reveal = () => {
-      const current = nav.querySelector<HTMLElement>("[aria-current=page], [data-ancestor]")
-      if (!current) return
-      const start = current.offsetLeft - 16
-      const end = current.offsetLeft + current.offsetWidth + 16 - nav.clientWidth
-      if (nav.scrollLeft > start) nav.scrollLeft = start
-      else if (nav.scrollLeft < end) nav.scrollLeft = end
-    }
-    reveal()
-    let live = true
-    void document.fonts?.ready.then(() => live && reveal())
-    return () => {
-      live = false
-    }
+    return observeSectionScroll(nav)
   }, [currentPath])
   return (
     <nav

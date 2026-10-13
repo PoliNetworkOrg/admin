@@ -42,6 +42,7 @@ export function toFaqInput(faq: FAQItem): FaqInput {
   }
 }
 
+/** Pair FAQ text with its language badge; questions can wrap to three lines on phones. */
 function LanguageLine({ lang, children, muted }: { lang: "IT" | "EN"; children: string; muted?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2 max-shell:items-start">

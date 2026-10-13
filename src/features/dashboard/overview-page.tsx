@@ -93,6 +93,7 @@ function OverviewSearch() {
   )
 }
 
+/** Stream user growth and service counts into the overview hero, with shorter statistic labels on phones. */
 function Hero({ counts, userHistory }: OverviewPageProps) {
   // `short` is the phone label: the hero already sits under "Telegram users", so "Groups" is unambiguous there.
   const stats: { label: string; short?: string; value: OverviewCount; to: DashboardPath; flag?: ReactNode }[] = [
@@ -282,6 +283,7 @@ function Areas({ openReports }: { openReports: OverviewCount }) {
   )
 }
 
+/** Link to a service and its sections, including the open-report count when the service is Reports. */
 function AreaCard({ service, openReports }: { service: Service; openReports: OverviewCount }) {
   const { serviceHref } = useShellFrame()
   const wide = service.sections.length > 3
