@@ -123,7 +123,7 @@ export function DateField({
           }}
           autoFocus
           weekStartsOn={1}
-          className="w-full bg-transparent [--cell-size:--spacing(10)]"
+          className="w-full bg-transparent p-0 [--cell-size:clamp(36px,calc((100vw_-_48px)/7),40px)]"
           classNames={{ month_caption: "sr-only", nav: "hidden", months: "w-full" }}
         />
       </PopoverContent>

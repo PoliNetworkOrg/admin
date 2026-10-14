@@ -900,37 +900,37 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           })
       }
       contacts.push({ role: "hr", name: "HR team", telegram: null, email: "hr@polinetwork.org", team: null })
-      const rosters = me.teams
-        .filter((membership) => !membership.endedOn)
-        .map(({ team }) => ({
-          team,
-          members: data()
-            .people.flatMap((person) => {
-              const membership = person.teams.find((candidate) => candidate.team === team && !candidate.endedOn)
-              if (!membership) return []
-              const email =
-                person.member || person.account.status === "linked"
-                  ? m365Address(person.profile.firstName, person.profile.lastName)
-                  : null
-              return [
-                {
-                  id: person.id,
-                  name: fullName(person),
-                  role: membership.role,
-                  telegram: person.profile.telegramUsername,
-                  email,
-                },
-              ]
-            })
-            .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "lead" ? -1 : 1)),
-        }))
-      const campaign = me.expected ? campaigns().find((entry) => entry.status === "open") : null
+      const team = me.teams.find((membership) => !membership.endedOn)?.team ?? null
+      const roster = team
+        ? {
+            team,
+            members: data()
+              .people.flatMap((person) => {
+                const membership = person.teams.find((candidate) => candidate.team === team && !candidate.endedOn)
+                if (!membership) return []
+                const email =
+                  person.member || person.account.status === "linked"
+                    ? m365Address(person.profile.firstName, person.profile.lastName)
+                    : null
+                return [
+                  {
+                    id: person.id,
+                    name: fullName(person),
+                    role: membership.role,
+                    telegram: person.profile.telegramUsername,
+                    email,
+                  },
+                ]
+              })
+              .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "lead" ? -1 : 1)),
+          }
+        : null
       return {
         state: "linked",
         person: { ...record(me, { ...viewer, personId: me.id }), notes: null },
-        campaign: campaign ? { id: campaign.id, year: campaign.year, closesOn: campaign.closesOn } : null,
+        campaign: me.expected ? { id: "2026", year: "2026/27", closesOn: "2026-10-31" } : null,
         contacts,
-        rosters,
+        roster,
       } satisfies MyArea
     },
     confirmMatch: async () => {
@@ -959,11 +959,9 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:self")
       const me = viewerRecord(viewer)
       if (!me) throw new Error("There is no record to answer for.")
-      const campaign = campaigns().find((entry) => entry.status === "open")
-      if (!me.expected || campaign?.status !== "open") throw new Error("This census is not open for you.")
-      me.census = me.census.filter((entry) => entry.year !== campaign.year)
+      me.census = me.census.filter((entry) => entry.year !== "2026/27")
       me.census.unshift({
-        year: campaign.year,
+        year: "2026/27",
         answer: input.answer,
         answeredOn: today(),
         source: "dashboard",
@@ -971,11 +969,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         reminders: 0,
       })
       Object.assign(me.profile, { course: input.course, year: input.year, campus: input.campus })
-      log(
-        me,
-        fullName(me),
-        `answered the ${campaign.year} census: ${input.answer === "continues" ? "continues" : "leaving"}`
-      )
+      log(me, fullName(me), `answered the 2026/27 census: ${input.answer === "continues" ? "continues" : "leaving"}`)
     },
     requestCorrection: async (input) => {
       require(viewer, "people:self")

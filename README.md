@@ -12,10 +12,6 @@ implements it, agent mode serves sample data from `people.fake.server.ts`. Permi
 `people:members:read`, `people:members:write`, `people:appoint`, and `people:self`, which alone admits non-admins to My
 area and, by the role on their record, Capo Admin or their team. See `docs/people/README.md`.
 
-Outside agent mode People is disabled by default, regardless of IdP grants. Set `PEOPLE_ENABLED=true` only after
-deploying and verifying the backend contract. All views share a server-resolved academic year, which rolls over on
-1 September (UTC); set `PEOPLE_ACADEMIC_YEAR` when the backend's active period differs from that calendar.
-
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
 **dedicated Redis**, separate from the shared backend Redis. Backend requests carry a user bearer token, and permissions
@@ -48,8 +44,6 @@ Set the following runtime variables (the build does not need secrets):
 | `AGENT_PERMISSIONS`       | Development only. Comma-separated permissions for the agent-mode user (default: all). `people:self` alone previews the restricted People view.                                                                                                       |
 | `AGENT_PERSON`            | Development only. The agent-mode user's People record (default `P-0007`, Direttivo). `P-0098` is a Capo Admin, `P-0034` the IT Team Lead, `P-0115` an IT member; `match:P-0115` previews the first sign-in, `none` a sign-in without a record.       |
 | `AGENT_MODE`              | Fake all-permission user in development only. Backend must be a local fake or local legacy test instance. Production ignores this mode.                                                                                                              |
-| `PEOPLE_ENABLED`          | Defaults to false. Enable after the backend implements and enforces the People contract. Agent mode does not require this switch.                                                                                                                    |
-| `PEOPLE_ACADEMIC_YEAR`    | Optional academic year override, e.g. `2026/27`; otherwise changes on 1 September (UTC). Match the period used by the backend.                                                                                                                       |
 | `PORT`                    | Local listening port (3001 by default); use a port ≥10000 for agent previews.                                                                                                                                                                        |
 | `TEST_REDIS_URL`          | Opt-in disposable Redis for integration tests. Tests create/delete only UUID session keys.                                                                                                                                                           |
 

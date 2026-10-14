@@ -21,7 +21,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleYear } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
@@ -35,6 +35,7 @@ import {
 import {
   CENSUS_ANSWER,
   censusEntry,
+  CURRENT_YEAR,
   formatDay,
   isMember,
   NO_ANSWER,
@@ -56,24 +57,20 @@ function isAdmin(person: PersonRow): person is Admin {
 }
 
 const QUICK = {
-  noGroups: { label: "No groups", test: (person: Admin, _currentYear: string) => person.admin.groups.length === 0 },
-  availableAsCapo: {
-    label: "Available as Capo Admin",
-    test: (person: Admin, _currentYear: string) => person.admin.availableAsCapo,
-  },
+  noGroups: { label: "No groups", test: (person: Admin) => person.admin.groups.length === 0 },
+  availableAsCapo: { label: "Available as Capo Admin", test: (person: Admin) => person.admin.availableAsCapo },
   declaredMember: {
     label: "Declared member but not registered",
-    test: (person: Admin, currentYear: string) =>
-      censusEntry(person, currentYear)?.declaredMember === true && !isMember(person),
+    test: (person: Admin) => censusEntry(person, CURRENT_YEAR)?.declaredMember === true && !isMember(person),
   },
   noCensus: {
     label: "No census answer",
-    test: (person: Admin, currentYear: string) => {
-      const entry = censusEntry(person, currentYear)
+    test: (person: Admin) => {
+      const entry = censusEntry(person, CURRENT_YEAR)
       return entry !== undefined && entry.answer === null
     },
   },
-} satisfies Record<Quick, { label: string; test: (person: Admin, currentYear: string) => boolean }>
+} satisfies Record<Quick, { label: string; test: (person: Admin) => boolean }>
 
 const QUICK_IDS = ["noGroups", "availableAsCapo", "declaredMember", "noCensus"] satisfies Quick[]
 
@@ -88,13 +85,12 @@ function matchesQuery(person: Admin, query: string) {
 }
 
 function CensusCell({ person }: { person: Admin }) {
-  const currentYear = usePeopleYear()
-  const entry = censusEntry(person, currentYear)
+  const entry = censusEntry(person, CURRENT_YEAR)
   if (!entry) return <Unset />
   return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
 }
 
-const BASE_COLUMNS: DataTableColumn<Admin>[] = [
+const columns: DataTableColumn<Admin>[] = [
   {
     id: "name",
     label: "Name",
@@ -246,7 +242,7 @@ const BASE_COLUMNS: DataTableColumn<Admin>[] = [
   },
   {
     id: "census",
-    label: "Census",
+    label: `Census ${CURRENT_YEAR}`,
     width: 152,
     mobile: "hidden",
     cell: (person) => <CensusCell person={person} />,
@@ -257,10 +253,6 @@ const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
 /** People › Admins: admins of the Telegram course groups, their groups, Capo Admin and census answer. */
 export function AdminsPage({ people }: { people: PersonRow[] }) {
-  const currentYear = usePeopleYear()
-  const columns = BASE_COLUMNS.map((column) =>
-    column.id === "census" ? { ...column, label: `Census ${currentYear}` } : column
-  )
   const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
   const admins = people.filter(isAdmin)
@@ -284,7 +276,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
     (person) =>
       (campus === null || person.profile.campus === campus) &&
       (year === null || yearOf(person.profile.year) === year) &&
-      [...quick].every((id) => QUICK[id].test(person, currentYear)) &&
+      [...quick].every((id) => QUICK[id].test(person)) &&
       matchesQuery(person, deferredQuery)
   )
   const sign = sort.direction === "asc" ? 1 : -1
@@ -374,7 +366,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
                     <ToggleFilter
                       key={id}
                       label={QUICK[id].label}
-                      count={inScope.filter((person) => QUICK[id].test(person, currentYear)).length}
+                      count={inScope.filter(QUICK[id].test).length}
                       pressed={quick.has(id)}
                       onPressedChange={(pressed) => toggleQuick(id, pressed)}
                     />

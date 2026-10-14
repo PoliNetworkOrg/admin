@@ -13,17 +13,6 @@ export const env = createEnv({
     AGENT_PERMISSIONS: z.string().optional(),
     /** Development only: the agent-mode user's person record in the People sample data. */
     AGENT_PERSON: z.string().default("P-0007"),
-    /** Enable only after the backend implements the People contract. Agent mode remains available independently. */
-    PEOPLE_ENABLED: z
-      .enum(["true", "false"])
-      .default("false")
-      .transform((value) => value === "true"),
-    /** Optional year override; otherwise the academic year rolls over on 1 September (UTC). */
-    PEOPLE_ACADEMIC_YEAR: z
-      .string()
-      .regex(/^\d{4}\/\d{2}$/)
-      .refine((value) => Number(value.slice(5)) === (Number(value.slice(0, 4)) + 1) % 100)
-      .optional(),
     NODE_ENV: z.enum(["development", "test", "production"]),
     BACKEND_URL: z.url(),
   },

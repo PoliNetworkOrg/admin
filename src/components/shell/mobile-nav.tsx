@@ -82,7 +82,7 @@ export type MobileBottomNavProps = {
   className?: string
 }
 
-/** Below 760px: the five services as a bottom tab bar; the current one is accent with a top indicator. */
+/** Below 760px: the visible services as a bottom tab bar; the current one is accent with a top indicator. */
 export function MobileBottomNav({ match, serviceHref, pendingReports, className }: MobileBottomNavProps) {
   const services = useVisibleServices().filter(isRailService)
   const activeId = serviceFor(match).id
@@ -91,7 +91,7 @@ export function MobileBottomNav({ match, serviceHref, pendingReports, className 
     <nav
       aria-label="Services"
       className={cn(
-        "flex h-16 shrink-0 items-stretch border-t border-(--pn-line) bg-(--pn-nav) px-1 pb-[env(safe-area-inset-bottom)]",
+        "flex h-[calc(64px+env(safe-area-inset-bottom))] shrink-0 items-stretch border-t border-(--pn-line) bg-(--pn-nav) px-1 pb-[env(safe-area-inset-bottom)]",
         className
       )}
     >
@@ -118,7 +118,14 @@ export function MobileBottomNav({ match, serviceHref, pendingReports, className 
               ) : null}
             </span>
             <span aria-hidden className="max-w-full truncate">
-              {service.short}
+              {service.id === "whatsapp" ? (
+                <>
+                  <span className="min-[360px]:hidden">WA</span>
+                  <span className="max-[360px]:hidden">{service.short}</span>
+                </>
+              ) : (
+                service.short
+              )}
             </span>
           </Link>
         )

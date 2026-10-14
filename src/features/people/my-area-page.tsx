@@ -369,7 +369,7 @@ function CensusCard({ area }: { area: Linked }) {
 }
 
 function LinkedView({ area }: { area: Linked }) {
-  const { person, contacts, rosters } = area
+  const { person, contacts, roster } = area
   const revoke = useServerFn(revokePhotoConsent)
   const refresh = useRefreshAfter()
   const [correctionOpen, setCorrectionOpen] = useState(false)
@@ -412,7 +412,7 @@ function LinkedView({ area }: { area: Linked }) {
 
   const photoGranted = consents.photo?.status === "granted"
 
-  const rosterColumns: DataTableColumn<Linked["rosters"][number]["members"][number]>[] = [
+  const rosterColumns: DataTableColumn<NonNullable<Linked["roster"]>["members"][number]>[] = [
     {
       id: "name",
       label: "Name",
@@ -527,9 +527,7 @@ function LinkedView({ area }: { area: Linked }) {
                               label="Open your team"
                               icon={ChevronRight}
                               nativeButton={false}
-                              render={
-                                <Link to="/dashboard/people/teams/$teamId" params={{ teamId: membership.team }} />
-                              }
+                              render={<Link to="/dashboard/people/teams" />}
                             />
                           ) : undefined
                         }
@@ -646,13 +644,9 @@ function LinkedView({ area }: { area: Linked }) {
             </div>
           </div>
 
-          {rosters.map((roster) => (
-            <section key={roster.team} className="flex flex-col gap-3" aria-labelledby={`my-team-${roster.team}`}>
-              <SectionHeading
-                id={`my-team-${roster.team}`}
-                title={`${teamName(roster.team)} team`}
-                count={roster.members.length}
-              />
+          {roster ? (
+            <section className="flex flex-col gap-3" aria-labelledby="my-team">
+              <SectionHeading id="my-team" title={`${teamName(roster.team)} team`} count={roster.members.length} />
               <DataTable
                 label={`${teamName(roster.team)} team`}
                 columns={rosterColumns}
@@ -662,7 +656,7 @@ function LinkedView({ area }: { area: Linked }) {
                 empty={<EmptyState icon={Users} title="No team members yet" text="Your Team Lead adds people here." />}
               />
             </section>
-          ))}
+          ) : null}
         </div>
       </PageContent>
       <CorrectionDialog key={`correction-${correctionKey}`} open={correctionOpen} onOpenChange={setCorrectionOpen} />

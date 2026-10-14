@@ -14,7 +14,7 @@ import {
   refreshTokens,
   revokeRefreshToken,
 } from "@/server/oidc.server"
-import { agentPermissions, availablePermissions, canEnterDashboard, isAgentModeEnabled } from "@/server/permissions"
+import { agentPermissions, canEnterDashboard, isAgentModeEnabled } from "@/server/permissions"
 import {
   AuthUnavailableError,
   ensureFreshSession,
@@ -179,9 +179,8 @@ export async function loadAccess(session: RequestSession, backend: BackendClient
 
   const result = await backend.me.access.query()
   const user = { ...session.user, telegramId: result.telegramId }
-  const permissions = availablePermissions(result.permissions, env.PEOPLE_ENABLED)
-  const access: DashboardAccess = canEnterDashboard(permissions)
-    ? { status: "authorized", user, permissions }
+  const access: DashboardAccess = canEnterDashboard(result.permissions)
+    ? { status: "authorized", user, permissions: result.permissions }
     : { status: "forbidden", user, stale: result.stale }
   cacheAccess(session.key, access, now)
   return access

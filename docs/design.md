@@ -115,8 +115,9 @@ the `h1`.
 **Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
 service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
-font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the five services (current one
-accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
+font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
+accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -453,9 +454,8 @@ Rules that the templates above don't imply.
   record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
-- **Teams**: index cards then all members; a Team Lead without `people:read` sees only their teams. One led team opens
-  as the section itself; several get the scoped index with direct team links. Team-field columns come from `TEAMS`
-  in `people.contract.ts`.
+- **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
+  itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
 - **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
   saves nothing before Confirm. Reminders report sent and skipped counts after sending.
 - **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has

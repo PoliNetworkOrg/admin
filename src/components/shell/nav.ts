@@ -387,10 +387,8 @@ export function canOpenPage(match: PageMatch, permissions: readonly string[], ro
   if (match.kind === "not-found") return true
   const current = sectionFor(match)
   if (!current) return hasPermission(permissions, "admin:access")
-  // Direct links are available only for teams this person leads; the loader/backend scopes the data again.
-  if (match.kind === "people-team" && !hasPermission(permissions, "people:read")) {
-    return hasPermission(permissions, "people:self") && roles.leads.some((id) => id === match.teamId)
-  }
+  // Team pages: a Team Lead without people:read only reaches their own team, which People › Teams opens directly.
+  if (match.kind === "people-team" && !hasPermission(permissions, "people:read")) return false
   return sectionVisible(current, permissions, roles)
 }
 

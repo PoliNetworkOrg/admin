@@ -188,7 +188,5 @@ export async function peopleApi(context: PeopleContext): Promise<PeopleApi> {
     const [{ fakePeopleApi }, { env }] = await Promise.all([import("./people.fake.server"), import("@/env")])
     return fakePeopleApi({ permissions: context.permissions, personId: env.AGENT_PERSON })
   }
-  const { env } = await import("@/env")
-  if (!env.PEOPLE_ENABLED) throw new Error("People is not available yet.")
   return backendPeopleApi(context.session.accessToken)
 }

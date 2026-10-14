@@ -24,11 +24,11 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleRoles, usePeopleYear } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleRoles } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
-import { CENSUS_ANSWER, censusEntry, formatDay, NO_ANSWER, personName, teamName } from "./people-format"
+import { CENSUS_ANSWER, censusEntry, CURRENT_YEAR, formatDay, NO_ANSWER, personName, teamName } from "./people-format"
 import { FilterMenu, PersonCell, StateBadge } from "./people-ui"
 import { type PersonRow, type TeamId, type TeamMembership, type TeamSummary, teamFields } from "./people.contract"
 import { AddToTeamDialog, EditTeamFieldsDialog, EndTeamMembershipDialog, type TeamMemberTarget } from "./team-dialogs"
@@ -68,8 +68,7 @@ function matchesQuery(row: TeamRow, query: string) {
 }
 
 function CensusBadge({ person }: { person: PersonRow }) {
-  const currentYear = usePeopleYear()
-  const entry = censusEntry(person, currentYear)
+  const entry = censusEntry(person, CURRENT_YEAR)
   if (!entry) return <Unset />
   return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
 }
@@ -185,10 +184,7 @@ function sortRows(rows: TeamRow[], sort: TableSort) {
 
 /** People › Teams: one card per team, then every active team member in one table. */
 export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
-  const currentYear = usePeopleYear()
-  const canRead = useCan("people:read")
-  const { leads } = usePeopleRoles()
-  const canEdit = useCan("people:write") || leads.length > 0
+  const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
   const all = teams.flatMap((team) => rowsOf(team, false))
   const [query, setQuery] = useState("")
@@ -256,7 +252,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
     },
     {
       id: "census",
-      label: `Census ${currentYear}`,
+      label: `Census ${CURRENT_YEAR}`,
       width: 152,
       priority: 4,
       mobile: "hidden",
@@ -277,7 +273,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
       <PageBar
         description={`${pluralize(teams.length, "team")} · ${pluralize(all.length, "member")}`}
         right={
-          canEdit ? (
+          canWrite ? (
             <Button size="sm" className={buttonMotion} onClick={add.show}>
               <UserPlus data-icon="inline-start" />
               Add to team
@@ -290,7 +286,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           <nav aria-label="Teams" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {teams.map((summary) => {
               const active = rowsOf(summary, false)
-              const missing = active.filter((row) => censusEntry(row.person, currentYear)?.answer === null).length
+              const missing = active.filter((row) => !censusEntry(row.person, CURRENT_YEAR)?.answer).length
               return (
                 <NavCard
                   key={summary.id}
@@ -355,16 +351,14 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
               rows={rows}
               getRowId={rowId}
               rowLabel={(row) => personName(row.person)}
-              rowHref={canRead ? (row) => `/dashboard/people/${row.person.id}` : undefined}
+              rowHref={(row) => `/dashboard/people/${row.person.id}`}
               sort={sort}
               onSort={(next) => {
                 setSort(next)
                 setPage(1)
               }}
               actions={
-                canEdit
-                  ? (row) => <MemberActions row={row} canOpenRecord={canRead} onOpen={rowDialog.show} />
-                  : undefined
+                canWrite ? (row) => <MemberActions row={row} canOpenRecord onOpen={rowDialog.show} /> : undefined
               }
               actionsWidth={96}
               pagination={{
@@ -407,7 +401,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           </section>
         </div>
       </PageContent>
-      {canEdit ? (
+      {canWrite ? (
         <AddToTeamDialog
           key={`add-${add.key}`}
           open={add.open}
@@ -428,7 +422,6 @@ type Scope = "active" | "former"
  * (`asSection`), and they get their members' contacts and the team actions.
  */
 export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSection?: boolean }) {
-  const currentYear = usePeopleYear()
   const canRead = useCan("people:read")
   const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
@@ -563,7 +556,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
             : []),
           {
             id: "census",
-            label: `Census ${currentYear}`,
+            label: `Census ${CURRENT_YEAR}`,
             width: 152,
             priority: 4,
             mobile: "hidden",
@@ -717,6 +710,6 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
 export function TeamsSection({ teams }: { teams: TeamSummary[] }) {
   const canRead = useCan("people:read")
   const [led] = teams
-  if (!canRead && teams.length === 1 && led) return <TeamPage team={led} asSection />
+  if (!canRead && led) return <TeamPage team={led} asSection />
   return <TeamsPage teams={teams} />
 }

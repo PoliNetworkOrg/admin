@@ -23,8 +23,6 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). `/dashboard` admits `people:self` without `admin:access`;
   Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and only open their
   sections. Handoff notes, decisions and the plan: `docs/people/`.
-  Outside agent mode, `PEOPLE_ENABLED` must be true before People permissions are exposed or the API is called.
-  Use `usePeopleYear()` for the server-resolved academic year; campaign deadlines and status come from the backend.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

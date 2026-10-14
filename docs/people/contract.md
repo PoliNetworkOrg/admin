@@ -225,18 +225,18 @@ type MyArea =
   | {
       state: "linked"
       person: PersonRecord
-      campaign: { id: string; year: string; closesOn: string } | null
+      campaign: { year: string; closesOn: string; entry: CensusEntry } | null
       contacts: {
         role: "capo" | "lead" | "hr"
         name: string
         telegram: string | null
         email: string | null
-        team: TeamId | null
+        team?: TeamId
       }[]
-      rosters: {
+      roster: {
         team: TeamId
-        members: { id: PersonId; name: string; role: TeamRole; telegram: string | null; email: string | null }[]
-      }[] // Every active team membership; [] when there are none.
+        members: { name: string; role: TeamRole; telegram: string | null; email: string | null }[]
+      } | null
     }
   | {
       state: "match"
