@@ -15,6 +15,7 @@ import {
   campaignSchema,
   type CapoArea,
   capoAreaSchema,
+  type CapoRefInput,
   type CapoScopeInput,
   censusAnswersSchema,
   type CorrectionInput,
@@ -70,6 +71,7 @@ export type PeopleApi = {
   exportMembers: () => Promise<{ filename: string; csv: string }>
   endAdmin: (input: EndAdminInput) => Promise<void>
   setCapoScope: (input: CapoScopeInput) => Promise<void>
+  setCapoOfReference: (input: CapoRefInput) => Promise<void>
   listTeams: () => Promise<TeamSummary[]>
   addTeamMember: (input: AddTeamMemberInput) => Promise<void>
   updateTeamFields: (input: TeamFieldsInput) => Promise<void>
@@ -129,6 +131,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     exportMembers: () => mutateParsed("members.export", undefined, exportResultSchema),
     endAdmin: (input) => mutate("admins.end", input),
     setCapoScope: (input) => mutate("admins.setCapoScope", input),
+    setCapoOfReference: (input) => mutate("admins.setCapoOfReference", input),
     listTeams: () => query("teams.list", undefined, teamSummarySchema.array()),
     addTeamMember: (input) => mutate("teams.addMember", input),
     updateTeamFields: (input) => mutate("teams.updateFields", input),

@@ -4,7 +4,9 @@ import { peopleWriteMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
 import {
+  capoRefInputSchema,
   createPersonInputSchema,
+  endAdminInputSchema,
   linkAccountInputSchema,
   personRefInputSchema,
   setNoteInputSchema,
@@ -46,3 +48,14 @@ export const unlinkPersonAccount = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
   .validator(personRefInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).unlinkAccount(data))
+
+/** The bot removes their admin rights in every group; the record keeps the history. */
+export const endAdminRole = createServerFn({ method: "POST" })
+  .middleware([peopleWriteMiddleware])
+  .validator(endAdminInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).endAdmin(data))
+
+export const setCapoOfReference = createServerFn({ method: "POST" })
+  .middleware([peopleWriteMiddleware])
+  .validator(capoRefInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).setCapoOfReference(data))

@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import {
   Camera,
   ClipboardList,
+  Crown,
   EllipsisVertical,
   FileText,
   IdCard,
@@ -12,6 +13,8 @@ import {
   Pencil,
   RefreshCw,
   Unlink,
+  UserMinus,
+  UserRoundCog,
   Users,
 } from "lucide-react"
 import { type ReactNode, useState } from "react"
@@ -26,6 +29,7 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuSeparator,
   MenuTrigger,
   PlatformGlyph,
   RecordHeader,
@@ -39,6 +43,7 @@ import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format"
 
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
+import { CapoOfReferenceDialog, CapoScopeDialog, EndAdminDialog, EndCapoDialog } from "./admin-dialogs"
 import { CensusAnswersDialog } from "./census-answers-dialog"
 import { LinkAccountDialog } from "./link-account-dialog"
 import { MemberNumberDialog, MemberStatusDialog } from "./member-dialogs"
@@ -64,6 +69,8 @@ import { MonoChip, PersonAvatar, StateBadge } from "./people-ui"
 import { updatePerson } from "./people-write.functions"
 import { type PersonRecord, teamFields } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
+
+type AdminDialogKind = "end" | "capoRef" | "capoScope" | "endCapo"
 
 const BACK = { label: "people", link: { to: "/dashboard/people" } } as const
 
@@ -115,12 +122,14 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   const canWrite = useCan("people:write")
   const canRead = useCan("people:read")
   const canWriteMembers = useCan("people:members:write")
+  const canAppoint = useCan("people:appoint")
   const update = useServerFn(updatePerson)
   const refresh = useRefreshAfter()
   const name = personName(person)
   const archived = hasNoRoles(person)
   const roles = roleLabels(person)
   const { profile, admin, member, account } = person
+  const adminTarget = { personId: person.id, name, groups: admin?.groups.length ?? 0 }
 
   const [editOpen, setEditOpen] = useState(false)
   const [editKey, setEditKey] = useState(0)
@@ -135,6 +144,16 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   const [memberDialog, setMemberDialog] = useState<"status" | "number" | null>(null)
   const [memberOpen, setMemberOpen] = useState(false)
   const [memberKey, setMemberKey] = useState(0)
+
+  const [adminDialog, setAdminDialog] = useState<AdminDialogKind | null>(null)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [adminKey, setAdminKey] = useState(0)
+
+  function openAdmin(kind: AdminDialogKind) {
+    setAdminDialog(kind)
+    setAdminKey((value) => value + 1)
+    setAdminOpen(true)
+  }
 
   function openMember(kind: "status" | "number") {
     setMemberDialog(kind)
@@ -300,7 +319,50 @@ export function PersonPage({ person }: { person: PersonRecord }) {
               </SectionCard>
 
               {admin ? (
-                <SectionCard title="Admin" padding="flush">
+                <SectionCard
+                  title="Admin"
+                  padding="flush"
+                  action={
+                    admin.status === "active" && (canWrite || canAppoint) ? (
+                      <Menu>
+                        <MenuTrigger
+                          render={
+                            <IconButton label="Admin actions" ariaLabel="Admin actions" icon={EllipsisVertical} />
+                          }
+                        />
+                        <MenuContent>
+                          {canWrite && !admin.capoScope ? (
+                            <MenuItem onClick={() => openAdmin("capoRef")}>
+                              <UserRoundCog />
+                              Capo Admin of reference
+                            </MenuItem>
+                          ) : null}
+                          {canAppoint ? (
+                            <MenuItem onClick={() => openAdmin("capoScope")}>
+                              <Crown />
+                              {admin.capoScope ? "Change Capo Admin scope" : "Appoint as Capo Admin"}
+                            </MenuItem>
+                          ) : null}
+                          {canAppoint && admin.capoScope ? (
+                            <MenuItem variant="destructive" onClick={() => openAdmin("endCapo")}>
+                              <Crown />
+                              End Capo Admin role
+                            </MenuItem>
+                          ) : null}
+                          {canWrite ? (
+                            <>
+                              <MenuSeparator />
+                              <MenuItem variant="destructive" onClick={() => openAdmin("end")}>
+                                <UserMinus />
+                                End admin role
+                              </MenuItem>
+                            </>
+                          ) : null}
+                        </MenuContent>
+                      </Menu>
+                    ) : undefined
+                  }
+                >
                   <div className="p-4">
                     <KeyValueList
                       items={[
@@ -748,6 +810,35 @@ export function PersonPage({ person }: { person: PersonRecord }) {
             person={{ id: person.id, name, firstName: profile.firstName }}
           />
         </>
+      ) : null}
+      {admin && adminDialog ? (
+        adminDialog === "end" ? (
+          <EndAdminDialog key={`end-${adminKey}`} open={adminOpen} onOpenChange={setAdminOpen} target={adminTarget} />
+        ) : adminDialog === "capoRef" ? (
+          <CapoOfReferenceDialog
+            key={`ref-${adminKey}`}
+            open={adminOpen}
+            onOpenChange={setAdminOpen}
+            target={adminTarget}
+            current={admin.capoOfReference?.id ?? null}
+          />
+        ) : adminDialog === "capoScope" ? (
+          <CapoScopeDialog
+            key={`scope-${adminKey}`}
+            open={adminOpen}
+            onOpenChange={setAdminOpen}
+            target={adminTarget}
+            scope={admin.capoScope}
+          />
+        ) : (
+          <EndCapoDialog
+            key={`end-capo-${adminKey}`}
+            open={adminOpen}
+            onOpenChange={setAdminOpen}
+            target={adminTarget}
+            scope={admin.capoScope ?? ""}
+          />
+        )
       ) : null}
       {canWriteMembers && member && memberDialog ? (
         memberDialog === "status" ? (

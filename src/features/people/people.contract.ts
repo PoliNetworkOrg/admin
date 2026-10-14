@@ -436,6 +436,7 @@ export const memberNumberInputSchema = z.object({ personId: personIdSchema, numb
 
 export const endAdminInputSchema = z.object({ personId: personIdSchema, reason: reasonSchema })
 export const capoScopeInputSchema = z.object({ personId: personIdSchema, scope: z.string().trim().max(120).nullable() })
+export const capoRefInputSchema = z.object({ personId: personIdSchema, capoId: personIdSchema.nullable() })
 
 export const addTeamMemberInputSchema = z.object({
   teamId: teamIdSchema,
@@ -511,6 +512,7 @@ export type MemberStatusInput = z.infer<typeof memberStatusInputSchema>
 export type MemberNumberInput = z.infer<typeof memberNumberInputSchema>
 export type EndAdminInput = z.infer<typeof endAdminInputSchema>
 export type CapoScopeInput = z.infer<typeof capoScopeInputSchema>
+export type CapoRefInput = z.infer<typeof capoRefInputSchema>
 export type AddTeamMemberInput = z.infer<typeof addTeamMemberInputSchema>
 export type TeamFieldsInput = z.infer<typeof teamFieldsInputSchema>
 export type EndTeamInput = z.infer<typeof endTeamInputSchema>

@@ -473,6 +473,20 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         input.scope ? `appointed ${person.profile.firstName} Capo Admin of ${input.scope}` : "ended the Capo Admin role"
       )
     },
+    setCapoOfReference: async (input) => {
+      require(viewer, "people:write")
+      const person = find(input.personId)
+      if (!person.admin || person.admin.status !== "active") throw new Error("Only active admins have a Capo Admin.")
+      if (input.capoId === null) {
+        person.admin.capoOfReference = null
+        log(person, actor, "removed the Capo Admin of reference")
+        return
+      }
+      const capo = find(input.capoId)
+      if (!capo.admin?.capoScope) throw new Error(`${fullName(capo)} isn't a Capo Admin.`)
+      person.admin.capoOfReference = { id: capo.id, name: fullName(capo) }
+      log(person, actor, `set ${fullName(capo)} as Capo Admin of reference`)
+    },
     listTeams: async () => {
       const canRead = viewer.permissions.includes("people:read")
       const leads = leadsOf(viewerRecord(viewer))

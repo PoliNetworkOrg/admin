@@ -79,8 +79,8 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 4. Admins
 
-- [ ] Table with priority columns, Active/Former, campus/year filters, the four quick filters
-- [ ] End admin role; set Capo Admin of reference; appoint Capo Admin (`people:appoint`)
+- [x] Table with priority columns, Active/Former, campus/year filters, the four quick filters
+- [x] End admin role; set Capo Admin of reference; appoint Capo Admin (`people:appoint`)
 
 ### 5. Teams
 
@@ -133,3 +133,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   opens the register's dialog via `?add=P-…`. The register loads `people.persons.list`, so it assumes
   `people:members:read` comes with `people:read` (true for every role in decisions.md). Dialogs now reload before
   closing. Next: phase 4 (Admins).
+- 2026-10-14: phase 4 done: Admins (Active/Former, campus/year, four quick filters that scroll sideways on phones,
+  truncating chips), End admin role (reason required, danger submit via the new `FormDialog` `submitTone`), Capo Admin
+  of reference (`people.admins.setCapoOfReference`, added to the contract and fake), appoint / change / end Capo
+  Admin (`people-appoint.functions.ts`, `people:appoint`). Same actions on the record's Admin card. Next: phase 5
+  (Teams).
