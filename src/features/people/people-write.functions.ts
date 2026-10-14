@@ -9,6 +9,8 @@ import {
   endAdminInputSchema,
   linkAccountInputSchema,
   personRefInputSchema,
+  resolveReviewInputSchema,
+  reviewInputSchema,
   setNoteInputSchema,
   updatePersonInputSchema,
 } from "./people.contract"
@@ -59,3 +61,15 @@ export const setCapoOfReference = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
   .validator(capoRefInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).setCapoOfReference(data))
+
+/** Settles a Needs review item with one of its kind's resolutions; the reason is saved in the record's activity. */
+export const resolveLinkingReview = createServerFn({ method: "POST" })
+  .middleware([peopleWriteMiddleware])
+  .validator(resolveReviewInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).resolveReview(data))
+
+/** Drops a Needs review item without linking anything. */
+export const dismissLinkingReview = createServerFn({ method: "POST" })
+  .middleware([peopleWriteMiddleware])
+  .validator(reviewInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).dismissReview(data))

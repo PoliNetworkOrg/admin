@@ -95,8 +95,8 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 7. Linking
 
-- [ ] Needs review queue with Dismiss / Resolve dialog per kind
-- [ ] Pending invites with Resend / Revoke and expired badge
+- [x] Needs review queue with Dismiss / Resolve dialog per kind
+- [x] Pending invites with Resend / Revoke and expired badge
 - [x] Link account dialog with suggestions, required reason, inline conflict (built in phase 2)
 
 ### 8. Capo Admin
@@ -149,3 +149,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   (now implemented in the fake), Import wizard (`previewCensusImport` takes `FormData`, .xlsx/.csv up to 10 MB; steps
   without work are skipped). "Start campaign" is left out: the contract has no procedure for it. Next: phase 7
   (Linking).
+- 2026-10-14: phase 7 done: Linking (Needs review / Pending invites scope, Dismiss, Resolve dialog with the account
+  and record side by side and one set of resolutions per review kind, Resend / Revoke with expired badge). The
+  Needs review count streams from the `/dashboard` loader as `needsReview` and shows next to People › Linking, like
+  Reports › Open (`QueueCount` in `panel.tsx`). "Link to an existing record" for ask-to-be-added points HR to the
+  record's Link account instead: the contract links from the record side. Next: phase 8 (Capo Admin).

@@ -4,7 +4,7 @@ import { RouteNotFound } from "@/components/route-error"
 import { canOpenPage, DashboardShell, documentTitle, matchPath, NO_PEOPLE_ROLES } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
-import { getMyPeopleRoles } from "@/features/people/people.functions"
+import { getLinkingReviews, getMyPeopleRoles } from "@/features/people/people.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
@@ -42,6 +42,15 @@ export const Route = createFileRoute("/dashboard")({
           }
         )
       : Promise.resolve(null),
+    needsReview: hasPermission(context.permissions, "people:read")
+      ? getLinkingReviews().then(
+          (reviews) => reviews.length,
+          (error) => {
+            console.error(error)
+            return null
+          }
+        )
+      : Promise.resolve(null),
   }),
   staleTime: 60_000,
   // One title for every dashboard page, from the deepest match: "{Section} · {Service} · PoliNetwork Admin".
@@ -54,6 +63,6 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   const { user } = Route.useRouteContext()
-  const { pendingReports } = Route.useLoaderData()
-  return <DashboardShell user={user} pendingReports={pendingReports} />
+  const { pendingReports, needsReview } = Route.useLoaderData()
+  return <DashboardShell user={user} pendingReports={pendingReports} needsReview={needsReview} />
 }

@@ -20,6 +20,15 @@ export const getPerson = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().min(1) }))
   .handler(async ({ data, context }) => (await peopleApi(context)).getPerson(data.id))
 
+/** People › Linking's Needs review queue: sign-ins the backend couldn't link on its own. */
+export const getLinkingReviews = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listReviews())
+
+export const getPendingInvites = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listInvites())
+
 /** A census year's full answers: HR and the Direttivo only (`people:read`). */
 export const getCensusAnswers = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])

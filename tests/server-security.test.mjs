@@ -264,6 +264,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/census-page.tsx": ["people:write", "people:read"],
+    "src/features/people/linking-page.tsx": "people:write",
     "src/features/people/members-page.tsx": "people:members:write",
   }
   const directory = new URL("../src", import.meta.url).pathname
@@ -310,6 +311,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite", "unlinkPersonAccount"],
     "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
     "src/features/people/census-page.tsx": ["sendCensusReminders", "closeCampaign"],
+    "src/features/people/linking-page.tsx": ["resolveLinkingReview", "dismissLinkingReview"],
     "src/features/people/import-wizard.tsx": ["previewCensusImport", "commitCensusImport"],
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
     "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],

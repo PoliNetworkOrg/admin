@@ -656,8 +656,13 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const review = store.reviews.find((candidate) => candidate.id === input.reviewId)
       if (!review) throw new Error("This item was already resolved.")
       store.reviews = store.reviews.filter((candidate) => candidate !== review)
-      const target = review.record ? store.byId.get(review.record.id) : undefined
-      if (target && ["link-record", "move-telegram", "link-first", "link-anyway"].includes(input.resolution)) {
+      const linksOther = ["link-other", "link-second"].includes(input.resolution)
+      const linked = linksOther ? review.other : review.record
+      const target = linked ? store.byId.get(linked.id) : undefined
+      if (
+        target &&
+        ["move-telegram", "link-other", "link-first", "link-second", "link-anyway"].includes(input.resolution)
+      ) {
         target.account = {
           status: "linked",
           email: review.account.email,

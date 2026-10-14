@@ -15,15 +15,18 @@ const itemActiveClass = "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-
 const itemCurrentClass =
   "before:absolute before:inset-y-2.5 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
 
-/** Pending reports as a small accent pill next to Reports › Open; zero (or a failed load) renders nothing. */
-function PendingReportsCount({ count: countPromise }: { count: Promise<number | null> }) {
+/**
+ * A queue's size as a small accent pill next to its section (Reports › Open, People › Linking); zero (or a failed
+ * load) renders nothing.
+ */
+function QueueCount({ count: countPromise, label }: { count: Promise<number | null>; label: string }) {
   const count = use(useDeferredValue(countPromise))
   if (!count) return null
   return (
     <span className="ml-auto rounded-full bg-(--pn-accent-soft) px-1.75 font-mono text-[11px] leading-4.5 font-medium text-(--pn-accent) tabular-nums">
       <span className="sr-only">, </span>
       {count}
-      <span className="sr-only"> pending</span>
+      <span className="sr-only"> {label}</span>
     </span>
   )
 }
@@ -46,6 +49,8 @@ export type SectionItemsProps = {
   match: PageMatch
   /** Streams in from the `/dashboard` loader; resolves to null when the reports couldn't be loaded. */
   pendingReports: Promise<number | null>
+  /** People › Linking's Needs review queue, streamed like `pendingReports`. */
+  needsReview: Promise<number | null>
   /** `panel` for the desktop list, `pills` for the horizontally scrolling row under the mobile top bar. */
   variant?: "panel" | "pills"
 }
@@ -56,7 +61,7 @@ const pillActiveClass =
   "border-[color-mix(in_oklab,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
 
 /** The section links of one service; shared by the panel and the mobile section pills. */
-export function SectionItems({ service, match, pendingReports, variant = "panel" }: SectionItemsProps) {
+export function SectionItems({ service, match, pendingReports, needsReview, variant = "panel" }: SectionItemsProps) {
   const current = sectionFor(match)
   const deep = isDeepPage(match)
   const pills = variant === "pills"
@@ -88,7 +93,12 @@ export function SectionItems({ service, match, pendingReports, variant = "panel"
         <span className="truncate">{section.title}</span>
         {service.id === "reports" && section.id === "open" ? (
           <Suspense fallback={null}>
-            <PendingReportsCount count={pendingReports} />
+            <QueueCount count={pendingReports} label="pending" />
+          </Suspense>
+        ) : null}
+        {service.id === "people" && section.id === "linking" ? (
+          <Suspense fallback={null}>
+            <QueueCount count={needsReview} label="to review" />
           </Suspense>
         ) : null}
       </Link>
@@ -100,11 +110,12 @@ export type PanelProps = {
   service: Service
   match: PageMatch
   pendingReports: Promise<number | null>
+  needsReview: Promise<number | null>
   className?: string
 }
 
 /** The 240px section panel (200px below 1100px). States the service name once, in its header. */
-export function Panel({ service, match, pendingReports, className }: PanelProps) {
+export function Panel({ service, match, pendingReports, needsReview, className }: PanelProps) {
   return (
     <aside
       data-shell-panel=""
@@ -122,14 +133,14 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
         onKeyDown={onSectionListKeyDown}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
       >
-        <SectionItems service={service} match={match} pendingReports={pendingReports} />
+        <SectionItems service={service} match={match} pendingReports={pendingReports} needsReview={needsReview} />
       </nav>
     </aside>
   )
 }
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
-export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
+export function SectionPills({ service, match, pendingReports, needsReview, className }: PanelProps) {
   return (
     <nav
       aria-label={`${service.title} sections`}
@@ -139,7 +150,13 @@ export function SectionPills({ service, match, pendingReports, className }: Pane
         className
       )}
     >
-      <SectionItems service={service} match={match} pendingReports={pendingReports} variant="pills" />
+      <SectionItems
+        service={service}
+        match={match}
+        pendingReports={pendingReports}
+        needsReview={needsReview}
+        variant="pills"
+      />
     </nav>
   )
 }
