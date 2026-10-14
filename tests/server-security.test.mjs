@@ -174,6 +174,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/telegram/users.functions.ts",
     "src/features/whatsapp/groups.functions.ts",
     "src/features/people/people.functions.ts",
+    "src/features/people/people-write.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -209,6 +210,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
       ],
     ],
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
+    ["peopleWriteMiddleware", ["src/features/people/people-write.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   for (const { expectedMiddleware, files } of entries) {
@@ -247,6 +249,8 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/group-link-reports/reports-page.tsx": "web:reports:manage",
     "src/features/guides/guides-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
+    "src/features/people/overview-page.tsx": "people:write",
+    "src/features/people/person-page.tsx": ["people:write", "people:read"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -286,6 +290,11 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
+    "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],
+    "src/features/people/person-page.tsx": ["updatePerson"],
+    "src/features/people/notes-dialog.tsx": ["setPersonNote"],
+    "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite", "unlinkPersonAccount"],
+    "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
     "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],

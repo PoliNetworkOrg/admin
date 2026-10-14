@@ -8,6 +8,26 @@ import { z } from "zod"
 export const TEAM_IDS = ["it", "hr", "design", "intl", "events"] as const
 export const CAMPUSES = ["Leonardo", "Bovisa", "Cremona", "Piacenza", "Mantova", "Lecco", "External"] as const
 export const YEARS = ["1st year", "2nd year", "3rd year", "1st year MSc", "2nd year MSc", "Graduated"] as const
+/** Politecnico di Milano courses offered in forms; the backend accepts any course name. */
+export const COURSES = [
+  "Ingegneria Informatica",
+  "Computer Science and Engineering",
+  "Ingegneria Gestionale",
+  "Management Engineering",
+  "Ingegneria Meccanica",
+  "Ingegneria Aerospaziale",
+  "Ingegneria Energetica",
+  "Ingegneria Chimica",
+  "Ingegneria Elettronica",
+  "Ingegneria Biomedica",
+  "Ingegneria Matematica",
+  "Ingegneria Civile",
+  "Design della Comunicazione",
+  "Design del Prodotto Industriale",
+  "Design degli Interni",
+  "Architettura",
+  "Urbanistica",
+] as const
 export const MEMBER_STATUSES = ["active", "suspended", "expired", "former"] as const
 export const FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
 export const ACCOUNT_STATUSES = ["none", "invite", "linked", "review"] as const
@@ -508,3 +528,8 @@ export const remindResultSchema = z.object({ sent: z.number().int(), skipped: z.
 export const exportResultSchema = z.object({ filename: z.string(), csv: z.string() })
 export const createdSchema = z.object({ id: z.string() })
 export const importedSchema = z.object({ imported: z.number().int() })
+
+/** A team's fields in display order, typed for rendering and forms. */
+export function teamFields(team: TeamId): TeamField[] {
+  return TEAMS[team].fields
+}

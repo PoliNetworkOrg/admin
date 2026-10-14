@@ -68,7 +68,7 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 - [ ] Overview: DataTable with columns, filters (role, team, campus, account, census), search, count, pagination,
       Send invite + ⋮ row actions, empty states
-- [ ] Add person / Edit profile dialog (`FormDialog` lg)
+- [x] Add person / Edit profile dialog (`FormDialog` lg)
 - [ ] Person record: RecordHeader, discrepancy alerts, all cards, Activity; Send / resend invite, revoke, unlink
       confirmations; HR notes dialog; census answers dialog
 
@@ -97,7 +97,7 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 - [ ] Needs review queue with Dismiss / Resolve dialog per kind
 - [ ] Pending invites with Resend / Revoke and expired badge
-- [ ] Link account dialog with suggestions, required reason, inline conflict
+- [x] Link account dialog with suggestions, required reason, inline conflict (built in phase 2)
 
 ### 8. Capo Admin
 
@@ -125,3 +125,6 @@ Newest last. One line per commit or session: date, what was done, what is next.
 - 2026-10-14: phase 1 done. Verified in agent mode: Direttivo reaches People; `AGENT_PERMISSIONS=people:self` with
   `AGENT_PERSON=P-0098` (Capo Admin) reaches only Telegram › Capo Admin and Account; with `P-0034` (IT Team Lead)
   only People › Teams and Account. Next: phase 2 (Overview and person record).
+- 2026-10-14: phase 2 done: Overview, person record, Add/Edit person, account confirmations, Link account, HR notes,
+  census answers. Mobile Overview cards show one line of role chips + account badge instead of unlabelled column
+  values. The record's Member/Teams/Admin card actions arrive with their phases (3–5). Next: phase 3 (Member register).
