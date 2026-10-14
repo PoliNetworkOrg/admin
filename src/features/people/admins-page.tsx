@@ -21,7 +21,6 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
@@ -44,7 +43,7 @@ import {
   telegramUrl,
   yearOf,
 } from "./people-format"
-import { FilterMenu, PersonCell, StateBadge, ToggleFilter } from "./people-ui"
+import { FilterMenu, PersonCell, StateBadge, ToggleFilter, TruncatedChip } from "./people-ui"
 import { type AdminRole, CAMPUSES, type Campus, type PersonRow, YEARS } from "./people.contract"
 
 type Admin = PersonRow & { admin: AdminRole }
@@ -83,17 +82,6 @@ function matchesQuery(person: Admin, query: string) {
     person.profile.telegramUsername ?? "",
     ...person.admin.groups.map((group) => group.title),
   ].some((value) => value.toLocaleLowerCase().includes(query))
-}
-
-/** A chip that truncates inside a fixed-width column; the full text is its tooltip. */
-function TruncatedChip({ label }: { label: string }) {
-  return (
-    <Hint overflowOnly label={label}>
-      <Chip className="max-w-full min-w-0">
-        <span className="truncate">{label}</span>
-      </Chip>
-    </Hint>
-  )
 }
 
 function CensusCell({ person }: { person: Admin }) {

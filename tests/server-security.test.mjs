@@ -178,6 +178,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-members.functions.ts",
     "src/features/people/people-appoint.functions.ts",
     "src/features/people/people-teams.functions.ts",
+    "src/features/people/people-census.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -213,7 +214,10 @@ test("dashboard mutations enforce their exact write scope", async () => {
       ],
     ],
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
-    ["peopleWriteMiddleware", ["src/features/people/people-write.functions.ts"]],
+    [
+      "peopleWriteMiddleware",
+      ["src/features/people/people-write.functions.ts", "src/features/people/people-census.functions.ts"],
+    ],
     ["peopleMembersWriteMiddleware", ["src/features/people/people-members.functions.ts"]],
     ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
     ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
@@ -259,6 +263,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/person-page.tsx": ["people:write", "people:read", "people:members:write", "people:appoint"],
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
+    "src/features/people/census-page.tsx": ["people:write", "people:read"],
     "src/features/people/members-page.tsx": "people:members:write",
   }
   const directory = new URL("../src", import.meta.url).pathname
@@ -304,6 +309,8 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/notes-dialog.tsx": ["setPersonNote"],
     "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite", "unlinkPersonAccount"],
     "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
+    "src/features/people/census-page.tsx": ["sendCensusReminders", "closeCampaign"],
+    "src/features/people/import-wizard.tsx": ["previewCensusImport", "commitCensusImport"],
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
     "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],
     "src/features/people/member-dialogs.tsx": ["createMember", "setMemberStatus", "setMemberNumber", "exportMembers"],

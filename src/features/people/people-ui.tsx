@@ -368,3 +368,14 @@ export function ChoiceChips({
     </div>
   )
 }
+
+/** A chip that truncates inside a fixed-width column; the full text is its tooltip. */
+export function TruncatedChip({ label }: { label: string }) {
+  return (
+    <Hint overflowOnly label={label}>
+      <Chip className="max-w-full min-w-0">
+        <span className="truncate">{label}</span>
+      </Chip>
+    </Hint>
+  )
+}

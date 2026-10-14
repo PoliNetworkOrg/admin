@@ -37,6 +37,7 @@ type SelfState = { matchConfirmed: boolean; matchRejected: boolean; askedOn: str
 const self: SelfState = { matchConfirmed: false, matchRejected: false, askedOn: null }
 const importedFiles = new Set<string>()
 const previews = new Map<string, ImportPreview>()
+const closedCampaigns = new Set<string>()
 
 function data() {
   store ??= buildPeopleStore()
@@ -155,7 +156,7 @@ function campaigns(): Campaign[] {
     {
       id: "2026",
       year: "2026/27",
-      status: "open",
+      status: closedCampaigns.has("2026") ? "closed" : "open",
       openedOn: "2026-09-15",
       closesOn: "2026-10-31",
       source: "Modulo Volontari 2026/27",
@@ -601,6 +602,9 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     remind: async (input) => {
       require(viewer, "people:write")
+      if (campaigns().find((campaign) => campaign.id === input.campaignId)?.status !== "open") {
+        throw new Error("Reminders go out only while the campaign is open.")
+      }
       const targets = data().people.filter(
         (person) =>
           person.expected &&
@@ -621,9 +625,12 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       }
       return { sent, skipped }
     },
-    closeCampaign: async () => {
+    closeCampaign: async (id) => {
       require(viewer, "people:write")
-      throw new Error("Closing a campaign isn't available with sample data.")
+      const campaign = campaigns().find((candidate) => candidate.id === id)
+      if (!campaign) throw new Error("NOT_FOUND")
+      if (campaign.status === "closed") throw new Error("This campaign is already closed.")
+      closedCampaigns.add(id)
     },
     importPreview: async (_campaignId, file) => {
       require(viewer, "people:write")

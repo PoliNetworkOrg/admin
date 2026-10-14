@@ -90,8 +90,8 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 6. Census
 
-- [ ] Campaign list; campaign page with segments, reminders, close
-- [ ] Import wizard: upload, review tabs, duplicates, Telegram suggestions, confirm; re-import "Already imported"
+- [x] Campaign list; campaign page with segments, reminders, close
+- [x] Import wizard: upload, review tabs, duplicates, Telegram suggestions, confirm; re-import "Already imported"
 
 ### 7. Linking
 
@@ -143,3 +143,9 @@ Newest last. One line per commit or session: date, what was done, what is next.
   role only with `people:appoint`), Edit team fields, End membership; the record's Teams card and header "Add role".
   New `people.teams.candidates` query (names only, for Leads without `people:read`) and `peopleTeamReadMiddleware`.
   Verified as IT Lead (`AGENT_PERMISSIONS=people:self AGENT_PERSON=P-0034`). Next: phase 6 (Census).
+- 2026-10-14: phase 6 done: Census list (stacked progress meter), campaign page (progress card, answer segments that
+  become a filter menu on phones, role filter, per-row reminder, View answers), Send reminders (the toast reports sent
+  and skipped: `CensusEntry` has no last-reminded date, so the count can't be known before sending), Close campaign
+  (now implemented in the fake), Import wizard (`previewCensusImport` takes `FormData`, .xlsx/.csv up to 10 MB; steps
+  without work are skipped). "Start campaign" is left out: the contract has no procedure for it. Next: phase 7
+  (Linking).
