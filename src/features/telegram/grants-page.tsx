@@ -267,7 +267,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
         description="Periods when a user may send links without automatic moderation"
         left={
           <Toolbar
-            search={{ value: query, onChange: updateQuery, placeholder: "Search users, authorizers or reasons…" }}
+            search={{ value: query, onChange: updateQuery, placeholder: "Search user, reason or grantor…" }}
             filters={
               <SegmentedControl
                 label="Grant status"

@@ -42,16 +42,18 @@ export function toFaqInput(faq: FAQItem): FaqInput {
   }
 }
 
+/** Pair FAQ text with its language badge; questions can wrap to three lines on phones. */
 function LanguageLine({ lang, children, muted }: { lang: "IT" | "EN"; children: string; muted?: boolean }) {
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className="flex min-w-0 items-center gap-2 max-shell:items-start">
       <Chip size="tiny" className={cn("w-[26px] justify-center", muted && "text-(--pn-fg-muted)")}>
         {lang}
       </Chip>
       <Hint overflowOnly label={children}>
         <span
           className={cn(
-            "truncate text-[13px] leading-5",
+            // Phones wrap the question (it is the row's content) instead of cutting it to a few words.
+            "truncate text-[13px] leading-5 max-shell:line-clamp-3 max-shell:whitespace-normal",
             muted ? "text-(--pn-fg-muted)" : "font-medium text-(--pn-fg)"
           )}
         >
@@ -217,14 +219,14 @@ export function EditableFaq({ faqId, initial, dirtyRef, onCancel, onSave }: Edit
               {questionIt && answerIt && (
                 <TranslationPanel lang="it" editing>
                   <InlineEditInput bare ref={firstField} {...questionIt} className="font-medium" />
-                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <div aria-hidden className="my-2 border-t border-(--pn-line)" />
                   <InlineEditTextarea bare {...answerIt} />
                 </TranslationPanel>
               )}
               {questionEn && answerEn && (
                 <TranslationPanel lang="en" editing>
                   <InlineEditInput bare {...questionEn} className="font-medium" />
-                  <div aria-hidden className="border-t border-(--pn-line)" />
+                  <div aria-hidden className="my-2 border-t border-(--pn-line)" />
                   <InlineEditTextarea bare {...answerEn} />
                 </TranslationPanel>
               )}

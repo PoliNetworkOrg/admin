@@ -129,7 +129,7 @@ export function CategoryPage({ path, labels, groups, tgGroups }: CategoryPagePro
             meta={
               <span className="tabular-nums">
                 {pluralize(rows.length, "group")} tagged directly
-                {node.children.length > 0 && ` · ${formatNumber(nestedCount)} in sub-categories`}
+                {node.children.length > 0 && `, ${formatNumber(nestedCount)} in sub-categories`}
               </span>
             }
             description={node.label?.description}

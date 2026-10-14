@@ -288,7 +288,7 @@ function CreateGrantDialogBody({ open, onOpenChange, user: fixedUser }: CreateGr
               className={cn("min-h-[76px]", fieldControl)}
             />
             <p id="grant-reason-hint" className="text-xs text-(--pn-fg-muted) tabular-nums">
-              Optional · {reason.length}/{REASON_MAX}
+              Optional, {reason.length}/{REASON_MAX}
             </p>
           </FormField>
         </>
@@ -302,7 +302,7 @@ function SelectedUser({ user }: { user: GrantDialogUser }) {
     <>
       <p className="font-medium text-(--pn-fg)">{telegramUserName(user)}</p>
       <p className="text-(--pn-fg-muted)">
-        {user.username && `@${user.username} · `}Telegram ID <span className="font-mono tabular-nums">{user.id}</span>
+        {user.username && `@${user.username}, `}Telegram ID <span className="font-mono tabular-nums">{user.id}</span>
       </p>
     </>
   )

@@ -134,7 +134,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
                   <StatusBadge tone="brand">Latest</StatusBadge>
                 </div>
                 <p className="text-[14px] text-(--pn-fg-muted)">
-                  Published {formatDate(parseISO(latest.date))} · linked on the website
+                  Published {formatDate(parseISO(latest.date))}, linked on the website
                 </p>
               </div>
               <Button

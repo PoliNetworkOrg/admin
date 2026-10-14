@@ -133,7 +133,7 @@ export function WebLogoUpload({ rules, onChange, onError, disabled, ...logo }: W
         className="sr-only"
         onChange={(event) => void choose(event.target.files?.[0])}
       />
-      <Hint label={`${label} · ${rules.hint}`}>
+      <Hint label={`${label}: ${rules.hint}`}>
         <button
           type="button"
           aria-label={label}

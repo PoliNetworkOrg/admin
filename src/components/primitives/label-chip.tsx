@@ -38,7 +38,7 @@ type LabelChipProps = {
 export function LabelChip({ label, href, render, className }: LabelChipProps) {
   const link = render ?? (href === undefined ? undefined : <a href={href} />)
   const title = labelDisplayName(label.label)
-  const text = isCategoryLabel(label.label) ? formatLabelCompact(label.label) : title
+  const text = labelChipText(label.label)
   return (
     <Hint label={title} overflowOnly={text === title}>
       <Chip
@@ -53,4 +53,9 @@ export function LabelChip({ label, href, render, className }: LabelChipProps) {
       </Chip>
     </Hint>
   )
+}
+
+/** The text a `LabelChip` shows: categories as their last two segments, other labels by display name. */
+export function labelChipText(label: string) {
+  return isCategoryLabel(label) ? formatLabelCompact(label) : labelDisplayName(label)
 }

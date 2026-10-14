@@ -59,8 +59,9 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     align: "end",
     minWidth: 120,
-    className: "w-[120px]",
-    // Cards: a short muted "#id" before the name on the first line.
+    // Cards: the muted "#id" ends the name's line (`order`: name, id, the rest), so avatars align with or without it.
+    className:
+      "w-[120px] max-shell:order-[-1] max-shell:ml-auto max-shell:w-auto max-shell:shrink-0 max-shell:self-center",
     mobile: "meta",
     cell: (member) =>
       member.employeeId ? (
@@ -75,6 +76,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     sortable: true,
     minWidth: 180,
     fill: true,
+    className: "max-shell:order-[-2]",
     mobile: "inline",
     cell: (member) => (
       <span className="flex min-w-0 items-center gap-3">
@@ -240,7 +242,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
         description={
           members === null
             ? "Create association members in Microsoft Entra"
-            : `${pluralize(shown.length, "member")} · ${pluralize(allLicenses, "license")}`
+            : `${pluralize(shown.length, "member")}, ${pluralize(allLicenses, "license")}`
         }
         left={
           members !== null ? (
