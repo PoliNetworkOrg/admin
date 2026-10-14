@@ -27,7 +27,7 @@ export const Route = createFileRoute("/dashboard")({
         to: hasPermission(access.permissions, "people:self") ? "/dashboard/account/me" : "/unauthorized",
       })
     }
-    return { user: access.user, permissions: access.permissions, peopleRoles }
+    return { user: access.user, permissions: access.permissions, peopleRoles, peopleYear: access.peopleYear }
   },
   // Not awaited: the panel count streams in. It is decoration, so a failed load hides it; the Reports page reports
   // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same

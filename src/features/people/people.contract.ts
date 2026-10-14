@@ -313,8 +313,8 @@ export const myAreaSchema = z.discriminatedUnion("state", [
     person: personRecordSchema,
     campaign: z.object({ id: z.string(), year: z.string(), closesOn: z.string() }).nullable(),
     contacts: z.array(contactSchema),
-    roster: z
-      .object({
+    rosters: z.array(
+      z.object({
         team: teamIdSchema,
         members: z.array(
           z.object({
@@ -326,7 +326,7 @@ export const myAreaSchema = z.discriminatedUnion("state", [
           })
         ),
       })
-      .nullable(),
+    ),
   }),
   z.object({
     state: z.literal("match"),
@@ -400,7 +400,7 @@ export const TEAMS = {
 // Inputs. The server functions validate with these, and the fake and real APIs take the parsed values.
 
 const personIdSchema = z.string().regex(/^P-\d{4}$/)
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const dateSchema = z.iso.date()
 const reasonSchema = z.string().trim().min(1).max(500)
 
 export const personInputSchema = z.object({

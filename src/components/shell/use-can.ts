@@ -25,6 +25,11 @@ export function usePeopleRoles() {
   return dashboardRoute.useRouteContext({ select: (context) => context.peopleRoles ?? NO_PEOPLE_ROLES })
 }
 
+/** The same academic year in filters, fee labels and census summaries, resolved once by the server. */
+export function usePeopleYear() {
+  return dashboardRoute.useRouteContext({ select: (context) => context.peopleYear })
+}
+
 /**
  * The sections available to the user: permissions, `admin:access` for everything but Account, and the roles from
  * their People record (Capo Admin, Team Lead).

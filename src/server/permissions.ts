@@ -32,6 +32,11 @@ export function hasPermission(permissions: readonly string[], permission: Permis
   return permissions.includes(permission)
 }
 
+/** Keep People inaccessible until its backend is deployed, even if the IdP already grants People permissions. */
+export function availablePermissions(permissions: readonly string[], peopleEnabled: boolean): string[] {
+  return permissions.filter((permission) => peopleEnabled || !permission.startsWith("people:"))
+}
+
 /**
  * Whether these permissions open the dashboard: `admin:access` for the full dashboard, or `people:self` alone for the
  * restricted view (My area, plus Capo Admin or a team page when the person's record gives them that role).

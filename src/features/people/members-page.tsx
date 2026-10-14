@@ -17,7 +17,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleYear } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
@@ -28,7 +28,7 @@ import {
   MemberStatusDialog,
   nextMemberNumber,
 } from "./member-dialogs"
-import { ACCOUNT_STATUS, CURRENT_YEAR, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
+import { ACCOUNT_STATUS, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
 import { FilterMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
 import {
   FEE_STATUSES,
@@ -66,7 +66,7 @@ function sortKey(column: string) {
   return SORTERS.number
 }
 
-const columns: DataTableColumn<Member>[] = [
+const BASE_COLUMNS: DataTableColumn<Member>[] = [
   {
     id: "number",
     label: "Number",
@@ -116,7 +116,7 @@ const columns: DataTableColumn<Member>[] = [
   },
   {
     id: "fee",
-    label: `Fee ${CURRENT_YEAR}`,
+    label: "Fee",
     width: 152,
     mobile: "hidden",
     cell: (person) => (person.member.fee ? <StateBadge state={FEE_STATUS[person.member.fee]} /> : <Unset />),
@@ -152,6 +152,10 @@ export function MembersPage({
   addPersonId?: string
   onAddHandled: () => void
 }) {
+  const currentYear = usePeopleYear()
+  const columns = BASE_COLUMNS.map((column) =>
+    column.id === "fee" ? { ...column, label: `Fee ${currentYear}` } : column
+  )
   const canWrite = useCan("people:members:write")
   const members = people.filter(isRegistered)
   const candidates = people
@@ -263,7 +267,7 @@ export function MembersPage({
                   }}
                 />
                 <FilterMenu<FeeStatus>
-                  label={`Fee ${CURRENT_YEAR}`}
+                  label={`Fee ${currentYear}`}
                   allLabel="Any fee status"
                   value={fee}
                   onChange={(value) => {

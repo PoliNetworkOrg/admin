@@ -9,7 +9,10 @@ export const getSessionState = createServerFn()
 
 export const getDashboardAccess = createServerFn()
   .middleware([dashboardAccessMiddleware])
-  .handler(({ context }) => context.dashboardAccess)
+  .handler(async ({ context }) => {
+    const [{ env }, { resolvePeopleYear }] = await Promise.all([import("@/env"), import("@/server/runtime-env")])
+    return { ...context.dashboardAccess, peopleYear: resolvePeopleYear(env.PEOPLE_ACADEMIC_YEAR) }
+  })
 
 /** The IdP's account page: Telegram linking, passkeys and sessions live there now (RFC v3 §11.4). */
 export const getIdpAccountUrl = createServerFn().handler(async () => {

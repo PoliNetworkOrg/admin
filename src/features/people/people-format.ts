@@ -3,6 +3,7 @@ import { formatDate } from "@/lib/format"
 
 import {
   type AccountStatus,
+  type Campaign,
   type CensusAnswer,
   type CensusEntry,
   type FeeStatus,
@@ -12,9 +13,6 @@ import {
   type TeamId,
   YEARS,
 } from "./people.contract"
-
-/** The academic year whose census is current; the census campaign list names it too. */
-export const CURRENT_YEAR = "2026/27"
 
 export function personName(person: Pick<PersonRow, "profile">) {
   return `${person.profile.firstName} ${person.profile.lastName}`
@@ -83,6 +81,18 @@ export function lastAnswer(person: Pick<PersonRow, "census">) {
 /** "6 Oct 2026" for an ISO date (`YYYY-MM-DD`) or timestamp. */
 export function formatDay(value: string) {
   return formatDate(new Date(value.length === 10 ? `${value}T12:00:00Z` : value))
+}
+
+/** Campaign status and deadline come from the backend, including past and manually closed campaigns. */
+export function censusHistoryMeta(entry: CensusEntry, campaigns: readonly Campaign[]) {
+  if (entry.answer && entry.source && entry.answeredOn) {
+    return `${CENSUS_SOURCE[entry.source]} · ${formatDay(entry.answeredOn)}`
+  }
+  const campaign = campaigns.find((item) => item.year === entry.year)
+  const status = campaign
+    ? `${campaign.status === "open" ? "Open until" : "Closed"} ${formatDay(campaign.closesOn)}`
+    : "No answer"
+  return `${status}${entry.reminders ? ` · ${entry.reminders} reminder${entry.reminders === 1 ? "" : "s"} sent` : ""}`
 }
 
 export function todayIso() {

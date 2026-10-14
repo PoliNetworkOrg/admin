@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
+import { DateField } from "./date-field"
 import { teamName, todayIso } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { addTeamMember, endTeamMembership, getTeamCandidates, updateTeamFields } from "./people-teams.functions"
@@ -219,14 +220,12 @@ export function AddToTeamDialog({
             </fieldset>
           ) : null}
           <FormField label="Since" htmlFor="team-add-since" error={sinceError}>
-            <Input
+            <DateField
               id="team-add-since"
-              type="date"
               value={since}
-              onChange={(event) => setSince(event.target.value)}
-              aria-invalid={sinceError ? true : undefined}
-              aria-describedby={fieldHintId("team-add-since")}
-              className={fieldControl}
+              onChange={setSince}
+              invalid={!!sinceError}
+              describedBy={sinceError ? fieldHintId("team-add-since") : undefined}
             />
           </FormField>
         </div>
@@ -358,14 +357,12 @@ export function EndTeamMembershipDialog({
             />
           </FormField>
           <FormField label="Last day" htmlFor="end-team-last-day" error={lastDayError}>
-            <Input
+            <DateField
               id="end-team-last-day"
-              type="date"
               value={lastDay}
-              onChange={(event) => setLastDay(event.target.value)}
-              aria-invalid={lastDayError ? true : undefined}
-              aria-describedby={fieldHintId("end-team-last-day")}
-              className={fieldControl}
+              onChange={setLastDay}
+              invalid={!!lastDayError}
+              describedBy={lastDayError ? fieldHintId("end-team-last-day") : undefined}
             />
           </FormField>
         </div>

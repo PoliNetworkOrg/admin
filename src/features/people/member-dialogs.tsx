@@ -3,12 +3,13 @@ import { Download } from "lucide-react"
 import { useState } from "react"
 
 import { ConfirmDialog, fieldControl, fieldHintId, FormDialog, FormField, InlineAlert } from "@/components/primitives"
-import { appToast } from "@/components/shell"
+import { appToast, usePeopleYear } from "@/components/shell"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-import { CURRENT_YEAR, FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
+import { DateField } from "./date-field"
+import { FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { createMember, exportMembers, setMemberNumber, setMemberStatus } from "./people-members.functions"
 import { type PersonOption, PersonPicker, RadioCard, SelectField } from "./people-ui"
@@ -42,6 +43,7 @@ export function AddMemberDialog({
   nextNumber: string
   takenNumbers: ReadonlySet<string>
 }) {
+  const currentYear = usePeopleYear()
   const create = useServerFn(createMember)
   const refresh = useRefreshAfter()
   const [person, setPerson] = useState(initialPerson)
@@ -126,18 +128,16 @@ export function AddMemberDialog({
             />
           </FormField>
           <FormField label="Admitted on" htmlFor="member-admitted" error={dateError}>
-            <Input
+            <DateField
               id="member-admitted"
-              type="date"
               value={admittedOn}
-              onChange={(event) => setAdmittedOn(event.target.value)}
-              aria-invalid={dateError ? true : undefined}
-              aria-describedby={fieldHintId("member-admitted")}
-              className={fieldControl}
+              onChange={setAdmittedOn}
+              invalid={!!dateError}
+              describedBy={dateError ? fieldHintId("member-admitted") : undefined}
             />
           </FormField>
         </div>
-        <FormField label={`Fee ${CURRENT_YEAR}`} htmlFor="member-fee">
+        <FormField label={`Fee ${currentYear}`} htmlFor="member-fee">
           <SelectField<NewFee>
             id="member-fee"
             value={fee}

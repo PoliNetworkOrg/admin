@@ -40,7 +40,7 @@ import {
   StatusBadge,
   Unset,
 } from "@/components/primitives"
-import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
+import { appToast, PageBar, PageContent, useCan, usePeopleYear } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format"
 
@@ -54,8 +54,7 @@ import {
   ACCOUNT_STATUS,
   activeTeams,
   CENSUS_ANSWER,
-  CENSUS_SOURCE,
-  CURRENT_YEAR,
+  censusHistoryMeta,
   FEE_STATUS,
   formatDay,
   hasNoRoles,
@@ -70,7 +69,7 @@ import {
 import { useRefreshAfter } from "./people-hooks"
 import { MonoChip, PersonAvatar, Row, RowIcon, Rows, StateBadge, SubHeading } from "./people-ui"
 import { updatePerson } from "./people-write.functions"
-import { type PersonRecord, TEAM_IDS, type TeamMembership, teamFields } from "./people.contract"
+import { type Campaign, type PersonRecord, TEAM_IDS, type TeamMembership, teamFields } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
 import { AddToTeamDialog, EditTeamFieldsDialog, EndTeamMembershipDialog, type TeamMemberTarget } from "./team-dialogs"
 
@@ -79,7 +78,8 @@ type AdminDialogKind = "end" | "capoRef" | "capoScope" | "endCapo"
 const BACK = { label: "people", link: { to: "/dashboard/people" } } as const
 
 /** People › {name}: the whole record, its discrepancies and its history. */
-export function PersonPage({ person }: { person: PersonRecord }) {
+export function PersonPage({ person, campaigns }: { person: PersonRecord; campaigns: Campaign[] }) {
+  const currentYear = usePeopleYear()
   const canWrite = useCan("people:write")
   const canRead = useCan("people:read")
   const canWriteMembers = useCan("people:members:write")
@@ -540,13 +540,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         key={entry.year}
                         lead={<RowIcon icon={ClipboardList} />}
                         title={<span className="font-mono">{entry.year}</span>}
-                        meta={
-                          entry.answer && entry.source && entry.answeredOn
-                            ? `${CENSUS_SOURCE[entry.source]} · ${formatDay(entry.answeredOn)}`
-                            : entry.year === CURRENT_YEAR
-                              ? `Open until 31 Oct 2026${entry.reminders ? ` · ${entry.reminders} reminder${entry.reminders === 1 ? "" : "s"} sent` : ""}`
-                              : "No answer"
-                        }
+                        meta={censusHistoryMeta(entry, campaigns)}
                         end={
                           <>
                             {entry.answer && canRead ? (
@@ -730,7 +724,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       { key: "Status", value: <StateBadge state={MEMBER_STATUS[member.status]} /> },
                       { key: "Admitted on", value: formatDay(member.admittedOn) },
                       {
-                        key: `Fee ${CURRENT_YEAR}`,
+                        key: `Fee ${currentYear}`,
                         value: member.fee ? <StateBadge state={FEE_STATUS[member.fee]} /> : null,
                       },
                       {

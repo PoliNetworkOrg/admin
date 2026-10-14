@@ -8,8 +8,8 @@ wins; when this file and [`docs/design.md`](../design.md) disagree on visuals, `
 1. **Dashboard only.** `@polinetwork/backend` 1.4.0 has no People procedures (only `auth`, `azure`, `groups`, `me`,
    `test`). This repo implements the whole UI against the typed contract in [`contract.md`](contract.md). Agent mode
    serves in-memory sample data; outside agent mode the server functions call `people.*` on the backend, and the area
-   stays hidden until the IdP grants the new permissions. The backend work is a separate project that implements the
-   same contract.
+   stays hidden until `PEOPLE_ENABLED=true` and the IdP grants the new permissions. The backend work is a separate
+   project that implements the same contract. Enable the switch only after that contract is deployed and verified.
 2. **Restricted access.** People without `admin:access` can enter the dashboard when they hold `people:self`. They see
    only My area, plus Capo Admin or their team when their record gives them that role. Every other service stays
    behind `admin:access`.
@@ -50,7 +50,8 @@ Known prototype defects to not reproduce:
   Admin without other rights sees Telegram with that one section, so no panel (one-section rule).
 - **My area** lives under the avatar: Account becomes a two-section service, My area (`/dashboard/account/me`, default)
   and Sign-in & security (today's `/dashboard/account`, unchanged content).
-- A **Team Lead** without people rights gets People with only Teams, which opens their team directly.
+- A **Team Lead** without people rights gets People with only Teams. One led team opens directly; several led teams
+  get the scoped index and individual team links. Direct URLs accept only the teams the person leads.
 - People with only `people:self`: the logo links to My area instead of Overview.
 - Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue.
 

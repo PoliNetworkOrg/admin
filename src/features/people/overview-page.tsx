@@ -18,7 +18,7 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleYear } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
@@ -29,7 +29,6 @@ import {
   activeTeams,
   CENSUS_ANSWER,
   censusEntry,
-  CURRENT_YEAR,
   hasNoRoles,
   isActiveAdmin,
   isMember,
@@ -38,7 +37,7 @@ import {
   roleLabels,
   teamName,
 } from "./people-format"
-import { FilterMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
+import { FilterMenu, MonoChip, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import {
   ACCOUNT_STATUSES,
   type AccountStatus,
@@ -69,13 +68,13 @@ const ROLE_TEST = {
   none: hasNoRoles,
 } satisfies Record<RoleFilter, (person: PersonRow) => boolean>
 
-function matchesFilters(person: PersonRow, filters: Filters) {
+function matchesFilters(person: PersonRow, filters: Filters, currentYear: string) {
   if (filters.role && !ROLE_TEST[filters.role](person)) return false
   if (filters.team && !activeTeams(person).some((team) => team.team === filters.team)) return false
   if (filters.campus && person.profile.campus !== filters.campus) return false
   if (filters.account && person.account.status !== filters.account) return false
   if (filters.census) {
-    const entry = censusEntry(person, CURRENT_YEAR)
+    const entry = censusEntry(person, currentYear)
     if (filters.census === "none" ? !entry || entry.answer !== null : entry?.answer !== filters.census) return false
   }
   return true
@@ -152,7 +151,7 @@ const columns: DataTableColumn<PersonRow>[] = [
         <ChipOverflow
           items={teams.map((team) => team.team)}
           itemLabel={teamName}
-          renderItem={(team) => <Chip key={team}>{teamName(team)}</Chip>}
+          renderItem={(team) => <TruncatedChip key={team} label={teamName(team)} />}
         />
       ) : (
         <Unset />
@@ -196,6 +195,7 @@ const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
 /** People › Overview: one row per person with their roles, account and last census answer. */
 export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
+  const currentYear = usePeopleYear()
   const canWrite = useCan("people:write")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
@@ -210,7 +210,9 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
   const [linkTarget, setLinkTarget] = useState<PersonRow | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
 
-  const filtered = people.filter((person) => matchesFilters(person, filters) && matchesQuery(person, deferredQuery))
+  const filtered = people.filter(
+    (person) => matchesFilters(person, filters, currentYear) && matchesQuery(person, deferredQuery)
+  )
   const sign = sort.direction === "asc" ? 1 : -1
   const sorted = filtered.toSorted((a, b) => personName(a).localeCompare(personName(b)) * sign)
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
@@ -311,9 +313,9 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                   value={filters.census}
                   onChange={(value) => setFilter("census", value)}
                   options={[
-                    { value: "continues", label: `Continues in ${CURRENT_YEAR}` },
-                    { value: "leaving", label: `Leaving in ${CURRENT_YEAR}` },
-                    { value: "none", label: `No ${CURRENT_YEAR} answer` },
+                    { value: "continues", label: `Continues in ${currentYear}` },
+                    { value: "leaving", label: `Leaving in ${currentYear}` },
+                    { value: "none", label: `No ${currentYear} answer` },
                   ]}
                 />
               </>

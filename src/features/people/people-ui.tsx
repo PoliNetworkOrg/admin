@@ -373,7 +373,7 @@ export function ChoiceChips({
 export function TruncatedChip({ label }: { label: string }) {
   return (
     <Hint overflowOnly label={label}>
-      <Chip className="max-w-full min-w-0">
+      <Chip className="max-w-full min-w-0 shrink">
         <span className="truncate">{label}</span>
       </Chip>
     </Hint>
