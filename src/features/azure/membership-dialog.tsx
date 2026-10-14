@@ -2,7 +2,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { Command as CommandPrimitive } from "cmdk"
-import { Search, X } from "lucide-react"
+import { Search, UserMinus, UserPlus, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
@@ -17,7 +17,7 @@ import {
   scrimClasses,
 } from "@/components/primitives"
 import { dialogTitleText, dialogDescriptionText } from "@/components/primitives/confirm-dialog"
-import { appToast } from "@/components/shell"
+import { appToast, useCan } from "@/components/shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
@@ -27,49 +27,23 @@ import type { AzureGroup, AzureMember } from "@/lib/api/types"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-export type MembershipMode = "add" | "remove" | "view"
-
 type Choice = { id: string; name: string | null; mail: string | null }
 
 type MembershipDialogProps = {
   group: AzureGroup
-  directoryMembers: AzureMember[]
-  mode: MembershipMode
+  directoryMembers: AzureMember[] | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const copy = {
-  add: {
-    title: "Add a member to",
-    lead: "Choose a directory user to add to",
-    tail: "",
-    heading: "Available users",
-    empty: "No available users found.",
-  },
-  remove: {
-    title: "Remove a member from",
-    lead: "Choose a member to remove from",
-    tail: " Their Microsoft 365 account is not deleted.",
-    heading: "Current members",
-    empty: "No group members found.",
-  },
-  view: {
-    title: "Members of",
-    lead: "",
-    tail: "",
-    heading: "Current members",
-    empty: "No group members found.",
-  },
-}
-
 const PERMISSION_ERROR = "You don't have permission to manage this group."
 
-/**
- * Add or remove one Microsoft 365 group member, or just list them (`view`); removal swaps to a confirmation before it
- * runs.
- */
-export function MembershipDialog({ group, directoryMembers, mode, open, onOpenChange }: MembershipDialogProps) {
+/** One member list with an add picker and a per-member removal confirmation. */
+export function MembershipDialog({ group, directoryMembers, open, onOpenChange }: MembershipDialogProps) {
+  const canWrite = useCan("azure:groups:write")
+  const canAdd = canWrite && directoryMembers !== null
+  const [adding, setAdding] = useState(false)
+  const [query, setQuery] = useState("")
   const router = useRouter()
   const addMember = useServerFn(addAzureGroupMember)
   const removeMember = useServerFn(removeAzureGroupMember)
@@ -80,20 +54,19 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const keepRef = useRef<HTMLButtonElement>(null)
-  const adding = mode === "add"
-  const viewing = mode === "view"
-  const text = copy[mode]
 
   const choices = useMemo<Choice[]>(() => {
     const memberIds = new Set(group.members.map((member) => member.id))
+    const directory = directoryMembers ?? []
+    const emails = new Map(directory.map((member) => [member.id, member.mail]))
     const list = adding
-      ? directoryMembers
+      ? directory
           .filter((member) => !memberIds.has(member.id))
           .map((member) => ({ id: member.id, name: member.displayName, mail: member.mail }))
       : group.members.map((member) => ({
           id: member.id,
           name: member.displayName || null,
-          mail: directoryMembers.find((candidate) => candidate.id === member.id)?.mail ?? null,
+          mail: emails.get(member.id) ?? null,
         }))
     // Unnamed users go last.
     return list.toSorted((a, b) => {
@@ -111,12 +84,15 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
   }
 
   function choose(choice: Choice) {
+    if (!canWrite || pending || (adding && !canAdd)) return
     setError(null)
     setSelected(choice)
     if (!adding) setConfirming(true)
   }
 
-  function keepMember() {
+  function showMembers() {
+    setAdding(false)
+    setQuery("")
     setError(null)
     setConfirming(false)
     setSelected(null)
@@ -124,7 +100,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
   }
 
   async function submit() {
-    if (!selected || pending) return
+    if (!selected || pending || !canWrite || (adding && !canAdd)) return
     const name = selected.name ?? "Unnamed user"
     const input = { data: { groupId: group.id, userId: selected.id } }
     setPending(true)
@@ -135,14 +111,17 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
         setError("Microsoft 365 could not complete the change. Try again.")
         return
       }
+      let refreshed = true
       try {
         await router.invalidate({ sync: true })
       } catch (caught) {
         console.error(caught)
+        refreshed = false
         appToast.warning("The membership was updated, but the latest group data could not be refreshed.")
       }
       appToast.success(adding ? `${name} added to ${group.displayName}.` : `${name} removed from ${group.displayName}.`)
-      onOpenChange(false)
+      if (refreshed) showMembers()
+      else onOpenChange(false)
     } catch (caught) {
       console.error(caught)
       setError(
@@ -163,6 +142,19 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
   }
 
   const selectedName = selected?.name ?? "Unnamed user"
+  const search = query.trim().toLocaleLowerCase()
+  const visibleMembers = choices.filter((choice) =>
+    `${choice.name ?? "Unnamed user"} ${choice.mail ?? ""}`.toLocaleLowerCase().includes(search)
+  )
+
+  function showAddPicker() {
+    if (!canAdd || pending) return
+    setAdding(true)
+    setSelected(null)
+    setError(null)
+    setQuery("")
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
 
   return (
     <Dialog
@@ -170,6 +162,8 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
       onOpenChange={(next) => (next ? onOpenChange(true) : close())}
       onOpenChangeComplete={(next) => {
         if (next) return
+        setAdding(false)
+        setQuery("")
         setSelected(null)
         setConfirming(false)
         setError(null)
@@ -184,12 +178,14 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
         >
           <header className="relative flex shrink-0 flex-col gap-1.5 px-5 pt-5 pr-14">
             <DialogTitle className={dialogTitleText}>
-              {confirming ? `Remove ${selectedName}?` : `${text.title} ${group.displayName}`}
+              {confirming
+                ? `Remove ${selectedName}?`
+                : `${adding ? "Add a member to" : "Members of"} ${group.displayName}`}
             </DialogTitle>
             <DialogDescription className={dialogDescriptionText}>
               {confirming ? (
                 "They lose access to this Microsoft 365 group. Their account is not deleted."
-              ) : viewing ? (
+              ) : !adding ? (
                 <>
                   {pluralize(group.members.length, "member")}
                   {group.mailAddress ? (
@@ -202,7 +198,8 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                 </>
               ) : (
                 <>
-                  {text.lead} <span className="font-medium text-(--pn-fg)">{group.displayName}</span>.{text.tail}
+                  Choose a directory user to add to{" "}
+                  <span className="font-medium text-(--pn-fg)">{group.displayName}</span>.
                 </>
               )}
             </DialogDescription>
@@ -214,9 +211,9 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
               <div className="flex h-14 items-center gap-3 rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-surface) px-3">
                 <PersonLine choice={selected} />
               </div>
-            ) : (
+            ) : adding ? (
               <Command
-                label={text.heading}
+                label="Available users"
                 className="h-[296px] rounded-(--pn-r-3)! border border-(--pn-line) bg-(--pn-surface) p-0"
               >
                 <div className="relative shrink-0 border-b border-(--pn-line)">
@@ -226,40 +223,101 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   />
                   <CommandPrimitive.Input
                     ref={inputRef}
+                    aria-label="Search available users"
                     placeholder="Search by name or email…"
                     className="h-10 w-full bg-transparent pr-3 pl-9 text-[14px] text-(--pn-fg) outline-none placeholder:text-(--pn-fg-subtle) pointer-coarse:text-base"
                   />
                 </div>
                 <CommandList className="max-h-none min-h-0 flex-1 p-1">
-                  <CommandEmpty className="px-3 py-8 text-[13px] text-(--pn-fg-muted)">{text.empty}</CommandEmpty>
-                  <CommandGroup heading={text.heading} className="p-0 **:[[cmdk-group-heading]]:px-2">
+                  <CommandEmpty className="px-3 py-8 text-[13px] text-(--pn-fg-muted)">
+                    No available users found.
+                  </CommandEmpty>
+                  <CommandGroup heading="Available users" className="p-0 **:[[cmdk-group-heading]]:px-2">
                     {choices.map((choice) => (
                       <CommandItem
                         key={choice.id}
                         value={`${choice.name ?? "Unnamed user"} ${choice.mail ?? ""} ${choice.id}`}
                         data-checked={selected?.id === choice.id}
-                        onSelect={viewing ? undefined : () => choose(choice)}
+                        onSelect={() => choose(choice)}
                         className="min-h-15 gap-2.5 rounded-(--pn-r-2) px-2 py-2 data-selected:bg-(--pn-muted) data-[checked=true]:bg-(--pn-accent-soft) [&>svg:last-child]:text-(--pn-accent)"
                       >
-                        {viewing ? null : (
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "grid size-4 shrink-0 place-items-center rounded-full border border-(--pn-line-strong)",
-                              selected?.id === choice.id && "border-(--pn-accent)"
-                            )}
-                          >
-                            {selected?.id === choice.id && (
-                              <span className="size-2 rounded-full bg-(--pn-accent-solid)" />
-                            )}
-                          </span>
-                        )}
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "grid size-4 shrink-0 place-items-center rounded-full border border-(--pn-line-strong)",
+                            selected?.id === choice.id && "border-(--pn-accent)"
+                          )}
+                        >
+                          {selected?.id === choice.id && (
+                            <span className="size-2 rounded-full bg-(--pn-accent-solid)" />
+                          )}
+                        </span>
                         <PersonLine choice={choice} />
                       </CommandItem>
                     ))}
                   </CommandGroup>
                 </CommandList>
               </Command>
+            ) : (
+              <>
+                {canWrite ? (
+                  <div className="mb-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      disabled={!canAdd}
+                      onClick={showAddPicker}
+                      title={!canAdd ? "Adding members needs access to the member directory" : undefined}
+                    >
+                      <UserPlus aria-hidden className="size-4" />
+                      Add member
+                    </Button>
+                  </div>
+                ) : null}
+                {!canAdd && canWrite ? (
+                  <p className="mb-3 text-[13px] text-(--pn-fg-muted)">
+                    Adding members needs access to the member directory.
+                  </p>
+                ) : null}
+                <div className="flex h-[296px] flex-col overflow-hidden rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-surface)">
+                  <div className="relative shrink-0 border-b border-(--pn-line)">
+                    <Search
+                      aria-hidden
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
+                    />
+                    <input
+                      ref={inputRef}
+                      aria-label="Search group members"
+                      placeholder="Search by name or email…"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      className="h-10 w-full bg-transparent pr-3 pl-9 text-[14px] text-(--pn-fg) placeholder:text-(--pn-fg-subtle) pointer-coarse:text-base"
+                    />
+                  </div>
+                  <ul aria-label="Current members" className="min-h-0 flex-1 overflow-y-auto p-1">
+                    {visibleMembers.length === 0 ? (
+                      <li className="px-3 py-8 text-[13px] text-(--pn-fg-muted)">
+                        {group.members.length === 0 ? "No members yet." : "No group members match your search."}
+                      </li>
+                    ) : (
+                      visibleMembers.map((choice) => (
+                        <li key={choice.id} className="flex min-h-15 items-center gap-2.5 rounded-(--pn-r-2) px-2 py-2">
+                          <PersonLine choice={choice} />
+                          {canWrite ? (
+                            <IconButton
+                              label="Remove member"
+                              ariaLabel={`Remove ${choice.name ?? "Unnamed user"} from ${group.displayName}`}
+                              icon={UserMinus}
+                              tone="danger"
+                              appearance="boxed"
+                              onClick={() => choose(choice)}
+                            />
+                          ) : null}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </>
             )}
           </div>
 
@@ -277,7 +335,7 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   type="button"
                   variant="outline"
                   disabled={pending}
-                  onClick={keepMember}
+                  onClick={showMembers}
                   className={dialogFooterButton}
                 >
                   Keep member
@@ -292,10 +350,10 @@ export function MembershipDialog({ group, directoryMembers, mode, open, onOpenCh
                   type="button"
                   variant="outline"
                   disabled={pending}
-                  onClick={close}
+                  onClick={adding ? showMembers : close}
                   className={dialogFooterButton}
                 >
-                  {viewing ? "Close" : "Cancel"}
+                  {adding ? "Back to members" : "Close"}
                 </Button>
                 {adding ? (
                   <LoadingButton size="default" pending={pending} disabled={!selected} onClick={() => void submit()}>
