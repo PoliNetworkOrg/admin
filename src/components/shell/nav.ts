@@ -215,7 +215,7 @@ const telegram: Service = {
       icon: UserRound,
       path: "/dashboard/telegram/users",
       permission: "tg:users:read",
-      searchPlaceholder: "Search by name, username or Telegram ID…",
+      searchPlaceholder: "Search name, username or ID…",
       queryable: true,
     },
     {
@@ -232,7 +232,7 @@ const telegram: Service = {
       icon: ShieldCheck,
       path: "/dashboard/telegram/grants",
       permission: "tg:grants:read",
-      searchPlaceholder: "Search users, authorizers or reasons…",
+      searchPlaceholder: "Search user, reason or grantor…",
     },
     { id: "capo", title: "Capo Admin", icon: Crown, path: "/dashboard/telegram/capo", role: "capo" },
   ],
@@ -279,7 +279,7 @@ const m365: Service = {
       icon: UserRound,
       path: "/dashboard/azure/members",
       anyPermission: ["azure:members:read", "azure:members:create"],
-      searchPlaceholder: "Search by name, email or member ID…",
+      searchPlaceholder: "Search name, email or ID…",
     },
   ],
 }
@@ -318,7 +318,7 @@ const web: Service = {
       title: "Labels",
       icon: Tags,
       path: "/dashboard/web/group-labels",
-      searchPlaceholder: "Search categories, attributes and publications…",
+      searchPlaceholder: "Search labels…",
     },
     {
       id: "categories",
@@ -587,10 +587,10 @@ export function isDeepPage(match: PageMatch): boolean {
   )
 }
 
-/** `document.title`: "{Section} · {Service} · PoliNetwork Admin", or "{Service} · PoliNetwork Admin". */
+/** `document.title`: "{Section} - {Service} - PoliNetwork Admin", or "{Service} - PoliNetwork Admin". */
 export function documentTitle(match: PageMatch): string {
-  if (match.kind === "not-found") return "Page not found · PoliNetwork Admin"
+  if (match.kind === "not-found") return "Page not found - PoliNetwork Admin"
   const service = serviceFor(match)
   const current = sectionFor(match)
-  return current ? `${current.title} · ${service.title} · PoliNetwork Admin` : `${service.title} · PoliNetwork Admin`
+  return current ? `${current.title} - ${service.title} - PoliNetwork Admin` : `${service.title} - PoliNetwork Admin`
 }

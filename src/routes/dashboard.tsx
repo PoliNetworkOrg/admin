@@ -53,7 +53,7 @@ export const Route = createFileRoute("/dashboard")({
       : Promise.resolve(null),
   }),
   staleTime: 60_000,
-  // One title for every dashboard page, from the deepest match: "{Section} · {Service} · PoliNetwork Admin".
+  // One title for every dashboard page, from the deepest match: "{Section} - {Service} - PoliNetwork Admin".
   head: ({ matches }) => ({ meta: [{ title: documentTitle(matchPath(matches.at(-1)?.pathname ?? "/dashboard")) }] }),
   // Unknown `/dashboard/…` URLs render in the shell's content column; a failure in this route's own `beforeLoad` or
   // loader has no shell yet, so the same component centres itself on the page.
