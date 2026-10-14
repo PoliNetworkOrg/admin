@@ -376,3 +376,135 @@ export const TEAMS = {
     ],
   },
 } satisfies Record<TeamId, { name: string; fields: TeamField[] }>
+
+// Inputs. The server functions validate with these, and the fake and real APIs take the parsed values.
+
+const personIdSchema = z.string().regex(/^P-\d{4}$/)
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const reasonSchema = z.string().trim().min(1).max(500)
+
+export const personInputSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  personalEmail: z.email(),
+  phone: z.string().trim().max(40),
+  telegramUsername: z
+    .string()
+    .trim()
+    .max(40)
+    .transform((value) => value.replace(/^@/, "")),
+  course: z.string().trim().min(1).max(120),
+  year: z.enum(YEARS),
+  campus: campusSchema,
+})
+export const createPersonInputSchema = personInputSchema.extend({ admin: z.boolean() })
+export const updatePersonInputSchema = personInputSchema.extend({ id: personIdSchema })
+export const setNoteInputSchema = z.object({ id: personIdSchema, note: z.string().trim().max(2000) })
+
+export const createMemberInputSchema = z.object({
+  personId: personIdSchema,
+  number: z.string().regex(/^\d{4}$/),
+  admittedOn: dateSchema,
+  fee: z.enum(["due", "receipt", "paid"]),
+})
+export const memberStatusInputSchema = z.object({
+  personId: personIdSchema,
+  status: memberStatusSchema,
+  reason: z.string().trim().max(500),
+})
+export const memberNumberInputSchema = z.object({ personId: personIdSchema, number: z.string().regex(/^\d{4}$/) })
+
+export const endAdminInputSchema = z.object({ personId: personIdSchema, reason: reasonSchema })
+export const capoScopeInputSchema = z.object({ personId: personIdSchema, scope: z.string().trim().max(120).nullable() })
+
+export const addTeamMemberInputSchema = z.object({
+  teamId: teamIdSchema,
+  personId: personIdSchema,
+  role: z.enum(["member", "lead"]),
+  since: dateSchema,
+  fields: teamFieldsSchema,
+})
+export const teamFieldsInputSchema = z.object({
+  teamId: teamIdSchema,
+  personId: personIdSchema,
+  fields: teamFieldsSchema,
+})
+export const endTeamInputSchema = z.object({
+  teamId: teamIdSchema,
+  personId: personIdSchema,
+  lastDay: dateSchema,
+  reason: reasonSchema,
+  note: z.string().trim().max(500),
+})
+
+export const campaignInputSchema = z.object({ campaignId: z.string().min(1) })
+export const remindInputSchema = z.object({ campaignId: z.string().min(1), personId: personIdSchema.nullable() })
+export const answersInputSchema = z.object({ personId: personIdSchema, year: z.string().min(1) })
+export const importCommitInputSchema = z.object({
+  importId: z.string().min(1),
+  duplicates: z.record(z.string(), z.enum(["same", "different"])),
+  telegram: z.record(z.string(), z.string().nullable()),
+})
+
+export const resolveReviewInputSchema = z.object({
+  reviewId: z.string().min(1),
+  resolution: z.string().min(1),
+  reason: reasonSchema,
+})
+export const reviewInputSchema = z.object({ reviewId: z.string().min(1) })
+export const personRefInputSchema = z.object({ personId: personIdSchema })
+export const searchAccountsInputSchema = z.object({ personId: personIdSchema, query: z.string().trim().max(120) })
+export const linkAccountInputSchema = z.object({
+  personId: personIdSchema,
+  accountId: z.string().min(1),
+  reason: reasonSchema,
+})
+
+export const joinRequestInputSchema = z.object({ requestId: z.string().min(1) })
+
+export const askToBeAddedInputSchema = z.object({
+  roles: z.array(z.enum(["admin", "team", "member"])).min(1),
+  groupsOrTeam: z.string().trim().max(200),
+  telegramUsername: z.string().trim().max(40),
+})
+export const answerCensusInputSchema = z.object({
+  answer: censusAnswerSchema,
+  course: z.string().trim().min(1).max(120),
+  year: z.enum(YEARS),
+  campus: campusSchema,
+  keepGroups: z.array(z.string()),
+  keepTeams: z.array(teamIdSchema),
+  reason: z.string().trim().max(200),
+  note: z.string().trim().max(500),
+})
+export const correctionInputSchema = z.object({
+  field: z.string().min(1),
+  value: z.string().trim().min(1).max(200),
+  note: z.string().trim().max(500),
+})
+
+export type CreatePersonInput = z.infer<typeof createPersonInputSchema>
+export type UpdatePersonInput = z.infer<typeof updatePersonInputSchema>
+export type SetNoteInput = z.infer<typeof setNoteInputSchema>
+export type CreateMemberInput = z.infer<typeof createMemberInputSchema>
+export type MemberStatusInput = z.infer<typeof memberStatusInputSchema>
+export type MemberNumberInput = z.infer<typeof memberNumberInputSchema>
+export type EndAdminInput = z.infer<typeof endAdminInputSchema>
+export type CapoScopeInput = z.infer<typeof capoScopeInputSchema>
+export type AddTeamMemberInput = z.infer<typeof addTeamMemberInputSchema>
+export type TeamFieldsInput = z.infer<typeof teamFieldsInputSchema>
+export type EndTeamInput = z.infer<typeof endTeamInputSchema>
+export type RemindInput = z.infer<typeof remindInputSchema>
+export type AnswersInput = z.infer<typeof answersInputSchema>
+export type ImportCommitInput = z.infer<typeof importCommitInputSchema>
+export type ResolveReviewInput = z.infer<typeof resolveReviewInputSchema>
+export type SearchAccountsInput = z.infer<typeof searchAccountsInputSchema>
+export type LinkAccountInput = z.infer<typeof linkAccountInputSchema>
+export type AskToBeAddedInput = z.infer<typeof askToBeAddedInputSchema>
+export type AnswerCensusInput = z.infer<typeof answerCensusInputSchema>
+export type CorrectionInput = z.infer<typeof correctionInputSchema>
+
+export const remindResultSchema = z.object({ sent: z.number().int(), skipped: z.number().int() })
+export const exportResultSchema = z.object({ filename: z.string(), csv: z.string() })
+export const createdSchema = z.object({ id: z.string() })
+export const importedSchema = z.object({ imported: z.number().int() })

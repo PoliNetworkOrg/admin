@@ -49,17 +49,20 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 1. Foundation
 
-- [ ] Permissions: add the six `people:*` permissions; middlewares `peopleReadMiddleware`, `peopleWriteMiddleware`,
-      `peopleMembersReadMiddleware`, `peopleMembersWriteMiddleware`, `peopleAppointMiddleware`, `peopleSelfMiddleware`
-- [ ] Access: `people:self` admits to the dashboard; guard existing routes for `admin:access`; `AGENT_PERMISSIONS` /
-      `AGENT_PERSON`
-- [ ] `people.contract.ts`, `people.fixtures.server.ts` (148 people, same distributions as the prototype),
-      `people.source.server.ts`
-- [ ] Nav: People service and sections, Telegram › Capo Admin, Account as a two-section service (My area, Sign-in &
-      security); `PageMatch` kinds and `matchPath`; rail/panel/pills/bottom nav filtering by permission and by record
-      role (Capo Admin, Team Lead)
-- [ ] Route files with `pendingComponent` skeletons for every page
-- [ ] Tests registry updated; all four checks green
+- [x] Permissions: add the six `people:*` permissions; middlewares `peopleReadMiddleware`, `peopleWriteMiddleware`,
+      `peopleTeamWriteMiddleware`, `peopleMembersReadMiddleware`, `peopleMembersWriteMiddleware`,
+      `peopleAppointMiddleware`, `peopleSelfMiddleware` (all built on `dashboardUserMiddleware`)
+- [x] Access: `people:self` admits to the dashboard; `adminMiddleware` requires `admin:access` explicitly; the
+      `/dashboard` route redirects pages the user can't open (`canOpenPage`); `AGENT_PERMISSIONS` / `AGENT_PERSON`
+- [x] `people.contract.ts` (zod; source of truth for shapes), `people.fixtures.server.ts`, `people.fake.server.ts`
+      (agent-mode API), `people.api.server.ts` (`PeopleApi`; backend adapter through an untyped tRPC client whose
+      responses are parsed with the contract)
+- [x] Nav: People service and sections, Telegram › Capo Admin, Account as a two-section service (My area, Sign-in &
+      security); `PageMatch` kinds and `matchPath`; `sectionVisible` filters by permission, `admin:access` and record
+      role (Capo Admin, Team Lead); the logo and avatar lead to My area for `people:self`-only users
+- [x] Route files for every page (placeholder component `PagePlaceholder` until each phase replaces it; add
+      `pendingComponent` skeletons with the real pages)
+- [x] Tests registry updated; all four checks green
 
 ### 2. Overview and person record
 
@@ -119,3 +122,6 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 Newest last. One line per commit or session: date, what was done, what is next.
 
 - 2026-10-14: phase 0 done (handoff docs, prototype copy, draft PR). Next: phase 1.
+- 2026-10-14: phase 1 done. Verified in agent mode: Direttivo reaches People; `AGENT_PERMISSIONS=people:self` with
+  `AGENT_PERSON=P-0098` (Capo Admin) reaches only Telegram › Capo Admin and Account; with `P-0034` (IT Team Lead)
+  only People › Teams and Account. Next: phase 2 (Overview and person record).

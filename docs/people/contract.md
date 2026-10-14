@@ -1,8 +1,10 @@
 # People area: backend contract
 
 The dashboard calls these procedures under `people.*` on the tRPC backend (`@polinetwork/backend`). They do not exist
-yet: this file is the spec for the backend project, and the dashboard's own copy of the types lives in
-`src/features/people/people.contract.ts` (the source of truth once code exists; keep both in sync). In agent mode the
+yet: this file is the spec for the backend project. **`src/features/people/people.contract.ts` is the source of
+truth** for every shape and input (zod schemas); where this file differs, the code wins. Notably, list procedures
+return full rows (`PersonRow`: profile, member, admin, teams, census, consents, account) rather than the summary below,
+and `people.me.roles` returns `{ capoScope, leads }` for the navigation. In agent mode the
 dashboard serves the same shapes from `src/features/people/people.fixtures.server.ts`.
 
 Every procedure checks permissions server-side; the "Needs" column is the minimum. Dates are ISO `YYYY-MM-DD` strings

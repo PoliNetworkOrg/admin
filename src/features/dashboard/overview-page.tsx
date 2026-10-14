@@ -3,7 +3,15 @@ import { ArrowRight, ArrowUp, ChevronRight, Search } from "lucide-react"
 import { type ReactNode, Suspense, use, useState } from "react"
 
 import { InlineAlert, LoadingButton, SegmentedControl, useModifierKey } from "@/components/primitives"
-import { type DashboardPath, PageBar, PageContent, type Service, ServiceGlyph, useShellFrame } from "@/components/shell"
+import {
+  type DashboardPath,
+  isRailService,
+  PageBar,
+  PageContent,
+  type Service,
+  ServiceGlyph,
+  useShellFrame,
+} from "@/components/shell"
 import { useVisibleServices } from "@/components/shell/use-can"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -260,7 +268,7 @@ function chartDescription(points: ReturnType<typeof growthSeries>["points"], ran
 
 /** Every service the user can open: the whole card leads where its rail icon does, each section is a 44px button. */
 function Areas({ openReports }: { openReports: OverviewCount }) {
-  const services = useVisibleServices().filter((service) => service.sections.length > 0)
+  const services = useVisibleServices().filter(isRailService)
   return (
     <section aria-labelledby="overview-areas" className="flex flex-col gap-4">
       <h2 id="overview-areas" className="text-[18px]/6 font-semibold text-(--pn-fg)">

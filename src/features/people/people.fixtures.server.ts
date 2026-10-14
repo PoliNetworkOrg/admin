@@ -268,7 +268,7 @@ export const FAMILIES = {
   },
 } satisfies Record<FamilyId, { scope: string; groups: string[] }>
 
-const FAMILY_IDS: FamilyId[] = ["inf", "ges", "ind", "ele", "des", "arc"]
+export const FAMILY_IDS: FamilyId[] = ["inf", "ges", "ind", "ele", "des", "arc"]
 
 /** Stable fake Telegram chat ids per group title. */
 export const GROUP_IDS: Map<string, string> = new Map(

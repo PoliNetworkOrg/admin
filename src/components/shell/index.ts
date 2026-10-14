@@ -2,7 +2,11 @@ export { AccountAvatar, type ShellUser } from "./account-avatar"
 export {
   type DashboardPath,
   documentTitle,
+  canOpenPage,
   isDeepPage,
+  isRailService,
+  NO_PEOPLE_ROLES,
+  type PeopleRoles,
   matchPath,
   type PageKind,
   type PageMatch,
@@ -36,5 +40,5 @@ export { ServiceGlyph } from "./service-glyph"
 export { DashboardShell, type DashboardShellProps } from "./shell"
 export { type Theme, themeToggleLabel, useTheme } from "./theme"
 export { appToast } from "./toast"
-export { useCan } from "./use-can"
+export { useCan, useHasAdminAccess, usePeopleRoles } from "./use-can"
 export { useSignOut } from "./use-sign-out"

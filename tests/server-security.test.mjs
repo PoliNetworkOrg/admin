@@ -173,6 +173,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
     "src/features/whatsapp/groups.functions.ts",
+    "src/features/people/people.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -183,7 +184,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create)Middleware$/.test(name)),
+          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create|Self|Appoint)Middleware$/.test(name)),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
