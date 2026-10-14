@@ -435,3 +435,20 @@ Rules that the templates above don't imply.
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
+- **People**: one record per person whether or not they have an account; Overview, Member register, Admins, Teams,
+  Census and Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
+  Not linked included. Mobile list cards replace unlabelled column values with one line of role chips or status
+  badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
+  use `FormDialog` with `submitTone="danger"`; plain confirmations stay `ConfirmDialog`.
+- **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
+  record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
+- **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
+  quick filters scroll sideways on phones.
+- **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
+  itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
+- **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
+  saves nothing before Confirm. Reminders report sent and skipped counts after sending.
+- **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has
+  its own resolutions and a required reason.
+- **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
+  the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.

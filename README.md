@@ -5,6 +5,13 @@ Microsoft 365 supports a read-only member directory, creating a new association 
 workflow, and group membership management. Directory access requires `azure:members:read`; creation independently
 requires `azure:members:create`. Groups require `azure:groups:read`; adding and removing members `azure:groups:write`.
 
+**People** keeps one record per volunteer and member (Overview, Member register, Admins, Teams, Census, Linking), plus
+Telegram › Capo Admin and Account › My area for volunteers themselves. The dashboard talks to a typed `people.*`
+contract (`src/features/people/people.contract.ts`, documented in `docs/people/contract.md`); until the backend
+implements it, agent mode serves sample data from `people.fake.server.ts`. Permissions: `people:read`, `people:write`,
+`people:members:read`, `people:members:write`, `people:appoint`, and `people:self`, which alone admits non-admins to My
+area and, by the role on their record, Capo Admin or their team. See `docs/people/README.md`.
+
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
 **dedicated Redis**, separate from the shared backend Redis. Backend requests carry a user bearer token, and permissions

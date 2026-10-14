@@ -113,9 +113,9 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 ### 10. Finish
 
 - [ ] Loading and empty states checked on every page; mobile (390px) and dark checked on every page in agent mode
-- [ ] `docs/design.md` §8 page notes for People, Capo Admin, My area; README permissions table; `CLAUDE.md`
+- [x] `docs/design.md` §8 page notes for People, Capo Admin, My area; README permissions table; `CLAUDE.md`
       architecture lines
-- [ ] PR description final, all checks green
+- [x] PR description final, all checks green
 
 ## Progress log
 
@@ -164,3 +164,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   This isn't me (the fake now records it as a request, so the page shows Request sent). No record: Ask to be added and
   Request sent. Sign-in & security drops its "Account" title for its section title. Row components moved to
   `people-ui.tsx`. Next: phase 10 (finish).
+- 2026-10-14: phase 10: docs (design.md §8 People notes, README, CLAUDE.md architecture), placeholder removed, every
+  page swept at 1440 and 390 in agent mode with no console errors or page-level horizontal scroll. Without agent mode
+  every People route redirects to sign-in. Still open: empty states are written for every list but were never seen
+  with empty data (the fake has no empty mode), loading skeletons were not looked at, and the signed-in flow without
+  agent mode needs a development IdP client.
