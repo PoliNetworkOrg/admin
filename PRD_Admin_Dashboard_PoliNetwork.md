@@ -1,8 +1,8 @@
 # PRD — Admin Dashboard PoliNetwork
 
 **Documento di prodotto per il Team IT**
-**Versione:** 2.2
-**Data:** 12 ottobre 2026
+**Versione:** 2.3
+**Data:** 14 ottobre 2026
 **Stato:** Bozza per revisione, allineata al codice integrato al 12 ottobre 2026
 
 **Documenti di dettaglio:** [`PRD_Classificazione_Feature.md`](./PRD_Classificazione_Feature.md) (priorità e dipendenze) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) (capacità e ruoli) · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) (Identity Provider) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) (tabelle e contratti) · [`Persone_Volontari_Soci.md`](./Persone_Volontari_Soci.md) (persone, censimento volontari, Libro Soci e viste per ruolo)
@@ -79,6 +79,18 @@ Una persona admin appartiene a **un solo corso di studi** come dato anagrafico p
 **Stato parziale:** l’IdP ha un audit RBAC append-only con prima/dopo; il backend registra attori IdP nelle azioni di moderazione, nei grant e nelle scritture dei contenuti. Questo non copre ancora un unico storico amministrativo per tutti i moduli.
 
 **Requisito residuo:** ogni mutazione amministrativa deve produrre una voce di audit con: attore, ruolo al momento dell'azione, timestamp, oggetto modificato, valori prima/dopo, motivo (obbligatorio per azioni sensibili), esito. Precondizione per esporre dati personali dell'Anagrafica/Censimento a più ruoli.
+
+#### 2.2.1 Registro consultabile delle modifiche a ruoli, permessi e persone
+
+**Da realizzare — priorità High, interna:** rendere lo storico leggibile da interfaccia anche a chi non è del Team IT, senza dover consultare database o log tecnici. Viene prima delle aree associazioni partner, eventi esterni, aziende e alloggi (§12–§15). La registrazione RBAC già presente è una base da riusare; non equivale alla disponibilità di questa vista.
+
+- Vista cronologica paginata, con ricerca e filtri per attore, persona/oggetto interessato, tipo di azione e intervallo di date; consultabile nella dashboard dai ruoli autorizzati alla lettura dell'audit.
+- Copertura iniziale: assegnazione e revoca di ruoli alle persone, modifica dei permessi di un ruolo, modifica delle definizioni/implicazioni dei permessi e rimozione di account o record amministrativi. Le modifiche fatte nell'IdP devono essere consultabili anche se non sono state avviate dalla dashboard.
+- Ogni riga deve spiegare **chi ha fatto cosa, a chi/su cosa e quando**, in linguaggio comprensibile: «Gabriele ha tolto il ruolo HR a Lucia», «Gabriele ha rimosso il permesso di gestione gruppi dal ruolo Moderatori». Il dettaglio mostra prima/dopo, motivo quando richiesto ed esito, distinguendo una rimozione di ruolo dalla cancellazione di una persona.
+- Sono tracciate anche le azioni di operatori delegati **non Owner/Master Admin**: ogni modifica resta attribuita al suo attore. La lettura dell'audit è un permesso distinto dalla scrittura dei ruoli, assegnabile a chi deve verificare le modifiche; il catalogo e i destinatari vanno definiti.
+- Gli eventi non sono modificabili o cancellabili dall'interfaccia. La vista non deve esporre segreti o ripristinare dati personali già eliminati: usa gli identificativi e i metadati conservati dall'audit quando nomi/dettagli non sono più disponibili.
+
+**Criteri di accettazione:** un revisore autorizzato può trovare la revoca di un ruolo a una persona, identificare l'operatore anche se delegato, confrontare i permessi prima/dopo una modifica e ricostruire una rimozione con i dati ancora disponibili, senza accesso tecnico al database. Un revisore privo dei permessi di scrittura può consultare lo storico senza poter modificare i ruoli.
 
 ### 2.3 Ricerca globale
 

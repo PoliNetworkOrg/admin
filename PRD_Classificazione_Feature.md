@@ -1,12 +1,12 @@
 # Classificazione feature — Admin Dashboard PoliNetwork
 
 **Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md)
-**Versione:** 1.2
-**Data:** 12 ottobre 2026
+**Versione:** 1.3
+**Data:** 14 ottobre 2026
 
 ## 0. Come leggere questa tabella
 
-Una riga per ogni sezione principale del PRD (§1–§16). Le sezioni §17–§20 (Vincoli, Fuori scope, Decisioni aperte, Fonti) sono requisiti trasversali o meta-contenuti, non feature autonome, e non sono classificate.
+Una riga per ogni sezione principale del PRD (§1–§16), con #0 per l'IdP e #2a per il registro consultabile delle modifiche amministrative. #2a dettaglia una parte di #2, senza duplicarne il lavoro. Le sezioni §17–§20 (Vincoli, Fuori scope, Decisioni aperte, Fonti) sono requisiti trasversali o meta-contenuti, non feature autonome, e non sono classificate.
 
 - **Priorità** — Low / Medium / High. Criterio guida: gli **strumenti e i dati interni** (anagrafica soci, censimento admin/team, ruoli, governance, team interni) vengono prima delle aree **accessorie** o rivolte a **soggetti esterni** (associazioni partner, aziende, alloggi). Questo riflette esplicitamente l'ordine dato nello Scopo del PRD (§0).
 - **Difficoltà** — scala numerica 1–5 (1 = banale, 5 = molto complessa). Tiene conto di: quante parti del sistema tocca, se richiede nuove infrastrutture (es. Identity Provider), se dipende da decisioni ancora aperte (§19 del PRD), se è un flusso multi-step con approvazioni.
@@ -22,6 +22,7 @@ Una riga per ogni sezione principale del PRD (§1–§16). Le sezioni §17–§2
 | 0 | Identity Provider PoliNetwork | [§2.6 Identity Provider PoliNetwork](./PRD_Admin_Dashboard_PoliNetwork.md#26-identity-provider-polinetwork) · design dedicato: [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) · tabelle e contratti: [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) | High | 5 | — | Parziale | IdP autonomo e consumer admin/polinet.cc implementati; web usa token di servizio. Residui: cutover/cleanup, login personale sito, collegamento registro associativo. Non estendere il Better Auth legacy. |
 | 1 | Ruoli e gerarchia | [§1 Persone, ruoli e gerarchie](./PRD_Admin_Dashboard_PoliNetwork.md#1-persone-ruoli-e-gerarchie) | High | 4 | #0 | Parziale | Ruoli/permessi globali e gerarchie implementati in eRBACo. Residui: preset organizzativi approvati, scope corso/team e riconciliazione legacy. |
 | 2 | Fondamenta piattaforma (resto) | [§2 Fondamenta](./PRD_Admin_Dashboard_PoliNetwork.md#2-fondamenta) | High | 4 | #0, #1 | Parziale | Controlli BFF/backend, audit RBAC e overview implementati. Residui: audit unificato, ricerca globale, consensi/firma e indicatori associativi. |
+| 2a | Registro consultabile delle modifiche amministrative | [§2.2.1 Registro consultabile](./PRD_Admin_Dashboard_PoliNetwork.md#221-registro-consultabile-delle-modifiche-a-ruoli-permessi-e-persone) | High | 3 | #0, #1; riusa l'audit esistente | Da realizzare | Vista leggibile e filtrabile di modifiche a ruoli/permessi e rimozioni, con attore, target, data e prima/dopo. Include operatori delegati non Owner; lettura separata dalla scrittura. Priorità interna, prima di #12–#15; non richiede di attendere tutte le altre fondamenta di #2. |
 | 3 | Anagrafica soci e censimento | [§3 Anagrafica Soci e Censimento Admin/Team](./PRD_Admin_Dashboard_PoliNetwork.md#3-anagrafica-soci-e-censimento-adminteam) | High | 4 | #0, #1, #2 | Da realizzare | Registri associativi distinti da directory IdP/Microsoft 365. Lo stato Socio da Entra non certifica pagamento o rinnovo annuale. |
 | 4 | Governance/Direttivo | [§4 Governance e Direttivo](./PRD_Admin_Dashboard_PoliNetwork.md#4-governance-e-direttivo) | Low | 1 | #3 | Nessuna area separata | Coperta dai registri e ruoli futuri; non completata solo perché esiste il ruolo IdP Direttivo. |
 | 5 | Vista Capo Admin | [§5 Dashboard Admin e Capo Admin](./PRD_Admin_Dashboard_PoliNetwork.md#5-dashboard-admin-e-capo-admin) | High | 3 | #1, #3 | Da realizzare | Richiede scoping sui record anche nel backend; il RBAC globale non basta. |
@@ -43,7 +44,7 @@ Una riga per ogni sezione principale del PRD (§1–§16). Le sezioni §17–§2
 
 **Fondamenta già disponibili:** IdP e OIDC admin/polinet.cc, RBAC globale, controlli per procedura, audit RBAC e overview. Non occorre ricostruirle per iniziare i moduli interni; prima di dichiarare conclusa la migrazione serve il collaudo operativo/cutover (#0).
 
-**Prima fase — lavoro interno residuo (High):** riconciliazione ruoli e scoping (#1), audit/consensi (#2), registri soci/censimento (#3), poi rinnovi (#6), vista Capo Admin (#5) e onboarding (#8). La ricerca globale non deve essere confusa con un prerequisito tecnico già disponibile.
+**Prima fase — lavoro interno residuo (High):** riconciliazione ruoli e scoping (#1), registro consultabile delle modifiche amministrative (#2a, riusando l'audit RBAC già presente), audit/consensi (#2), registri soci/censimento (#3), poi rinnovi (#6), vista Capo Admin (#5) e onboarding (#8). #2a viene prima delle aree associazioni, eventi esterni, aziende e alloggi (#12–#15). La ricerca globale non deve essere confusa con un prerequisito tecnico già disponibile.
 
 **Seconda fase — consolidamento interno (Medium):** team (#7), email compleanno (#9), miglioramenti Telegram/Microsoft 365/guide (#11).
 
