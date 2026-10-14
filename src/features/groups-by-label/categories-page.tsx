@@ -82,7 +82,7 @@ function RootCard({ root, groupLabels }: { root: LabelTreeNode; groupLabels: str
             </Link>
           </h2>
           <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">
-            {pluralize(countCategoryDescendants(root), "category")} ·{" "}
+            {pluralize(countCategoryDescendants(root), "category")},{" "}
             {pluralize(countBranchGroups(groupLabels, root.path), "group")}
           </span>
         </div>

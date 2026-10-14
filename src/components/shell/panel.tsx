@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router"
-import { type KeyboardEvent, Suspense, use, useDeferredValue } from "react"
+import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, useRef } from "react"
 
 import { cn } from "@/lib/utils"
 
 import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } from "./nav"
+import { observeSectionScroll } from "./section-scroll"
 import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
@@ -130,12 +131,20 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
 export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
+  const ref = useRef<HTMLElement>(null)
+  const currentPath = sectionFor(match)?.path
+  useLayoutEffect(() => {
+    const nav = ref.current
+    if (!nav) return
+    return observeSectionScroll(nav)
+  }, [currentPath])
   return (
     <nav
+      ref={ref}
       aria-label={`${service.title} sections`}
       onKeyDown={onSectionListKeyDown}
       className={cn(
-        "flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
+        "relative flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
         className
       )}
     >
