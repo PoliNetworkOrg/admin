@@ -11,6 +11,11 @@ export const getAzureMembers = createServerFn({ method: "GET" })
   .middleware([azureMembersReadMiddleware])
   .handler(({ context }) => context.backend.azure.members.getAll.query())
 
+const setMemberNumberResultSchema = z.object({
+  error: z.string().nullable(),
+  notificationSent: z.boolean().nullable().optional(),
+})
+
 export const createAzureMember = createServerFn({ method: "POST" })
   .middleware([azureMembersCreateMiddleware])
   .validator(
@@ -42,7 +47,7 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data, context }) => {
-    const result = await context.backend.azure.members.setAssocNumber.mutate(data)
+    const result = setMemberNumberResultSchema.parse(await context.backend.azure.members.setAssocNumber.mutate(data))
     if (result.error !== null) throw new Error(result.error)
     return result
   })

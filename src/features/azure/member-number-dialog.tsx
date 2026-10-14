@@ -82,7 +82,7 @@ export function MemberNumberDialog({
           notifyEmail: notify ? recipient : undefined,
         },
       })
-      notified = result.notificationSent
+      notified = result.notificationSent ?? null
     } catch (caught) {
       console.error(caught)
       revert()
