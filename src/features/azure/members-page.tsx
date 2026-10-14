@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router"
 import { Check, Hash, Plus, UsersRound } from "lucide-react"
-import { useCallback, useDeferredValue, useMemo, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
   buttonMotion,
@@ -23,6 +23,7 @@ import type { AzureMember } from "@/lib/api/types"
 import { formatLicense, pluralize } from "@/lib/format"
 
 import { MemberDialog } from "./member-dialog"
+import { reconcileMemberNumbers } from "./member-number"
 import { MemberNumberDialog } from "./member-number-dialog"
 
 const DEFAULT_SORT: TableSort = { column: "employeeId", direction: "asc" }
@@ -148,6 +149,9 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const [numberOpen, setNumberOpen] = useState(false)
   /** Member IDs saved in this session, shown until the reloaded directory has them. */
   const [optimisticIds, setOptimisticIds] = useState<ReadonlyMap<string, string>>(new Map())
+  useEffect(() => {
+    setOptimisticIds((current) => reconcileMemberNumbers(current, members))
+  }, [members])
   const shown = useMemo(
     () =>
       (members ?? []).map((member) => {
@@ -163,36 +167,35 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const allLicenses = shown.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
   const filteredView = deferredQuery !== "" || membersOnly
 
-  async function onSaved() {
+  async function onSaved(welcomeMailSent: boolean) {
     try {
       await router.invalidate({ sync: true })
     } catch (caught) {
       console.error(caught)
       appToast.warning("The member was created, but the latest directory data could not be refreshed.")
     }
-    appToast.success("Member created.")
+    if (welcomeMailSent) appToast.success("Member created and welcome email sent.")
+    else appToast.warning("Member created, but the welcome email couldn't be sent.")
   }
-
-  const dropOptimistic = useCallback((memberId: string) => {
-    setOptimisticIds((current) => {
-      const next = new Map(current)
-      next.delete(memberId)
-      return next
-    })
-  }, [])
 
   const applyOptimistic = useCallback(
     (memberId: string, employeeId: string) => {
+      const previous = optimisticIds.get(memberId)
       setOptimisticIds((current) => new Map(current).set(memberId, employeeId))
-      return () => dropOptimistic(memberId)
+      return () =>
+        setOptimisticIds((current) => {
+          const next = new Map(current)
+          if (previous === undefined) next.delete(memberId)
+          else next.set(memberId, previous)
+          return next
+        })
     },
-    [dropOptimistic]
+    [optimisticIds]
   )
 
-  async function onNumberSaved(member: AzureMember, notified: boolean | null) {
+  async function onNumberSaved(notified: boolean | null) {
     try {
       await router.invalidate({ sync: true })
-      dropOptimistic(member.id)
     } catch (caught) {
       // The saved member ID stays on screen; only the rest of the directory is stale.
       console.error(caught)

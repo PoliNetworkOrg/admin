@@ -15,11 +15,12 @@ import { createAzureMember } from "@/features/azure/azure.functions"
 import { cn } from "@/lib/utils"
 
 import { isLocalPart, isPoliNetworkAddress, MAIL_DOMAIN, type MailboxKind, standardLocalPart } from "./mailbox"
+import { isMemberNumber } from "./member-number"
 
 type MemberDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSaved: () => Promise<void>
+  onSaved: (welcomeMailSent: boolean) => Promise<void>
 }
 
 const MEMBER_ID_ERROR = "Enter a valid positive member ID."
@@ -33,10 +34,6 @@ const MAILBOX_KINDS = [
   { value: "standard", label: "Standard" },
   { value: "custom", label: "Custom" },
 ] as const
-
-function isMemberId(value: string) {
-  return /^[1-9]\d*$/.test(value)
-}
 
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
@@ -74,7 +71,7 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
       : submitted && localPart === null
         ? LOCAL_PART_ERROR
         : undefined
-  const memberIdError = submitted && !isMemberId(memberId) ? MEMBER_ID_ERROR : undefined
+  const memberIdError = submitted && !isMemberNumber(memberId) ? MEMBER_ID_ERROR : undefined
   const emailError = submitted
     ? !isEmail(recipient)
       ? EMAIL_ERROR
@@ -91,8 +88,9 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
 
   async function create() {
     if (localPart === null) return
+    let welcomeMailSent: boolean
     try {
-      await createMember({
+      const result = await createMember({
         data: {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
@@ -101,17 +99,18 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
           mailbox: mailbox === "custom" ? { kind: "custom", localPart } : { kind: "standard" },
         },
       })
+      welcomeMailSent = result.welcomeMailSent
     } catch (caught) {
       console.error(caught)
       throw new Error(caught instanceof Error ? saveError(caught) : SAVE_ERROR, { cause: caught })
     }
-    await onSaved()
+    await onSaved(welcomeMailSent)
     onOpenChange(false)
   }
 
   async function submit() {
     setSubmitted(true)
-    if (localPart === null || !isMemberId(memberId) || !isEmail(recipient) || sameAddress) return
+    if (localPart === null || !isMemberNumber(memberId) || !isEmail(recipient) || sameAddress) return
     // The welcome email carries the new account's credentials, so it normally goes to a personal address.
     if (isPoliNetworkAddress(recipient)) {
       setConfirmingRecipient(true)
@@ -125,7 +124,7 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
       open={open}
       onOpenChange={onOpenChange}
       title="Create a member"
-      description="Creates the Microsoft 365 account, adds it to the members group and emails the sign-in details."
+      description="Adds a new Microsoft 365 account to Soci."
       noun="member"
       dirty={dirty}
       canSubmit={canSubmit}
@@ -203,7 +202,7 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
       <FormField
         label="Send the welcome email to"
         htmlFor="m365-member-email"
-        hint="The member's personal email. It receives the sign-in details of the new account."
+        hint="Use the member's personal email."
         error={emailError}
       >
         <Input
@@ -227,19 +226,18 @@ export function MemberDialog({ open, onOpenChange, onSaved }: MemberDialogProps)
           autoComplete="off"
           aria-invalid={memberIdError ? true : undefined}
           aria-describedby={memberIdError ? fieldHintId("m365-member-id") : undefined}
-          onChange={(event) => setMemberId(event.target.value.replace(/\D/g, ""))}
+          onChange={(event) => setMemberId(event.target.value)}
           className={cn("h-9 tabular-nums", fieldControl)}
         />
       </FormField>
       <ConfirmDialog
         open={confirmingRecipient}
         onOpenChange={setConfirmingRecipient}
-        title="Send the welcome email to a PoliNetwork address?"
+        title="Send credentials to a PoliNetwork address?"
         description={
           <>
-            <span className="font-mono break-all">{recipient}</span> is a PoliNetwork mailbox, not a personal email. The
-            welcome email carries the sign-in details for <span className="font-mono break-all">{address}</span>, so it
-            normally goes to the member's personal email.
+            <span className="font-mono break-all">{recipient}</span> will receive the sign-in details for{" "}
+            <span className="font-mono break-all">{address}</span>.
           </>
         }
         confirmLabel="Send to this address"

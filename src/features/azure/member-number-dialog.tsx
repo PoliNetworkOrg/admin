@@ -16,6 +16,8 @@ import { setAzureMemberNumber } from "@/features/azure/azure.functions"
 import type { AzureMember } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
+import { isMemberNumber } from "./member-number"
+
 type MemberNumberDialogProps = {
   member: AzureMember
   open: boolean
@@ -23,16 +25,12 @@ type MemberNumberDialogProps = {
   /** Shows the new member ID in the table right away; returns the function that reverts it. */
   onOptimisticUpdate: (memberId: string, employeeId: string) => () => void
   /** Runs after the number is saved, before the dialog closes; `notified` is null when no email was asked for. */
-  onSaved: (member: AzureMember, notified: boolean | null) => Promise<void>
+  onSaved: (notified: boolean | null) => Promise<void>
 }
 
 const MEMBER_ID_ERROR = "Enter a valid positive member ID."
 const EMAIL_ERROR = "Enter a valid email address."
 const SAVE_ERROR = "The member ID could not be changed. Check the value and your permissions."
-
-function isMemberId(value: string) {
-  return /^[1-9]\d*$/.test(value)
-}
 
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
@@ -60,7 +58,7 @@ export function MemberNumberDialog({
   const [confirming, setConfirming] = useState(false)
 
   const recipient = email.trim()
-  const memberIdError = submitted && !isMemberId(memberId) ? MEMBER_ID_ERROR : undefined
+  const memberIdError = submitted && !isMemberNumber(memberId) ? MEMBER_ID_ERROR : undefined
   const emailError = submitted && notify && !isEmail(recipient) ? EMAIL_ERROR : undefined
   const changed = memberId !== initialMemberId
   const dirty = changed || !notify || email !== (member.mail ?? "")
@@ -69,7 +67,7 @@ export function MemberNumberDialog({
 
   function submit() {
     setSubmitted(true)
-    if (!isMemberId(memberId) || (notify && !isEmail(recipient))) return
+    if (!isMemberNumber(memberId) || (notify && !isEmail(recipient))) return
     setConfirming(true)
   }
 
@@ -90,7 +88,7 @@ export function MemberNumberDialog({
       revert()
       throw new Error(caught instanceof Error ? saveError(caught) : SAVE_ERROR, { cause: caught })
     }
-    await onSaved(member, notified)
+    await onSaved(notified)
     onOpenChange(false)
   }
 
@@ -129,24 +127,19 @@ export function MemberNumberDialog({
           autoComplete="off"
           aria-invalid={memberIdError ? true : undefined}
           aria-describedby={fieldHintId("m365-member-number")}
-          onChange={(event) => setMemberId(event.target.value.replace(/\D/g, ""))}
+          onChange={(event) => setMemberId(event.target.value)}
           className={cn("h-9 tabular-nums", fieldControl)}
         />
       </FormField>
       <label className="flex cursor-pointer items-start gap-3">
         <Checkbox checked={notify} onCheckedChange={setNotify} className={checkboxControl} />
-        <span className="flex flex-col gap-0.5">
-          <span className="text-[13px] leading-5 font-medium text-(--pn-fg)">Email the member the new ID</span>
-          <span className="text-xs text-(--pn-fg-muted)">
-            Sends an email in the style of the welcome email with the new member ID.
-          </span>
-        </span>
+        <span className="text-[13px] leading-5 font-medium text-(--pn-fg)">Email the member the new ID</span>
       </label>
       {notify && (
         <FormField
           label="Send the email to"
           htmlFor="m365-member-number-email"
-          hint="Their Microsoft 365 address by default; use a personal email if they don't read it."
+          hint="Microsoft 365 or personal email."
           error={emailError}
         >
           <Input

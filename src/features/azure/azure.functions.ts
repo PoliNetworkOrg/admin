@@ -27,7 +27,7 @@ export const createAzureMember = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const result = await context.backend.azure.members.create.mutate(data)
-    if (result.error) throw new Error(result.error)
+    if (result.error !== null) throw new Error(result.error)
     return result
   })
 
@@ -43,6 +43,6 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const result = await context.backend.azure.members.setAssocNumber.mutate(data)
-    if (result.error) throw new Error(result.error)
+    if (result.error !== null) throw new Error(result.error)
     return result
   })
