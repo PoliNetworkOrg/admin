@@ -101,7 +101,7 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 8. Capo Admin
 
-- [ ] My groups, Requests to join (approve/decline), Admins of my groups with Telegram/WhatsApp links
+- [x] My groups, Requests to join (approve/decline), Admins of my groups with Telegram/WhatsApp links
 
 ### 9. My area
 
@@ -154,3 +154,7 @@ Newest last. One line per commit or session: date, what was done, what is next.
   Needs review count streams from the `/dashboard` loader as `needsReview` and shows next to People › Linking, like
   Reports › Open (`QueueCount` in `panel.tsx`). "Link to an existing record" for ask-to-be-added points HR to the
   record's Link account instead: the contract links from the record side. Next: phase 8 (Capo Admin).
+- 2026-10-14: phase 8 done: Telegram › Capo Admin (My groups with a No admins badge, Requests to join with Decline /
+  Approve, Admins of my groups with phone, Telegram and Open in Telegram / WhatsApp links; no personal email).
+  `people-capo.functions.ts` uses `peopleSelfMiddleware`; the backend scopes it to the Capo Admin role. Verified as
+  P-0098 with `AGENT_PERMISSIONS=people:self`. Next: phase 9 (My area).
