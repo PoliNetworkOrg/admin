@@ -84,9 +84,9 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 5. Teams
 
-- [ ] Index cards + all-members table
-- [ ] Team page (Active/Former, team fields, contacts for Lead); Team Lead lands here from People › Teams
-- [ ] Add to team, Edit team fields, End membership
+- [x] Index cards + all-members table
+- [x] Team page (Active/Former, team fields, contacts for Lead); Team Lead lands here from People › Teams
+- [x] Add to team, Edit team fields, End membership
 
 ### 6. Census
 
@@ -138,3 +138,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   of reference (`people.admins.setCapoOfReference`, added to the contract and fake), appoint / change / end Capo
   Admin (`people-appoint.functions.ts`, `people:appoint`). Same actions on the record's Admin card. Next: phase 5
   (Teams).
+- 2026-10-14: phase 5 done: Teams index (NavCards with lead and missing census answers, all-members table), team page
+  (RecordHeader, Active/Former, team-field columns and filter, contacts for readers and the Lead), Add to team (Lead
+  role only with `people:appoint`), Edit team fields, End membership; the record's Teams card and header "Add role".
+  New `people.teams.candidates` query (names only, for Leads without `people:read`) and `peopleTeamReadMiddleware`.
+  Verified as IT Lead (`AGENT_PERMISSIONS=people:self AGENT_PERSON=P-0034`). Next: phase 6 (Census).

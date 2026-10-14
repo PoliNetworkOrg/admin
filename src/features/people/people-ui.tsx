@@ -329,3 +329,42 @@ export function RadioCard({
     </label>
   )
 }
+
+/** Multi-select options as pressable pills, for team fields such as Areas or Languages. */
+export function ChoiceChips({
+  id,
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  options: readonly string[]
+  value: readonly string[]
+  onChange: (value: string[]) => void
+}) {
+  return (
+    <div id={id} role="group" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((option) => {
+        const pressed = value.includes(option)
+        return (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={pressed}
+            onClick={() => onChange(pressed ? value.filter((item) => item !== option) : [...value, option])}
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-(--pn-r-full) border border-(--pn-line-strong) px-3 text-[13px] font-medium text-(--pn-fg) transition-[background-color,color,border-color] duration-120 hover:bg-(--pn-hover)",
+              pressed &&
+                "border-[color-mix(in_oklab,var(--pn-accent)_40%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:bg-(--pn-accent-soft-hover)"
+            )}
+          >
+            {pressed ? <Check aria-hidden strokeWidth={2} className="size-3.5" /> : null}
+            {option}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

@@ -445,6 +445,9 @@ export const addTeamMemberInputSchema = z.object({
   since: dateSchema,
   fields: teamFieldsSchema,
 })
+export const teamCandidatesInputSchema = z.object({ teamId: teamIdSchema })
+export const teamCandidateSchema = z.object({ id: z.string(), name: z.string(), course: z.string() })
+export type TeamCandidate = z.infer<typeof teamCandidateSchema>
 export const teamFieldsInputSchema = z.object({
   teamId: teamIdSchema,
   personId: personIdSchema,
@@ -515,6 +518,7 @@ export type CapoScopeInput = z.infer<typeof capoScopeInputSchema>
 export type CapoRefInput = z.infer<typeof capoRefInputSchema>
 export type AddTeamMemberInput = z.infer<typeof addTeamMemberInputSchema>
 export type TeamFieldsInput = z.infer<typeof teamFieldsInputSchema>
+export type TeamCandidatesInput = z.infer<typeof teamCandidatesInputSchema>
 export type EndTeamInput = z.infer<typeof endTeamInputSchema>
 export type RemindInput = z.infer<typeof remindInputSchema>
 export type AnswersInput = z.infer<typeof answersInputSchema>

@@ -11,9 +11,11 @@ import {
   Mail,
   NotebookPen,
   Pencil,
+  Plus,
   RefreshCw,
   Unlink,
   UserMinus,
+  UserPlus,
   UserRoundCog,
   Users,
 } from "lucide-react"
@@ -50,6 +52,7 @@ import { MemberNumberDialog, MemberStatusDialog } from "./member-dialogs"
 import { NotesDialog } from "./notes-dialog"
 import {
   ACCOUNT_STATUS,
+  activeTeams,
   CENSUS_ANSWER,
   CENSUS_SOURCE,
   CURRENT_YEAR,
@@ -67,8 +70,9 @@ import {
 import { useRefreshAfter } from "./people-hooks"
 import { MonoChip, PersonAvatar, StateBadge } from "./people-ui"
 import { updatePerson } from "./people-write.functions"
-import { type PersonRecord, teamFields } from "./people.contract"
+import { type PersonRecord, TEAM_IDS, type TeamMembership, teamFields } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
+import { AddToTeamDialog, EditTeamFieldsDialog, EndTeamMembershipDialog, type TeamMemberTarget } from "./team-dialogs"
 
 type AdminDialogKind = "end" | "capoRef" | "capoScope" | "endCapo"
 
@@ -153,6 +157,22 @@ export function PersonPage({ person }: { person: PersonRecord }) {
     setAdminDialog(kind)
     setAdminKey((value) => value + 1)
     setAdminOpen(true)
+  }
+
+  const [teamDialog, setTeamDialog] = useState<{ kind: "fields" | "end"; target: TeamMemberTarget } | null>(null)
+  const [teamOpen, setTeamOpen] = useState(false)
+  const [teamKey, setTeamKey] = useState(0)
+  const [addTeamOpen, setAddTeamOpen] = useState(false)
+
+  function openTeam(kind: "fields" | "end", membership: TeamMembership) {
+    setTeamDialog({ kind, target: { personId: person.id, name, team: membership.team, fields: membership.fields } })
+    setTeamKey((value) => value + 1)
+    setTeamOpen(true)
+  }
+
+  function openAddToTeam() {
+    setTeamKey((value) => value + 1)
+    setAddTeamOpen(true)
   }
 
   function openMember(kind: "status" | "number") {
@@ -241,6 +261,34 @@ export function PersonPage({ person }: { person: PersonRecord }) {
               </span>
             }
             chips={roles.length ? roles.map((role) => <Chip key={role}>{role}</Chip>) : undefined}
+            actions={
+              canWrite || (canWriteMembers && !member) ? (
+                <Menu>
+                  <MenuTrigger
+                    render={
+                      <Button variant="outline" size="sm" className={buttonMotion}>
+                        <Plus data-icon="inline-start" />
+                        Add role
+                      </Button>
+                    }
+                  />
+                  <MenuContent>
+                    {canWriteMembers && !member ? (
+                      <MenuItem render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}>
+                        <IdCard />
+                        Member
+                      </MenuItem>
+                    ) : null}
+                    {canWrite ? (
+                      <MenuItem onClick={openAddToTeam}>
+                        <Users />
+                        Team member
+                      </MenuItem>
+                    ) : null}
+                  </MenuContent>
+                </Menu>
+              ) : undefined
+            }
           />
 
           {archived || person.discrepancies.length ? (
@@ -439,8 +487,20 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 </SectionCard>
               ) : null}
 
-              {person.teams.length ? (
-                <SectionCard title="Teams" padding="flush">
+              {person.teams.length || canWrite ? (
+                <SectionCard
+                  title="Teams"
+                  padding="flush"
+                  action={
+                    canWrite ? (
+                      <Button variant="ghost" size="sm" className={buttonMotion} onClick={openAddToTeam}>
+                        <UserPlus data-icon="inline-start" />
+                        Add to team
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  {person.teams.length === 0 ? <SectionEmpty title="Not in any team" /> : null}
                   <Rows>
                     {person.teams.map((membership) => (
                       <Row
@@ -480,6 +540,32 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                               )
                             })}
                           </span>
+                        }
+                        end={
+                          canWrite && !membership.endedOn ? (
+                            <Menu>
+                              <MenuTrigger
+                                render={
+                                  <IconButton
+                                    label="Team actions"
+                                    ariaLabel={`${teamName(membership.team)} actions`}
+                                    icon={EllipsisVertical}
+                                  />
+                                }
+                              />
+                              <MenuContent>
+                                <MenuItem onClick={() => openTeam("fields", membership)}>
+                                  <Pencil />
+                                  Edit team fields
+                                </MenuItem>
+                                <MenuSeparator />
+                                <MenuItem variant="destructive" onClick={() => openTeam("end", membership)}>
+                                  <UserMinus />
+                                  End membership
+                                </MenuItem>
+                              </MenuContent>
+                            </Menu>
+                          ) : undefined
                         }
                       />
                     ))}
@@ -810,6 +896,33 @@ export function PersonPage({ person }: { person: PersonRecord }) {
             person={{ id: person.id, name, firstName: profile.firstName }}
           />
         </>
+      ) : null}
+      {canWrite ? (
+        <AddToTeamDialog
+          key={`add-team-${teamKey}`}
+          open={addTeamOpen}
+          onOpenChange={setAddTeamOpen}
+          teams={TEAM_IDS.filter((team) => !activeTeams(person).some((membership) => membership.team === team))}
+          person={{ id: person.id, name }}
+          canAppoint={canAppoint}
+        />
+      ) : null}
+      {teamDialog ? (
+        teamDialog.kind === "fields" ? (
+          <EditTeamFieldsDialog
+            key={`fields-${teamKey}`}
+            open={teamOpen}
+            onOpenChange={setTeamOpen}
+            target={teamDialog.target}
+          />
+        ) : (
+          <EndTeamMembershipDialog
+            key={`end-team-${teamKey}`}
+            open={teamOpen}
+            onOpenChange={setTeamOpen}
+            target={teamDialog.target}
+          />
+        )
       ) : null}
       {admin && adminDialog ? (
         adminDialog === "end" ? (

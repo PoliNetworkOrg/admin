@@ -507,6 +507,14 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       }
       return teams
     },
+    listTeamCandidates: async (input) => {
+      const canRead = viewer.permissions.includes("people:read")
+      if (!canRead && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
+      return data()
+        .people.filter((person) => !person.teams.some((team) => team.team === input.teamId && !team.endedOn))
+        .map((person) => ({ id: person.id, name: fullName(person), course: person.profile.course }))
+        .toSorted((a, b) => a.name.localeCompare(b.name))
+    },
     addTeamMember: async (input) => {
       const canWrite = viewer.permissions.includes("people:write")
       if (!canWrite && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")

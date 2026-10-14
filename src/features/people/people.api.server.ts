@@ -49,6 +49,9 @@ import {
   reviewSchema,
   type SearchAccountsInput,
   type SetNoteInput,
+  type TeamCandidate,
+  teamCandidateSchema,
+  type TeamCandidatesInput,
   type TeamFieldsInput,
   type TeamSummary,
   teamSummarySchema,
@@ -73,6 +76,7 @@ export type PeopleApi = {
   setCapoScope: (input: CapoScopeInput) => Promise<void>
   setCapoOfReference: (input: CapoRefInput) => Promise<void>
   listTeams: () => Promise<TeamSummary[]>
+  listTeamCandidates: (input: TeamCandidatesInput) => Promise<TeamCandidate[]>
   addTeamMember: (input: AddTeamMemberInput) => Promise<void>
   updateTeamFields: (input: TeamFieldsInput) => Promise<void>
   endTeamMembership: (input: EndTeamInput) => Promise<void>
@@ -133,6 +137,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     setCapoScope: (input) => mutate("admins.setCapoScope", input),
     setCapoOfReference: (input) => mutate("admins.setCapoOfReference", input),
     listTeams: () => query("teams.list", undefined, teamSummarySchema.array()),
+    listTeamCandidates: (input) => query("teams.candidates", input, teamCandidateSchema.array()),
     addTeamMember: (input) => mutate("teams.addMember", input),
     updateTeamFields: (input) => mutate("teams.updateFields", input),
     endTeamMembership: (input) => mutate("teams.endMembership", input),

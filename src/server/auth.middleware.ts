@@ -98,6 +98,14 @@ export const peopleTeamWriteMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
+/** People › Teams reads: `people:read`, or a Team Lead (`people:self`) whose own team the backend returns. */
+export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next, context }) => {
+    if (!hasPermission(context.permissions, "people:read")) requirePermission(context.permissions, "people:self")
+    return next()
+  })
+
 /** People › Member register: read. */
 export const peopleMembersReadMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
