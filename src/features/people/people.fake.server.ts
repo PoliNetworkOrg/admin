@@ -949,6 +949,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     rejectMatch: async () => {
       require(viewer, "people:self")
       self.matchRejected = true
+      self.askedOn = today()
     },
     askToBeAdded: async () => {
       require(viewer, "people:self")

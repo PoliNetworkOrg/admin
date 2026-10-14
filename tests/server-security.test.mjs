@@ -180,6 +180,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-teams.functions.ts",
     "src/features/people/people-census.functions.ts",
     "src/features/people/people-capo.functions.ts",
+    "src/features/people/people-self.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -222,7 +223,10 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["peopleMembersWriteMiddleware", ["src/features/people/people-members.functions.ts"]],
     ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
     ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
-    ["peopleSelfMiddleware", ["src/features/people/people-capo.functions.ts"]],
+    [
+      "peopleSelfMiddleware",
+      ["src/features/people/people-capo.functions.ts", "src/features/people/people-self.functions.ts"],
+    ],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   for (const { expectedMiddleware, files } of entries) {
@@ -315,6 +319,8 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/census-page.tsx": ["sendCensusReminders", "closeCampaign"],
     "src/features/people/linking-page.tsx": ["resolveLinkingReview", "dismissLinkingReview"],
     "src/features/people/capo-page.tsx": ["approveJoinRequest", "declineJoinRequest"],
+    "src/features/people/my-area-page.tsx": ["answerMyCensus", "confirmMyMatch", "rejectMyMatch", "revokePhotoConsent"],
+    "src/features/people/my-area-dialogs.tsx": ["answerMyCensus", "requestCorrection", "askToBeAdded"],
     "src/features/people/import-wizard.tsx": ["previewCensusImport", "commitCensusImport"],
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
     "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],

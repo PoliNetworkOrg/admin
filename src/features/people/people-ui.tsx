@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react"
+import { Check, ChevronDown, type LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
 import {
@@ -378,4 +378,47 @@ export function TruncatedChip({ label }: { label: string }) {
       </Chip>
     </Hint>
   )
+}
+
+/** A divided list inside a flush card: one row per group, team, year or consent. */
+export function Rows({ children }: { children: ReactNode }) {
+  return <ul className="divide-y divide-(--pn-line)">{children}</ul>
+}
+
+export function Row({
+  lead,
+  title,
+  meta,
+  detail,
+  end,
+}: {
+  lead: ReactNode
+  title: ReactNode
+  meta?: ReactNode
+  detail?: ReactNode
+  end?: ReactNode
+}) {
+  return (
+    <li className="flex items-start gap-3 px-4 py-3">
+      <span className="mt-0.5 shrink-0">{lead}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex flex-wrap items-center gap-2 text-[14px] font-medium">{title}</span>
+        {meta ? <span className="text-xs text-(--pn-fg-muted)">{meta}</span> : null}
+        {detail ? <span className="text-[13px] text-(--pn-fg)">{detail}</span> : null}
+      </span>
+      {end ? <span className="flex shrink-0 items-center gap-2">{end}</span> : null}
+    </li>
+  )
+}
+
+export function RowIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <span className="grid size-8 place-items-center rounded-(--pn-r-3) bg-(--pn-muted) text-(--pn-fg-muted)">
+      <Icon aria-hidden strokeWidth={1.75} className="size-4" />
+    </span>
+  )
+}
+
+export function SubHeading({ children }: { children: ReactNode }) {
+  return <li className="px-4 pt-3 pb-1 text-xs font-medium text-(--pn-fg-muted)">{children}</li>
 }

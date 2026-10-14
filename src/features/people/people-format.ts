@@ -42,6 +42,20 @@ export function yearOf(value: string): (typeof YEARS)[number] {
   return YEARS.find((year) => year === value) ?? "1st year"
 }
 
+const NEXT_YEAR = {
+  "1st year": "2nd year",
+  "2nd year": "3rd year",
+  "3rd year": "1st year MSc",
+  "1st year MSc": "2nd year MSc",
+  "2nd year MSc": "Graduated",
+  Graduated: "Graduated",
+} satisfies Record<(typeof YEARS)[number], (typeof YEARS)[number]>
+
+/** Last year's answer advanced by one, to pre-fill this year's census. */
+export function nextYear(value: string) {
+  return NEXT_YEAR[yearOf(value)]
+}
+
 export function teamName(team: TeamId) {
   return TEAMS[team].name
 }

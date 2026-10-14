@@ -105,10 +105,10 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 9. My area
 
-- [ ] Linked: census card (confirm / leaving dialog), roles, contacts, profile + Request a correction, consents +
+- [x] Linked: census card (confirm / leaving dialog), roles, contacts, profile + Request a correction, consents +
       revoke, team roster
-- [ ] First sign-in match ("Is this you?") and "This isn't me" state
-- [ ] No record: Ask to be added dialog and waiting state
+- [x] First sign-in match ("Is this you?") and "This isn't me" state
+- [x] No record: Ask to be added dialog and waiting state
 
 ### 10. Finish
 
@@ -158,3 +158,9 @@ Newest last. One line per commit or session: date, what was done, what is next.
   Approve, Admins of my groups with phone, Telegram and Open in Telegram / WhatsApp links; no personal email).
   `people-capo.functions.ts` uses `peopleSelfMiddleware`; the backend scopes it to the Capo Admin role. Verified as
   P-0098 with `AGENT_PERMISSIONS=people:self`. Next: phase 9 (My area).
+- 2026-10-14: phase 9 done: Account › My area in its three states. Linked: census card pre-filled with the year
+  advanced (a changed answer starts from the year already given), I'm leaving dialog, My roles, People to contact,
+  My profile with Request a correction, My consents with Revoke, team roster. First sign-in: "Is this you?" with
+  This isn't me (the fake now records it as a request, so the page shows Request sent). No record: Ask to be added and
+  Request sent. Sign-in & security drops its "Account" title for its section title. Row components moved to
+  `people-ui.tsx`. Next: phase 10 (finish).
