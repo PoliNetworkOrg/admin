@@ -4,6 +4,12 @@ import type { ReactNode } from "react"
 import {
   buttonMotion,
   Chip,
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
   initialsOf,
   Menu,
   MenuContent,
@@ -11,6 +17,7 @@ import {
   MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
+  fieldHintId,
   floatingMotion,
   raisedSurface,
   StatusBadge,
@@ -227,5 +234,98 @@ export function SelectField<T extends string>({
         ))}
       </SelectContent>
     </Select>
+  )
+}
+
+export type PersonOption = { id: string; name: string }
+
+/** Searchable person field for dialogs that pick one record (Add member, Add to team). */
+export function PersonPicker({
+  id,
+  people,
+  value,
+  onChange,
+  invalid = false,
+  disabled = false,
+}: {
+  id: string
+  people: readonly PersonOption[]
+  value: PersonOption | null
+  onChange: (person: PersonOption | null) => void
+  invalid?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <Combobox
+      items={people}
+      value={value}
+      onValueChange={(next) => onChange(next)}
+      itemToStringLabel={(item: PersonOption) => item.name}
+      itemToStringValue={(item: PersonOption) => item.id}
+      isItemEqualToValue={(item: PersonOption, current: PersonOption) => item.id === current.id}
+      disabled={disabled}
+    >
+      <ComboboxInput
+        id={id}
+        listLabel="people"
+        placeholder="Search people…"
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={fieldHintId(id)}
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>No people match</ComboboxEmpty>
+        <ComboboxList>
+          {(item: PersonOption) => (
+            <ComboboxItem key={item.id} value={item}>
+              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+              <span className="shrink-0 font-mono text-xs text-(--pn-fg-muted)">{item.id}</span>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+/** One choice in a radio group of cards: a bold label and a muted line explaining it. */
+export function RadioCard({
+  name,
+  value,
+  checked,
+  onSelect,
+  label,
+  description,
+  end,
+}: {
+  name: string
+  value: string
+  checked: boolean
+  onSelect: () => void
+  label: ReactNode
+  description?: ReactNode
+  end?: ReactNode
+}) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-(--pn-r-4) border border-(--pn-line-strong) p-3 transition-[background-color,border-color] duration-120 hover:border-(--pn-hover-line) hover:bg-(--pn-hover)",
+        checked && "border-(--pn-accent) bg-(--pn-accent-soft) hover:bg-(--pn-accent-soft)"
+      )}
+    >
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={onSelect}
+        className="mt-0.5 size-4 shrink-0 accent-(--pn-accent-solid)"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[14px] font-medium">{label}</span>
+        {description ? <span className="text-xs text-(--pn-fg-muted)">{description}</span> : null}
+      </span>
+      {end}
+    </label>
   )
 }

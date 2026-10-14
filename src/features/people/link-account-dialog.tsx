@@ -81,8 +81,8 @@ export function LinkAccountDialog({
         cause: caught,
       })
     }
-    onOpenChange(false)
     await refresh("Account linked.")
+    onOpenChange(false)
   }
 
   return (
@@ -133,7 +133,7 @@ export function LinkAccountDialog({
               <PersonAvatar name={account.name} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="font-medium">{account.name}</span>
-                <span className="font-mono text-xs break-all text-(--pn-fg-muted)">{account.email}</span>
+                <span className="font-mono text-xs [overflow-wrap:anywhere] text-(--pn-fg-muted)">{account.email}</span>
                 <span className="flex flex-wrap items-center gap-1.5 text-xs text-(--pn-fg-muted)">
                   {account.telegram ? (
                     <>

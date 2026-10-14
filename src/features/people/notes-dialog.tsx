@@ -33,8 +33,8 @@ export function NotesDialog({
       console.error(caught)
       throw new Error(caught instanceof Error ? errorMessage(caught, SAVE_ERROR) : SAVE_ERROR, { cause: caught })
     }
-    onOpenChange(false)
     await refresh("Note saved.")
+    onOpenChange(false)
   }
 
   return (

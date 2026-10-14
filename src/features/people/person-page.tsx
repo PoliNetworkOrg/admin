@@ -3,7 +3,9 @@ import { useServerFn } from "@tanstack/react-start"
 import {
   Camera,
   ClipboardList,
+  EllipsisVertical,
   FileText,
+  IdCard,
   Link2,
   Mail,
   NotebookPen,
@@ -17,9 +19,14 @@ import { type ReactNode, useState } from "react"
 import {
   buttonMotion,
   Chip,
+  IconButton,
   InlineAlert,
   KeyValueList,
   type KeyValueItem,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuTrigger,
   PlatformGlyph,
   RecordHeader,
   SectionCard,
@@ -34,6 +41,7 @@ import { formatDateTime } from "@/lib/format"
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
 import { CensusAnswersDialog } from "./census-answers-dialog"
 import { LinkAccountDialog } from "./link-account-dialog"
+import { MemberNumberDialog, MemberStatusDialog } from "./member-dialogs"
 import { NotesDialog } from "./notes-dialog"
 import {
   ACCOUNT_STATUS,
@@ -106,6 +114,7 @@ function SubHeading({ children }: { children: ReactNode }) {
 export function PersonPage({ person }: { person: PersonRecord }) {
   const canWrite = useCan("people:write")
   const canRead = useCan("people:read")
+  const canWriteMembers = useCan("people:members:write")
   const update = useServerFn(updatePerson)
   const refresh = useRefreshAfter()
   const name = personName(person)
@@ -123,6 +132,15 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkKey, setLinkKey] = useState(0)
+  const [memberDialog, setMemberDialog] = useState<"status" | "number" | null>(null)
+  const [memberOpen, setMemberOpen] = useState(false)
+  const [memberKey, setMemberKey] = useState(0)
+
+  function openMember(kind: "status" | "number") {
+    setMemberDialog(kind)
+    setMemberKey((value) => value + 1)
+    setMemberOpen(true)
+  }
 
   function openAccount(kind: AccountAction["kind"], email: string) {
     setAccountAction({ kind, personId: person.id, name, email })
@@ -154,7 +172,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
 
   const profileItems: KeyValueItem[] = [
     ...(profile.personalEmail !== null
-      ? [{ key: "Personal email", value: <span className="break-all">{profile.personalEmail}</span> }]
+      ? [{ key: "Personal email", value: <span className="[overflow-wrap:anywhere]">{profile.personalEmail}</span> }]
       : []),
     ...(profile.phone !== null ? [{ key: "Phone", value: profile.phone }] : []),
     {
@@ -228,11 +246,22 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       >
                         Use @{discrepancy.suggestedTelegram}
                       </Button>
+                    ) : discrepancy.kind === "declared-member" && canWriteMembers ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={buttonMotion}
+                        nativeButton={false}
+                        render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}
+                      >
+                        Add member
+                      </Button>
                     ) : discrepancy.kind === "needs-review" && canWrite ? (
                       <Button
                         size="sm"
                         variant="ghost"
                         className={buttonMotion}
+                        nativeButton={false}
                         render={<Link to="/dashboard/people/linking" />}
                       >
                         Open Linking
@@ -513,7 +542,10 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 {account.status === "invite" ? (
                   <KeyValueList
                     items={[
-                      { key: "Invite sent to", value: <span className="break-all">{account.email}</span> },
+                      {
+                        key: "Invite sent to",
+                        value: <span className="[overflow-wrap:anywhere]">{account.email}</span>,
+                      },
                       { key: "Sent on", value: `${formatDay(account.sentOn)} by ${account.sentBy}` },
                       {
                         key: "Expires on",
@@ -529,7 +561,11 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 {account.status === "linked" ? (
                   <KeyValueList
                     items={[
-                      { key: "Sign-in", value: <span className="break-all">{account.email}</span>, mono: true },
+                      {
+                        key: "Sign-in",
+                        value: <span className="[overflow-wrap:anywhere]">{account.email}</span>,
+                        mono: true,
+                      },
                       { key: "Signed in with", value: account.via },
                       { key: "Linked on", value: formatDay(account.linkedOn) },
                       { key: "How", value: account.how },
@@ -545,6 +581,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                           size="sm"
                           variant="ghost"
                           className={buttonMotion}
+                          nativeButton={false}
                           render={<Link to="/dashboard/people/linking" />}
                         >
                           Resolve
@@ -558,7 +595,30 @@ export function PersonPage({ person }: { person: PersonRecord }) {
               </SectionCard>
 
               {member ? (
-                <SectionCard title="Member">
+                <SectionCard
+                  title="Member"
+                  action={
+                    canWriteMembers ? (
+                      <Menu>
+                        <MenuTrigger
+                          render={
+                            <IconButton label="Member actions" ariaLabel="Member actions" icon={EllipsisVertical} />
+                          }
+                        />
+                        <MenuContent>
+                          <MenuItem onClick={() => openMember("status")}>
+                            <Pencil />
+                            Change status
+                          </MenuItem>
+                          <MenuItem onClick={() => openMember("number")}>
+                            <IdCard />
+                            Change member number
+                          </MenuItem>
+                        </MenuContent>
+                      </Menu>
+                    ) : undefined
+                  }
+                >
                   <KeyValueList
                     items={[
                       { key: "Member number", value: <MonoChip>{member.number}</MonoChip> },
@@ -573,7 +633,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         value: (
                           <Link
                             to="/dashboard/azure/members"
-                            className="font-mono break-all text-(--pn-accent) hover:underline"
+                            className="font-mono [overflow-wrap:anywhere] text-(--pn-accent) hover:underline"
                           >
                             {member.m365Email}
                           </Link>
@@ -688,6 +748,23 @@ export function PersonPage({ person }: { person: PersonRecord }) {
             person={{ id: person.id, name, firstName: profile.firstName }}
           />
         </>
+      ) : null}
+      {canWriteMembers && member && memberDialog ? (
+        memberDialog === "status" ? (
+          <MemberStatusDialog
+            key={`status-${memberKey}`}
+            open={memberOpen}
+            onOpenChange={setMemberOpen}
+            member={{ personId: person.id, name, ...member }}
+          />
+        ) : (
+          <MemberNumberDialog
+            key={`number-${memberKey}`}
+            open={memberOpen}
+            onOpenChange={setMemberOpen}
+            member={{ personId: person.id, name, ...member }}
+          />
+        )
       ) : null}
       {canRead && answersYear ? (
         <CensusAnswersDialog

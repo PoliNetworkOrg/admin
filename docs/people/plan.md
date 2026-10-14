@@ -74,7 +74,7 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
 
 ### 3. Member register
 
-- [ ] Table, status segments, fee filter, sort by number/name/admitted
+- [x] Table, status segments, fee filter, sort by number/name/admitted
 - [ ] Add member, Change status, Change member number, Export (confirm then download)
 
 ### 4. Admins
@@ -128,3 +128,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
 - 2026-10-14: phase 2 done: Overview, person record, Add/Edit person, account confirmations, Link account, HR notes,
   census answers. Mobile Overview cards show one line of role chips + account badge instead of unlabelled column
   values. The record's Member/Teams/Admin card actions arrive with their phases (3–5). Next: phase 3 (Member register).
+- 2026-10-14: phase 3 done: Member register (status segments, fee filter, sort, search), Add member, Change status,
+  Change member number, Export; the record's Member card menu and the "declared member" alert's Add member, which
+  opens the register's dialog via `?add=P-…`. The register loads `people.persons.list`, so it assumes
+  `people:members:read` comes with `people:read` (true for every role in decisions.md). Dialogs now reload before
+  closing. Next: phase 4 (Admins).

@@ -90,18 +90,19 @@ export function PersonDialog({
     try {
       if (person) {
         await update({ data: { ...fields, id: person.id } })
+      } else {
+        const created = await create({ data: { ...fields, admin } })
+        await refresh("Person added.")
         onOpenChange(false)
-        await refresh("Profile saved.")
+        await navigate({ to: "/dashboard/people/$personId", params: { personId: created.id } })
         return
       }
-      const created = await create({ data: { ...fields, admin } })
-      onOpenChange(false)
-      await refresh("Person added.")
-      await navigate({ to: "/dashboard/people/$personId", params: { personId: created.id } })
     } catch (caught) {
       console.error(caught)
       throw new Error(caught instanceof Error ? errorMessage(caught, SAVE_ERROR) : SAVE_ERROR, { cause: caught })
     }
+    await refresh("Profile saved.")
+    onOpenChange(false)
   }
 
   const text = (key: "firstName" | "lastName" | "personalEmail" | "phone" | "telegramUsername", id: string) => ({
