@@ -118,8 +118,11 @@ const mobileCellRole = {
   main: "max-shell:basis-full max-shell:whitespace-normal",
   inline: "max-shell:min-w-0 max-shell:flex-1 max-shell:text-left max-shell:text-[14px] max-shell:font-medium",
   end: "max-shell:ml-auto max-shell:shrink-0",
-  text: "max-shell:basis-full max-shell:min-w-0 max-shell:text-[14px] max-shell:whitespace-normal max-shell:text-(--pn-fg)",
-  meta: "max-shell:min-w-0 max-shell:text-left max-shell:text-xs max-shell:text-(--pn-fg-muted)",
+  // An unset text line collapses to nothing but still ends the line above it, so the meta values never climb up beside
+  // the name and status (the row gap above is cancelled by the negative margin).
+  text: "max-shell:basis-full max-shell:min-w-0 max-shell:text-[14px] max-shell:whitespace-normal max-shell:text-(--pn-fg) max-shell:[&:has(>[data-unset])]:invisible max-shell:[&:has(>[data-unset])]:-mt-1.5 max-shell:[&:has(>[data-unset])]:max-h-0 max-shell:[&:has(>[data-unset])]:overflow-hidden",
+  // An unset value (`Unset`, "—") is dropped from the card instead of showing a lone dash.
+  meta: "max-shell:min-w-0 max-shell:text-left max-shell:text-xs max-shell:text-(--pn-fg-muted) max-shell:[&:has(>[data-unset])]:hidden",
   full: "max-shell:basis-full max-shell:min-w-0",
   hidden: "max-shell:hidden",
 }

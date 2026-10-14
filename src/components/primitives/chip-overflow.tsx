@@ -15,6 +15,8 @@ type ChipOverflowProps<T> = Omit<React.ComponentProps<"div">, "children"> & {
   renderItem: (item: T) => ReactNode
   /** The item's full name in the overflow popover and its accessible label. */
   itemLabel: (item: T) => string
+  /** The text the chip shows, when shorter than `itemLabel`; sizes the fit. */
+  chipText?: (item: T) => string
 }
 
 /** Estimated chip geometry (12px DM Sans): padding and dot, average glyph width, the chip's max width. */
@@ -46,7 +48,15 @@ function fittingCount(labels: string[], max: number, width: number) {
  * truncating a chip to a stub, a "+n" `CountBadge` lists the remaining items in a hoverable popover that also opens
  * by click or keyboard.
  */
-export function ChipOverflow<T>({ items, max = 2, renderItem, itemLabel, className, ...props }: ChipOverflowProps<T>) {
+export function ChipOverflow<T>({
+  items,
+  max = 2,
+  renderItem,
+  itemLabel,
+  chipText = itemLabel,
+  className,
+  ...props
+}: ChipOverflowProps<T>) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState<number | null>(null)
   useLayoutEffect(() => {
@@ -58,10 +68,9 @@ export function ChipOverflow<T>({ items, max = 2, renderItem, itemLabel, classNa
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const labels = items.map(itemLabel)
-  const count = width === null ? max : Math.min(max, fittingCount(labels, max, width))
+  const count = width === null ? max : Math.min(max, fittingCount(items.map(chipText), max, width))
   const shown = items.slice(0, count)
-  const rest = labels.slice(count)
+  const rest = items.slice(count).map(itemLabel)
   return (
     <div
       ref={ref}

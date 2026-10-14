@@ -144,7 +144,7 @@ export function AzureGroupsPage({
   return (
     <>
       <PageBar
-        description={`${pluralize(groups.length, "group")} · ${pluralize(totalMemberships, "membership")}`}
+        description={`${pluralize(groups.length, "group")}, ${pluralize(totalMemberships, "membership")}`}
         left={
           <Toolbar
             search={{ value: query, onChange: setQuery }}
