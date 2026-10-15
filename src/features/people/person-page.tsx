@@ -515,11 +515,15 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                                   <Pencil />
                                   Edit team fields
                                 </MenuItem>
-                                <MenuSeparator />
-                                <MenuItem variant="destructive" onClick={() => openTeam("end", membership)}>
-                                  <UserMinus />
-                                  End membership
-                                </MenuItem>
+                                {membership.role !== "lead" || canAppoint ? (
+                                  <>
+                                    <MenuSeparator />
+                                    <MenuItem variant="destructive" onClick={() => openTeam("end", membership)}>
+                                      <UserMinus />
+                                      End membership
+                                    </MenuItem>
+                                  </>
+                                ) : null}
                               </MenuContent>
                             </Menu>
                           ) : undefined

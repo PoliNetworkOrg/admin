@@ -60,6 +60,7 @@ function TeamFieldInputs({
                 id={id}
                 value={Array.isArray(current) ? "" : (current ?? "")}
                 onChange={(event) => onChange({ ...value, [field.key]: event.target.value })}
+                maxLength={200}
                 autoComplete="off"
                 aria-describedby={fieldHintId(id)}
                 className={cn(fieldControl, field.mono && "font-mono")}

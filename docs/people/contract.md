@@ -252,3 +252,25 @@ New IdP permissions (add to `src/server/permissions.ts`): `people:self`, `people
 `people:members:read`, `people:members:write`, `people:appoint`. Capo Admin and Team Lead are not permissions: they
 come from the signed-in person's record (`people.me.get`), and the backend scopes `people.capo.*` and team writes to
 them.
+
+## Backend rules
+
+The dashboard checks these too, but the backend owns them (from the security review of PR 97):
+
+- **`admin:access`**: every `people.*` procedure except `people.me.*`, `people.capo.*` and the team procedures needs it on
+  top of the permission in the table. `people:self` alone reaches only My area, Capo Admin and the caller's own team.
+- **Unconfirmed match**: while the signed-in account is only a `match` candidate (not confirmed, or rejected), it acts as
+  a person with no record: no team, no Capo Admin scope, no census answer or correction on the candidate's record. Only
+  `people.me.get`, `confirmMatch` and `rejectMatch` see the candidate.
+- **`people.capo.approve` / `.decline`**: only requests for groups in the caller's own Capo Admin scope; anything else
+  answers as already handled, so request IDs of other scopes leak nothing.
+- **`people.teams.endMembership`**: ending a lead's membership needs `people:appoint`, like appointing one.
+- **`people.members.export`**: every CSV cell is quoted, and a cell starting with `=`, `+`, `-`, `@`, tab or carriage
+  return gets a leading `'`, so spreadsheets don't run it as a formula.
+- **`people.census.importPreview`**: check the content, not the extension: a real .xlsx (ZIP) or UTF-8 CSV, at most
+  10 MB uploaded, a cap on the decompressed size (e.g. 50 MB) and on the rows (e.g. 5,000), and reject anything else
+  before parsing.
+- **Input limits**: the input schemas in `people.contract.ts` bound every string, array and record (team fields: at most
+  10 keys of 40 characters, values of 200, lists of 20; import decisions: at most 5,000). Telegram usernames are empty or
+  5–32 letters, digits and underscores, with an optional leading `@`. `requestCorrection.field` is one of
+  `CORRECTION_FIELDS`.

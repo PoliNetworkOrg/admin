@@ -95,13 +95,17 @@ function RoleChip({ role }: { role: Role }) {
 function MemberActions({
   row,
   canOpenRecord,
+  canAppoint,
   onOpen,
 }: {
   row: TeamRow
   canOpenRecord: boolean
+  /** Ending a Team Lead's membership is an appointment change: `people:appoint` only. */
+  canAppoint: boolean
   onOpen: (dialog: TeamDialog) => void
 }) {
   const name = personName(row.person)
+  const canEnd = row.membership.role !== "lead" || canAppoint
   return (
     <RowActions>
       <IconButton
@@ -116,18 +120,18 @@ function MemberActions({
         />
         <MenuContent>
           {canOpenRecord ? (
-            <>
-              <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: row.person.id }} />}>
-                <UserRound />
-                Open record
-              </MenuItem>
-              <MenuSeparator />
-            </>
+            <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: row.person.id }} />}>
+              <UserRound />
+              Open record
+            </MenuItem>
           ) : null}
-          <MenuItem variant="destructive" onClick={() => onOpen({ kind: "end", target: targetOf(row) })}>
-            <UserMinus />
-            End membership
-          </MenuItem>
+          {canOpenRecord && canEnd ? <MenuSeparator /> : null}
+          {canEnd ? (
+            <MenuItem variant="destructive" onClick={() => onOpen({ kind: "end", target: targetOf(row) })}>
+              <UserMinus />
+              End membership
+            </MenuItem>
+          ) : null}
         </MenuContent>
       </Menu>
     </RowActions>
@@ -358,7 +362,9 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
                 setPage(1)
               }}
               actions={
-                canWrite ? (row) => <MemberActions row={row} canOpenRecord onOpen={rowDialog.show} /> : undefined
+                canWrite
+                  ? (row) => <MemberActions row={row} canOpenRecord canAppoint={canAppoint} onOpen={rowDialog.show} />
+                  : undefined
               }
               actionsWidth={96}
               pagination={{
@@ -627,7 +633,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
       onSort={setSort}
       actions={
         canEdit && scope === "active"
-          ? (row) => <MemberActions row={row} canOpenRecord={canRead} onOpen={rowDialog.show} />
+          ? (row) => <MemberActions row={row} canOpenRecord={canRead} canAppoint={canAppoint} onOpen={rowDialog.show} />
           : undefined
       }
       actionsWidth={96}

@@ -9,7 +9,12 @@ import { cn } from "@/lib/utils"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { answerMyCensus, askToBeAdded, requestCorrection } from "./people-self.functions"
 import { ChoiceChips, SelectField } from "./people-ui"
-import type { AnswerCensusInput } from "./people.contract"
+import {
+  type AnswerCensusInput,
+  CORRECTION_FIELDS,
+  type CorrectionField,
+  TELEGRAM_USERNAME_PATTERN,
+} from "./people.contract"
 
 const LEAVING_REASONS = ["Graduating", "No longer have time", "Going abroad", "Other"] as const
 type LeavingReason = (typeof LEAVING_REASONS)[number]
@@ -85,17 +90,6 @@ export function LeavingDialog({
     </FormDialog>
   )
 }
-
-const CORRECTION_FIELDS = [
-  "Personal email",
-  "Phone",
-  "Telegram username",
-  "Course",
-  "Year",
-  "Campus",
-  "Something else",
-] as const
-type CorrectionField = (typeof CORRECTION_FIELDS)[number]
 
 /** People can't edit their record: HR checks the change and updates it. */
 export function CorrectionDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -191,11 +185,15 @@ export function AskToBeAddedDialog({ open, onOpenChange }: { open: boolean; onOp
   const [telegram, setTelegram] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const whatError = submitted && what.length === 0 ? "Choose at least one." : undefined
+  const telegramError =
+    submitted && telegram.trim() && !TELEGRAM_USERNAME_PATTERN.test(telegram.trim())
+      ? "Enter 5–32 letters, digits or underscores."
+      : undefined
 
   async function submit() {
     setSubmitted(true)
     const roles = what.flatMap((label) => roleOf(label) ?? [])
-    if (roles.length === 0) return
+    if (roles.length === 0 || (telegram.trim() && !TELEGRAM_USERNAME_PATTERN.test(telegram.trim()))) return
     try {
       await send({ data: { roles, groupsOrTeam: groupsOrTeam.trim(), telegramUsername: telegram.trim() } })
     } catch (caught) {
@@ -245,14 +243,16 @@ export function AskToBeAddedDialog({ open, onOpenChange }: { open: boolean; onOp
           htmlFor="ask-telegram"
           optional
           hint="Helps HR find you in the groups the bot knows."
+          error={telegramError}
         >
           <Input
             id="ask-telegram"
             value={telegram}
             onChange={(event) => setTelegram(event.target.value)}
             placeholder="@username"
-            maxLength={40}
+            maxLength={33}
             autoComplete="off"
+            aria-invalid={telegramError ? true : undefined}
             aria-describedby={fieldHintId("ask-telegram")}
             className={cn(fieldControl, "font-mono")}
           />

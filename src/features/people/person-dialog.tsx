@@ -11,12 +11,16 @@ import { yearOf } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { SelectField } from "./people-ui"
 import { createPerson, updatePerson } from "./people-write.functions"
-import { CAMPUSES, type Campus, COURSES, type PersonRow, YEARS } from "./people.contract"
+import { CAMPUSES, type Campus, COURSES, type PersonRow, TELEGRAM_USERNAME_PATTERN, YEARS } from "./people.contract"
 
 type Year = (typeof YEARS)[number]
 
 const SAVE_ERROR = "The person could not be saved. Check the values and try again."
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function validTelegram(value: string) {
+  return value.trim() === "" || TELEGRAM_USERNAME_PATTERN.test(value.trim())
+}
 
 /** Add a person, or edit an existing record's profile (`person`). */
 export function PersonDialog({
@@ -51,7 +55,9 @@ export function PersonDialog({
         firstName: values.firstName.trim() ? undefined : "Enter a first name.",
         lastName: values.lastName.trim() ? undefined : "Enter a last name.",
         personalEmail: EMAIL_PATTERN.test(values.personalEmail.trim()) ? undefined : "Enter a valid email address.",
-        telegramUsername: /\s/.test(values.telegramUsername.trim()) ? "Telegram usernames have no spaces." : undefined,
+        telegramUsername: validTelegram(values.telegramUsername)
+          ? undefined
+          : "Enter 5–32 letters, digits or underscores.",
         course: values.course.trim() ? undefined : "Choose a course.",
         year: values.year ? undefined : "Choose a year.",
         campus: values.campus ? undefined : "Choose a campus.",
@@ -70,7 +76,7 @@ export function PersonDialog({
       !values.firstName.trim() ||
       !values.lastName.trim() ||
       !EMAIL_PATTERN.test(values.personalEmail.trim()) ||
-      /\s/.test(values.telegramUsername.trim()) ||
+      !validTelegram(values.telegramUsername) ||
       !values.course.trim() ||
       !year ||
       !campus

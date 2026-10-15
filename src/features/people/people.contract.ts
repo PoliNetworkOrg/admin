@@ -91,6 +91,10 @@ export const adminRoleSchema = z.object({
 })
 
 export const teamFieldsSchema = z.record(z.string(), z.union([z.string(), z.array(z.string())]))
+/** The team-specific fields a dashboard write may send: a handful of short keys and values. */
+const teamFieldsInput = z
+  .record(z.string().min(1).max(40), z.union([z.string().trim().max(200), z.array(z.string().trim().max(60)).max(20)]))
+  .refine((fields) => Object.keys(fields).length <= 10, "Too many fields.")
 
 export const teamMembershipSchema = z.object({
   team: teamIdSchema,
@@ -402,17 +406,23 @@ export const TEAMS = {
 const personIdSchema = z.string().regex(/^P-\d{4}$/)
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const reasonSchema = z.string().trim().min(1).max(500)
+/** Telegram's own rule: 5–32 letters, digits or underscores. Empty when unknown; a leading @ is dropped. */
+export const TELEGRAM_USERNAME_PATTERN = /^@?[A-Za-z0-9_]{5,32}$/
+const telegramUsernameSchema = z
+  .string()
+  .trim()
+  .refine((value) => value === "" || TELEGRAM_USERNAME_PATTERN.test(value), "Enter a valid Telegram username.")
+  .transform((value) => value.replace(/^@/, ""))
+/** Import decisions are keyed by the preview's own row and pair IDs. */
+const importDecisionKey = z.string().min(1).max(64)
+const MAX_IMPORT_ROWS = 5000
 
 export const personInputSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
   personalEmail: z.email(),
   phone: z.string().trim().max(40),
-  telegramUsername: z
-    .string()
-    .trim()
-    .max(40)
-    .transform((value) => value.replace(/^@/, "")),
+  telegramUsername: telegramUsernameSchema,
   course: z.string().trim().min(1).max(120),
   year: z.enum(YEARS),
   campus: campusSchema,
@@ -443,7 +453,7 @@ export const addTeamMemberInputSchema = z.object({
   personId: personIdSchema,
   role: z.enum(["member", "lead"]),
   since: dateSchema,
-  fields: teamFieldsSchema,
+  fields: teamFieldsInput,
 })
 export const teamCandidatesInputSchema = z.object({ teamId: teamIdSchema })
 export const teamCandidateSchema = z.object({ id: z.string(), name: z.string(), course: z.string() })
@@ -451,7 +461,7 @@ export type TeamCandidate = z.infer<typeof teamCandidateSchema>
 export const teamFieldsInputSchema = z.object({
   teamId: teamIdSchema,
   personId: personIdSchema,
-  fields: teamFieldsSchema,
+  fields: teamFieldsInput,
 })
 export const endTeamInputSchema = z.object({
   teamId: teamIdSchema,
@@ -466,8 +476,12 @@ export const remindInputSchema = z.object({ campaignId: z.string().min(1), perso
 export const answersInputSchema = z.object({ personId: personIdSchema, year: z.string().min(1) })
 export const importCommitInputSchema = z.object({
   importId: z.string().min(1),
-  duplicates: z.record(z.string(), z.enum(["same", "different"])),
-  telegram: z.record(z.string(), z.string().nullable()),
+  duplicates: z
+    .record(importDecisionKey, z.enum(["same", "different"]))
+    .refine((choices) => Object.keys(choices).length <= MAX_IMPORT_ROWS, "Too many decisions."),
+  telegram: z
+    .record(importDecisionKey, z.string().max(64).nullable())
+    .refine((choices) => Object.keys(choices).length <= MAX_IMPORT_ROWS, "Too many decisions."),
 })
 
 export const resolveReviewInputSchema = z.object({
@@ -489,20 +503,30 @@ export const joinRequestInputSchema = z.object({ requestId: z.string().min(1) })
 export const askToBeAddedInputSchema = z.object({
   roles: z.array(z.enum(["admin", "team", "member"])).min(1),
   groupsOrTeam: z.string().trim().max(200),
-  telegramUsername: z.string().trim().max(40),
+  telegramUsername: telegramUsernameSchema,
 })
 export const answerCensusInputSchema = z.object({
   answer: censusAnswerSchema,
   course: z.string().trim().min(1).max(120),
   year: z.enum(YEARS),
   campus: campusSchema,
-  keepGroups: z.array(z.string()),
-  keepTeams: z.array(teamIdSchema),
+  keepGroups: z.array(z.string().max(120)).max(100),
+  keepTeams: z.array(teamIdSchema).max(TEAM_IDS.length),
   reason: z.string().trim().max(200),
   note: z.string().trim().max(500),
 })
+export const CORRECTION_FIELDS = [
+  "Personal email",
+  "Phone",
+  "Telegram username",
+  "Course",
+  "Year",
+  "Campus",
+  "Something else",
+] as const
+export type CorrectionField = (typeof CORRECTION_FIELDS)[number]
 export const correctionInputSchema = z.object({
-  field: z.string().min(1),
+  field: z.enum(CORRECTION_FIELDS),
   value: z.string().trim().min(1).max(200),
   note: z.string().trim().max(500),
 })

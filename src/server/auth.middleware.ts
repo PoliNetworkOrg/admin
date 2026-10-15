@@ -63,7 +63,11 @@ function requirePermission(permissions: readonly string[], permission: Permissio
   if (!hasPermission(permissions, permission)) throw new Error("UNAUTHORIZED")
 }
 
-/** People: the signed-in person's own area (My area), and the Capo Admin and Team Lead views the backend scopes. */
+/**
+ * People: the signed-in person's own area (My area), and the Capo Admin and Team Lead views the backend scopes. These
+ * (and the Team ones below) start from `dashboardUserMiddleware`, as volunteers have no `admin:access`; every other
+ * People middleware starts from `adminMiddleware`, like the sections the navigation shows.
+ */
 export const peopleSelfMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
   .server(({ next, context }) => {
@@ -73,7 +77,7 @@ export const peopleSelfMiddleware = createMiddleware({ type: "function" })
 
 /** People: every record, admins, teams, census and linking, with contacts and HR notes. */
 export const peopleReadMiddleware = createMiddleware({ type: "function" })
-  .middleware([dashboardUserMiddleware])
+  .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:read")
     return next()
@@ -81,7 +85,7 @@ export const peopleReadMiddleware = createMiddleware({ type: "function" })
 
 /** People: add and edit people, admin roles, team memberships, the census and account linking. */
 export const peopleWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([dashboardUserMiddleware])
+  .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:write")
     return next()
@@ -108,7 +112,7 @@ export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
 
 /** People › Member register: read. */
 export const peopleMembersReadMiddleware = createMiddleware({ type: "function" })
-  .middleware([dashboardUserMiddleware])
+  .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:members:read")
     return next()
@@ -116,7 +120,7 @@ export const peopleMembersReadMiddleware = createMiddleware({ type: "function" }
 
 /** People › Member register: add members, change status and number, export. */
 export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([dashboardUserMiddleware])
+  .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:members:write")
     return next()
@@ -124,7 +128,7 @@ export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" 
 
 /** People: appoint Capo Admins and Team Leads. */
 export const peopleAppointMiddleware = createMiddleware({ type: "function" })
-  .middleware([dashboardUserMiddleware])
+  .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:appoint")
     return next()

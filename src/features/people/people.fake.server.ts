@@ -138,6 +138,40 @@ function viewerRecord(viewer: PeopleViewer) {
   return data().byId.get(id) ?? null
 }
 
+/**
+ * The record the signed-in person acts as. A first-sign-in match (`match:` prefix) is not theirs until they confirm
+ * it, and never after "This isn't me": until then they see the proposed match in My area and nothing else.
+ */
+function linkedRecord(viewer: PeopleViewer) {
+  if (self.matchRejected) return null
+  if (viewer.personId?.startsWith("match:") && !self.matchConfirmed) return null
+  return viewerRecord(viewer)
+}
+
+/**
+ * One CSV cell, quoted. A value starting with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed with `'`, so
+ * spreadsheet apps show it as text instead of running it as a formula (OWASP CSV injection).
+ */
+function csvCell(value: string) {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
+/**
+ * A request to join one of the groups the signed-in Capo Admin coordinates. Any other request reads as already
+ * handled, so a caller can't tell whether a request of another course exists.
+ */
+function capoRequest(viewer: PeopleViewer, requestId: string) {
+  const scope = linkedRecord(viewer)?.admin?.capoScope
+  const family = scope ? familyOfScope(scope) : undefined
+  const titles: readonly string[] = family ? FAMILIES[family].groups : []
+  const request = data().joinRequests.find(
+    (candidate) => candidate.id === requestId && titles.includes(candidate.group)
+  )
+  if (!request) throw new Error("This request was already handled.")
+  return request
+}
+
 function leadsOf(person: StoredPerson | null): TeamId[] {
   if (!person) return []
   return person.teams.filter((team) => team.role === "lead" && !team.endedOn).map((team) => team.team)
@@ -443,7 +477,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         if (!member) continue
         lines.push(
           [member.number, fullName(person), member.status, member.admittedOn, member.fee ?? "", member.m365Email]
-            .map((cell) => `"${cell.replaceAll('"', '""')}"`)
+            .map(csvCell)
             .join(",")
         )
       }
@@ -490,7 +524,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     listTeams: async () => {
       const canRead = viewer.permissions.includes("people:read")
-      const leads = leadsOf(viewerRecord(viewer))
+      const leads = leadsOf(linkedRecord(viewer))
       if (!canRead && !leads.length) throw new Error("UNAUTHORIZED")
       const teams: TeamSummary[] = []
       for (const id of TEAM_IDS) {
@@ -510,7 +544,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     listTeamCandidates: async (input) => {
       const canRead = viewer.permissions.includes("people:read")
-      if (!canRead && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
+      if (!canRead && !leadsOf(linkedRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
       return data()
         .people.filter((person) => !person.teams.some((team) => team.team === input.teamId && !team.endedOn))
         .map((person) => ({ id: person.id, name: fullName(person), course: person.profile.course }))
@@ -518,7 +552,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     addTeamMember: async (input) => {
       const canWrite = viewer.permissions.includes("people:write")
-      if (!canWrite && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
+      if (!canWrite && !leadsOf(linkedRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
       if (input.role === "lead") require(viewer, "people:appoint")
       const person = find(input.personId)
       if (person.teams.some((team) => team.team === input.teamId && !team.endedOn)) {
@@ -540,17 +574,18 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     updateTeamFields: async (input) => {
       const canWrite = viewer.permissions.includes("people:write")
-      if (!canWrite && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
+      if (!canWrite && !leadsOf(linkedRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
       const membership = find(input.personId).teams.find((team) => team.team === input.teamId && !team.endedOn)
       if (!membership) throw new Error("This membership has ended.")
       membership.fields = input.fields
     },
     endTeamMembership: async (input) => {
       const canWrite = viewer.permissions.includes("people:write")
-      if (!canWrite && !leadsOf(viewerRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
+      if (!canWrite && !leadsOf(linkedRecord(viewer)).includes(input.teamId)) throw new Error("UNAUTHORIZED")
       const person = find(input.personId)
       const membership = person.teams.find((team) => team.team === input.teamId && !team.endedOn)
       if (!membership) throw new Error("This membership has already ended.")
+      if (membership.role === "lead") require(viewer, "people:appoint")
       membership.endedOn = input.lastDay
       membership.endReason = input.reason
       log(person, actor, `ended the ${TEAMS[input.teamId].name} membership: ${input.reason}`)
@@ -791,7 +826,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     getCapoArea: async () => {
       require(viewer, "people:self")
-      const me = viewerRecord(viewer)
+      const me = linkedRecord(viewer)
       const scope = me?.admin?.capoScope
       const family = scope ? familyOfScope(scope) : undefined
       if (!scope || !family) throw new Error("UNAUTHORIZED")
@@ -824,8 +859,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     approveJoinRequest: async (input) => {
       require(viewer, "people:self")
       const store = data()
-      const request = store.joinRequests.find((candidate) => candidate.id === input.requestId)
-      if (!request) throw new Error("This request was already handled.")
+      const request = capoRequest(viewer, input.requestId)
       const person = find(request.personId)
       if (person.admin && !person.admin.groups.some((group) => group.title === request.group)) {
         person.admin.groups.push({ chatId: GROUP_IDS.get(request.group) ?? "", title: request.group })
@@ -837,16 +871,14 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     declineJoinRequest: async (input) => {
       require(viewer, "people:self")
       const store = data()
-      const request = store.joinRequests.find((candidate) => candidate.id === input.requestId)
-      if (!request) throw new Error("This request was already handled.")
+      const request = capoRequest(viewer, input.requestId)
       const person = find(request.personId)
       if (person.admin) person.admin.requested = person.admin.requested.filter((group) => group.title !== request.group)
       store.joinRequests = store.joinRequests.filter((candidate) => candidate !== request)
     },
     getMyRoles: async () => {
-      const me = viewerRecord(viewer)
-      const linked = me && (!viewer.personId?.startsWith("match:") || self.matchConfirmed)
-      return { capoScope: linked ? (me.admin?.capoScope ?? null) : null, leads: linked ? leadsOf(me) : [] }
+      const me = linkedRecord(viewer)
+      return { capoScope: me?.admin?.capoScope ?? null, leads: leadsOf(me) }
     },
     getMyArea: async () => {
       require(viewer, "people:self")
@@ -936,7 +968,9 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     confirmMatch: async () => {
       require(viewer, "people:self")
       const me = viewerRecord(viewer)
-      if (!me) throw new Error("There is no record to link.")
+      if (!me || self.matchRejected || !viewer.personId?.startsWith("match:")) {
+        throw new Error("There is no record to link.")
+      }
       self.matchConfirmed = true
       me.account = {
         status: "linked",
@@ -957,7 +991,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     answerCensus: async (input) => {
       require(viewer, "people:self")
-      const me = viewerRecord(viewer)
+      const me = linkedRecord(viewer)
       if (!me) throw new Error("There is no record to answer for.")
       me.census = me.census.filter((entry) => entry.year !== "2026/27")
       me.census.unshift({
@@ -973,12 +1007,12 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     requestCorrection: async (input) => {
       require(viewer, "people:self")
-      const me = viewerRecord(viewer)
+      const me = linkedRecord(viewer)
       if (me) log(me, fullName(me), `asked HR to correct ${input.field.toLowerCase()}`)
     },
     revokePhotoConsent: async () => {
       require(viewer, "people:self")
-      const me = viewerRecord(viewer)
+      const me = linkedRecord(viewer)
       if (!me?.consents.photo || me.consents.photo.status !== "granted")
         throw new Error("There is no photo and video consent to revoke.")
       me.consents.photo = { status: "revoked", on: today() }
