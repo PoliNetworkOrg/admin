@@ -247,6 +247,7 @@ export function MembersPage({
             filters={
               <>
                 <SegmentedControl<Scope>
+                  className="max-shell:hidden"
                   label="Member status"
                   items={[
                     { value: "all", label: "All", count: members.length },
@@ -262,6 +263,23 @@ export function MembersPage({
                     setPage(1)
                   }}
                 />
+                {/* Five statuses don't fit beside the fee filter on phones: the same choice as a menu. */}
+                <span className="shell:hidden">
+                  <FilterMenu<MemberStatus>
+                    label="Status"
+                    allLabel={`All · ${members.length}`}
+                    value={scope === "all" ? null : scope}
+                    onChange={(next) => {
+                      setScope(next ?? "all")
+                      setPage(1)
+                    }}
+                    options={MEMBER_STATUSES.map((status) => ({
+                      value: status,
+                      label: MEMBER_STATUS[status].label,
+                      count: byStatus(status),
+                    }))}
+                  />
+                </span>
                 <FilterMenu<FeeStatus>
                   label={`Fee ${CURRENT_YEAR}`}
                   allLabel="Any fee status"

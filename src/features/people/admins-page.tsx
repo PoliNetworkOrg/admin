@@ -108,7 +108,11 @@ const columns: DataTableColumn<Admin>[] = [
         {/* Mobile cards: groups and census on one labelled line, then the Capo Admin scope. */}
         <span className="mt-2 hidden flex-col items-start gap-1.5 pl-11 text-xs text-(--pn-fg-muted) max-shell:flex">
           <span className="flex flex-wrap items-center gap-1.5">
-            {person.admin.status === "active" ? pluralize(person.admin.groups.length, "group") : "Former admin"}
+            {person.admin.status !== "active"
+              ? "Former admin"
+              : person.admin.groups.length
+                ? pluralize(person.admin.groups.length, "group")
+                : "No groups"}
             <span aria-hidden>·</span>
             Census <CensusCell person={person} />
           </span>
