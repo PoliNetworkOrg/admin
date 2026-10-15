@@ -32,7 +32,10 @@ export const updateTeamFields = createServerFn({ method: "POST" })
   .validator(teamFieldsInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).updateTeamFields(data))
 
-/** Ends a membership with its last day and reason; the history stays on the record. */
+/**
+ * Ends a membership with its last day and reason; the history stays on the record. The backend requires
+ * `people:appoint` to end a `lead` membership.
+ */
 export const endTeamMembership = createServerFn({ method: "POST" })
   .middleware([peopleTeamWriteMiddleware])
   .validator(endTeamInputSchema)
