@@ -186,13 +186,14 @@ export function CapoPage({ area }: { area: CapoArea }) {
                   {area.requests.map((request) => (
                     <li key={request.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <PersonAvatar name={request.person.name} />
-                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      {/* At least 160px for the name and date; the buttons wrap under them on phones. */}
+                      <span className="flex min-w-40 flex-1 basis-40 flex-col gap-0.5">
                         <span className="truncate text-[14px] font-medium">{request.person.name}</span>
                         <span className="text-xs text-(--pn-fg-muted)">
                           {request.group.title} · asked {formatDay(request.requestedOn)}
                         </span>
                       </span>
-                      <span className="flex items-center gap-2">
+                      <span className="ml-auto flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
