@@ -467,12 +467,8 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
       minWidth: 220,
       mobile: "main",
       cell: (row) => (
-        <PersonCell
-          name={personName(row.person)}
-          secondary={row.person.member?.m365Email ?? row.person.profile.course}
-          secondaryMono={row.person.member !== null}
-          muted={scope === "former"}
-        />
+        // The course for everyone: member emails need people:members:read, and a mix would read as inconsistent.
+        <PersonCell name={personName(row.person)} secondary={row.person.profile.course} muted={scope === "former"} />
       ),
     },
     { id: "role", label: "Role", width: 104, mobile: "meta", cell: (row) => <RoleChip role={row.membership.role} /> },
