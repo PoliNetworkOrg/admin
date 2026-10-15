@@ -264,7 +264,6 @@ function GroupRow({ group, onOpenDialog }: RowActionsProps & { group: AzureGroup
           ariaLabel={`View the members of ${group.displayName}`}
           icon={UsersRound}
           appearance="boxed"
-          disabled={group.members.length === 0}
           onClick={() => onOpenDialog(group.id)}
         />
       </div>
