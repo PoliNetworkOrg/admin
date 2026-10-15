@@ -21,7 +21,7 @@ export const SAMPLE_TODAY = "2026-10-14"
 export type FamilyId = "inf" | "ges" | "ind" | "ele" | "des" | "arc"
 
 /** A record as the fake backend stores it: the contract's record plus what it derives views from. */
-export type StoredPerson = Omit<PersonRecord, "discrepancies"> & {
+export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember"> & {
   family: FamilyId
   /** The first day of any role, for the census history. */
   start: string | null

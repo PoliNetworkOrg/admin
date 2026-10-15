@@ -134,3 +134,18 @@ void test("the member export keeps every cell as text", async () => {
   assert.ok(line?.includes(`"'=HYPERLINK(""http://example.invalid"",""x"") Rossi"`), line)
   for (const cell of line.slice(1, -1).split('","')) assert.doesNotMatch(cell, /^[=+\-@\t\r]/)
 })
+
+void test("member details need people:members:read, except on the viewer's own record", async () => {
+  const member = records.find((person) => person.isMember && person.member)
+  assert.ok(member, "the fixtures hold a current member")
+  const reader = fakePeopleApi({ permissions: ["people:read"], personId: null })
+
+  const listed = (await reader.listPeople()).find((person) => person.id === member.id)
+  assert.equal(listed.member, null)
+  assert.equal(listed.isMember, true)
+  assert.equal((await reader.getPerson(member.id)).member, null)
+
+  assert.deepEqual((await hr.getPerson(member.id)).member, member.member)
+  const self = fakePeopleApi({ permissions: ["people:read", "people:self"], personId: member.id })
+  assert.deepEqual((await self.getPerson(member.id)).member, member.member)
+})

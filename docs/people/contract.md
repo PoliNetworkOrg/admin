@@ -89,7 +89,8 @@ type PersonSummary = {
   year: string
   campus: Campus
   telegramUsername: string | null
-  member: Pick<Membership, "number" | "status" | "fee" | "admittedOn" | "m365Email"> | null
+  member: Pick<Membership, "number" | "status" | "fee" | "admittedOn" | "m365Email"> | null // see Backend rules
+  isMember: boolean // current member; always present
   admin:
     | (Pick<
         AdminRole,
@@ -109,7 +110,8 @@ type PersonSummary = {
 type PersonRecord = {
   id: PersonId
   profile: Profile
-  member: Membership | null
+  member: Membership | null // see Backend rules
+  isMember: boolean // current member; always present
   admin: AdminRole | null
   teams: TeamMembership[]
   census: CensusEntry[]
@@ -259,6 +261,9 @@ The dashboard checks these too, but the backend owns them (from the security rev
 
 - **`admin:access`**: every `people.*` procedure except `people.me.*`, `people.capo.*` and the team procedures needs it on
   top of the permission in the table. `people:self` alone reaches only My area, Capo Admin and the caller's own team.
+- **Member details**: `member` (number, status, fee, admission date, Microsoft 365 address) needs
+  `people:members:read`, except on the caller's own record. Without it `member` is `null` and only `isMember` says
+  whether the person is a current member, in every procedure that returns people.
 - **Unconfirmed match**: while the signed-in account is only a `match` candidate (not confirmed, or rejected), it acts as
   a person with no record: no team, no Capo Admin scope, no census answer or correction on the candidate's record. Only
   `people.me.get`, `confirmMatch` and `rejectMatch` see the candidate.

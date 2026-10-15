@@ -230,7 +230,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                     }
                   />
                   <MenuContent>
-                    {canWriteMembers && !member ? (
+                    {canWriteMembers && !member && !person.isMember ? (
                       <MenuItem render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}>
                         <IdCard />
                         Member
@@ -750,6 +750,12 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       },
                     ]}
                   />
+                </SectionCard>
+              ) : person.isMember ? (
+                <SectionCard title="Member">
+                  <p className="text-sm text-(--pn-fg-muted)">
+                    Current member. The number, fee and Microsoft 365 account are in the member register.
+                  </p>
                 </SectionCard>
               ) : null}
 

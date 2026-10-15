@@ -120,7 +120,8 @@ const columns: DataTableColumn<PersonRow>[] = [
     width: 96,
     priority: 3,
     mobile: "hidden",
-    cell: (person) => (isMember(person) && person.member ? <MonoChip>{person.member.number}</MonoChip> : <Unset />),
+    cell: (person) =>
+      !isMember(person) ? <Unset /> : person.member ? <MonoChip>{person.member.number}</MonoChip> : "Yes",
   },
   {
     id: "admin",

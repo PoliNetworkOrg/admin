@@ -137,7 +137,10 @@ export const consentsSchema = z.object({
 export const personRowSchema = z.object({
   id: z.string(),
   profile: profileSchema,
+  /** `null` without `people:members:read`, except on the viewer's own record: `isMember` still says whether they are one. */
   member: membershipSchema.nullable(),
+  /** A current member: `member` set and not former. Always present. */
+  isMember: z.boolean(),
   admin: adminRoleSchema.nullable(),
   teams: z.array(teamMembershipSchema),
   census: z.array(censusEntrySchema),

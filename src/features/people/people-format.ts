@@ -20,8 +20,8 @@ export function personName(person: Pick<PersonRow, "profile">) {
   return `${person.profile.firstName} ${person.profile.lastName}`
 }
 
-export function isMember(person: Pick<PersonRow, "member">) {
-  return person.member !== null && person.member.status !== "former"
+export function isMember(person: Pick<PersonRow, "isMember">) {
+  return person.isMember
 }
 
 export function isActiveAdmin(person: Pick<PersonRow, "admin">) {
@@ -33,7 +33,7 @@ export function activeTeams(person: Pick<PersonRow, "teams">) {
 }
 
 /** No active Member, Admin or Team role: the record stays for history and shows muted. */
-export function hasNoRoles(person: Pick<PersonRow, "member" | "admin" | "teams">) {
+export function hasNoRoles(person: Pick<PersonRow, "isMember" | "admin" | "teams">) {
   return !isMember(person) && !isActiveAdmin(person) && activeTeams(person).length === 0
 }
 
@@ -61,7 +61,7 @@ export function teamName(team: TeamId) {
 }
 
 /** "Member", "Admin", "IT · Lead", "Capo Admin · Design". */
-export function roleLabels(person: Pick<PersonRow, "member" | "admin" | "teams">) {
+export function roleLabels(person: Pick<PersonRow, "isMember" | "admin" | "teams">) {
   const labels: string[] = []
   if (isMember(person)) labels.push("Member")
   if (isActiveAdmin(person)) labels.push("Admin")

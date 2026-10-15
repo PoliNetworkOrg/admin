@@ -94,8 +94,13 @@ function discrepancies(person: StoredPerson): Discrepancy[] {
   return out
 }
 
-/** The contract row, with contacts kept only when `withContacts`. */
-function row(person: StoredPerson, withContacts: boolean): PersonRow {
+/**
+ * The contract row, with contacts kept only when `withContacts`. Member details (number, status, fee, Microsoft 365
+ * address) need `people:members:read` or the person's own record; everyone else sees only `isMember`.
+ */
+function row(person: StoredPerson, viewer: PeopleViewer, withContacts: boolean): PersonRow {
+  const ownRecord = linkedRecord(viewer)?.id === person.id
+  const withMember = ownRecord || viewer.permissions.includes("people:members:read")
   return {
     id: person.id,
     profile: {
@@ -103,7 +108,8 @@ function row(person: StoredPerson, withContacts: boolean): PersonRow {
       personalEmail: withContacts ? person.profile.personalEmail : null,
       phone: withContacts ? person.profile.phone : null,
     },
-    member: person.member,
+    member: withMember ? person.member : null,
+    isMember: person.member !== null && person.member.status !== "former",
     admin: person.admin,
     teams: person.teams,
     census: person.census,
@@ -115,7 +121,7 @@ function row(person: StoredPerson, withContacts: boolean): PersonRow {
 function record(person: StoredPerson, viewer: PeopleViewer): PersonRecord {
   const canRead = viewer.permissions.includes("people:read")
   return {
-    ...row(person, canRead || viewer.personId === person.id),
+    ...row(person, viewer, canRead || linkedRecord(viewer)?.id === person.id),
     notes: canRead ? person.notes : null,
     discrepancies: discrepancies(person),
     activity: [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)),
@@ -357,7 +363,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
   return {
     listPeople: async () => {
       require(viewer, "people:read")
-      return data().people.map((person) => row(person, true))
+      return data().people.map((person) => row(person, viewer, true))
     },
     getPerson: async (id) => {
       require(viewer, "people:read")
@@ -537,7 +543,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           id,
           name: TEAMS[id].name,
           lead: lead ? { id: lead.id, name: fullName(lead) } : null,
-          members: members.map((person) => row(person, true)),
+          members: members.map((person) => row(person, viewer, true)),
         })
       }
       return teams
@@ -602,7 +608,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         campaign.status === "open"
           ? data().people.filter((person) => person.expected)
           : data().people.filter((person) => person.census.some((entry) => entry.year === campaign.year))
-      return { campaign, people: people.map((person) => row(person, true)) } satisfies CampaignDetail
+      return { campaign, people: people.map((person) => row(person, viewer, true)) } satisfies CampaignDetail
     },
     getAnswers: async (input) => {
       require(viewer, "people:read")
@@ -842,7 +848,10 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           title,
           admins: admins.filter((person) => person.admin?.groups.some((group) => group.title === title)).length,
         })),
-        admins: admins.map((person) => ({ ...row(person, true), profile: { ...person.profile, personalEmail: null } })),
+        admins: admins.map((person) => ({
+          ...row(person, viewer, true),
+          profile: { ...person.profile, personalEmail: null },
+        })),
         requests: data()
           .joinRequests.filter((request) => titles.includes(request.group))
           .map((request) => {
