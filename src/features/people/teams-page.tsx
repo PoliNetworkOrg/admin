@@ -299,10 +299,9 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
                   noun="member"
                   description={
                     <>
-                      {summary.lead ? `Lead: ${summary.lead.name}` : "No lead"}
+                      <span className="block truncate">{summary.lead ? `Lead: ${summary.lead.name}` : "No lead"}</span>
                       {missing ? (
-                        <span className="text-(--pn-warning-fg)">
-                          {" · "}
+                        <span className="block text-(--pn-warning-fg)">
                           {pluralize(missing, "missing census answer")}
                         </span>
                       ) : null}
