@@ -270,7 +270,8 @@ function CensusCard({ area }: { area: Linked }) {
       title={`${campaign.year} census`}
       action={<span className="text-[13px] text-(--pn-fg-muted)">Closes {formatDay(campaign.closesOn)}</span>}
       footer={
-        <div className="flex flex-wrap justify-end gap-2">
+        // Phones stack the buttons full width with Confirm on top, like dialog footers.
+        <div className="flex flex-col-reverse gap-2 shell:flex-row shell:flex-wrap shell:justify-end">
           {editing ? (
             <Button variant="ghost" className={buttonMotion} onClick={() => setEditing(false)}>
               Cancel
