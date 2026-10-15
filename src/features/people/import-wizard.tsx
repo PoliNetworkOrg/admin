@@ -67,7 +67,7 @@ function stepsFor(preview: ImportPreview | null): Step[] {
 function Stepper({ steps, current }: { steps: Step[]; current: Step }) {
   const index = steps.indexOf(current)
   return (
-    <ol aria-label="Steps" className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <ol aria-label="Steps" className="flex flex-wrap items-center gap-x-2 gap-y-1 max-shell:flex-nowrap">
       {steps.map((step, position) => {
         const done = position < index
         const active = position === index
@@ -84,7 +84,13 @@ function Stepper({ steps, current }: { steps: Step[]; current: Step }) {
             >
               {done ? <Check aria-hidden className="size-3" strokeWidth={2.5} /> : position + 1}
             </span>
-            <span className={cn("text-[13px]", active ? "font-medium text-(--pn-fg)" : "text-(--pn-fg-muted)")}>
+            {/* Phones name only the current step, so the five steps stay on one line. */}
+            <span
+              className={cn(
+                "text-[13px]",
+                active ? "font-medium text-(--pn-fg)" : "text-(--pn-fg-muted) max-shell:sr-only"
+              )}
+            >
               {STEP_LABELS[step]}
             </span>
           </li>
