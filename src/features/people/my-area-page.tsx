@@ -419,7 +419,7 @@ function LinkedView({ area }: { area: Linked }) {
       fill: true,
       minWidth: 200,
       mobile: "main",
-      cell: (row) => <PersonCell name={row.id === person.id ? `${row.name} (you)` : row.name} />,
+      cell: (row) => <PersonCell name={row.name} suffix={row.id === person.id ? "(you)" : undefined} />,
     },
     {
       id: "role",

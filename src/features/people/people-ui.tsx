@@ -35,18 +35,24 @@ export function PersonCell({
   secondary,
   secondaryMono = false,
   muted = false,
+  suffix,
 }: {
   name: string
   secondary?: string | null
   secondaryMono?: boolean
   muted?: boolean
+  /** Muted text after the name, such as "(you)"; it never reaches the avatar's initials. */
+  suffix?: string
 }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
       <PersonAvatar name={name} muted={muted} />
       <span className="flex min-w-0 flex-col">
         <Hint overflowOnly label={name}>
-          <span className={cn("truncate font-medium", muted && "text-(--pn-fg-muted)")}>{name}</span>
+          <span className={cn("truncate font-medium", muted && "text-(--pn-fg-muted)")}>
+            {name}
+            {suffix ? <span className="font-normal text-(--pn-fg-muted)"> {suffix}</span> : null}
+          </span>
         </Hint>
         {secondary ? (
           <Hint overflowOnly label={secondary}>
@@ -401,12 +407,15 @@ export function Row({
   return (
     <li className="flex items-start gap-3 px-4 py-3">
       <span className="mt-0.5 shrink-0">{lead}</span>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex flex-wrap items-center gap-2 text-[14px] font-medium">{title}</span>
-        {meta ? <span className="text-xs text-(--pn-fg-muted)">{meta}</span> : null}
-        {detail ? <span className="text-[13px] text-(--pn-fg)">{detail}</span> : null}
+      {/* The end (badges, buttons) wraps under the text when both don't fit, so titles never break word by word. */}
+      <span className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+        <span className="flex min-w-36 flex-1 basis-36 flex-col gap-0.5">
+          <span className="flex flex-wrap items-center gap-2 text-[14px] font-medium">{title}</span>
+          {meta ? <span className="text-xs text-(--pn-fg-muted)">{meta}</span> : null}
+          {detail ? <span className="text-[13px] text-(--pn-fg)">{detail}</span> : null}
+        </span>
+        {end ? <span className="ml-auto flex shrink-0 items-center gap-2">{end}</span> : null}
       </span>
-      {end ? <span className="flex shrink-0 items-center gap-2">{end}</span> : null}
     </li>
   )
 }

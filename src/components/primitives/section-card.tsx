@@ -50,7 +50,8 @@ export function SectionCard({
       {hasHeader && (
         <header
           className={cn(
-            "flex min-h-14 items-center justify-between gap-4 py-3",
+            // The action wraps under the title rather than squeezing it on narrow cards.
+            "flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3",
             headerPadding[padding],
             padding === "flush" && "border-b border-(--pn-line)"
           )}
