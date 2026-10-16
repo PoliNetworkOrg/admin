@@ -77,8 +77,20 @@ type CensusEntry = {
 
 type Account =
   | { status: "none" }
-  | { status: "invite"; email: string; sentOn: string; expiresOn: string; sentBy: string }
-  | { status: "linked"; email: string; via: string; linkedOn: string; how: string }
+  | {
+      status: "invite"
+      email: string
+      sentOn: string
+      expiresOn: string
+      sentBy: string
+    }
+  | {
+      status: "linked"
+      email: string
+      via: string
+      linkedOn: string
+      how: string
+    }
   | { status: "review"; reviewId: string; issue: string }
 
 type PersonSummary = {
@@ -195,7 +207,12 @@ type Review = {
   id: string
   kind: "telegram-conflict" | "ask-to-be-added" | "two-records" | "not-me" | "name-only"
   since: string
-  account: { name: string; email: string; telegram: string | null; via: string }
+  account: {
+    name: string
+    email: string
+    telegram: string | null
+    via: string
+  }
   record: { id: PersonId; name: string } | null
   other: { id: PersonId; name: string } | null
   message: string | null
@@ -246,21 +263,126 @@ type MyArea =
       }[]
       roster: {
         team: TeamId
-        members: { name: string; role: TeamRole; telegram: string | null; email: string | null }[]
+        members: {
+          name: string
+          role: TeamRole
+          telegram: string | null
+          email: string | null
+        }[]
       } | null
     }
   | {
       state: "match"
-      candidate: { id: PersonId; name: string; course: string; year: string; campus: Campus; roles: string[] }
+      candidate: {
+        id: PersonId
+        name: string
+        course: string
+        year: string
+        campus: Campus
+        roles: string[]
+      }
       reason: string
     }
   | { state: "none"; request: { sentOn: string } | null }
 ```
 
+## Fees and receipts
+
+The flow, screens and PDF template are in [`fees.md`](fees.md). `PersonRecord` gains `fees` (`null` for people who
+were never members, or without `people:members:read` except on the caller's own record), and the linked `MyArea` gains
+`feeInstructions` (bank details while the caller is a current member). Amounts are integer cents; files travel as
+`{ fileName, contentType, base64 }`.
+
+```ts
+type FeeDetail = {
+  year: string // "2026/27"
+  status: FeeStatus // the same value as member.fee
+  amountCents: number
+  dueOn: string
+  upload: {
+    fileName: string
+    size: number
+    uploadedAt: string
+    transferDate: string
+    amountCents: number
+  } | null
+  rejection: { reason: string; by: string; at: string } | null // until the member uploads again
+  payment: {
+    paidOn: string
+    method: "transfer" | "cash"
+    amountCents: number
+    transferDate: string | null
+  } | null
+  lastReminder: string | null
+}
+
+type Receipt = {
+  id: string
+  number: string // "2026/042", never reused
+  year: string // fee year
+  person: { id: PersonId; name: string }
+  memberNumber: string
+  amountCents: number
+  issuedOn: string
+  paidOn: string
+  method: "transfer" | "cash"
+  transferDate: string | null
+  status: "toSign" | "signed" | "sent" | "failed" | "voided"
+  signer: "president" | "vicePresident" // the Vice-president signs the President's own
+  signedBy: string | null
+  signedOn: string | null
+  sentAt: string | null
+  sentTo: string | null
+  failure: string | null
+  voided: { reason: string; by: string; on: string } | null
+}
+
+type Fees = { current: FeeDetail | null; receipts: Receipt[] } // newest first, voided included
+```
+
+| Procedure                         | Kind     | Input                                                                  | Output                                                                                       | Needs                  |
+| --------------------------------- | -------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- |
+| `people.fees.review`              | query    | `{ personId }`                                                         | `{ person, memberNumber, m365Email, fee: FeeDetail, rejections, nextReceipt }`               | `people:fees:write`    |
+| `people.fees.upload`              | query    | `{ personId }`                                                         | file: the uploaded transfer receipt                                                          | `people:fees:write`    |
+| `people.fees.approve`             | mutation | `{ personId }`                                                         | `{ receipt }` (the number issued)                                                            | `people:fees:write`    |
+| `people.fees.reject`              | mutation | `{ personId, reason }`                                                 | `void` (fee back to Due, or Unpaid after the deadline)                                       | `people:fees:write`    |
+| `people.fees.markPaid`            | mutation | `{ personId, paidOn, amountCents, method, note }`                      | `{ receipt }`                                                                                | `people:fees:write`    |
+| `people.fees.remind`              | mutation | `{ personId: PersonId \| null }`                                       | `{ sent, skipped }` (all: Due and Unpaid, skips reminded < 3 days)                           | `people:fees:write`    |
+| `people.receipts.list`            | query    | `{ year: string \| null }` (null: current fee year)                    | `{ year, years, viewerSigner, officers: { president, vicePresident }, receipts }`            | `people:members:read`  |
+| `people.receipts.download`        | query    | `{ receiptId }`                                                        | file: the signed copy once there is one, else the generated PDF                              | `people:members:read`  |
+| `people.receipts.toSign`          | mutation | —                                                                      | file: a ZIP of the receipts waiting for the caller's signature                               | `people:receipts:sign` |
+| `people.receipts.previewSigned`   | mutation | `FormData` (`files`: up to 100 PDF or .p7m, 10 MB each)                | `{ uploadId, files: { fileId, fileName, size, receiptId, signature: { valid, signer } }[] }` | `people:receipts:sign` |
+| `people.receipts.sendSigned`      | mutation | `{ uploadId, assignments: Record<fileId, receiptId> }`                 | `{ sent, failed }`                                                                           | `people:receipts:sign` |
+| `people.receipts.retry`           | mutation | `{ receiptId }`                                                        | `void`                                                                                       | `people:fees:write`    |
+| `people.receipts.void`            | mutation | `{ receiptId, reason }`                                                | `void`                                                                                       | `people:fees:write`    |
+| `people.me.uploadTransferReceipt` | mutation | `FormData` (`file` PDF/JPG/PNG ≤ 10 MB, `transferDate`, `amountCents`) | `void` (fee → Receipt uploaded)                                                              | `people:self`          |
+| `people.me.receipt`               | query    | `{ receiptId }`                                                        | file: one of the caller's own signed receipts                                                | `people:self`          |
+
+Backend rules for fees and receipts:
+
+- **Officers**: the association's President and Vice-president are configuration on the backend (or a record field).
+  `viewerSigner` is the caller's office, and only when they also hold `people:receipts:sign`. Every receipt's `signer`
+  is `president`, except the President's own (`vicePresident`). `toSign`, `previewSigned` and `sendSigned` act only on
+  receipts whose `signer` is the caller's office.
+- **Numbering**: per fee year, `YYYY/NNN` from the year's first calendar year; issued atomically, never reused, voided
+  ones included.
+- **Signatures**: verify each file for real (PAdES in the PDF or a CAdES `.p7m`), that the certificate is the officer's,
+  and that the signed document is the receipt it is matched to. Refuse the whole send when any assignment points at an
+  unsigned file, a receipt that isn't `toSign`, another officer's receipt, or the same receipt twice.
+- **Email**: send the signed receipt to the member's Microsoft 365 address; on failure keep the receipt `failed` with
+  the mail server's reason until Retry.
+- **Reminders**: automatic ones go out 14 and 3 days before the deadline to members whose fee is Due; manual ones
+  follow `people.fees.remind`. Each sets `lastReminder` and writes an activity line.
+- **Uploads**: check the content, not the extension (PDF, JPEG or PNG; PDF or CMS for signed files), and the size.
+- **Activity**: upload, approval, rejection (with the reason), Mark as paid (with the note), issue, signature, email,
+  failure, retry, void and reminders each add a line to the person's activity.
+- **Members** download only their own receipts, and only once signed (`signed`, `sent` or `failed`).
+
 ## Permissions
 
 New IdP permissions (add to `src/server/permissions.ts`): `people:self`, `people:read`, `people:write`,
-`people:members:read`, `people:members:write`, `people:appoint`. Capo Admin and Team Lead are not permissions: they
+`people:members:read`, `people:members:write`, `people:appoint`, and for fees `people:fees:write` and
+`people:receipts:sign`. Capo Admin and Team Lead are not permissions: they
 come from the signed-in person's record (`people.me.get`), and the backend scopes `people.capo.*` and team writes to
 them.
 

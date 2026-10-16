@@ -1,3 +1,4 @@
+import { nextReceiptNumber, receiptFileName, receiptNumberFromFileName } from "./people-fees"
 import type { PeopleApi, PeopleViewer } from "./people.api.server"
 import {
   type AccountMatch,
@@ -5,10 +6,16 @@ import {
   type CampaignDetail,
   type CapoArea,
   type Discrepancy,
+  type FeeDetail,
+  type Fees,
+  type FilePayload,
   type ImportPreview,
   type MyArea,
   type PersonRecord,
   type PersonRow,
+  type Receipt,
+  type Signer,
+  type SignedUpload,
   TEAM_IDS,
   TEAMS,
   type TeamId,
@@ -17,13 +24,22 @@ import {
 import {
   addDays,
   buildPeopleStore,
+  emptyFeeState,
   FAMILIES,
   FAMILY_IDS,
+  FEE_AMOUNT_CENTS,
+  FEE_BENEFICIARY,
+  FEE_DUE_ON,
+  FEE_IBAN,
+  FEE_YEAR,
   GROUP_IDS,
   m365Address,
+  OFFICERS,
+  receiptId,
   type PeopleStore,
   type StoredPerson,
 } from "./people.fixtures.server"
+import { downloadName, looksSigned, receiptPdf, sampleTransferPdf, zipFiles } from "./receipt-files.server"
 
 /**
  * Agent mode's stand-in for the backend's `people.*` procedures, over `people.fixtures.server.ts`. State lives for the
@@ -38,6 +54,12 @@ const self: SelfState = { matchConfirmed: false, matchRejected: false, askedOn: 
 const importedFiles = new Set<string>()
 const previews = new Map<string, ImportPreview>()
 const closedCampaigns = new Set<string>()
+/** Signed copies uploaded by an officer, by receipt ID. Receipts without one are generated on download. */
+const signedFiles = new Map<string, Uint8Array>()
+/** Members' uploaded transfer receipts, by person ID. Seeded uploads have no file and preview a sample. */
+const transferFiles = new Map<string, { name: string; type: string; bytes: Uint8Array }>()
+/** Signed files read by Upload signed receipts, until they are sent. */
+const signedUploads = new Map<string, { fileId: string; name: string; bytes: Uint8Array; signed: boolean }[]>()
 
 function data() {
   store ??= buildPeopleStore()
@@ -120,11 +142,133 @@ function row(person: StoredPerson, viewer: PeopleViewer, withContacts: boolean):
 
 function record(person: StoredPerson, viewer: PeopleViewer): PersonRecord {
   const canRead = viewer.permissions.includes("people:read")
+  const ownRecord = linkedRecord(viewer)?.id === person.id
   return {
-    ...row(person, viewer, canRead || linkedRecord(viewer)?.id === person.id),
+    ...row(person, viewer, canRead || ownRecord),
     notes: canRead ? person.notes : null,
     discrepancies: discrepancies(person),
     activity: [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)),
+    fees: ownRecord || viewer.permissions.includes("people:members:read") ? fees(person) : null,
+  }
+}
+
+/** Due before the deadline, Unpaid after it. */
+function unpaidStatus() {
+  return today() > FEE_DUE_ON ? "unpaid" : "due"
+}
+
+function feeDetail(person: StoredPerson): FeeDetail | null {
+  const state = person.feeState
+  const status = person.member?.fee
+  if (!state || !status) return null
+  return {
+    year: FEE_YEAR,
+    status,
+    amountCents: FEE_AMOUNT_CENTS,
+    dueOn: FEE_DUE_ON,
+    upload: state.upload,
+    rejection: state.rejection,
+    payment: state.payment,
+    lastReminder: state.lastReminder,
+  }
+}
+
+function fees(person: StoredPerson): Fees | null {
+  if (!person.member) return null
+  const receipts = data()
+    .receipts.filter((receipt) => receipt.person.id === person.id)
+    .sort((a, b) => (a.number < b.number ? 1 : -1))
+  return { current: feeDetail(person), receipts }
+}
+
+function officerName(id: string) {
+  const person = data().byId.get(id)
+  return person ? fullName(person) : "—"
+}
+
+/** The office the signed-in person signs receipts for: they need `people:receipts:sign` and to hold it. */
+function viewerSigner(viewer: PeopleViewer): Signer | null {
+  if (!viewer.permissions.includes("people:receipts:sign")) return null
+  const me = linkedRecord(viewer)?.id
+  return me === OFFICERS.president ? "president" : me === OFFICERS.vicePresident ? "vicePresident" : null
+}
+
+function findReceipt(id: string) {
+  const receipt = data().receipts.find((candidate) => candidate.id === id)
+  if (!receipt) throw new Error("This receipt no longer exists.")
+  return receipt
+}
+
+function currentMember(personId: string) {
+  const person = find(personId)
+  const member = person.member
+  if (!member || member.status === "former" || !member.fee) throw new Error("This person isn't a current member.")
+  person.feeState ??= emptyFeeState()
+  return { person, member, state: person.feeState }
+}
+
+/** Issues the next receipt of the fee year, waiting for the President's signature (the Vice-president's for theirs). */
+function issueReceipt(person: StoredPerson, payment: NonNullable<FeeDetail["payment"]>) {
+  const member = person.member
+  if (!member) throw new Error("This person isn't a member.")
+  const number = nextReceiptNumber(
+    FEE_YEAR,
+    data().receipts.map((receipt) => receipt.number)
+  )
+  const receipt: Receipt = {
+    id: receiptId(number),
+    number,
+    year: FEE_YEAR,
+    person: { id: person.id, name: fullName(person) },
+    memberNumber: member.number,
+    amountCents: payment.amountCents,
+    issuedOn: today(),
+    paidOn: payment.paidOn,
+    method: payment.method,
+    transferDate: payment.transferDate,
+    status: "toSign",
+    signer: person.id === OFFICERS.president ? "vicePresident" : "president",
+    signedBy: null,
+    signedOn: null,
+    sentAt: null,
+    sentTo: null,
+    failure: null,
+    voided: null,
+  }
+  data().receipts.push(receipt)
+  log(person, "System", `issued receipt ${number} for the ${FEE_YEAR} fee`)
+  return receipt
+}
+
+/** Emails a signed receipt to the member's Microsoft 365 address; a mailbox flagged in the sample data refuses it. */
+function sendReceipt(receipt: Receipt) {
+  const person = find(receipt.person.id)
+  const email = person.member?.m365Email ?? ""
+  receipt.sentTo = email
+  if (person.feeState?.mailFails) {
+    receipt.status = "failed"
+    receipt.failure = "The mail server rejected the address: mailbox unavailable."
+    log(person, "System", `couldn't email receipt ${receipt.number}`)
+    return false
+  }
+  receipt.status = "sent"
+  receipt.sentAt = nowStamp()
+  receipt.failure = null
+  log(person, "System", `emailed receipt ${receipt.number} to ${email}`)
+  return true
+}
+
+function receiptFile(receipt: Receipt): FilePayload {
+  const bytes =
+    signedFiles.get(receipt.id) ??
+    receiptPdf(receipt, {
+      president: officerName(OFFICERS.president),
+      vicePresident: officerName(OFFICERS.vicePresident),
+    })
+  return {
+    fileName: downloadName(receipt),
+    contentType: "application/pdf",
+    base64: Buffer.from(bytes).toString("base64"),
   }
 }
 
@@ -425,6 +569,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         account: { status: "none" },
         notes: null,
         activity: [],
+        feeState: null,
         start: input.admin ? today() : null,
         censusTelegram: null,
         expected: false,
@@ -469,7 +614,18 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         fee: input.fee,
         m365Email: m365Address(person.profile.firstName, person.profile.lastName),
       }
+      person.feeState = emptyFeeState()
       log(person, actor, `admitted ${person.profile.firstName} as member ${input.number}`)
+      if (input.fee === "paid") {
+        const payment = {
+          paidOn: input.admittedOn,
+          method: "transfer" as const,
+          amountCents: FEE_AMOUNT_CENTS,
+          transferDate: input.admittedOn,
+        }
+        person.feeState.payment = payment
+        issueReceipt(person, payment)
+      }
     },
     setMemberStatus: async (input) => {
       require(viewer, "people:members:write")
@@ -981,9 +1137,17 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
               .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "lead" ? -1 : 1)),
           }
         : null
+      const current = me.member && me.member.status !== "former" ? me.member : null
       return {
         state: "linked",
         person: { ...record(me, { ...viewer, personId: me.id }), notes: null },
+        feeInstructions: current
+          ? {
+              beneficiary: FEE_BENEFICIARY,
+              iban: FEE_IBAN,
+              reference: `Quota ${FEE_YEAR} ${current.number} ${fullName(me)}`,
+            }
+          : null,
         campaign: me.expected ? { id: "2026", year: "2026/27", closesOn: "2026-10-31" } : null,
         contacts,
         roster,
@@ -1058,6 +1222,271 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         throw new Error("There is no photo and video consent to revoke.")
       me.consents.photo = { status: "revoked", on: today() }
       log(me, fullName(me), "revoked the photo and video consent")
+    },
+    getFeeReview: async (input) => {
+      require(viewer, "people:fees:write")
+      const { person, member, state } = currentMember(input.personId)
+      const fee = feeDetail(person)
+      if (!fee) throw new Error("This person isn't a current member.")
+      return {
+        person: { id: person.id, name: fullName(person) },
+        memberNumber: member.number,
+        m365Email: member.m365Email,
+        fee,
+        rejections: state.rejections,
+        nextReceipt: nextReceiptNumber(
+          FEE_YEAR,
+          data().receipts.map((receipt) => receipt.number)
+        ),
+      }
+    },
+    getFeeUpload: async (input) => {
+      require(viewer, "people:fees:write")
+      const { person, member, state } = currentMember(input.personId)
+      if (!state.upload) throw new Error("There is no transfer receipt to show.")
+      const file = transferFiles.get(person.id)
+      const bytes =
+        file?.bytes ??
+        sampleTransferPdf({
+          name: fullName(person),
+          memberNumber: member.number,
+          date: state.upload.transferDate,
+          amountCents: state.upload.amountCents,
+        })
+      return {
+        fileName: state.upload.fileName,
+        contentType: file?.type ?? "application/pdf",
+        base64: Buffer.from(bytes).toString("base64"),
+      }
+    },
+    approveFee: async (input) => {
+      require(viewer, "people:fees:write")
+      const { person, member, state } = currentMember(input.personId)
+      if (member.fee !== "receipt" || !state.upload) throw new Error("There is no transfer receipt to review.")
+      const payment = {
+        paidOn: state.upload.transferDate,
+        method: "transfer" as const,
+        amountCents: state.upload.amountCents,
+        transferDate: state.upload.transferDate,
+      }
+      member.fee = "paid"
+      state.payment = payment
+      state.upload = null
+      state.rejection = null
+      transferFiles.delete(person.id)
+      log(person, actor, `approved the transfer receipt for ${FEE_YEAR}`)
+      return { receipt: issueReceipt(person, payment).number }
+    },
+    rejectFee: async (input) => {
+      require(viewer, "people:fees:write")
+      const { person, member, state } = currentMember(input.personId)
+      if (member.fee !== "receipt" || !state.upload) throw new Error("There is no transfer receipt to review.")
+      const rejection = { reason: input.reason, by: actor, at: nowStamp() }
+      member.fee = unpaidStatus()
+      state.upload = null
+      state.rejection = rejection
+      state.rejections.unshift(rejection)
+      transferFiles.delete(person.id)
+      log(person, actor, `rejected the transfer receipt for ${FEE_YEAR}: “${input.reason}”`)
+    },
+    markFeePaid: async (input) => {
+      require(viewer, "people:fees:write")
+      const { person, member, state } = currentMember(input.personId)
+      if (member.fee === "paid") throw new Error(`The ${FEE_YEAR} fee is already paid.`)
+      const payment = {
+        paidOn: input.paidOn,
+        method: input.method,
+        amountCents: input.amountCents,
+        transferDate: input.method === "transfer" ? input.paidOn : null,
+      }
+      member.fee = "paid"
+      state.payment = payment
+      state.upload = null
+      state.rejection = null
+      transferFiles.delete(person.id)
+      const how = input.method === "cash" ? "cash" : "bank transfer"
+      log(person, actor, `marked the ${FEE_YEAR} fee as paid (${how})${input.note ? `: “${input.note}”` : ""}`)
+      return { receipt: issueReceipt(person, payment).number }
+    },
+    remindFees: async (input) => {
+      require(viewer, "people:fees:write")
+      const recently = new Date(Date.now() - 3 * 86_400_000).toISOString()
+      const targets =
+        input.personId === null
+          ? data().people.filter(
+              (person) =>
+                person.feeState &&
+                person.member?.status !== "former" &&
+                (person.member?.fee === "due" || person.member?.fee === "unpaid")
+            )
+          : [currentMember(input.personId).person]
+      let sent = 0
+      let skipped = 0
+      for (const person of targets) {
+        const state = person.feeState
+        if (!state) continue
+        if (person.member?.fee !== "due" && person.member?.fee !== "unpaid") {
+          throw new Error(`${fullName(person)}'s fee isn't due.`)
+        }
+        if (input.personId === null && state.lastReminder && new Date(state.lastReminder).toISOString() > recently) {
+          skipped++
+          continue
+        }
+        state.lastReminder = nowStamp()
+        log(person, actor, `sent a reminder for the ${FEE_YEAR} fee`)
+        sent++
+      }
+      return { sent, skipped }
+    },
+    listReceipts: async (input) => {
+      require(viewer, "people:members:read")
+      const all = data().receipts
+      const years = [...new Set(all.map((receipt) => receipt.year))].sort().reverse()
+      const year = input.year ?? FEE_YEAR
+      const ref = (id: string) => {
+        const person = data().byId.get(id)
+        return person ? { id, name: fullName(person) } : null
+      }
+      return {
+        year,
+        years: years.includes(FEE_YEAR) ? years : [FEE_YEAR, ...years],
+        viewerSigner: viewerSigner(viewer),
+        officers: { president: ref(OFFICERS.president), vicePresident: ref(OFFICERS.vicePresident) },
+        receipts: all.filter((receipt) => receipt.year === year).sort((a, b) => (a.number < b.number ? 1 : -1)),
+      }
+    },
+    downloadReceipt: async (input) => {
+      require(viewer, "people:members:read")
+      return receiptFile(findReceipt(input.receiptId))
+    },
+    downloadReceiptsToSign: async () => {
+      require(viewer, "people:receipts:sign")
+      const signer = viewerSigner(viewer)
+      if (!signer) throw new Error("Only the President and the Vice-president sign receipts.")
+      const waiting = data().receipts.filter((receipt) => receipt.status === "toSign" && receipt.signer === signer)
+      if (waiting.length === 0) throw new Error("No receipts are waiting for your signature.")
+      const zip = zipFiles(
+        waiting.map((receipt) => ({
+          name: receiptFileName(receipt.number),
+          bytes: Buffer.from(receiptFile(receipt).base64, "base64"),
+        }))
+      )
+      return {
+        fileName: `Ricevute_da_firmare_${today()}.zip`,
+        contentType: "application/zip",
+        base64: zip.toString("base64"),
+      }
+    },
+    previewSignedReceipts: async (files) => {
+      require(viewer, "people:receipts:sign")
+      const uploadId = `su-${Date.now().toString(36)}`
+      const read = await Promise.all(
+        files.map(async (file, index) => {
+          const bytes = new Uint8Array(await file.arrayBuffer())
+          return { fileId: `f${index + 1}`, name: file.name, bytes, signed: looksSigned(file.name, bytes) }
+        })
+      )
+      signedUploads.set(uploadId, read)
+      return {
+        uploadId,
+        files: read.map((file) => {
+          const number = receiptNumberFromFileName(file.name)
+          const receipt = number ? data().receipts.find((candidate) => candidate.number === number) : undefined
+          return {
+            fileId: file.fileId,
+            fileName: file.name,
+            size: file.bytes.length,
+            receiptId: receipt?.id ?? null,
+            signature: { valid: file.signed, signer: file.signed ? actor : null },
+          }
+        }),
+      } satisfies SignedUpload
+    },
+    sendSignedReceipts: async (input) => {
+      require(viewer, "people:receipts:sign")
+      const signer = viewerSigner(viewer)
+      if (!signer) throw new Error("Only the President and the Vice-president sign receipts.")
+      const upload = signedUploads.get(input.uploadId)
+      if (!upload) throw new Error("This upload expired. Add the files again.")
+      const chosen = Object.entries(input.assignments).map(([fileId, id]) => {
+        const file = upload.find((candidate) => candidate.fileId === fileId)
+        if (!file) throw new Error("This upload changed. Add the files again.")
+        const receipt = findReceipt(id)
+        if (!file.signed) throw new Error(`${file.name} isn't signed.`)
+        if (receipt.status !== "toSign") throw new Error(`Receipt ${receipt.number} is already signed.`)
+        if (receipt.signer !== signer) throw new Error(`Receipt ${receipt.number} needs another signer.`)
+        return { file, receipt }
+      })
+      const ids = chosen.map(({ receipt }) => receipt.id)
+      if (new Set(ids).size !== ids.length) throw new Error("Two files point at the same receipt.")
+      let sent = 0
+      let failed = 0
+      for (const { file, receipt } of chosen) {
+        receipt.status = "signed"
+        receipt.signedBy = actor
+        receipt.signedOn = today()
+        signedFiles.set(receipt.id, file.bytes)
+        log(find(receipt.person.id), actor, `uploaded receipt ${receipt.number}, signed`)
+        if (sendReceipt(receipt)) sent++
+        else failed++
+      }
+      signedUploads.delete(input.uploadId)
+      return { sent, failed }
+    },
+    retryReceipt: async (input) => {
+      require(viewer, "people:fees:write")
+      const receipt = findReceipt(input.receiptId)
+      if (receipt.status !== "failed") throw new Error(`Receipt ${receipt.number} isn't waiting for a retry.`)
+      // In the sample data the address gets fixed before anyone retries.
+      const person = find(receipt.person.id)
+      if (person.feeState) person.feeState.mailFails = false
+      if (!sendReceipt(receipt)) throw new Error(receipt.failure ?? "The receipt couldn't be sent.")
+    },
+    voidReceipt: async (input) => {
+      require(viewer, "people:fees:write")
+      const receipt = findReceipt(input.receiptId)
+      if (receipt.status === "voided") throw new Error(`Receipt ${receipt.number} is already voided.`)
+      receipt.status = "voided"
+      receipt.voided = { reason: input.reason, by: actor, on: today() }
+      const person = find(receipt.person.id)
+      log(person, actor, `voided receipt ${receipt.number}: “${input.reason}”`)
+      const stillValid = data().receipts.some(
+        (other) => other.person.id === person.id && other.year === receipt.year && other.status !== "voided"
+      )
+      // Voiding this year's only receipt reopens the fee, so the admin can issue a correct one.
+      if (receipt.year === FEE_YEAR && !stillValid && person.member?.fee === "paid" && person.feeState) {
+        person.member.fee = unpaidStatus()
+        person.feeState.payment = null
+      }
+    },
+    uploadTransferReceipt: async (file, input) => {
+      require(viewer, "people:self")
+      const me = linkedRecord(viewer)
+      if (!me) throw new Error("There is no record to upload for.")
+      const { member, state } = currentMember(me.id)
+      if (member.fee === "paid") throw new Error(`Your ${FEE_YEAR} fee is already paid.`)
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      transferFiles.set(me.id, { name: file.name, type: file.type || "application/pdf", bytes })
+      state.upload = {
+        fileName: file.name,
+        size: bytes.length,
+        uploadedAt: nowStamp(),
+        transferDate: input.transferDate,
+        amountCents: input.amountCents,
+      }
+      state.rejection = null
+      member.fee = "receipt"
+      log(me, fullName(me), `uploaded a transfer receipt for ${FEE_YEAR}`)
+    },
+    downloadMyReceipt: async (input) => {
+      require(viewer, "people:self")
+      const me = linkedRecord(viewer)
+      const receipt = findReceipt(input.receiptId)
+      // Members get their own receipts once signed; anything else reads as missing.
+      if (!me || receipt.person.id !== me.id || receipt.status === "toSign" || receipt.status === "voided") {
+        throw new Error("This receipt no longer exists.")
+      }
+      return receiptFile(receipt)
     },
   }
 }

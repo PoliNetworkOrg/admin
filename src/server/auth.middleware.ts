@@ -142,6 +142,22 @@ export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" 
     return next()
   })
 
+/** People › fees: review transfer receipts, mark fees as paid, send reminders, retry and void receipts. */
+export const peopleFeesWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:fees:write")
+    return next()
+  })
+
+/** People › Receipts: download receipts to sign and upload them signed (the President and Vice-president). */
+export const peopleReceiptsSignMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:receipts:sign")
+    return next()
+  })
+
 /** People: appoint Capo Admins and Team Leads. */
 export const peopleAppointMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
