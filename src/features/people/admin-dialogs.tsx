@@ -1,15 +1,23 @@
 import { useServerFn } from "@tanstack/react-start"
 import { Crown } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 
-import { ConfirmDialog, fieldControl, fieldHintId, FormDialog, FormField, Spinner } from "@/components/primitives"
+import {
+  ConfirmDialog,
+  fieldControl,
+  fieldHintId,
+  FormDialog,
+  FormField,
+  SelectField,
+  Spinner,
+} from "@/components/primitives"
 import { Textarea } from "@/components/ui/textarea"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { setCapoScope } from "./people-appoint.functions"
 import { personName } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { SelectField } from "./people-ui"
+import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
 import { endAdminRole, setCapoOfReference } from "./people-write.functions"
 import { COURSES, type PersonRow } from "./people.contract"
 import { getPeople } from "./people.functions"
@@ -45,8 +53,7 @@ export function EndAdminDialog({
       await end({ data: { personId: target.personId, reason: text } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The admin role could not be ended."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't end the admin role."), { cause: caught })
     }
     await refresh("Admin role ended.")
     onOpenChange(false)
@@ -57,7 +64,7 @@ export function EndAdminDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="End admin role?"
-      description={`${target.name} stops being an admin of ${target.groups === 1 ? "1 group" : `${target.groups} groups`}. The bot removes their admin rights there; the record keeps the history.`}
+      description={`${target.name} stops being an admin of ${pluralize(target.groups, "group")}. The bot removes their admin rights there; the record keeps the history.`}
       noun="change"
       dirty={reason !== null || details.trim() !== ""}
       submitLabel="End admin role"
@@ -125,26 +132,10 @@ export function CapoOfReferenceDialog({
   const save = useServerFn(setCapoOfReference)
   const load = useServerFn(getPeople)
   const refresh = useRefreshAfter()
-  const [loaded, setLoaded] = useState<CapoOption[] | null>(people ? capoOptions(people) : null)
-  const [loadError, setLoadError] = useState(false)
   const [value, setValue] = useState(current ?? NONE)
-
-  useEffect(() => {
-    if (people) return
-    let active = true
-    load().then(
-      (rows) => {
-        if (active) setLoaded(capoOptions(rows))
-      },
-      (caught) => {
-        console.error(caught)
-        if (active) setLoadError(true)
-      }
-    )
-    return () => {
-      active = false
-    }
-  }, [people, load])
+  // Pages that already hold every person pass them; the record page loads them.
+  const { data: rows, failed: loadError } = useLoaded(useMemo(() => (people ? null : () => load()), [people, load]))
+  const loaded = people ? capoOptions(people) : rows ? capoOptions(rows) : null
 
   async function submit() {
     if (value === (current ?? NONE)) {
@@ -155,8 +146,7 @@ export function CapoOfReferenceDialog({
       await save({ data: { personId: target.personId, capoId: value === NONE ? null : value } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The Capo Admin could not be changed."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't change the Capo Admin."), { cause: caught })
     }
     await refresh("Capo Admin of reference saved.")
     onOpenChange(false)
@@ -223,8 +213,7 @@ export function CapoScopeDialog({
       await save({ data: { personId: target.personId, scope: value } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The Capo Admin role could not be saved."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't save the Capo Admin role."), { cause: caught })
     }
     await refresh(scope ? "Capo Admin scope changed." : `${target.name} appointed Capo Admin.`)
     onOpenChange(false)

@@ -54,10 +54,11 @@ not the permission.
 ## Screens
 
 - **Member register**: the Fee column keeps its badge and filter; the row's first action follows the fee (Review
-  receipt for Receipt uploaded, Send reminder for Due and Unpaid, an empty slot otherwise, so icons align); ⋮ adds Mark
-  as paid. The page's outline action is Send reminders, and Export moves into the header's ⋮ when the viewer has both
-  (one primary and at most one outline per header).
-- **Review receipt** (lg dialog, bottom sheet on phones): the uploaded file (PDF framed, image shown, Open in a new
+  receipt for Receipt uploaded, Send reminder for Due and Unpaid, an empty slot otherwise, so icons align); Mark as
+  paid joins the row's other actions. The page's outline action is Send reminders; Export register is a boxed icon
+  button after Add member, in the same place for everyone who can export (one primary and at most one outline per
+  header).
+- **Review receipt** (lg dialog, bottom sheet on phones): the uploaded file (a PDF's pages drawn with pdf.js, an image shown, Open in a new
   tab), the member and fee year, the declared transfer, earlier rejections, and the receipt number approving would
   issue. Reject switches the dialog to a required reason with three one-click starts; Back returns.
 - **People › Receipts** (new section, `Receipt` icon, after Member register): fee-year menu, search, a segmented filter

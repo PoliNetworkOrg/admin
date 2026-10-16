@@ -8,7 +8,8 @@ and `people.me.roles` returns `{ capoScope, leads }` for the navigation. In agen
 dashboard serves the same shapes from `src/features/people/people.fixtures.server.ts`.
 
 Every procedure checks permissions server-side; the "Needs" column is the minimum. Dates are ISO `YYYY-MM-DD` strings
-(`Europe/Rome`); timestamps ISO 8601. Academic years are strings like `"2026/27"`.
+(`Europe/Rome`); timestamps ISO 8601. Academic years are strings like `"2026/27"` and start on 1 September: the
+dashboard labels the current census and fee year from today's date (`currentYear()` in `people-format.ts`).
 
 ## Shared types
 

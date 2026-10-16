@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { dateOnlyValue, parseDateOnly } from "../src/lib/date-only.ts"
+import { academicYear, dateOnlyValue, parseDateOnly } from "../src/lib/date-only.ts"
 
 void test("calendar dates reject impossible days and retain the selected day across time zones", () => {
   const original = process.env.TZ
@@ -18,4 +18,12 @@ void test("calendar dates reject impossible days and retain the selected day acr
     if (original === undefined) delete process.env.TZ
     else process.env.TZ = original
   }
+})
+
+void test("academic years start on 1 September", () => {
+  assert.equal(academicYear("2026-08-31"), "2025/26")
+  assert.equal(academicYear("2026-09-01"), "2026/27")
+  assert.equal(academicYear("2026-12-31"), "2026/27")
+  assert.equal(academicYear("2027-01-01"), "2026/27")
+  assert.equal(academicYear("2099-10-01"), "2099/00")
 })

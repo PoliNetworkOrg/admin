@@ -1,14 +1,14 @@
 import { useServerFn } from "@tanstack/react-start"
 import { useState } from "react"
 
-import { fieldControl, fieldHintId, FormDialog, FormField } from "@/components/primitives"
+import { fieldControl, fieldHintId, FormDialog, FormField, SelectField } from "@/components/primitives"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { answerMyCensus, askToBeAdded, requestCorrection } from "./people-self.functions"
-import { ChoiceChips, SelectField } from "./people-ui"
+import { ChoiceChips } from "./people-ui"
 import {
   type AnswerCensusInput,
   CORRECTION_FIELDS,
@@ -46,8 +46,7 @@ export function LeavingDialog({
       await save({ data: { ...answer, answer: "leaving", reason, note: note.trim() } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "Your answer couldn't be saved. Try again."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Your answer couldn't be saved. Try again."), { cause: caught })
     }
     await refresh("Answer saved.")
     onOpenChange(false)
@@ -109,8 +108,7 @@ export function CorrectionDialog({ open, onOpenChange }: { open: boolean; onOpen
       await send({ data: { field, value: value.trim(), note: note.trim() } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The request couldn't be sent. Try again."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't send the request. Try again."), { cause: caught })
     }
     await refresh("Correction requested.")
     onOpenChange(false)
@@ -198,8 +196,7 @@ export function AskToBeAddedDialog({ open, onOpenChange }: { open: boolean; onOp
       await send({ data: { roles, groupsOrTeam: groupsOrTeam.trim(), telegramUsername: telegram.trim() } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The request couldn't be sent. Try again."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't send the request. Try again."), { cause: caught })
     }
     await refresh("Request sent.")
     onOpenChange(false)

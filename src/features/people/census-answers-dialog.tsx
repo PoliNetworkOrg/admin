@@ -1,8 +1,9 @@
 import { useServerFn } from "@tanstack/react-start"
-import { useEffect, useState } from "react"
+import { useCallback } from "react"
 
 import { FormDialog, InlineAlert, Spinner } from "@/components/primitives"
 
+import { useLoaded } from "./people-hooks"
 import { getCensusAnswers } from "./people.functions"
 
 /** A census year's full answers, as the person gave them: HR and the Direttivo only. */
@@ -20,24 +21,9 @@ export function CensusAnswersDialog({
   year: string
 }) {
   const load = useServerFn(getCensusAnswers)
-  const [answers, setAnswers] = useState<{ question: string; answer: string }[] | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let current = true
-    load({ data: { personId, year } }).then(
-      (result) => {
-        if (current) setAnswers(result)
-      },
-      (caught) => {
-        console.error(caught)
-        if (current) setFailed(true)
-      }
-    )
-    return () => {
-      current = false
-    }
-  }, [load, personId, year])
+  const { data: answers, failed } = useLoaded(
+    useCallback(() => load({ data: { personId, year } }), [load, personId, year])
+  )
 
   return (
     <FormDialog

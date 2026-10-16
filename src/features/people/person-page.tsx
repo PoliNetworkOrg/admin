@@ -32,10 +32,10 @@ import {
   InlineAlert,
   KeyValueList,
   type KeyValueItem,
+  LoadingButton,
   Menu,
   MenuContent,
   MenuItem,
-  MenuSeparator,
   MenuTrigger,
   PlatformGlyph,
   RecordHeader,
@@ -46,7 +46,7 @@ import {
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { formatDateTime } from "@/lib/format"
+import { formatDateTime, pluralize } from "@/lib/format"
 
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
 import { CapoOfReferenceDialog, CapoScopeDialog, EndAdminDialog, EndCapoDialog } from "./admin-dialogs"
@@ -56,13 +56,12 @@ import { LinkAccountDialog } from "./link-account-dialog"
 import { MemberNumberDialog, MemberStatusDialog } from "./member-dialogs"
 import { NotesDialog } from "./notes-dialog"
 import { formatCents } from "./people-fees"
-import { saveFile } from "./people-files"
 import {
   ACCOUNT_STATUS,
   activeTeams,
   CENSUS_ANSWER,
   CENSUS_SOURCE,
-  CURRENT_YEAR,
+  currentYear,
   FEE_STATUS,
   formatDay,
   hasNoRoles,
@@ -72,13 +71,14 @@ import {
   MEMBER_STATUS,
   NO_ANSWER,
   personName,
+  PHOTO_CONSENT,
   roleLabels,
   teamName,
   yearOf,
 } from "./people-format"
-import { useRefreshAfter } from "./people-hooks"
+import { errorMessage, useDialog, useDialogState, useFileDownload, useRefreshAfter } from "./people-hooks"
 import { downloadReceipt } from "./people-receipts.functions"
-import { MonoChip, PersonAvatar, Row, RowIcon, Rows, StateBadge, SubHeading } from "./people-ui"
+import { ActionMenu, MonoChip, PersonAvatar, Row, RowIcon, Rows, StateBadge, SubHeading } from "./people-ui"
 import { updatePerson } from "./people-write.functions"
 import { type PersonRecord, TEAM_IDS, type TeamMembership, teamFields } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
@@ -105,77 +105,32 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   const { profile, admin, member, account } = person
   const adminTarget = { personId: person.id, name, groups: admin?.groups.length ?? 0 }
 
-  const [editOpen, setEditOpen] = useState(false)
-  const [editKey, setEditKey] = useState(0)
-  const [notesOpen, setNotesOpen] = useState(false)
-  const [notesKey, setNotesKey] = useState(0)
-  const [answersYear, setAnswersYear] = useState<string | null>(null)
-  const [answersOpen, setAnswersOpen] = useState(false)
-  const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
-  const [accountOpen, setAccountOpen] = useState(false)
-  const [linkOpen, setLinkOpen] = useState(false)
-  const [linkKey, setLinkKey] = useState(0)
-  const [memberDialog, setMemberDialog] = useState<"status" | "number" | null>(null)
-  const [memberOpen, setMemberOpen] = useState(false)
-  const [memberKey, setMemberKey] = useState(0)
-  const [feeDialog, setFeeDialog] = useState<"review" | "paid" | null>(null)
-  const [feeOpen, setFeeOpen] = useState(false)
-  const [feeKey, setFeeKey] = useState(0)
+  const { busy: downloading, download: downloadFile } = useFileDownload()
+  const edit = useDialogState()
+  const notes = useDialogState()
+  const link = useDialogState()
+  const addTeam = useDialogState()
+  const answers = useDialog<string>()
+  const accountDialog = useDialog<AccountAction>()
+  const memberDialog = useDialog<"status" | "number">()
+  const feeDialog = useDialog<"review" | "paid">()
+  const adminDialog = useDialog<AdminDialogKind>()
+  const teamDialog = useDialog<{ kind: "fields" | "end"; target: TeamMemberTarget }>()
+  const [applyingTelegram, setApplyingTelegram] = useState(false)
+  // A person already on the register (even one whose details this viewer can't read) isn't offered Add member.
+  const canAddMember = canWriteMembers && !member && !person.isMember
   const feeTarget: FeeTarget | null = member ? { id: person.id, name, number: member.number } : null
 
-  function openFee(kind: "review" | "paid") {
-    setFeeDialog(kind)
-    setFeeKey((value) => value + 1)
-    setFeeOpen(true)
-  }
-
-  async function saveReceipt(receiptId: string, number: string) {
-    try {
-      saveFile(await download({ data: { receiptId } }))
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(`Couldn't download receipt ${number}.`)
-    }
-  }
-
-  const [adminDialog, setAdminDialog] = useState<AdminDialogKind | null>(null)
-  const [adminOpen, setAdminOpen] = useState(false)
-  const [adminKey, setAdminKey] = useState(0)
-
-  function openAdmin(kind: AdminDialogKind) {
-    setAdminDialog(kind)
-    setAdminKey((value) => value + 1)
-    setAdminOpen(true)
-  }
-
-  const [teamDialog, setTeamDialog] = useState<{ kind: "fields" | "end"; target: TeamMemberTarget } | null>(null)
-  const [teamOpen, setTeamOpen] = useState(false)
-  const [teamKey, setTeamKey] = useState(0)
-  const [addTeamOpen, setAddTeamOpen] = useState(false)
-
   function openTeam(kind: "fields" | "end", membership: TeamMembership) {
-    setTeamDialog({ kind, target: { personId: person.id, name, team: membership.team, fields: membership.fields } })
-    setTeamKey((value) => value + 1)
-    setTeamOpen(true)
-  }
-
-  function openAddToTeam() {
-    setTeamKey((value) => value + 1)
-    setAddTeamOpen(true)
-  }
-
-  function openMember(kind: "status" | "number") {
-    setMemberDialog(kind)
-    setMemberKey((value) => value + 1)
-    setMemberOpen(true)
+    teamDialog.show({ kind, target: { personId: person.id, name, team: membership.team, fields: membership.fields } })
   }
 
   function openAccount(kind: AccountAction["kind"], email: string) {
-    setAccountAction({ kind, personId: person.id, name, email })
-    setAccountOpen(true)
+    accountDialog.show({ kind, personId: person.id, name, email })
   }
 
   async function applyCensusTelegram(username: string) {
+    setApplyingTelegram(true)
     try {
       await update({
         data: {
@@ -192,8 +147,10 @@ export function PersonPage({ person }: { person: PersonRecord }) {
       })
     } catch (caught) {
       console.error(caught)
-      appToast.error("Couldn't update the Telegram username.")
+      appToast.error(errorMessage(caught, "Couldn't update the Telegram username."))
       return
+    } finally {
+      setApplyingTelegram(false)
     }
     await refresh("Telegram username updated.")
   }
@@ -251,7 +208,8 @@ export function PersonPage({ person }: { person: PersonRecord }) {
             }
             chips={roles.length ? roles.map((role) => <Chip key={role}>{role}</Chip>) : undefined}
             actions={
-              canWrite || (canWriteMembers && !member) ? (
+              // A menu only when both roles can be added; one role is a plain button.
+              canAddMember && canWrite ? (
                 <Menu>
                   <MenuTrigger
                     render={
@@ -262,20 +220,27 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                     }
                   />
                   <MenuContent>
-                    {canWriteMembers && !member && !person.isMember ? (
-                      <MenuItem render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}>
-                        <IdCard />
-                        Member
-                      </MenuItem>
-                    ) : null}
-                    {canWrite ? (
-                      <MenuItem onClick={openAddToTeam}>
-                        <Users />
-                        Team member
-                      </MenuItem>
-                    ) : null}
+                    <MenuItem render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}>
+                      <IdCard />
+                      Member
+                    </MenuItem>
+                    <MenuItem onClick={addTeam.show}>
+                      <Users />
+                      Team member
+                    </MenuItem>
                   </MenuContent>
                 </Menu>
+              ) : canAddMember ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={buttonMotion}
+                  nativeButton={false}
+                  render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}
+                >
+                  <IdCard data-icon="inline-start" />
+                  Add member
+                </Button>
               ) : undefined
             }
           />
@@ -294,14 +259,14 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   tone="warning"
                   action={
                     discrepancy.kind === "telegram-mismatch" && discrepancy.suggestedTelegram && canWrite ? (
-                      <Button
+                      <LoadingButton
                         size="sm"
                         variant="ghost"
-                        className={buttonMotion}
-                        onClick={() => applyCensusTelegram(discrepancy.suggestedTelegram ?? "")}
+                        pending={applyingTelegram}
+                        onClick={() => void applyCensusTelegram(discrepancy.suggestedTelegram ?? "")}
                       >
                         Use @{discrepancy.suggestedTelegram}
-                      </Button>
+                      </LoadingButton>
                     ) : discrepancy.kind === "declared-member" && canWriteMembers ? (
                       <Button
                         size="sm"
@@ -337,15 +302,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 title="Profile"
                 action={
                   canWrite ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className={buttonMotion}
-                      onClick={() => {
-                        setEditKey((key) => key + 1)
-                        setEditOpen(true)
-                      }}
-                    >
+                    <Button size="sm" variant="ghost" className={buttonMotion} onClick={edit.show}>
                       <Pencil data-icon="inline-start" />
                       Edit
                     </Button>
@@ -360,43 +317,36 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   title="Admin"
                   padding="flush"
                   action={
-                    admin.status === "active" && (canWrite || canAppoint) ? (
-                      <Menu>
-                        <MenuTrigger
-                          render={
-                            <IconButton label="Admin actions" ariaLabel="Admin actions" icon={EllipsisVertical} />
-                          }
-                        />
-                        <MenuContent>
-                          {canWrite && !admin.capoScope ? (
-                            <MenuItem onClick={() => openAdmin("capoRef")}>
-                              <UserRoundCog />
-                              Capo Admin of reference
-                            </MenuItem>
-                          ) : null}
-                          {canAppoint ? (
-                            <MenuItem onClick={() => openAdmin("capoScope")}>
-                              <Crown />
-                              {admin.capoScope ? "Change Capo Admin scope" : "Appoint as Capo Admin"}
-                            </MenuItem>
-                          ) : null}
-                          {canAppoint && admin.capoScope ? (
-                            <MenuItem variant="destructive" onClick={() => openAdmin("endCapo")}>
-                              <Crown />
-                              End Capo Admin role
-                            </MenuItem>
-                          ) : null}
-                          {canWrite ? (
-                            <>
-                              <MenuSeparator />
-                              <MenuItem variant="destructive" onClick={() => openAdmin("end")}>
-                                <UserMinus />
-                                End admin role
-                              </MenuItem>
-                            </>
-                          ) : null}
-                        </MenuContent>
-                      </Menu>
+                    admin.status === "active" ? (
+                      <ActionMenu
+                        label="Admin actions"
+                        actions={[
+                          canWrite &&
+                            !admin.capoScope && {
+                              label: "Capo Admin of reference",
+                              icon: UserRoundCog,
+                              onClick: () => adminDialog.show("capoRef"),
+                            },
+                          canAppoint && {
+                            label: admin.capoScope ? "Change Capo Admin scope" : "Appoint as Capo Admin",
+                            icon: Crown,
+                            onClick: () => adminDialog.show("capoScope"),
+                          },
+                          canAppoint &&
+                            admin.capoScope !== null && {
+                              label: "End Capo Admin role",
+                              icon: Crown,
+                              destructive: true,
+                              onClick: () => adminDialog.show("endCapo"),
+                            },
+                          canWrite && {
+                            label: "End admin role",
+                            icon: UserMinus,
+                            destructive: true,
+                            onClick: () => adminDialog.show("end"),
+                          },
+                        ]}
+                      />
                     ) : undefined
                   }
                 >
@@ -482,7 +432,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   padding="flush"
                   action={
                     canWrite ? (
-                      <Button variant="ghost" size="sm" className={buttonMotion} onClick={openAddToTeam}>
+                      <Button variant="ghost" size="sm" className={buttonMotion} onClick={addTeam.show}>
                         <UserPlus data-icon="inline-start" />
                         Add to team
                       </Button>
@@ -532,32 +482,24 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         }
                         end={
                           canWrite && !membership.endedOn ? (
-                            <Menu>
-                              <MenuTrigger
-                                render={
-                                  <IconButton
-                                    label="Team actions"
-                                    ariaLabel={`${teamName(membership.team)} actions`}
-                                    icon={EllipsisVertical}
-                                  />
-                                }
-                              />
-                              <MenuContent>
-                                <MenuItem onClick={() => openTeam("fields", membership)}>
-                                  <Pencil />
-                                  Edit team fields
-                                </MenuItem>
-                                {membership.role !== "lead" || canAppoint ? (
-                                  <>
-                                    <MenuSeparator />
-                                    <MenuItem variant="destructive" onClick={() => openTeam("end", membership)}>
-                                      <UserMinus />
-                                      End membership
-                                    </MenuItem>
-                                  </>
-                                ) : null}
-                              </MenuContent>
-                            </Menu>
+                            <ActionMenu
+                              label={`${teamName(membership.team)} actions`}
+                              actions={[
+                                {
+                                  label: "Edit team fields",
+                                  ariaLabel: `Edit the ${teamName(membership.team)} team fields`,
+                                  icon: Pencil,
+                                  onClick: () => openTeam("fields", membership),
+                                },
+                                (membership.role !== "lead" || canAppoint) && {
+                                  label: "End membership",
+                                  ariaLabel: `End the ${teamName(membership.team)} membership`,
+                                  icon: UserMinus,
+                                  destructive: true,
+                                  onClick: () => openTeam("end", membership),
+                                },
+                              ]}
+                            />
                           ) : undefined
                         }
                       />
@@ -579,8 +521,8 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         meta={
                           entry.answer && entry.source && entry.answeredOn
                             ? `${CENSUS_SOURCE[entry.source]} · ${formatDay(entry.answeredOn)}`
-                            : entry.year === CURRENT_YEAR
-                              ? `Open until 31 Oct 2026${entry.reminders ? ` · ${entry.reminders} reminder${entry.reminders === 1 ? "" : "s"} sent` : ""}`
+                            : entry.year === currentYear()
+                              ? `Waiting for an answer${entry.reminders ? ` · ${pluralize(entry.reminders, "reminder")} sent` : ""}`
                               : "No answer"
                         }
                         end={
@@ -590,10 +532,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                                 size="sm"
                                 variant="ghost"
                                 className={buttonMotion}
-                                onClick={() => {
-                                  setAnswersYear(entry.year)
-                                  setAnswersOpen(true)
-                                }}
+                                onClick={() => answers.show(entry.year)}
                               >
                                 View answers
                               </Button>
@@ -636,15 +575,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         </Button>
                       ) : null}
                       {account.status !== "linked" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className={buttonMotion}
-                          onClick={() => {
-                            setLinkKey((key) => key + 1)
-                            setLinkOpen(true)
-                          }}
-                        >
+                        <Button size="sm" variant="outline" className={buttonMotion} onClick={link.show}>
                           <Link2 data-icon="inline-start" />
                           Link account
                         </Button>
@@ -747,11 +678,11 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                           }
                         />
                         <MenuContent>
-                          <MenuItem onClick={() => openMember("status")}>
+                          <MenuItem onClick={() => memberDialog.show("status")}>
                             <Pencil />
                             Change status
                           </MenuItem>
-                          <MenuItem onClick={() => openMember("number")}>
+                          <MenuItem onClick={() => memberDialog.show("number")}>
                             <IdCard />
                             Change member number
                           </MenuItem>
@@ -770,7 +701,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                         ? []
                         : [
                             {
-                              key: `Fee ${CURRENT_YEAR}`,
+                              key: `Fee ${currentYear()}`,
                               value: member.fee ? <StateBadge state={FEE_STATUS[member.fee]} /> : null,
                             },
                           ]),
@@ -794,10 +725,17 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 <FeesCard
                   fees={person.fees}
                   canFees={canFees && member !== null && member.status !== "former"}
-                  onReview={() => openFee("review")}
-                  onMarkPaid={() => openFee("paid")}
+                  onReview={() => feeDialog.show("review")}
+                  onMarkPaid={() => feeDialog.show("paid")}
                   onRemind={() => void sendReminder({ id: person.id, name })}
-                  onDownload={(receipt) => void saveReceipt(receipt.id, receipt.number)}
+                  downloading={downloading}
+                  onDownload={(receipt) =>
+                    void downloadFile(
+                      receipt.id,
+                      () => download({ data: { receiptId: receipt.id } }),
+                      `Couldn't download receipt ${receipt.number}.`
+                    )
+                  }
                 />
               ) : null}
 
@@ -824,16 +762,8 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       <Row
                         lead={<RowIcon icon={Camera} />}
                         title="Photo and video"
-                        meta={`${person.consents.photo.status === "granted" ? "Granted" : person.consents.photo.status === "denied" ? "Denied" : "Revoked"} ${formatDay(person.consents.photo.on)} · revocable from My area`}
-                        end={
-                          <StatusBadge tone={person.consents.photo.status === "granted" ? "success" : "neutral"}>
-                            {person.consents.photo.status === "granted"
-                              ? "Granted"
-                              : person.consents.photo.status === "denied"
-                                ? "Denied"
-                                : "Revoked"}
-                          </StatusBadge>
-                        }
+                        meta={`${PHOTO_CONSENT[person.consents.photo.status].label} ${formatDay(person.consents.photo.on)} · revocable from My area`}
+                        end={<StateBadge state={PHOTO_CONSENT[person.consents.photo.status]} />}
                       />
                     ) : null}
                   </Rows>
@@ -847,15 +777,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   title="HR notes"
                   action={
                     canWrite ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={buttonMotion}
-                        onClick={() => {
-                          setNotesKey((key) => key + 1)
-                          setNotesOpen(true)
-                        }}
-                      >
+                      <Button size="sm" variant="ghost" className={buttonMotion} onClick={notes.show}>
                         <NotebookPen data-icon="inline-start" />
                         {person.notes ? "Edit" : "Add note"}
                       </Button>
@@ -897,111 +819,128 @@ export function PersonPage({ person }: { person: PersonRecord }) {
 
       {canWrite ? (
         <>
-          <PersonDialog key={`edit-${editKey}`} open={editOpen} onOpenChange={setEditOpen} person={person} />
+          <PersonDialog key={`edit-${edit.key}`} open={edit.open} onOpenChange={edit.onOpenChange} person={person} />
           <NotesDialog
-            key={`notes-${notesKey}`}
-            open={notesOpen}
-            onOpenChange={setNotesOpen}
+            key={`notes-${notes.key}`}
+            open={notes.open}
+            onOpenChange={notes.onOpenChange}
             personId={person.id}
             notes={person.notes}
           />
-          <AccountActionDialog action={accountAction} open={accountOpen} onOpenChange={setAccountOpen} />
+          <AccountActionDialog
+            action={accountDialog.target}
+            open={accountDialog.open}
+            onOpenChange={accountDialog.onOpenChange}
+          />
           <LinkAccountDialog
-            key={`link-${linkKey}`}
-            open={linkOpen}
-            onOpenChange={setLinkOpen}
+            key={`link-${link.key}`}
+            open={link.open}
+            onOpenChange={link.onOpenChange}
             person={{ id: person.id, name, firstName: profile.firstName }}
+          />
+          <AddToTeamDialog
+            key={`add-team-${addTeam.key}`}
+            open={addTeam.open}
+            onOpenChange={addTeam.onOpenChange}
+            teams={TEAM_IDS.filter((team) => !activeTeams(person).some((membership) => membership.team === team))}
+            person={{ id: person.id, name }}
+            canAppoint={canAppoint}
           />
         </>
       ) : null}
-      {canWrite ? (
-        <AddToTeamDialog
-          key={`add-team-${teamKey}`}
-          open={addTeamOpen}
-          onOpenChange={setAddTeamOpen}
-          teams={TEAM_IDS.filter((team) => !activeTeams(person).some((membership) => membership.team === team))}
-          person={{ id: person.id, name }}
-          canAppoint={canAppoint}
-        />
-      ) : null}
-      {teamDialog ? (
-        teamDialog.kind === "fields" ? (
+      {teamDialog.target ? (
+        teamDialog.target.kind === "fields" ? (
           <EditTeamFieldsDialog
-            key={`fields-${teamKey}`}
-            open={teamOpen}
-            onOpenChange={setTeamOpen}
-            target={teamDialog.target}
+            key={`fields-${teamDialog.key}`}
+            open={teamDialog.open}
+            onOpenChange={teamDialog.onOpenChange}
+            target={teamDialog.target.target}
           />
         ) : (
           <EndTeamMembershipDialog
-            key={`end-team-${teamKey}`}
-            open={teamOpen}
-            onOpenChange={setTeamOpen}
-            target={teamDialog.target}
+            key={`end-team-${teamDialog.key}`}
+            open={teamDialog.open}
+            onOpenChange={teamDialog.onOpenChange}
+            target={teamDialog.target.target}
           />
         )
       ) : null}
-      {admin && adminDialog ? (
-        adminDialog === "end" ? (
-          <EndAdminDialog key={`end-${adminKey}`} open={adminOpen} onOpenChange={setAdminOpen} target={adminTarget} />
-        ) : adminDialog === "capoRef" ? (
+      {admin && adminDialog.target ? (
+        adminDialog.target === "end" ? (
+          <EndAdminDialog
+            key={`end-${adminDialog.key}`}
+            open={adminDialog.open}
+            onOpenChange={adminDialog.onOpenChange}
+            target={adminTarget}
+          />
+        ) : adminDialog.target === "capoRef" ? (
           <CapoOfReferenceDialog
-            key={`ref-${adminKey}`}
-            open={adminOpen}
-            onOpenChange={setAdminOpen}
+            key={`ref-${adminDialog.key}`}
+            open={adminDialog.open}
+            onOpenChange={adminDialog.onOpenChange}
             target={adminTarget}
             current={admin.capoOfReference?.id ?? null}
           />
-        ) : adminDialog === "capoScope" ? (
+        ) : adminDialog.target === "capoScope" ? (
           <CapoScopeDialog
-            key={`scope-${adminKey}`}
-            open={adminOpen}
-            onOpenChange={setAdminOpen}
+            key={`scope-${adminDialog.key}`}
+            open={adminDialog.open}
+            onOpenChange={adminDialog.onOpenChange}
             target={adminTarget}
             scope={admin.capoScope}
           />
         ) : (
           <EndCapoDialog
-            key={`end-capo-${adminKey}`}
-            open={adminOpen}
-            onOpenChange={setAdminOpen}
+            key={`end-capo-${adminDialog.key}`}
+            open={adminDialog.open}
+            onOpenChange={adminDialog.onOpenChange}
             target={adminTarget}
             scope={admin.capoScope ?? ""}
           />
         )
       ) : null}
-      {canWriteMembers && member && memberDialog ? (
-        memberDialog === "status" ? (
+      {canWriteMembers && member && memberDialog.target ? (
+        memberDialog.target === "status" ? (
           <MemberStatusDialog
-            key={`status-${memberKey}`}
-            open={memberOpen}
-            onOpenChange={setMemberOpen}
+            key={`status-${memberDialog.key}`}
+            open={memberDialog.open}
+            onOpenChange={memberDialog.onOpenChange}
             member={{ personId: person.id, name, ...member }}
           />
         ) : (
           <MemberNumberDialog
-            key={`number-${memberKey}`}
-            open={memberOpen}
-            onOpenChange={setMemberOpen}
+            key={`number-${memberDialog.key}`}
+            open={memberDialog.open}
+            onOpenChange={memberDialog.onOpenChange}
             member={{ personId: person.id, name, ...member }}
           />
         )
       ) : null}
-      {canFees && feeTarget && feeDialog ? (
-        feeDialog === "review" ? (
-          <ReviewReceiptDialog key={`review-${feeKey}`} open={feeOpen} onOpenChange={setFeeOpen} person={feeTarget} />
+      {canFees && feeTarget && feeDialog.target ? (
+        feeDialog.target === "review" ? (
+          <ReviewReceiptDialog
+            key={`review-${feeDialog.key}`}
+            open={feeDialog.open}
+            onOpenChange={feeDialog.onOpenChange}
+            person={feeTarget}
+          />
         ) : (
-          <MarkPaidDialog key={`paid-${feeKey}`} open={feeOpen} onOpenChange={setFeeOpen} person={feeTarget} />
+          <MarkPaidDialog
+            key={`paid-${feeDialog.key}`}
+            open={feeDialog.open}
+            onOpenChange={feeDialog.onOpenChange}
+            person={feeTarget}
+          />
         )
       ) : null}
-      {canRead && answersYear ? (
+      {canRead && answers.target ? (
         <CensusAnswersDialog
-          key={answersYear}
-          open={answersOpen}
-          onOpenChange={setAnswersOpen}
+          key={`answers-${answers.key}`}
+          open={answers.open}
+          onOpenChange={answers.onOpenChange}
           personId={person.id}
           name={name}
-          year={answersYear}
+          year={answers.target}
         />
       ) : null}
     </>
@@ -1015,6 +954,7 @@ function FeesCard({
   onReview,
   onMarkPaid,
   onRemind,
+  downloading,
   onDownload,
 }: {
   fees: NonNullable<PersonRecord["fees"]>
@@ -1022,6 +962,8 @@ function FeesCard({
   onReview: () => void
   onMarkPaid: () => void
   onRemind: () => void
+  /** The receipt being downloaded. */
+  downloading: string | null
   onDownload: (receipt: NonNullable<PersonRecord["fees"]>["receipts"][number]) => void
 }) {
   const fee = fees.current
@@ -1064,31 +1006,18 @@ function FeesCard({
       title="Fees and receipts"
       padding="flush"
       action={
-        canFees && fee && fee.status !== "paid" ? (
+        canFees && fee?.status === "receipt" ? (
+          <Button size="sm" variant="outline" className={buttonMotion} onClick={onReview}>
+            <FileSearch data-icon="inline-start" />
+            Review receipt
+          </Button>
+        ) : canFees && owing ? (
           <span className="flex items-center gap-1">
-            {fee.status === "receipt" ? (
-              <Button size="sm" variant="outline" className={buttonMotion} onClick={onReview}>
-                <FileSearch data-icon="inline-start" />
-                Review receipt
-              </Button>
-            ) : null}
-            <Menu>
-              <MenuTrigger
-                render={<IconButton label="Fee actions" ariaLabel="Fee actions" icon={EllipsisVertical} />}
-              />
-              <MenuContent align="end">
-                <MenuItem onClick={onMarkPaid}>
-                  <Banknote />
-                  Mark as paid
-                </MenuItem>
-                {owing ? (
-                  <MenuItem onClick={onRemind}>
-                    <Bell />
-                    Send reminder
-                  </MenuItem>
-                ) : null}
-              </MenuContent>
-            </Menu>
+            <IconButton label="Send reminder" icon={Bell} onClick={onRemind} />
+            <Button size="sm" variant="outline" className={buttonMotion} onClick={onMarkPaid}>
+              <Banknote data-icon="inline-start" />
+              Mark as paid
+            </Button>
           </span>
         ) : undefined
       }
@@ -1131,6 +1060,7 @@ function FeesCard({
                 label="Download PDF"
                 ariaLabel={`Download ${receipt.number}`}
                 icon={FileDown}
+                pending={downloading === receipt.id}
                 onClick={() => onDownload(receipt)}
               />
             }

@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { Banknote, Bell, Download, EllipsisVertical, FileSearch, IdCard, Pencil, Plus, UserRound } from "lucide-react"
+import { Banknote, Bell, Download, FileSearch, IdCard, Pencil, Plus } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -7,12 +6,8 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
   RowActions,
   SegmentedControl,
   type TableSort,
@@ -36,8 +31,9 @@ import {
   MemberStatusDialog,
   nextMemberNumber,
 } from "./member-dialogs"
-import { ACCOUNT_STATUS, CURRENT_YEAR, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
-import { FilterMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
+import { ACCOUNT_STATUS, currentYear, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
+import { useDialog, useDialogState } from "./people-hooks"
+import { ActionMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
 import {
   FEE_STATUSES,
   type FeeStatus,
@@ -75,78 +71,81 @@ function sortKey(column: string) {
   return SORTERS.number
 }
 
-const columns: DataTableColumn<Member>[] = [
-  {
-    id: "number",
-    label: "Number",
-    sortable: true,
-    width: 96,
-    mobile: "hidden",
-    cell: (person) => <MonoChip>{person.member.number}</MonoChip>,
-  },
-  {
-    id: "name",
-    label: "Name",
-    sortable: true,
-    fill: true,
-    minWidth: 200,
-    mobile: "main",
-    cell: (person) => (
-      <>
-        <PersonCell name={personName(person)} muted={person.member.status === "former"} />
-        {/* Mobile cards: the number, status and fee on one labelled line. */}
-        <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
-          <MonoChip>{person.member.number}</MonoChip>
-          <StateBadge state={MEMBER_STATUS[person.member.status]} />
-          {person.member.fee ? (
-            <span className="text-xs text-(--pn-fg-muted)">
-              Fee {FEE_STATUS[person.member.fee].label.toLocaleLowerCase()}
-            </span>
-          ) : null}
-        </span>
-      </>
-    ),
-  },
-  {
-    id: "status",
-    label: "Status",
-    width: 120,
-    mobile: "hidden",
-    cell: (person) => <StateBadge state={MEMBER_STATUS[person.member.status]} />,
-  },
-  {
-    id: "admitted",
-    label: "Admitted on",
-    sortable: true,
-    width: 128,
-    priority: 3,
-    mobile: "hidden",
-    cell: (person) => <span className="whitespace-nowrap">{formatDay(person.member.admittedOn)}</span>,
-  },
-  {
-    id: "fee",
-    label: `Fee ${CURRENT_YEAR}`,
-    width: 168,
-    mobile: "hidden",
-    cell: (person) => (person.member.fee ? <StateBadge state={FEE_STATUS[person.member.fee]} /> : <Unset />),
-  },
-  {
-    id: "m365",
-    label: "Microsoft 365",
-    width: 264,
-    priority: 4,
-    mobile: "hidden",
-    cell: (person) => <span className="block truncate font-mono text-[13px]">{person.member.m365Email}</span>,
-  },
-  {
-    id: "account",
-    label: "Account",
-    width: 128,
-    priority: 5,
-    mobile: "hidden",
-    cell: (person) => <StateBadge state={ACCOUNT_STATUS[person.account.status]} />,
-  },
-]
+/** The table's columns; the census and fee columns name the current academic year. */
+function tableColumns(year: string): DataTableColumn<Member>[] {
+  return [
+    {
+      id: "number",
+      label: "Number",
+      sortable: true,
+      width: 96,
+      mobile: "hidden",
+      cell: (person) => <MonoChip>{person.member.number}</MonoChip>,
+    },
+    {
+      id: "name",
+      label: "Name",
+      sortable: true,
+      fill: true,
+      minWidth: 200,
+      mobile: "main",
+      cell: (person) => (
+        <>
+          <PersonCell name={personName(person)} muted={person.member.status === "former"} />
+          {/* Mobile cards: the number, status and fee on one labelled line. */}
+          <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
+            <MonoChip>{person.member.number}</MonoChip>
+            <StateBadge state={MEMBER_STATUS[person.member.status]} />
+            {person.member.fee ? (
+              <span className="text-xs text-(--pn-fg-muted)">
+                Fee {FEE_STATUS[person.member.fee].label.toLocaleLowerCase()}
+              </span>
+            ) : null}
+          </span>
+        </>
+      ),
+    },
+    {
+      id: "status",
+      label: "Status",
+      width: 120,
+      mobile: "hidden",
+      cell: (person) => <StateBadge state={MEMBER_STATUS[person.member.status]} />,
+    },
+    {
+      id: "admitted",
+      label: "Admitted on",
+      sortable: true,
+      width: 128,
+      priority: 3,
+      mobile: "hidden",
+      cell: (person) => <span className="whitespace-nowrap">{formatDay(person.member.admittedOn)}</span>,
+    },
+    {
+      id: "fee",
+      label: `Fee ${year}`,
+      width: 168,
+      mobile: "hidden",
+      cell: (person) => (person.member.fee ? <StateBadge state={FEE_STATUS[person.member.fee]} /> : <Unset />),
+    },
+    {
+      id: "m365",
+      label: "Microsoft 365",
+      width: 264,
+      priority: 4,
+      mobile: "hidden",
+      cell: (person) => <span className="block truncate font-mono text-[13px]">{person.member.m365Email}</span>,
+    },
+    {
+      id: "account",
+      label: "Account",
+      width: 128,
+      priority: 5,
+      mobile: "hidden",
+      cell: (person) => <StateBadge state={ACCOUNT_STATUS[person.account.status]} />,
+    },
+  ]
+}
 
 const DEFAULT_SORT: TableSort = { column: "number", direction: "asc" }
 
@@ -163,6 +162,7 @@ export function MembersPage({
 }) {
   const canWrite = useCan("people:members:write")
   const canFees = useCan("people:fees:write")
+  const year = currentYear()
   const sendReminder = useSendFeeReminder()
   const members = people.filter(isRegistered)
   const candidates = people
@@ -181,16 +181,11 @@ export function MembersPage({
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [addOpen, setAddOpen] = useState(canWrite && requested !== null)
-  const [addKey, setAddKey] = useState(0)
-  const [exportOpen, setExportOpen] = useState(false)
-  const [dialog, setDialog] = useState<MemberDialog | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogKey, setDialogKey] = useState(0)
-  const [feeDialog, setFeeDialog] = useState<FeeDialog | null>(null)
-  const [feeOpen, setFeeOpen] = useState(false)
-  const [feeKey, setFeeKey] = useState(0)
-  const [remindersOpen, setRemindersOpen] = useState(false)
+  const add = useDialogState(canWrite && requested !== null)
+  const exportDialog = useDialogState()
+  const reminders = useDialogState()
+  const memberDialog = useDialog<MemberDialog>()
+  const feeDialog = useDialog<FeeDialog>()
 
   const inScope = scope === "all" ? members : members.filter((person) => person.member.status === scope)
   const filtered = inScope.filter(
@@ -204,21 +199,8 @@ export function MembersPage({
   const current = members.filter((person) => person.member.status !== "former").length
   const byStatus = (status: MemberStatus) => members.filter((person) => person.member.status === status).length
 
-  function openAdd() {
-    setAddKey((value) => value + 1)
-    setAddOpen(true)
-  }
-
-  function openDialog(kind: MemberDialog["kind"], member: Member) {
-    setDialog({ kind, member })
-    setDialogKey((value) => value + 1)
-    setDialogOpen(true)
-  }
-
   function openFee(kind: FeeDialog["kind"], member: Member) {
-    setFeeDialog({ kind, person: { id: member.id, name: personName(member), number: member.member.number } })
-    setFeeKey((value) => value + 1)
-    setFeeOpen(true)
+    feeDialog.show({ kind, person: { id: member.id, name: personName(member), number: member.member.number } })
   }
 
   const owing = members.filter(
@@ -231,6 +213,7 @@ export function MembersPage({
     setPage(1)
   }
 
+  const dialog = memberDialog.target
   const target = dialog
     ? {
         personId: dialog.member.id,
@@ -248,43 +231,27 @@ export function MembersPage({
         right={
           canWrite || canFees ? (
             <>
-              {/* One outline action: Send reminders for fee managers; Export moves to ⋮ when both apply. */}
+              {/* One outline action (Send reminders); Export is an icon so it stays in the same place for everyone. */}
               {canFees ? (
-                <Button size="sm" variant="outline" className={buttonMotion} onClick={() => setRemindersOpen(true)}>
+                <Button size="sm" variant="outline" className={buttonMotion} onClick={reminders.show}>
                   <Bell data-icon="inline-start" />
                   Send reminders
                 </Button>
-              ) : (
-                <Button size="sm" variant="outline" className={buttonMotion} onClick={() => setExportOpen(true)}>
-                  <Download data-icon="inline-start" />
-                  Export
-                </Button>
-              )}
-              {canWrite ? (
-                <Button size="sm" className={buttonMotion} onClick={openAdd}>
-                  <Plus data-icon="inline-start" />
-                  Add member
-                </Button>
               ) : null}
-              {canWrite && canFees ? (
-                <Menu>
-                  <MenuTrigger
-                    render={
-                      <IconButton
-                        label="More actions"
-                        icon={EllipsisVertical}
-                        appearance="boxed"
-                        className="size-10 max-shell:flex-none"
-                      />
-                    }
+              {canWrite ? (
+                <>
+                  <Button size="sm" className={buttonMotion} onClick={add.show}>
+                    <Plus data-icon="inline-start" />
+                    Add member
+                  </Button>
+                  <IconButton
+                    label="Export register"
+                    icon={Download}
+                    appearance="boxed"
+                    className="size-10 max-shell:flex-none"
+                    onClick={exportDialog.show}
                   />
-                  <MenuContent align="end">
-                    <MenuItem onClick={() => setExportOpen(true)}>
-                      <Download />
-                      Export register
-                    </MenuItem>
-                  </MenuContent>
-                </Menu>
+                </>
               ) : null}
             </>
           ) : undefined
@@ -336,7 +303,7 @@ export function MembersPage({
                   />
                 </span>
                 <FilterMenu<FeeStatus>
-                  label={`Fee ${CURRENT_YEAR}`}
+                  label={`Fee ${year}`}
                   allLabel="Any fee status"
                   value={fee}
                   onChange={(value) => {
@@ -362,7 +329,7 @@ export function MembersPage({
       <PageContent>
         <DataTable
           label="Member register"
-          columns={columns}
+          columns={tableColumns(year)}
           rows={rows}
           getRowId={(person) => person.id}
           rowLabel={personName}
@@ -381,7 +348,7 @@ export function MembersPage({
                   <RowActions>
                     {/* The fee's own action, by state; Paid and former members keep an empty slot so icons align. */}
                     {canFees ? (
-                      person.member.fee === "receipt" ? (
+                      person.member.status !== "former" && person.member.fee === "receipt" ? (
                         <IconButton
                           label="Review receipt"
                           ariaLabel={`Review the receipt of ${personName(person)}`}
@@ -405,50 +372,30 @@ export function MembersPage({
                         label="Change status"
                         ariaLabel={`Change status of ${personName(person)}`}
                         icon={Pencil}
-                        onClick={() => openDialog("status", person)}
+                        onClick={() => memberDialog.show({ kind: "status", member: person })}
                       />
                     ) : null}
-                    <Menu>
-                      <MenuTrigger
-                        render={
-                          <IconButton
-                            label="More actions"
-                            ariaLabel={`More actions for ${personName(person)}`}
-                            icon={EllipsisVertical}
-                          />
-                        }
-                      />
-                      <MenuContent>
-                        {canFees && person.member.status !== "former" && person.member.fee === "receipt" ? (
-                          <MenuItem onClick={() => openFee("review", person)}>
-                            <FileSearch />
-                            Review receipt
-                          </MenuItem>
-                        ) : null}
-                        {canFees &&
-                        person.member.status !== "former" &&
-                        person.member.fee &&
-                        person.member.fee !== "paid" ? (
-                          <MenuItem onClick={() => openFee("paid", person)}>
-                            <Banknote />
-                            Mark as paid
-                          </MenuItem>
-                        ) : null}
-                        {canFees && person.member.status !== "former" && person.member.fee !== "paid" ? (
-                          <MenuSeparator />
-                        ) : null}
-                        {canWrite ? (
-                          <MenuItem onClick={() => openDialog("number", person)}>
-                            <IdCard />
-                            Change member number
-                          </MenuItem>
-                        ) : null}
-                        <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: person.id }} />}>
-                          <UserRound />
-                          Open record
-                        </MenuItem>
-                      </MenuContent>
-                    </Menu>
+                    <ActionMenu
+                      keepSlot
+                      label={`More actions for ${personName(person)}`}
+                      actions={[
+                        canFees &&
+                          person.member.status !== "former" &&
+                          person.member.fee !== null &&
+                          person.member.fee !== "paid" && {
+                            label: "Mark as paid",
+                            ariaLabel: `Mark the fee of ${personName(person)} as paid`,
+                            icon: Banknote,
+                            onClick: () => openFee("paid", person),
+                          },
+                        canWrite && {
+                          label: "Change member number",
+                          ariaLabel: `Change the member number of ${personName(person)}`,
+                          icon: IdCard,
+                          onClick: () => memberDialog.show({ kind: "number", member: person }),
+                        },
+                      ]}
+                    />
                   </RowActions>
                 )
               : undefined
@@ -483,7 +430,7 @@ export function MembersPage({
                 text="Members appear here once the Direttivo admits them."
                 action={
                   canWrite ? (
-                    <Button size="sm" variant="outline" className={buttonMotion} onClick={openAdd}>
+                    <Button size="sm" variant="outline" className={buttonMotion} onClick={add.show}>
                       <Plus data-icon="inline-start" />
                       Add member
                     </Button>
@@ -500,47 +447,58 @@ export function MembersPage({
           }
         />
       </PageContent>
-      {canFees ? <SendFeeRemindersDialog open={remindersOpen} onOpenChange={setRemindersOpen} count={owing} /> : null}
-      {canFees && feeDialog ? (
-        feeDialog.kind === "review" ? (
+      {canFees ? (
+        <SendFeeRemindersDialog open={reminders.open} onOpenChange={reminders.onOpenChange} count={owing} />
+      ) : null}
+      {canFees && feeDialog.target ? (
+        feeDialog.target.kind === "review" ? (
           <ReviewReceiptDialog
-            key={`review-${feeKey}`}
-            open={feeOpen}
-            onOpenChange={setFeeOpen}
-            person={feeDialog.person}
+            key={`review-${feeDialog.key}`}
+            open={feeDialog.open}
+            onOpenChange={feeDialog.onOpenChange}
+            person={feeDialog.target.person}
           />
         ) : (
-          <MarkPaidDialog key={`paid-${feeKey}`} open={feeOpen} onOpenChange={setFeeOpen} person={feeDialog.person} />
+          <MarkPaidDialog
+            key={`paid-${feeDialog.key}`}
+            open={feeDialog.open}
+            onOpenChange={feeDialog.onOpenChange}
+            person={feeDialog.target.person}
+          />
         )
       ) : null}
       {canWrite ? (
         <>
           <AddMemberDialog
-            key={`add-${addKey}`}
-            open={addOpen}
+            key={`add-${add.key}`}
+            open={add.open}
             onOpenChange={(open) => {
-              setAddOpen(open)
+              add.onOpenChange(open)
               if (!open && addPersonId) onAddHandled()
             }}
             candidates={candidates}
-            initialPerson={addKey === 0 ? requested : null}
+            initialPerson={add.key === 0 ? requested : null}
             nextNumber={nextNumber}
             takenNumbers={takenNumbers}
           />
-          <ExportMembersDialog open={exportOpen} onOpenChange={setExportOpen} count={members.length} />
+          <ExportMembersDialog
+            open={exportDialog.open}
+            onOpenChange={exportDialog.onOpenChange}
+            count={members.length}
+          />
           {dialog && target ? (
             dialog.kind === "status" ? (
               <MemberStatusDialog
-                key={`status-${dialogKey}`}
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
+                key={`status-${memberDialog.key}`}
+                open={memberDialog.open}
+                onOpenChange={memberDialog.onOpenChange}
                 member={target}
               />
             ) : (
               <MemberNumberDialog
-                key={`number-${dialogKey}`}
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
+                key={`number-${memberDialog.key}`}
+                open={memberDialog.open}
+                onOpenChange={memberDialog.onOpenChange}
                 member={target}
                 nextNumber={nextNumber}
                 takenNumbers={takenNumbers}

@@ -71,7 +71,7 @@ Known prototype defects to not reproduce:
 
 - **Overview**: personal email is the secondary line. Admin is a state badge (Active / Former); Capo Admin a scope chip.
   Last census reads "year · answer" and falls back to the last answered year. Row actions: Send invite (only while not
-  linked; linked rows keep an empty slot so icons align) and ⋮ (Open record, Link account, Add to team). Columns hide
+  linked; linked rows keep an empty slot so icons align) and Link account (while not linked). The row itself opens the record, so no menu repeats it. Columns hide
   by priority: Capo Admin, then Last census, then Teams.
 - **Person record**: two columns from 1100px (1.55 : 1): left Profile, Admin, Teams, Census history; right Account,
   Member, Consents, HR notes. Activity full width below. Discrepancies are warning `InlineAlert`s above the cards, each
@@ -84,13 +84,13 @@ Known prototype defects to not reproduce:
   Actions column and no header actions.
 - **Admins**: course is the name's secondary line. Groups, Capo Admin of reference, Member and Census always show;
   Year, Campus, Active since, then Requested, Representative, Other associations and Available as Capo Admin appear as
-  the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the rest in ⋮.
+  the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the role actions follow it.
 - **Teams**: index = one `NavCard` per team (lead, member count, missing census answers) then all team members in one
   table with a Team column. Team page columns follow the team's fields (IT: GitHub, Areas; Design & Social: Tools,
   Portfolio; HR and Events: Focus; International: Languages). Team Leads see phone and Telegram for their team. Lead
   option in Add to team only for `people:appoint`. End membership needs a reason and keeps history.
 - **Census**: campaign list is a table with a stacked progress meter and counts. Campaign page: Import responses
-  (primary), Send reminders (outline), Close campaign in ⋮. Segments: Expected (all), Answered, Continuing, Leaving, No
+  (primary), Send reminders (outline, an icon on phones) and Close campaign (icon). Segments: Expected (all), Answered, Continuing, Leaving, No
   answer. Reminders skip people reminded in the last 3 days, and the confirmation says how many. No "New campaign"
   while one is open.
 - **Import wizard**: lg dialog (bottom sheet on mobile), five steps Upload → Review → Duplicates → Telegram → Confirm;
@@ -111,8 +111,8 @@ Known prototype defects to not reproduce:
   "Waiting for HR" state.
 
 - **Fees and receipts**: see [`fees.md`](fees.md). The register's Fee column keeps its badge and gains the fee's own
-  row action; Send reminders becomes the register's outline action and Export moves to the header ⋮ when the viewer
-  has both. People › Receipts is the signing queue. The record gets a Fees and receipts card, My area a Membership fee
+  row action; Send reminders becomes the register's outline action and Export register a boxed icon next to Add
+  member. People › Receipts is the signing queue. The record gets a Fees and receipts card, My area a Membership fee
   card. Receipts are never deleted, only voided.
 
 ## Roles to permissions

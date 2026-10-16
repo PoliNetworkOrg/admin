@@ -1,6 +1,5 @@
-import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Archive, Bell, ClipboardList, EllipsisVertical, FileText, Upload, UserRound } from "lucide-react"
+import { Archive, Bell, ClipboardList, FileText, Upload } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -10,17 +9,15 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   RecordHeader,
   RowActions,
   SectionCard,
   SegmentedControl,
   type TableSort,
   Unset,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -42,7 +39,7 @@ import {
   roleLabels,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { FilterMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
+import { PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import type { Campaign, CampaignDetail, CensusEntry, PersonRow } from "./people.contract"
 
 const percent = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0)
@@ -232,7 +229,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
   const [confirm, setConfirm] = useState<"remind" | "close" | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [importKey, setImportKey] = useState(0)
+  const importKey = useOpenGeneration(importOpen)
   const [answers, setAnswers] = useState<CampaignRow | null>(null)
   const [answersOpen, setAnswersOpen] = useState(false)
 
@@ -268,11 +265,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
       await refresh(result.sent ? `Reminder sent to ${personName(row)}.` : `${personName(row)} was reminded recently.`)
     } catch (caught) {
       console.error(caught)
-      appToast.error(
-        caught instanceof Error
-          ? errorMessage(caught, "The reminder couldn't be sent.")
-          : "The reminder couldn't be sent."
-      )
+      appToast.error(errorMessage(caught, "Couldn't send the reminder."))
     }
   }
 
@@ -353,6 +346,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
         right={
           canAct ? (
             <>
+              {/* Phones keep the full width for Import responses: Send reminders becomes an icon there. */}
               <Button
                 size="sm"
                 variant="outline"
@@ -362,30 +356,24 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
                 <Bell data-icon="inline-start" />
                 Send reminders
               </Button>
-              <Button
-                size="sm"
-                className={buttonMotion}
-                onClick={() => {
-                  setImportKey((value) => value + 1)
-                  setImportOpen(true)
-                }}
-              >
+              <IconButton
+                label="Send reminders"
+                icon={Bell}
+                appearance="boxed"
+                className="size-10 flex-none shell:hidden"
+                onClick={() => ask("remind")}
+              />
+              <Button size="sm" className={buttonMotion} onClick={() => setImportOpen(true)}>
                 <Upload data-icon="inline-start" />
                 Import responses
               </Button>
-              <Menu>
-                <MenuTrigger render={<IconButton label="More actions" appearance="boxed" icon={EllipsisVertical} />} />
-                <MenuContent>
-                  <MenuItem className="shell:hidden" onClick={() => ask("remind")}>
-                    <Bell />
-                    Send reminders
-                  </MenuItem>
-                  <MenuItem onClick={() => ask("close")}>
-                    <Archive />
-                    Close campaign
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
+              <IconButton
+                label="Close campaign"
+                icon={Archive}
+                appearance="boxed"
+                className="size-10 max-shell:flex-none"
+                onClick={() => ask("close")}
+              />
             </>
           ) : undefined
         }
@@ -512,49 +500,32 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
               canAct
                 ? (row) => (
                     <RowActions>
-                      {row.entry?.answer ? (
-                        <span aria-hidden className="size-9 max-shell:hidden" />
-                      ) : (
+                      {/* Answered rows open the answers; the others can be reminded. */}
+                      {!row.entry?.answer ? (
                         <IconButton
                           label="Send reminder"
                           ariaLabel={`Send reminder to ${personName(row)}`}
                           icon={Bell}
                           onClick={() => remindOne(row)}
                         />
-                      )}
-                      <Menu>
-                        <MenuTrigger
-                          render={
-                            <IconButton
-                              label="More actions"
-                              ariaLabel={`More actions for ${personName(row)}`}
-                              icon={EllipsisVertical}
-                            />
-                          }
+                      ) : canRead ? (
+                        <IconButton
+                          label="View answers"
+                          ariaLabel={`View the answers of ${personName(row)}`}
+                          icon={FileText}
+                          onClick={() => {
+                            setAnswers(row)
+                            setAnswersOpen(true)
+                          }}
                         />
-                        <MenuContent>
-                          {row.entry?.answer && canRead ? (
-                            <MenuItem
-                              onClick={() => {
-                                setAnswers(row)
-                                setAnswersOpen(true)
-                              }}
-                            >
-                              <FileText />
-                              View answers
-                            </MenuItem>
-                          ) : null}
-                          <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: row.id }} />}>
-                            <UserRound />
-                            Open record
-                          </MenuItem>
-                        </MenuContent>
-                      </Menu>
+                      ) : (
+                        <span aria-hidden className="size-9 shrink-0" />
+                      )}
                     </RowActions>
                   )
                 : undefined
             }
-            actionsWidth={96}
+            actionsWidth={60}
             pagination={{
               page,
               pageSize,

@@ -10,10 +10,15 @@ export function fileBlob(file: FilePayload) {
 
 /** Saves the file under its own name. */
 export function saveFile(file: FilePayload) {
-  const url = URL.createObjectURL(fileBlob(file))
+  saveBlob(fileBlob(file), file.fileName)
+}
+
+/** Saves data built in the browser, such as a CSV export. */
+export function saveBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.href = url
-  link.download = file.fileName
+  link.download = fileName
   link.click()
   // Revoked later: some browsers start the download after the click handler returns.
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000)

@@ -36,6 +36,7 @@ export const REVIEW_KINDS = ["telegram-conflict", "ask-to-be-added", "two-record
 /** A receipt's pipeline: issued unsigned, signed by an officer, emailed to the member; or the email failed, or voided. */
 export const RECEIPT_STATUSES = ["toSign", "signed", "sent", "failed", "voided"] as const
 export const PAYMENT_METHODS = ["transfer", "cash"] as const
+export const PHOTO_CONSENTS = ["granted", "denied", "revoked"] as const
 /** Who signs a receipt: the President, or the Vice-president for the President's own. */
 export const SIGNERS = ["president", "vicePresident"] as const
 
@@ -54,6 +55,7 @@ export type AccountStatus = (typeof ACCOUNT_STATUSES)[number]
 export type ReviewKind = (typeof REVIEW_KINDS)[number]
 export type ReceiptStatus = (typeof RECEIPT_STATUSES)[number]
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+export type PhotoConsent = (typeof PHOTO_CONSENTS)[number]
 export type Signer = (typeof SIGNERS)[number]
 
 const personRefSchema = z.object({ id: z.string(), name: z.string() })
@@ -138,7 +140,7 @@ export const accountSchema = z.discriminatedUnion("status", [
 
 export const consentsSchema = z.object({
   privacy: z.object({ version: z.string(), acceptedOn: z.string() }).nullable(),
-  photo: z.object({ status: z.enum(["granted", "denied", "revoked"]), on: z.string() }).nullable(),
+  photo: z.object({ status: z.enum(PHOTO_CONSENTS), on: z.string() }).nullable(),
 })
 
 /** One row of the People lists: everything but notes, activity and discrepancies. */

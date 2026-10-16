@@ -264,7 +264,9 @@ first/last buttons); on narrow tables "‹ 1 of 34 ›".
 Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
-right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
+right. A `⋮` menu holds at least two actions: a single one is its own icon button, and none leaves an empty slot so the
+icons of every row align. Menus never repeat the row's own link (Open record) or an action already visible on the row,
+never start with a separator, and keep destructive actions last after one. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
 including destructive actions; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
 colors at rest: labels use `--pn-warning-fg`, edit uses `--pn-success-fg`, and leave/delete use `--pn-danger-fg`.
 Visibility, labels, edit and leave/delete all hover in brand blue (`--pn-accent` on `--pn-accent-soft`);
@@ -329,11 +331,14 @@ the language name over a field-like box that holds the `bare` input. Single-line
 **Forms** (`FormField`, `fieldControl`). Label above, real `<label for>`. Required is unmarked; optional fields say
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
 keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` + `aria-describedby`. Read-only values
-are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
+are text in a `KeyValueList`, never disabled inputs. A single choice among a few explained options is a
+`RadioCardGroup` of `RadioCard`s (custom radios, arrow keys move the choice), never native radio inputs; files are
+chosen with `FileButton` or `FilePickerButton` (several files). Length counters (`FieldCounter`) appear only in the last 20% of the
 limit.
 
-Calendar dates use a custom picker at every viewport, display the same day–month–year format as read-only dates,
-and retain ISO values for the server. Month and year selectors are custom controls; calendars start on Monday.
+Calendar dates use `DateField`: a custom picker at every viewport that shows the same day–month–year format as read-only
+dates and keeps ISO values for the server. Its month and year selectors are custom controls (the years cover the last
+ten and the next one); calendars start on Monday.
 Grant date/time fields use the calendar and time wheels on touch devices too, with no native date/time fallback.
 
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
@@ -453,8 +458,8 @@ Rules that the templates above don't imply.
 - **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
   record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
 - **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
-  Send reminder, or an empty slot); its header keeps one outline action (Send reminders) and moves Export to ⋮ when
-  both apply. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
+  Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
+  icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
   Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`submitTone="danger"`, Back on
   the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
   roles. Amounts are `formatCents` ("€10.00") with tabular numbers.

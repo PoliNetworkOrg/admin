@@ -1,30 +1,29 @@
-import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { FileText, Upload, X } from "lucide-react"
-import { useId, useRef, useState } from "react"
+import { FileText, X } from "lucide-react"
+import { useId, useState } from "react"
 
 import {
   fieldControl,
   fieldHintId,
+  FilePickerButton,
   FormDialog,
   FormField,
+  Hint,
   IconButton,
   InlineAlert,
-  LoadingButton,
+  SelectField,
   StatusBadge,
   type StatusTone,
 } from "@/components/primitives"
-import { appToast } from "@/components/shell"
 import { Textarea } from "@/components/ui/textarea"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { type SignedFileOutcome, signedFileOutcome } from "./people-fees"
 import { voidReceipt } from "./people-fees.functions"
-import { CURRENT_YEAR, SIGNER_LABEL } from "./people-format"
+import { currentYear, SIGNER_LABEL } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { previewSignedReceipts, sendSignedReceipts } from "./people-receipts.functions"
-import { SelectField } from "./people-ui"
 import type { Receipt, ReceiptsPage, SignedUpload } from "./people.contract"
 
 const OUTCOME = {
@@ -65,8 +64,7 @@ export function UploadSignedDialog({
 }) {
   const preview = useServerFn(previewSignedReceipts)
   const send = useServerFn(sendSignedReceipts)
-  const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const refresh = useRefreshAfter()
   const inputId = useId()
   const [upload, setUpload] = useState<SignedUpload | null>(null)
   const [assigned, setAssigned] = useState<Record<string, string | null>>({})
@@ -98,9 +96,7 @@ export function UploadSignedDialog({
   const ready = rows.filter((row) => row.outcome === "ready")
   const tally = (outcome: SignedFileOutcome) => rows.filter((row) => row.outcome === outcome).length
 
-  async function read(list: FileList | null) {
-    const files = Array.from(list ?? [])
-    if (inputRef.current) inputRef.current.value = ""
+  async function read(files: File[]) {
     if (files.length === 0) return
     const form = new FormData()
     for (const file of files) form.append("files", file)
@@ -112,11 +108,7 @@ export function UploadSignedDialog({
       setAssigned(Object.fromEntries(result.files.map((file) => [file.fileId, file.receiptId])))
     } catch (caught) {
       console.error(caught)
-      setReadError(
-        caught instanceof Error
-          ? errorMessage(caught, "The files couldn't be read. Try again.")
-          : "The files couldn't be read. Try again."
-      )
+      setReadError(errorMessage(caught, "Couldn't read the files. Try again."))
     } finally {
       setReading(false)
     }
@@ -140,25 +132,14 @@ export function UploadSignedDialog({
       })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The receipts couldn't be sent. Try again.")
-          : "The receipts couldn't be sent. Try again.",
-        { cause: caught }
+      throw new Error(errorMessage(caught, "Couldn't send the receipts. Try again."), { cause: caught })
+    }
+    if (result.failed === 0) await refresh(`${pluralize(result.sent, "receipt")} sent.`)
+    else
+      await refresh(
+        `${pluralize(result.sent, "receipt")} sent, but ${pluralize(result.failed, "email")} failed. Check Send failed.`,
+        "warning"
       )
-    }
-    const message =
-      result.failed === 0
-        ? `${pluralize(result.sent, "receipt")} sent.`
-        : `${pluralize(result.sent, "receipt")} sent, but ${pluralize(result.failed, "email")} failed. Check Send failed.`
-    try {
-      await router.invalidate({ sync: true })
-      if (result.failed === 0) appToast.success(message)
-      else appToast.warning(message)
-    } catch (caught) {
-      console.error(caught)
-      appToast.warning(`${message.replace(/\.$/, "")}, but the page couldn't refresh.`)
-    }
     onOpenChange(false)
   }
 
@@ -183,28 +164,17 @@ export function UploadSignedDialog({
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3 rounded-(--pn-r-4) border border-dashed border-(--pn-line-strong) bg-(--pn-sunken) px-4 py-3.5">
-          <input
-            ref={inputRef}
+          <FilePickerButton
             id={inputId}
-            type="file"
             multiple
             accept=".pdf,.p7m,application/pdf,application/pkcs7-mime"
-            className="sr-only"
-            tabIndex={-1}
-            aria-describedby={`${inputId}-hint`}
-            onChange={(event) => void read(event.target.files)}
-          />
-          <LoadingButton
-            type="button"
-            variant="outline"
-            icon={Upload}
+            label={upload ? "Choose other files" : "Choose files"}
             pending={reading}
-            onClick={() => inputRef.current?.click()}
-          >
-            {upload ? "Add other files" : "Choose files"}
-          </LoadingButton>
+            describedBy={`${inputId}-hint`}
+            onFiles={(files) => void read(files)}
+          />
           <span id={`${inputId}-hint`} className="text-xs text-(--pn-fg-muted)">
-            PDF or .p7m, up to 10 MB each. Adding files again replaces the list.
+            PDF or .p7m, up to 10 MB each. Choosing files again replaces the list.
           </span>
         </div>
 
@@ -228,9 +198,9 @@ export function UploadSignedDialog({
                   <li key={row.file.fileId} className="flex flex-col gap-2.5 px-3 py-3 shell:px-4">
                     <div className="flex min-w-0 items-center gap-2">
                       <FileText aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                      <span className="min-w-0 flex-1 truncate font-mono text-[12px]" title={row.file.fileName}>
-                        {row.file.fileName}
-                      </span>
+                      <Hint overflowOnly label={row.file.fileName}>
+                        <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{row.file.fileName}</span>
+                      </Hint>
                       <IconButton
                         label="Remove file"
                         ariaLabel={`Remove ${row.file.fileName}`}
@@ -300,12 +270,7 @@ export function VoidReceiptDialog({
       await save({ data: { receiptId: receipt.id, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The receipt couldn't be voided. Try again.")
-          : "The receipt couldn't be voided. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't void the receipt. Try again."), { cause: caught })
     }
     await refresh(`Receipt ${receipt.number} voided.`)
     onOpenChange(false)
@@ -316,7 +281,7 @@ export function VoidReceiptDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Void receipt ${receipt.number}?`}
-      description={`${receipt.person.name}'s receipt stays in the list with its number, marked Voided.${receipt.year === CURRENT_YEAR ? " The fee goes back to Due, so it can be marked as paid again with the right details." : ""}`}
+      description={`${receipt.person.name}'s receipt stays in the list with its number, marked Voided.${receipt.year === currentYear() ? " The fee goes back to Due, so it can be marked as paid again with the right details." : ""}`}
       noun="void"
       dirty={reason.trim() !== ""}
       submitLabel="Void receipt"
