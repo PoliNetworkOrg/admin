@@ -1,14 +1,16 @@
 import { useServerFn } from "@tanstack/react-start"
 import { Bell, ExternalLink, FileText } from "lucide-react"
-import { type ReactNode, useEffect, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react"
 
 import {
   buttonMotion,
   ConfirmDialog,
+  DateField,
   fieldControl,
   fieldHintId,
   FormDialog,
   FormField,
+  Hint,
   InlineAlert,
   KeyValueList,
   SegmentedControl,
@@ -21,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { DateField } from "./date-field"
+import { PdfPages } from "./pdf-pages"
 import { centsToInput, formatCents, parseEuros } from "./people-fees"
 import {
   approveFee,
@@ -33,9 +35,9 @@ import {
 } from "./people-fees.functions"
 import { fileBlob } from "./people-files"
 import { FEE_STATUS, formatDay, PAYMENT_METHOD, todayIso } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
 import { MonoChip, StateBadge } from "./people-ui"
-import type { FeeReview, FilePayload, PaymentMethod } from "./people.contract"
+import type { FilePayload, PaymentMethod } from "./people.contract"
 
 /** Reasons offered as one-click starts for Reject; the admin can edit the text. */
 const COMMON_REASONS = [
@@ -55,23 +57,7 @@ export type FeeTarget = { id: string; name: string; number: string }
 /** Loads the member's current fee year once per opening. */
 function useFeeReview(personId: string) {
   const load = useServerFn(getFeeReview)
-  const [review, setReview] = useState<FeeReview | null>(null)
-  const [failed, setFailed] = useState(false)
-  useEffect(() => {
-    let current = true
-    load({ data: { personId } }).then(
-      (result) => {
-        if (current) setReview(result)
-      },
-      (caught) => {
-        console.error(caught)
-        if (current) setFailed(true)
-      }
-    )
-    return () => {
-      current = false
-    }
-  }, [load, personId])
+  const { data: review, failed } = useLoaded(useCallback(() => load({ data: { personId } }), [load, personId]))
   return { review, failed }
 }
 
@@ -84,21 +70,30 @@ function Loading({ children }: { children: ReactNode }) {
   )
 }
 
-/** The uploaded transfer receipt: a PDF in a frame, an image as itself, with a link to open it in a new tab. */
+const PREVIEW_LABEL = "The uploaded transfer receipt"
+
+/** The uploaded transfer receipt: a PDF's pages or the image itself, with a link to open it in a new tab. */
 function UploadPreview({ file, size }: { file: FilePayload | null; size: number }) {
+  const blob = useMemo(() => (file ? fileBlob(file) : null), [file])
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
-    if (!file) return
-    const next = URL.createObjectURL(fileBlob(file))
+    if (!blob) return
+    const next = URL.createObjectURL(blob)
     setUrl(next)
     return () => URL.revokeObjectURL(next)
-  }, [file])
+  }, [blob])
   const image = file?.contentType.startsWith("image/") ?? false
   return (
     <figure className="m-0 flex flex-col overflow-hidden rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-sunken)">
       <figcaption className="flex h-11 items-center gap-2 border-b border-(--pn-line) bg-(--pn-surface) pr-1 pl-3 text-[13px]">
         <FileText aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-(--pn-fg-muted)" />
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{file?.fileName ?? "Loading…"}</span>
+        {file ? (
+          <Hint overflowOnly label={file.fileName}>
+            <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{file.fileName}</span>
+          </Hint>
+        ) : (
+          <span className="min-w-0 flex-1 text-(--pn-fg-muted)">Loading…</span>
+        )}
         <span className="text-xs text-(--pn-fg-muted) tabular-nums">{Math.max(1, Math.round(size / 1024))} KB</span>
         {url ? (
           <Button
@@ -113,10 +108,10 @@ function UploadPreview({ file, size }: { file: FilePayload | null; size: number 
           </Button>
         ) : null}
       </figcaption>
-      {url && image ? (
-        <img src={url} alt="The uploaded transfer receipt" className="max-h-80 w-full object-contain" />
-      ) : url ? (
-        <iframe src={url} title="The uploaded transfer receipt" className="h-80 w-full bg-(--pn-surface)" />
+      {blob && url && image ? (
+        <img src={url} alt={PREVIEW_LABEL} className="max-h-80 w-full object-contain" />
+      ) : blob && !image ? (
+        <PdfPages file={blob} label={PREVIEW_LABEL} />
       ) : (
         <div className="grid h-80 place-items-center">
           <Loading>Loading the file…</Loading>
@@ -141,31 +136,16 @@ export function ReviewReceiptDialog({
 }) {
   const { review, failed } = useFeeReview(person.id)
   const loadFile = useServerFn(getFeeUpload)
+  const { data: file, failed: fileFailed } = useLoaded(
+    useCallback(() => loadFile({ data: { personId: person.id } }), [loadFile, person.id])
+  )
   const approve = useServerFn(approveFee)
   const reject = useServerFn(rejectFee)
   const refresh = useRefreshAfter()
-  const [file, setFile] = useState<FilePayload | null>(null)
-  const [fileFailed, setFileFailed] = useState(false)
   const [mode, setMode] = useState<"review" | "reject">("review")
   const [reason, setReason] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const firstName = person.name.split(" ")[0] ?? person.name
-
-  useEffect(() => {
-    let current = true
-    loadFile({ data: { personId: person.id } }).then(
-      (result) => {
-        if (current) setFile(result)
-      },
-      (caught) => {
-        console.error(caught)
-        if (current) setFileFailed(true)
-      }
-    )
-    return () => {
-      current = false
-    }
-  }, [loadFile, person.id])
 
   const upload = review?.fee.upload ?? null
   const reasonError = submitted && !reason.trim() ? "Say why, so the member knows what to fix." : undefined
@@ -178,12 +158,7 @@ export function ReviewReceiptDialog({
         issued = (await approve({ data: { personId: person.id } })).receipt
       } catch (caught) {
         console.error(caught)
-        throw new Error(
-          caught instanceof Error
-            ? errorMessage(caught, "The receipt couldn't be approved. Try again.")
-            : "The receipt couldn't be approved. Try again.",
-          { cause: caught }
-        )
+        throw new Error(errorMessage(caught, "Couldn't approve the receipt. Try again."), { cause: caught })
       }
       await refresh(`Fee marked as paid. Receipt ${issued} is ready to sign.`)
       onOpenChange(false)
@@ -195,12 +170,7 @@ export function ReviewReceiptDialog({
       await reject({ data: { personId: person.id, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The receipt couldn't be rejected. Try again.")
-          : "The receipt couldn't be rejected. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't reject the receipt. Try again."), { cause: caught })
     }
     await refresh(`Transfer receipt rejected. ${firstName} can upload a new one.`)
     onOpenChange(false)
@@ -404,12 +374,7 @@ export function MarkPaidDialog({
         .receipt
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The fee couldn't be marked as paid. Try again.")
-          : "The fee couldn't be marked as paid. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't mark the fee as paid. Try again."), { cause: caught })
     }
     await refresh(`Fee marked as paid. Receipt ${issued} is ready to sign.`)
     onOpenChange(false)
@@ -561,11 +526,7 @@ export function useSendFeeReminder() {
       await remind({ data: { personId: person.id } })
     } catch (caught) {
       console.error(caught)
-      appToast.error(
-        caught instanceof Error
-          ? errorMessage(caught, `Couldn't send the reminder to ${person.name}.`)
-          : `Couldn't send the reminder to ${person.name}.`
-      )
+      appToast.error(errorMessage(caught, `Couldn't send the reminder to ${person.name}.`))
       return
     }
     await refresh(`Reminder sent to ${person.name}.`)

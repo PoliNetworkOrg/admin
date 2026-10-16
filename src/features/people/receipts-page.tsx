@@ -1,17 +1,5 @@
-import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import {
-  Ban,
-  ChevronDown,
-  EllipsisVertical,
-  FileArchive,
-  FileDown,
-  Receipt as ReceiptIcon,
-  RotateCw,
-  Search,
-  Upload,
-  UserRound,
-} from "lucide-react"
+import { Ban, FileArchive, FileDown, Receipt as ReceiptIcon, RotateCw, Search, Upload } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -20,18 +8,13 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
   InlineAlert,
   LoadingButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
   RowActions,
   SegmentedControl,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -40,11 +23,10 @@ import { cn } from "@/lib/utils"
 
 import { formatCents } from "./people-fees"
 import { retryReceipt } from "./people-fees.functions"
-import { saveFile } from "./people-files"
 import { formatDay, RECEIPT_STATUS, SIGNER_LABEL } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useFileDownload, useRefreshAfter } from "./people-hooks"
 import { downloadReceipt, downloadReceiptsToSign } from "./people-receipts.functions"
-import { MonoChip, PersonCell, StateBadge } from "./people-ui"
+import { ActionMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
 import {
   RECEIPT_STATUSES,
   type Receipt,
@@ -60,6 +42,14 @@ function matchesQuery(receipt: Receipt, query: string) {
   return [receipt.number, receipt.person.name, receipt.memberNumber].some((value) =>
     value.toLocaleLowerCase().includes(query)
   )
+}
+
+/** The receipts waiting for the other officer, after the viewer's own: the President's own goes to the Vice-president. */
+function othersNote(others: readonly Receipt[]) {
+  const [first] = others
+  if (!first) return ""
+  if (others.length > 1) return ` ${others.length} receipts are for the other officer to sign.`
+  return ` Receipt ${first.number} is for the ${SIGNER_LABEL[first.signer]} to sign.`
 }
 
 /** People › Receipts: the fee year's receipts as a queue, To sign → Signed → Sent, with Send failed and Voided. */
@@ -83,12 +73,12 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
   const [pageNumber, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadKey, setUploadKey] = useState(0)
+  const uploadKey = useOpenGeneration(uploadOpen)
   const [voiding, setVoiding] = useState<Receipt | null>(null)
   const [voidOpen, setVoidOpen] = useState(false)
-  const [voidKey, setVoidKey] = useState(0)
-  const [zipping, setZipping] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
+  const voidKey = useOpenGeneration(voidOpen)
+  const { busy: downloading, download: downloadFile } = useFileDownload()
+  const [retrying, setRetrying] = useState<string | null>(null)
 
   const inScope = scope === "all" ? page.receipts : page.receipts.filter((receipt) => receipt.status === scope)
   const filtered = inScope.filter((receipt) => matchesQuery(receipt, deferredQuery))
@@ -101,56 +91,28 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
     return officer?.name ?? SIGNER_LABEL[receipt.signer]
   }
 
-  async function save(receipt: Receipt) {
-    setBusy(receipt.id)
-    try {
-      saveFile(await download({ data: { receiptId: receipt.id } }))
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(`Couldn't download receipt ${receipt.number}.`)
-    } finally {
-      setBusy(null)
-    }
-  }
-
   async function saveToSign() {
-    setZipping(true)
-    try {
-      saveFile(await downloadToSign())
+    const saved = await downloadFile("toSign", downloadToSign, "Couldn't download the receipts to sign.")
+    if (saved)
       appToast.success(`${pluralize(mine.length, "receipt")} downloaded. Sign them, then upload the signed files.`)
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(
-        caught instanceof Error
-          ? errorMessage(caught, "Couldn't download the receipts to sign.")
-          : "Couldn't download the receipts to sign."
-      )
-    } finally {
-      setZipping(false)
-    }
   }
 
   async function resend(receipt: Receipt) {
-    setBusy(receipt.id)
+    setRetrying(receipt.id)
     try {
       await retry({ data: { receiptId: receipt.id } })
     } catch (caught) {
       console.error(caught)
-      appToast.error(
-        caught instanceof Error
-          ? errorMessage(caught, `Couldn't send receipt ${receipt.number}.`)
-          : `Couldn't send receipt ${receipt.number}.`
-      )
-      setBusy(null)
+      appToast.error(errorMessage(caught, `Couldn't send receipt ${receipt.number}.`))
       return
+    } finally {
+      setRetrying(null)
     }
-    setBusy(null)
     await refresh(`Receipt ${receipt.number} sent to ${receipt.person.name}.`)
   }
 
   function openVoid(receipt: Receipt) {
     setVoiding(receipt)
-    setVoidKey((value) => value + 1)
     setVoidOpen(true)
   }
 
@@ -260,7 +222,6 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                 variant="outline"
                 className={buttonMotion}
                 onClick={() => {
-                  setUploadKey((value) => value + 1)
                   setUploadOpen(true)
                 }}
               >
@@ -268,7 +229,12 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                 Upload signed
               </Button>
               {mine.length > 0 ? (
-                <LoadingButton size="sm" icon={FileArchive} pending={zipping} onClick={() => void saveToSign()}>
+                <LoadingButton
+                  size="sm"
+                  icon={FileArchive}
+                  pending={downloading === "toSign"}
+                  onClick={() => void saveToSign()}
+                >
                   Download to sign ({mine.length})
                 </LoadingButton>
               ) : null}
@@ -279,32 +245,13 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
           <Toolbar
             lead={
               page.years.length > 1 ? (
-                <Menu>
-                  <MenuTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          buttonMotion,
-                          "h-10 shrink-0 gap-1.5 rounded-[9px] border-(--pn-line-strong) bg-(--pn-surface) px-3 text-[14px] font-medium"
-                        )}
-                      />
-                    }
-                  >
-                    <span>Fee year</span>
-                    <span className="font-mono">{page.year}</span>
-                    <ChevronDown aria-hidden strokeWidth={1.75} className="size-4 text-(--pn-fg-muted)" />
-                  </MenuTrigger>
-                  <MenuContent align="start" className="min-w-44">
-                    <MenuRadioGroup value={page.year} onValueChange={(next: string) => onYear(next)}>
-                      {page.years.map((year) => (
-                        <MenuRadioItem key={year} value={year}>
-                          <span className="font-mono">{year}</span>
-                        </MenuRadioItem>
-                      ))}
-                    </MenuRadioGroup>
-                  </MenuContent>
-                </Menu>
+                <FilterMenu
+                  label="Fee year"
+                  mono
+                  value={page.year}
+                  options={page.years.map((year) => ({ value: year, label: year }))}
+                  onChange={onYear}
+                />
               ) : undefined
             }
             search={{
@@ -346,12 +293,10 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
           {canSign && mine.length > 0 ? (
             <InlineAlert tone="info">
               <span className="font-medium">
-                {mine.length === 1 ? "1 receipt is" : `${mine.length} receipts are`} waiting for your signature.
+                {pluralize(mine.length, "receipt")} {mine.length === 1 ? "is" : "are"} waiting for your signature.
               </span>{" "}
               Download them, sign each PDF with the CIE app, then upload the signed files.
-              {others.length > 0
-                ? ` ${others.length === 1 ? `Receipt ${others[0]?.number}` : `${others.length} receipts`} ${others.length === 1 ? "is" : "are"} for ${others.length === 1 ? (others[0]?.signer === "vicePresident" ? "the Vice-president" : "the President") : "the other officer"} to sign.`
-                : ""}
+              {othersNote(others)}
             </InlineAlert>
           ) : null}
           {canFees && failed.length > 0 && scope !== "failed" ? (
@@ -371,10 +316,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                 </Button>
               }
             >
-              {failed.length === 1
-                ? "1 receipt couldn't be emailed."
-                : `${failed.length} receipts couldn't be emailed.`}{" "}
-              Check the member's address, then retry.
+              {pluralize(failed.length, "receipt")} couldn't be emailed. Check the member's address, then retry.
             </InlineAlert>
           ) : null}
           <DataTable
@@ -395,7 +337,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                       label="Retry sending"
                       ariaLabel={`Retry sending ${receipt.number}`}
                       icon={RotateCw}
-                      disabled={busy === receipt.id}
+                      pending={retrying === receipt.id}
                       onClick={() => void resend(receipt)}
                     />
                   ) : (
@@ -406,38 +348,29 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                   label="Download PDF"
                   ariaLabel={`Download ${receipt.number}`}
                   icon={FileDown}
-                  disabled={busy === receipt.id}
-                  onClick={() => void save(receipt)}
+                  pending={downloading === receipt.id}
+                  onClick={() =>
+                    void downloadFile(
+                      receipt.id,
+                      () => download({ data: { receiptId: receipt.id } }),
+                      `Couldn't download receipt ${receipt.number}.`
+                    )
+                  }
                 />
                 {canFees ? (
-                  <Menu>
-                    <MenuTrigger
-                      render={
-                        <IconButton
-                          label="More actions"
-                          ariaLabel={`More actions for ${receipt.number}`}
-                          icon={EllipsisVertical}
-                        />
-                      }
-                    />
-                    <MenuContent>
-                      <MenuItem
-                        render={<Link to="/dashboard/people/$personId" params={{ personId: receipt.person.id }} />}
-                      >
-                        <UserRound />
-                        Open record
-                      </MenuItem>
-                      {receipt.status !== "voided" ? (
-                        <>
-                          <MenuSeparator />
-                          <MenuItem variant="destructive" onClick={() => openVoid(receipt)}>
-                            <Ban />
-                            Void receipt
-                          </MenuItem>
-                        </>
-                      ) : null}
-                    </MenuContent>
-                  </Menu>
+                  <ActionMenu
+                    keepSlot
+                    label={`More actions for ${receipt.number}`}
+                    actions={[
+                      receipt.status !== "voided" && {
+                        label: "Void receipt",
+                        ariaLabel: `Void receipt ${receipt.number}`,
+                        icon: Ban,
+                        destructive: true,
+                        onClick: () => openVoid(receipt),
+                      },
+                    ]}
+                  />
                 ) : null}
               </RowActions>
             )}

@@ -5,6 +5,7 @@ import { useState } from "react"
 import {
   buttonMotion,
   CopyableText,
+  DateField,
   fieldControl,
   fieldHintId,
   FileButton,
@@ -15,21 +16,19 @@ import {
   LoadingButton,
   SectionCard,
   StatusBadge,
+  useOpenGeneration,
 } from "@/components/primitives"
-import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { DateField } from "./date-field"
 import { centsToInput, formatCents, parseEuros } from "./people-fees"
-import { saveFile } from "./people-files"
 import { FEE_STATUS, formatDay, todayIso } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useFileDownload, useRefreshAfter } from "./people-hooks"
 import { downloadMyReceipt, uploadMyTransferReceipt } from "./people-self.functions"
 import { Row, RowIcon, Rows, StateBadge, SubHeading } from "./people-ui"
-import type { FeeDetail, FeeInstructions, Fees, Receipt } from "./people.contract"
+import type { FeeDetail, FeeInstructions, Fees } from "./people.contract"
 
 const TRANSFER_TYPES = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
 
@@ -40,29 +39,16 @@ const TRANSFER_TYPES = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/pn
 export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: FeeInstructions | null }) {
   const download = useServerFn(downloadMyReceipt)
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadKey, setUploadKey] = useState(0)
-  const [busy, setBusy] = useState<string | null>(null)
+  const uploadKey = useOpenGeneration(uploadOpen)
+  const { busy, download: downloadFile } = useFileDownload()
   const fee = fees.current
-  // Members see their receipts once signed; voided ones were replaced.
+  // Voided receipts were replaced by another; one still to sign shows as Being signed.
   const receipts = fees.receipts.filter((receipt) => receipt.status !== "voided")
   const signing = fee ? receipts.find((receipt) => receipt.year === fee.year && receipt.status === "toSign") : undefined
   const owing = fee?.status === "due" || fee?.status === "unpaid"
 
   function openUpload() {
-    setUploadKey((value) => value + 1)
     setUploadOpen(true)
-  }
-
-  async function save(receipt: Receipt) {
-    setBusy(receipt.id)
-    try {
-      saveFile(await download({ data: { receiptId: receipt.id } }))
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(`Couldn't download receipt ${receipt.number}.`)
-    } finally {
-      setBusy(null)
-    }
   }
 
   return (
@@ -176,9 +162,9 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
               </>
             }
             meta={
-              receipt.status === "toSign"
+              receipt.status === "toSign" || !receipt.signedOn
                 ? `Issued ${formatDay(receipt.issuedOn)}`
-                : `Signed ${receipt.signedOn ? formatDay(receipt.signedOn) : ""}`
+                : `Signed ${formatDay(receipt.signedOn)}`
             }
             end={
               receipt.status === "toSign" ? (
@@ -193,7 +179,13 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
                   icon={FileDown}
                   pending={busy === receipt.id}
                   aria-label={`Download receipt ${receipt.number}`}
-                  onClick={() => void save(receipt)}
+                  onClick={() =>
+                    void downloadFile(
+                      receipt.id,
+                      () => download({ data: { receiptId: receipt.id } }),
+                      `Couldn't download receipt ${receipt.number}.`
+                    )
+                  }
                 >
                   PDF
                 </LoadingButton>
@@ -241,12 +233,7 @@ function UploadTransferDialog({
       await upload({ data: form })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The receipt couldn't be uploaded. Try again.")
-          : "The receipt couldn't be uploaded. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't upload the receipt. Try again."), { cause: caught })
     }
     await refresh("Transfer receipt uploaded.")
     onOpenChange(false)

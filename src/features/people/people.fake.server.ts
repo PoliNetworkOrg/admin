@@ -539,7 +539,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         profile: {
           firstName: input.firstName,
           lastName: input.lastName,
-          personalEmail: input.personalEmail,
+          personalEmail: input.personalEmail || null,
           phone: input.phone || null,
           telegramUsername: input.telegramUsername || null,
           telegramId: null,
@@ -585,7 +585,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       Object.assign(person.profile, {
         firstName: input.firstName,
         lastName: input.lastName,
-        personalEmail: input.personalEmail,
+        personalEmail: input.personalEmail || null,
         phone: input.phone || null,
         telegramUsername: input.telegramUsername || null,
         course: input.course,

@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+import { saveBlob } from "./people-files"
 import { currentYear, FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { createMember, exportMembers, setMemberNumber, setMemberStatus } from "./people-members.functions"
@@ -91,11 +92,17 @@ export function AddMemberDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Add member"
-      description="Creates a Microsoft 365 account with the member number as its ID."
+      description="Registers a person as a member and starts the new-member workflow."
       noun="member"
       dirty={person?.id !== initialPerson?.id || number !== nextNumber || fee !== "due" || admittedOn !== todayIso()}
       submitLabel="Add member"
       onSubmit={submit}
+      notice={
+        <InlineAlert tone="info">
+          The new-member workflow creates {person ? `${person.name}'s` : "the person's"} Microsoft 365 account with
+          member ID {NUMBER_PATTERN.test(trimmed) ? trimmed : "above"}.
+        </InlineAlert>
+      }
     >
       <div className="flex flex-col gap-4">
         <FormField label="Person" htmlFor="member-person" hint="Ask HR to add missing people." error={personError}>
@@ -307,15 +314,6 @@ export function MemberNumberDialog({
   )
 }
 
-function download(filename: string, contents: string) {
-  const url = URL.createObjectURL(new Blob([contents], { type: "text/csv;charset=utf-8" }))
-  const link = document.createElement("a")
-  link.href = url
-  link.download = filename
-  link.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
-
 /** Confirms first: the file holds personal data. */
 export function ExportMembersDialog({
   open,
@@ -338,7 +336,7 @@ export function ExportMembersDialog({
       confirmLabel="Export register"
       onConfirm={async () => {
         const file = await exportRegister()
-        download(file.filename, file.csv)
+        saveBlob(new Blob([file.csv], { type: "text/csv;charset=utf-8" }), file.filename)
         appToast.success("Member register exported.")
       }}
     />
