@@ -7,7 +7,10 @@ import {
   type CensusEntry,
   type FeeStatus,
   type MemberStatus,
+  type PaymentMethod,
   type PersonRow,
+  type ReceiptStatus,
+  type Signer,
   TEAMS,
   type TeamId,
   YEARS,
@@ -115,6 +118,18 @@ export const FEE_STATUS = {
   due: { label: "Due", tone: "warning" },
   unpaid: { label: "Unpaid", tone: "danger" },
 } satisfies Record<FeeStatus, Tone>
+
+export const RECEIPT_STATUS = {
+  toSign: { label: "To sign", tone: "warning" },
+  signed: { label: "Signed", tone: "brand" },
+  sent: { label: "Sent", tone: "success" },
+  failed: { label: "Send failed", tone: "danger" },
+  voided: { label: "Voided", tone: "neutral" },
+} satisfies Record<ReceiptStatus, Tone>
+
+export const SIGNER_LABEL = { president: "President", vicePresident: "Vice-president" } satisfies Record<Signer, string>
+
+export const PAYMENT_METHOD = { transfer: "Bank transfer", cash: "Cash" } satisfies Record<PaymentMethod, string>
 
 export const CENSUS_ANSWER = {
   continues: { label: "Continues", tone: "success" },

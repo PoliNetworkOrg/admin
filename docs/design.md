@@ -452,6 +452,12 @@ Rules that the templates above don't imply.
   use `FormDialog` with `submitTone="danger"`; plain confirmations stay `ConfirmDialog`.
 - **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
   record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
+- **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
+  Send reminder, or an empty slot); its header keeps one outline action (Send reminders) and moves Export to ⋮ when
+  both apply. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
+  Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`submitTone="danger"`, Back on
+  the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
+  roles. Amounts are `formatCents` ("€10.00") with tabular numbers.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
 - **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section

@@ -52,6 +52,8 @@ export type SectionItemsProps = {
   pendingReports: Promise<number | null>
   /** People › Linking's Needs review queue, streamed like `pendingReports`. */
   needsReview: Promise<number | null>
+  /** People › Receipts: the receipts waiting for the signed-in officer's signature, streamed the same way. */
+  toSign: Promise<number | null>
   /** `panel` for the desktop list, `pills` for the horizontally scrolling row under the mobile top bar. */
   variant?: "panel" | "pills"
 }
@@ -62,7 +64,14 @@ const pillActiveClass =
   "border-[color-mix(in_oklab,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
 
 /** The section links of one service; shared by the panel and the mobile section pills. */
-export function SectionItems({ service, match, pendingReports, needsReview, variant = "panel" }: SectionItemsProps) {
+export function SectionItems({
+  service,
+  match,
+  pendingReports,
+  needsReview,
+  toSign,
+  variant = "panel",
+}: SectionItemsProps) {
   const current = sectionFor(match)
   const deep = isDeepPage(match)
   const pills = variant === "pills"
@@ -97,6 +106,11 @@ export function SectionItems({ service, match, pendingReports, needsReview, vari
             <QueueCount count={pendingReports} label="pending" />
           </Suspense>
         ) : null}
+        {service.id === "people" && section.id === "receipts" ? (
+          <Suspense fallback={null}>
+            <QueueCount count={toSign} label="to sign" />
+          </Suspense>
+        ) : null}
         {service.id === "people" && section.id === "linking" ? (
           <Suspense fallback={null}>
             <QueueCount count={needsReview} label="to review" />
@@ -112,11 +126,12 @@ export type PanelProps = {
   match: PageMatch
   pendingReports: Promise<number | null>
   needsReview: Promise<number | null>
+  toSign: Promise<number | null>
   className?: string
 }
 
 /** The 240px section panel (200px below 1100px). States the service name once, in its header. */
-export function Panel({ service, match, pendingReports, needsReview, className }: PanelProps) {
+export function Panel({ service, match, pendingReports, needsReview, toSign, className }: PanelProps) {
   return (
     <aside
       data-shell-panel=""
@@ -134,14 +149,20 @@ export function Panel({ service, match, pendingReports, needsReview, className }
         onKeyDown={onSectionListKeyDown}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
       >
-        <SectionItems service={service} match={match} pendingReports={pendingReports} needsReview={needsReview} />
+        <SectionItems
+          service={service}
+          match={match}
+          pendingReports={pendingReports}
+          needsReview={needsReview}
+          toSign={toSign}
+        />
       </nav>
     </aside>
   )
 }
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
-export function SectionPills({ service, match, pendingReports, needsReview, className }: PanelProps) {
+export function SectionPills({ service, match, pendingReports, needsReview, toSign, className }: PanelProps) {
   const ref = useRef<HTMLElement>(null)
   const currentPath = sectionFor(match)?.path
   useLayoutEffect(() => {
@@ -164,6 +185,7 @@ export function SectionPills({ service, match, pendingReports, needsReview, clas
         match={match}
         pendingReports={pendingReports}
         needsReview={needsReview}
+        toSign={toSign}
         variant="pills"
       />
     </nav>

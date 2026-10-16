@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { Download, EllipsisVertical, IdCard, Pencil, Plus, UserRound } from "lucide-react"
+import { Banknote, Bell, Download, EllipsisVertical, FileSearch, IdCard, Pencil, Plus, UserRound } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -11,6 +11,7 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuSeparator,
   MenuTrigger,
   RowActions,
   SegmentedControl,
@@ -21,6 +22,13 @@ import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
+import {
+  type FeeTarget,
+  MarkPaidDialog,
+  ReviewReceiptDialog,
+  SendFeeRemindersDialog,
+  useSendFeeReminder,
+} from "./fee-dialogs"
 import {
   AddMemberDialog,
   ExportMembersDialog,
@@ -42,6 +50,7 @@ import {
 type Member = PersonRow & { member: Membership }
 type Scope = "all" | MemberStatus
 type MemberDialog = { kind: "status" | "number"; member: Member }
+type FeeDialog = { kind: "review" | "paid"; person: FeeTarget }
 
 function isRegistered(person: PersonRow): person is Member {
   return person.member !== null
@@ -117,7 +126,7 @@ const columns: DataTableColumn<Member>[] = [
   {
     id: "fee",
     label: `Fee ${CURRENT_YEAR}`,
-    width: 152,
+    width: 168,
     mobile: "hidden",
     cell: (person) => (person.member.fee ? <StateBadge state={FEE_STATUS[person.member.fee]} /> : <Unset />),
   },
@@ -153,6 +162,8 @@ export function MembersPage({
   onAddHandled: () => void
 }) {
   const canWrite = useCan("people:members:write")
+  const canFees = useCan("people:fees:write")
+  const sendReminder = useSendFeeReminder()
   const members = people.filter(isRegistered)
   const candidates = people
     .filter((person) => !isRegistered(person))
@@ -176,6 +187,10 @@ export function MembersPage({
   const [dialog, setDialog] = useState<MemberDialog | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogKey, setDialogKey] = useState(0)
+  const [feeDialog, setFeeDialog] = useState<FeeDialog | null>(null)
+  const [feeOpen, setFeeOpen] = useState(false)
+  const [feeKey, setFeeKey] = useState(0)
+  const [remindersOpen, setRemindersOpen] = useState(false)
 
   const inScope = scope === "all" ? members : members.filter((person) => person.member.status === scope)
   const filtered = inScope.filter(
@@ -200,6 +215,16 @@ export function MembersPage({
     setDialogOpen(true)
   }
 
+  function openFee(kind: FeeDialog["kind"], member: Member) {
+    setFeeDialog({ kind, person: { id: member.id, name: personName(member), number: member.member.number } })
+    setFeeKey((value) => value + 1)
+    setFeeOpen(true)
+  }
+
+  const owing = members.filter(
+    (person) => person.member.status !== "former" && (person.member.fee === "due" || person.member.fee === "unpaid")
+  ).length
+
   function clearFilters() {
     setQuery("")
     setFee(null)
@@ -221,16 +246,46 @@ export function MembersPage({
       <PageBar
         description={`${pluralize(current, "member")} · ${byStatus("former")} former`}
         right={
-          canWrite ? (
+          canWrite || canFees ? (
             <>
-              <Button size="sm" variant="outline" className={buttonMotion} onClick={() => setExportOpen(true)}>
-                <Download data-icon="inline-start" />
-                Export
-              </Button>
-              <Button size="sm" className={buttonMotion} onClick={openAdd}>
-                <Plus data-icon="inline-start" />
-                Add member
-              </Button>
+              {/* One outline action: Send reminders for fee managers; Export moves to ⋮ when both apply. */}
+              {canFees ? (
+                <Button size="sm" variant="outline" className={buttonMotion} onClick={() => setRemindersOpen(true)}>
+                  <Bell data-icon="inline-start" />
+                  Send reminders
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" className={buttonMotion} onClick={() => setExportOpen(true)}>
+                  <Download data-icon="inline-start" />
+                  Export
+                </Button>
+              )}
+              {canWrite ? (
+                <Button size="sm" className={buttonMotion} onClick={openAdd}>
+                  <Plus data-icon="inline-start" />
+                  Add member
+                </Button>
+              ) : null}
+              {canWrite && canFees ? (
+                <Menu>
+                  <MenuTrigger
+                    render={
+                      <IconButton
+                        label="More actions"
+                        icon={EllipsisVertical}
+                        appearance="boxed"
+                        className="size-10 max-shell:flex-none"
+                      />
+                    }
+                  />
+                  <MenuContent align="end">
+                    <MenuItem onClick={() => setExportOpen(true)}>
+                      <Download />
+                      Export register
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              ) : null}
             </>
           ) : undefined
         }
@@ -321,15 +376,38 @@ export function MembersPage({
             setPage(1)
           }}
           actions={
-            canWrite
+            canWrite || canFees
               ? (person) => (
                   <RowActions>
-                    <IconButton
-                      label="Change status"
-                      ariaLabel={`Change status of ${personName(person)}`}
-                      icon={Pencil}
-                      onClick={() => openDialog("status", person)}
-                    />
+                    {/* The fee's own action, by state; Paid and former members keep an empty slot so icons align. */}
+                    {canFees ? (
+                      person.member.fee === "receipt" ? (
+                        <IconButton
+                          label="Review receipt"
+                          ariaLabel={`Review the receipt of ${personName(person)}`}
+                          icon={FileSearch}
+                          onClick={() => openFee("review", person)}
+                        />
+                      ) : person.member.status !== "former" &&
+                        (person.member.fee === "due" || person.member.fee === "unpaid") ? (
+                        <IconButton
+                          label="Send reminder"
+                          ariaLabel={`Send a fee reminder to ${personName(person)}`}
+                          icon={Bell}
+                          onClick={() => void sendReminder({ id: person.id, name: personName(person) })}
+                        />
+                      ) : (
+                        <span aria-hidden className="size-9 shrink-0" />
+                      )
+                    ) : null}
+                    {canWrite ? (
+                      <IconButton
+                        label="Change status"
+                        ariaLabel={`Change status of ${personName(person)}`}
+                        icon={Pencil}
+                        onClick={() => openDialog("status", person)}
+                      />
+                    ) : null}
                     <Menu>
                       <MenuTrigger
                         render={
@@ -341,10 +419,30 @@ export function MembersPage({
                         }
                       />
                       <MenuContent>
-                        <MenuItem onClick={() => openDialog("number", person)}>
-                          <IdCard />
-                          Change member number
-                        </MenuItem>
+                        {canFees && person.member.status !== "former" && person.member.fee === "receipt" ? (
+                          <MenuItem onClick={() => openFee("review", person)}>
+                            <FileSearch />
+                            Review receipt
+                          </MenuItem>
+                        ) : null}
+                        {canFees &&
+                        person.member.status !== "former" &&
+                        person.member.fee &&
+                        person.member.fee !== "paid" ? (
+                          <MenuItem onClick={() => openFee("paid", person)}>
+                            <Banknote />
+                            Mark as paid
+                          </MenuItem>
+                        ) : null}
+                        {canFees && person.member.status !== "former" && person.member.fee !== "paid" ? (
+                          <MenuSeparator />
+                        ) : null}
+                        {canWrite ? (
+                          <MenuItem onClick={() => openDialog("number", person)}>
+                            <IdCard />
+                            Change member number
+                          </MenuItem>
+                        ) : null}
                         <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: person.id }} />}>
                           <UserRound />
                           Open record
@@ -355,7 +453,7 @@ export function MembersPage({
                 )
               : undefined
           }
-          actionsWidth={96}
+          actionsWidth={(canFees ? 38 : 0) + (canWrite ? 38 : 0) + 40}
           pagination={{
             page,
             pageSize,
@@ -402,6 +500,19 @@ export function MembersPage({
           }
         />
       </PageContent>
+      {canFees ? <SendFeeRemindersDialog open={remindersOpen} onOpenChange={setRemindersOpen} count={owing} /> : null}
+      {canFees && feeDialog ? (
+        feeDialog.kind === "review" ? (
+          <ReviewReceiptDialog
+            key={`review-${feeKey}`}
+            open={feeOpen}
+            onOpenChange={setFeeOpen}
+            person={feeDialog.person}
+          />
+        ) : (
+          <MarkPaidDialog key={`paid-${feeKey}`} open={feeOpen} onOpenChange={setFeeOpen} person={feeDialog.person} />
+        )
+      ) : null}
       {canWrite ? (
         <>
           <AddMemberDialog

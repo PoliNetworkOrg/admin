@@ -7,6 +7,7 @@ Everything an agent needs to build, or continue building, the People area of the
 | [`brief.md`](brief.md)         | The original brief, verbatim                                                             |
 | [`decisions.md`](decisions.md) | What was settled after the brief: owner decisions, navigation, per-page rules, roles     |
 | [`contract.md`](contract.md)   | The `people.*` backend contract the dashboard codes against                              |
+| [`fees.md`](fees.md)           | Fees and receipts: renewal flow, signing, reminders, screens and the receipt PDF         |
 | [`plan.md`](plan.md)           | Phases, checklist and progress log: **start here to know what is done and what is next** |
 | [`prototype/`](prototype/)     | The clickable prototype's source (structure and copy reference only)                     |
 

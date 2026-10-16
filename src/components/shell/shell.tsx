@@ -87,6 +87,8 @@ export type DashboardShellProps = {
   pendingReports: Promise<number | null>
   /** People › Linking's Needs review count; streams in, null when it couldn't be loaded or isn't readable. */
   needsReview: Promise<number | null>
+  /** People › Receipts' count of receipts waiting for the signed-in officer; null for everyone else. */
+  toSign: Promise<number | null>
 }
 
 /**
@@ -94,15 +96,15 @@ export type DashboardShellProps = {
  * service's section pills, then the page), then the bottom nav. Pages render their header through `PageBar` and
  * their body inside `PageContent`; both scroll with the page.
  */
-export function DashboardShell({ user, pendingReports, needsReview }: DashboardShellProps) {
+export function DashboardShell({ user, pendingReports, needsReview, toSign }: DashboardShellProps) {
   return (
     <SignOutProvider>
-      <DashboardFrame user={user} pendingReports={pendingReports} needsReview={needsReview} />
+      <DashboardFrame user={user} pendingReports={pendingReports} needsReview={needsReview} toSign={toSign} />
     </SignOutProvider>
   )
 }
 
-function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: DashboardShellProps) {
+function DashboardFrame({ user: dashboardUser, pendingReports, needsReview, toSign }: DashboardShellProps) {
   const pathname = useRenderedPathname()
   const match = matchPath(pathname)
   const rawService = serviceFor(match)
@@ -178,7 +180,13 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
                   exit={{ transform: "translateX(-100%)", transition: reduceMotion ? { duration: 0 } : panelExit }}
                   className="flex h-full shrink-0 min-[1440px]:absolute min-[1440px]:inset-y-0 min-[1440px]:left-0"
                 >
-                  <Panel service={service} match={match} pendingReports={pendingReports} needsReview={needsReview} />
+                  <Panel
+                    service={service}
+                    match={match}
+                    pendingReports={pendingReports}
+                    needsReview={needsReview}
+                    toSign={toSign}
+                  />
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -199,6 +207,7 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
                   match={match}
                   pendingReports={pendingReports}
                   needsReview={needsReview}
+                  toSign={toSign}
                   className="shell:hidden"
                 />
               ) : null}

@@ -43,8 +43,8 @@ Known prototype defects to not reproduce:
 
 ## Navigation
 
-- **People** is a rail service (`UsersRound`), placed first after Search. Sections: Overview, Member register, Admins,
-  Teams, Census, Linking. Deep pages: person (`/dashboard/people/$personId`), team (`/dashboard/people/teams/$teamId`),
+- **People** is a rail service (`UsersRound`), placed first after Search. Sections: Overview, Member register,
+  Receipts, Admins, Teams, Census, Linking. Deep pages: person (`/dashboard/people/$personId`), team (`/dashboard/people/teams/$teamId`),
   campaign (`/dashboard/people/census/$campaignId`).
 - **Capo Admin** is a Telegram section (`/dashboard/telegram/capo`, icon `Crown`), visible only to Capo Admins. A Capo
   Admin without other rights sees Telegram with that one section, so no panel (one-section rule).
@@ -52,7 +52,8 @@ Known prototype defects to not reproduce:
   and Sign-in & security (today's `/dashboard/account`, unchanged content).
 - A **Team Lead** without people rights gets People with only Teams, which opens their team directly.
 - People with only `people:self`: the logo links to My area instead of Overview.
-- Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue.
+- Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue. Receipts does the
+  same with the receipts waiting for the signed-in officer.
 
 ## Data and display
 
@@ -109,6 +110,11 @@ Known prototype defects to not reproduce:
   this you?" card with the matched record and the match reason. No record: empty state with Ask to be added, then a
   "Waiting for HR" state.
 
+- **Fees and receipts**: see [`fees.md`](fees.md). The register's Fee column keeps its badge and gains the fee's own
+  row action; Send reminders becomes the register's outline action and Export moves to the header ⋮ when the viewer
+  has both. People › Receipts is the signing queue. The record gets a Fees and receipts card, My area a Membership fee
+  card. Receipts are never deleted, only voided.
+
 ## Roles to permissions
 
 | Viewer      | Permissions (IdP)                                                                                                             | Sees                                              |
@@ -119,6 +125,9 @@ Known prototype defects to not reproduce:
 | Team Lead   | `people:self` (+ Lead role on their record)                                                                                   | People › Teams (their team, full fields), My area |
 | Team member | `people:self`                                                                                                                 | My area with their team roster                    |
 | Admin only  | `people:self`                                                                                                                 | My area                                           |
+
+Fees add `people:fees:write` (the Direttivo, or whoever handles payments) and `people:receipts:sign` (the President
+and the Vice-president, who sign only as the officer on their own record).
 
 Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes and
 full census answers need `people:read`. The backend enforces all of this again; the dashboard only hides.

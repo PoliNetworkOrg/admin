@@ -31,6 +31,7 @@ import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/
 import { Route as DashboardTelegramCapoRouteImport } from './routes/dashboard/telegram/capo'
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
+import { Route as DashboardPeopleReceiptsRouteImport } from './routes/dashboard/people/receipts'
 import { Route as DashboardPeopleMembersRouteImport } from './routes/dashboard/people/members'
 import { Route as DashboardPeopleLinkingRouteImport } from './routes/dashboard/people/linking'
 import { Route as DashboardPeopleAdminsRouteImport } from './routes/dashboard/people/admins'
@@ -161,6 +162,11 @@ const DashboardReportsGroupLinksRoute =
     path: '/reports/group-links',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardPeopleReceiptsRoute = DashboardPeopleReceiptsRouteImport.update({
+  id: '/people/receipts',
+  path: '/people/receipts',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPeopleMembersRoute = DashboardPeopleMembersRouteImport.update({
   id: '/people/members',
   path: '/people/members',
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/linking'
     | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -428,6 +438,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/linking'
     | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -468,6 +479,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/linking'
     | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -658,6 +670,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/people/receipts': {
+      id: '/dashboard/people/receipts'
+      path: '/people/receipts'
+      fullPath: '/dashboard/people/receipts'
+      preLoaderRoute: typeof DashboardPeopleReceiptsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/people/members': {
       id: '/dashboard/people/members'
       path: '/people/members'
@@ -809,6 +828,7 @@ interface DashboardRouteChildren {
   DashboardPeopleAdminsRoute: typeof DashboardPeopleAdminsRoute
   DashboardPeopleLinkingRoute: typeof DashboardPeopleLinkingRoute
   DashboardPeopleMembersRoute: typeof DashboardPeopleMembersRoute
+  DashboardPeopleReceiptsRoute: typeof DashboardPeopleReceiptsRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
   DashboardTelegramCapoRoute: typeof DashboardTelegramCapoRoute
@@ -835,6 +855,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardPeopleAdminsRoute: DashboardPeopleAdminsRoute,
   DashboardPeopleLinkingRoute: DashboardPeopleLinkingRoute,
   DashboardPeopleMembersRoute: DashboardPeopleMembersRoute,
+  DashboardPeopleReceiptsRoute: DashboardPeopleReceiptsRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
   DashboardTelegramCapoRoute: DashboardTelegramCapoRoute,

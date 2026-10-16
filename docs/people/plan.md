@@ -117,6 +117,17 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page
       architecture lines
 - [x] PR description final, all checks green
 
+### 11. Fees and receipts ([`fees.md`](fees.md))
+
+- [x] Contract: `FeeDetail`, `Receipt`, `fees` on the record, `feeInstructions` in My area, the `people.fees.*`,
+      `people.receipts.*` and two `people.me.*` procedures; permissions `people:fees:write`, `people:receipts:sign`
+- [x] Agent mode: seeded fee years and receipts, review, Mark as paid, reminders, signing, email failure, void; the
+      receipt PDF and the ZIP to sign (`receipt-files.server.ts`)
+- [x] Member register: fee row actions, Send reminders, Export in ⋮; Review receipt and Mark as paid dialogs
+- [x] People › Receipts with its panel count; Upload signed receipts; Void receipt; Retry sending
+- [x] Person record Fees and receipts card; My area Membership fee card and Upload transfer receipt
+- [ ] Backend: implement the procedures, the officers, automatic reminders, signature verification and email
+
 ## Progress log
 
 Newest last. One line per commit or session: date, what was done, what is next.
@@ -169,3 +180,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   every People route redirects to sign-in. Still open: empty states are written for every list but were never seen
   with empty data (the fake has no empty mode), loading skeletons were not looked at, and the signed-in flow without
   agent mode needs a development IdP client.
+- 2026-10-16: phase 11 (fees and receipts) on its own branch over this PR: contract, agent-mode data and files, Member
+  register actions, People › Receipts, Upload signed receipts, record and My area cards, `docs/people/fees.md`.
+  Verified in agent mode at 1440 and 390, light and dark, as the President (`P-0007`) and a rejected member
+  (`P-0021`): approve, reject, Mark as paid, reminders, download to sign, upload and send, retry, void, member upload.
+  Next: the backend side.
