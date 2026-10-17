@@ -15,9 +15,12 @@ import {
   IconButton,
   InlineAlert,
   PlatformGlyph,
+  RadioCard,
+  RadioCardGroup,
   RowActions,
   SegmentedControl,
   StatusBadge,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -27,7 +30,7 @@ import { cn } from "@/lib/utils"
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
 import { formatDay, isExpired } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { PersonCell, RadioCard } from "./people-ui"
+import { PersonCell } from "./people-ui"
 import { dismissLinkingReview, resolveLinkingReview } from "./people-write.functions"
 import type { Invite, Review } from "./people.contract"
 
@@ -160,8 +163,7 @@ function ResolveDialog({
       await resolve({ data: { reviewId: review.id, resolution: choice, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The review couldn't be resolved."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't resolve the review."), { cause: caught })
     }
     await refresh("Resolved.")
     onOpenChange(false)
@@ -254,21 +256,29 @@ function ResolveDialog({
             <span className="font-medium">Their message:</span> {review.message}
           </InlineAlert>
         ) : null}
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-[13px] font-medium">Resolution</legend>
-          {options.map((option) => (
-            <RadioCard
-              key={option.value}
-              name="resolution"
-              value={option.value}
-              checked={choice === option.value}
-              onSelect={() => setChoice(option.value)}
-              label={option.label}
-              description={option.description}
-            />
-          ))}
-          {choiceError ? <p className="text-[13px] text-(--pn-danger-fg)">{choiceError}</p> : null}
-        </fieldset>
+        <div className="flex flex-col gap-2">
+          <RadioCardGroup
+            label="Resolution"
+            value={choice}
+            onValueChange={setChoice}
+            invalid={!!choiceError}
+            describedBy={choiceError ? "resolve-choice-error" : undefined}
+          >
+            {options.map((option) => (
+              <RadioCard
+                key={option.value}
+                value={option.value}
+                label={option.label}
+                description={option.description}
+              />
+            ))}
+          </RadioCardGroup>
+          {choiceError ? (
+            <p id="resolve-choice-error" className="text-[13px] text-(--pn-danger-fg)">
+              {choiceError}
+            </p>
+          ) : null}
+        </div>
         <FormField label="Reason" htmlFor="resolve-reason" hint="Saved in the record's activity." error={reasonError}>
           <Textarea
             id="resolve-reason"
@@ -295,7 +305,7 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [resolving, setResolving] = useState<Review | null>(null)
   const [resolveOpen, setResolveOpen] = useState(false)
-  const [resolveKey, setResolveKey] = useState(0)
+  const resolveKey = useOpenGeneration(resolveOpen)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [accountOpen, setAccountOpen] = useState(false)
 
@@ -311,7 +321,7 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
       await dismiss({ data: { reviewId: review.id } })
     } catch (caught) {
       console.error(caught)
-      appToast.error(caught instanceof Error ? errorMessage(caught, "Couldn't dismiss it.") : "Couldn't dismiss it.")
+      appToast.error(errorMessage(caught, "Couldn't dismiss it."))
       return
     }
     await refresh("Review dismissed.")
@@ -464,7 +474,6 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
                         className={buttonMotion}
                         onClick={() => {
                           setResolving(review)
-                          setResolveKey((value) => value + 1)
                           setResolveOpen(true)
                         }}
                       >

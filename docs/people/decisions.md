@@ -43,8 +43,8 @@ Known prototype defects to not reproduce:
 
 ## Navigation
 
-- **People** is a rail service (`UsersRound`), placed first after Search. Sections: Overview, Member register, Admins,
-  Teams, Census, Linking. Deep pages: person (`/dashboard/people/$personId`), team (`/dashboard/people/teams/$teamId`),
+- **People** is a rail service (`UsersRound`), placed first after Search. Sections: Overview, Member register,
+  Receipts, Admins, Teams, Census, Linking. Deep pages: person (`/dashboard/people/$personId`), team (`/dashboard/people/teams/$teamId`),
   campaign (`/dashboard/people/census/$campaignId`).
 - **Capo Admin** is a Telegram section (`/dashboard/telegram/capo`, icon `Crown`), visible only to Capo Admins. A Capo
   Admin without other rights sees Telegram with that one section, so no panel (one-section rule).
@@ -52,7 +52,8 @@ Known prototype defects to not reproduce:
   and Sign-in & security (today's `/dashboard/account`, unchanged content).
 - A **Team Lead** without people rights gets People with only Teams, which opens their team directly.
 - People with only `people:self`: the logo links to My area instead of Overview.
-- Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue.
+- Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue. Receipts does the
+  same with the receipts waiting for the signed-in officer.
 
 ## Data and display
 
@@ -70,7 +71,7 @@ Known prototype defects to not reproduce:
 
 - **Overview**: personal email is the secondary line. Admin is a state badge (Active / Former); Capo Admin a scope chip.
   Last census reads "year · answer" and falls back to the last answered year. Row actions: Send invite (only while not
-  linked; linked rows keep an empty slot so icons align) and ⋮ (Open record, Link account, Add to team). Columns hide
+  linked; linked rows keep an empty slot so icons align) and Link account (while not linked). The row itself opens the record, so no menu repeats it. Columns hide
   by priority: Capo Admin, then Last census, then Teams.
 - **Person record**: two columns from 1100px (1.55 : 1): left Profile, Admin, Teams, Census history; right Account,
   Member, Consents, HR notes. Activity full width below. Discrepancies are warning `InlineAlert`s above the cards, each
@@ -83,13 +84,13 @@ Known prototype defects to not reproduce:
   Actions column and no header actions.
 - **Admins**: course is the name's secondary line. Groups, Capo Admin of reference, Member and Census always show;
   Year, Campus, Active since, then Requested, Representative, Other associations and Available as Capo Admin appear as
-  the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the rest in ⋮.
+  the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the role actions follow it.
 - **Teams**: index = one `NavCard` per team (lead, member count, missing census answers) then all team members in one
   table with a Team column. Team page columns follow the team's fields (IT: GitHub, Areas; Design & Social: Tools,
   Portfolio; HR and Events: Focus; International: Languages). Team Leads see phone and Telegram for their team. Lead
   option in Add to team only for `people:appoint`. End membership needs a reason and keeps history.
 - **Census**: campaign list is a table with a stacked progress meter and counts. Campaign page: Import responses
-  (primary), Send reminders (outline), Close campaign in ⋮. Segments: Expected (all), Answered, Continuing, Leaving, No
+  (primary), Send reminders (outline, an icon on phones) and Close campaign (icon). Segments: Expected (all), Answered, Continuing, Leaving, No
   answer. Reminders skip people reminded in the last 3 days, and the confirmation says how many. No "New campaign"
   while one is open.
 - **Import wizard**: lg dialog (bottom sheet on mobile), five steps Upload → Review → Duplicates → Telegram → Confirm;
@@ -109,6 +110,11 @@ Known prototype defects to not reproduce:
   this you?" card with the matched record and the match reason. No record: empty state with Ask to be added, then a
   "Waiting for HR" state.
 
+- **Fees and receipts**: see [`fees.md`](fees.md). The register's Fee column keeps its badge and gains the fee's own
+  row action; Send reminders becomes the register's outline action and Export register a boxed icon next to Add
+  member. People › Receipts is the signing queue. The record gets a Fees and receipts card, My area a Membership fee
+  card. Receipts are never deleted, only voided.
+
 ## Roles to permissions
 
 | Viewer      | Permissions (IdP)                                                                                                             | Sees                                              |
@@ -119,6 +125,11 @@ Known prototype defects to not reproduce:
 | Team Lead   | `people:self` (+ Lead role on their record)                                                                                   | People › Teams (their team, full fields), My area |
 | Team member | `people:self`                                                                                                                 | My area with their team roster                    |
 | Admin only  | `people:self`                                                                                                                 | My area                                           |
+
+Fees add `people:fees:write` (the Direttivo, or whoever handles payments) and `people:receipts:sign` (the President
+and the Vice-president, who sign only as the officer on their own record). Direct CIE signing also needs `esign:sign`;
+it reuses PoliNetwork eSign with a durable backend receipt/request association. ZIP download and signed-file upload
+remain an option.
 
 Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes and
 full census answers need `people:read`. The backend enforces all of this again; the dashboard only hides.

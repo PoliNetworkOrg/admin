@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { Crown, EllipsisVertical, Send, ShieldUser, UserMinus, UserRound, UserRoundCog } from "lucide-react"
+import { Crown, Send, ShieldUser, UserMinus, UserRoundCog } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -9,17 +8,15 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
   PlatformGlyph,
   RowActions,
   SegmentedControl,
   type TableSort,
+  ToggleFilter,
   Unset,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -35,7 +32,7 @@ import {
 import {
   CENSUS_ANSWER,
   censusEntry,
-  CURRENT_YEAR,
+  currentYear,
   formatDay,
   isMember,
   NO_ANSWER,
@@ -43,7 +40,7 @@ import {
   telegramUrl,
   yearOf,
 } from "./people-format"
-import { FilterMenu, PersonCell, StateBadge, ToggleFilter, TruncatedChip } from "./people-ui"
+import { ActionMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import { type AdminRole, CAMPUSES, type Campus, type PersonRow, YEARS } from "./people.contract"
 
 type Admin = PersonRow & { admin: AdminRole }
@@ -61,12 +58,12 @@ const QUICK = {
   availableAsCapo: { label: "Available as Capo Admin", test: (person: Admin) => person.admin.availableAsCapo },
   declaredMember: {
     label: "Declared member but not registered",
-    test: (person: Admin) => censusEntry(person, CURRENT_YEAR)?.declaredMember === true && !isMember(person),
+    test: (person: Admin) => censusEntry(person, currentYear())?.declaredMember === true && !isMember(person),
   },
   noCensus: {
     label: "No census answer",
     test: (person: Admin) => {
-      const entry = censusEntry(person, CURRENT_YEAR)
+      const entry = censusEntry(person, currentYear())
       return entry !== undefined && entry.answer === null
     },
   },
@@ -85,173 +82,176 @@ function matchesQuery(person: Admin, query: string) {
 }
 
 function CensusCell({ person }: { person: Admin }) {
-  const entry = censusEntry(person, CURRENT_YEAR)
+  const entry = censusEntry(person, currentYear())
   if (!entry) return <Unset />
   return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
 }
 
-const columns: DataTableColumn<Admin>[] = [
-  {
-    id: "name",
-    label: "Name",
-    sortable: true,
-    fill: true,
-    minWidth: 220,
-    mobile: "main",
-    cell: (person) => (
-      <>
-        <PersonCell
-          name={personName(person)}
-          secondary={person.profile.course}
-          muted={person.admin.status === "former"}
-        />
-        {/* Mobile cards: groups and census on one labelled line, then the Capo Admin scope. */}
-        <span className="mt-2 hidden flex-col items-start gap-1.5 pl-11 text-xs text-(--pn-fg-muted) max-shell:flex">
-          <span className="flex flex-wrap items-center gap-1.5">
-            {person.admin.status !== "active"
-              ? "Former admin"
-              : person.admin.groups.length
-                ? pluralize(person.admin.groups.length, "group")
-                : "No groups"}
-            <span aria-hidden>·</span>
-            Census <CensusCell person={person} />
+/** The table's columns; the census and fee columns name the current academic year. */
+function tableColumns(year: string): DataTableColumn<Admin>[] {
+  return [
+    {
+      id: "name",
+      label: "Name",
+      sortable: true,
+      fill: true,
+      minWidth: 220,
+      mobile: "main",
+      cell: (person) => (
+        <>
+          <PersonCell
+            name={personName(person)}
+            secondary={person.profile.course}
+            muted={person.admin.status === "former"}
+          />
+          {/* Mobile cards: groups and census on one labelled line, then the Capo Admin scope. */}
+          <span className="mt-2 hidden flex-col items-start gap-1.5 pl-11 text-xs text-(--pn-fg-muted) max-shell:flex">
+            <span className="flex flex-wrap items-center gap-1.5">
+              {person.admin.status !== "active"
+                ? "Former admin"
+                : person.admin.groups.length
+                  ? pluralize(person.admin.groups.length, "group")
+                  : "No groups"}
+              <span aria-hidden>·</span>
+              Census <CensusCell person={person} />
+            </span>
+            {person.admin.capoScope ? <Chip>Capo Admin · {person.admin.capoScope}</Chip> : null}
           </span>
-          {person.admin.capoScope ? <Chip>Capo Admin · {person.admin.capoScope}</Chip> : null}
-        </span>
-      </>
-    ),
-  },
-  {
-    id: "year",
-    label: "Year",
-    width: 112,
-    priority: 4,
-    mobile: "hidden",
-    cell: (person) => <span className="whitespace-nowrap">{person.profile.year}</span>,
-  },
-  {
-    id: "campus",
-    label: "Campus",
-    width: 112,
-    priority: 5,
-    mobile: "hidden",
-    cell: (person) => person.profile.campus,
-  },
-  {
-    id: "since",
-    label: "Active since",
-    sortable: true,
-    width: 128,
-    priority: 5,
-    mobile: "hidden",
-    cell: (person) => <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>,
-  },
-  {
-    id: "groups",
-    label: "Groups",
-    width: 232,
-    mobile: "hidden",
-    cell: (person) =>
-      person.admin.status === "former" ? (
-        <span className="text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
-      ) : person.admin.groups.length ? (
-        <ChipOverflow
-          items={person.admin.groups}
-          itemLabel={(group) => group.title}
-          renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-        />
-      ) : (
-        <span className="text-(--pn-fg-muted)">No groups</span>
+        </>
       ),
-  },
-  {
-    id: "requested",
-    label: "Requested",
-    width: 160,
-    priority: 6,
-    mobile: "hidden",
-    cell: (person) =>
-      person.admin.requested.length ? (
-        <ChipOverflow
-          items={person.admin.requested}
-          max={1}
-          itemLabel={(group) => group.title}
-          renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-        />
-      ) : (
-        <Unset />
-      ),
-  },
-  {
-    id: "representative",
-    label: "Representative",
-    width: 184,
-    priority: 6,
-    mobile: "hidden",
-    cell: (person) =>
-      person.profile.studentRepresentative ? (
-        <span className="block truncate">{person.profile.studentRepresentative}</span>
-      ) : (
-        <Unset />
-      ),
-  },
-  {
-    id: "associations",
-    label: "Other associations",
-    width: 168,
-    priority: 6,
-    mobile: "hidden",
-    cell: (person) =>
-      person.profile.otherAssociations.length ? (
-        <ChipOverflow
-          items={person.profile.otherAssociations}
-          max={1}
-          itemLabel={(association) => association}
-          renderItem={(association) => <TruncatedChip key={association} label={association} />}
-        />
-      ) : (
-        <Unset />
-      ),
-  },
-  {
-    id: "availableAsCapo",
-    label: "Available as Capo",
-    width: 144,
-    priority: 6,
-    mobile: "hidden",
-    cell: (person) => (person.admin.availableAsCapo ? "Yes" : <Unset />),
-  },
-  {
-    id: "capoOfReference",
-    label: "Capo Admin of reference",
-    width: 184,
-    priority: 3,
-    mobile: "hidden",
-    cell: (person) =>
-      person.admin.capoScope ? (
-        <TruncatedChip label={`Capo Admin · ${person.admin.capoScope}`} />
-      ) : person.admin.capoOfReference ? (
-        <span className="block truncate">{person.admin.capoOfReference.name}</span>
-      ) : (
-        <Unset />
-      ),
-  },
-  {
-    id: "member",
-    label: "Member",
-    width: 88,
-    priority: 3,
-    mobile: "hidden",
-    cell: (person) => (isMember(person) ? "Yes" : <span className="text-(--pn-fg-muted)">No</span>),
-  },
-  {
-    id: "census",
-    label: `Census ${CURRENT_YEAR}`,
-    width: 152,
-    mobile: "hidden",
-    cell: (person) => <CensusCell person={person} />,
-  },
-]
+    },
+    {
+      id: "year",
+      label: "Year",
+      width: 112,
+      priority: 4,
+      mobile: "hidden",
+      cell: (person) => <span className="whitespace-nowrap">{person.profile.year}</span>,
+    },
+    {
+      id: "campus",
+      label: "Campus",
+      width: 112,
+      priority: 5,
+      mobile: "hidden",
+      cell: (person) => person.profile.campus,
+    },
+    {
+      id: "since",
+      label: "Active since",
+      sortable: true,
+      width: 128,
+      priority: 5,
+      mobile: "hidden",
+      cell: (person) => <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>,
+    },
+    {
+      id: "groups",
+      label: "Groups",
+      width: 232,
+      mobile: "hidden",
+      cell: (person) =>
+        person.admin.status === "former" ? (
+          <span className="text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
+        ) : person.admin.groups.length ? (
+          <ChipOverflow
+            items={person.admin.groups}
+            itemLabel={(group) => group.title}
+            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
+          />
+        ) : (
+          <span className="text-(--pn-fg-muted)">No groups</span>
+        ),
+    },
+    {
+      id: "requested",
+      label: "Requested",
+      width: 160,
+      priority: 6,
+      mobile: "hidden",
+      cell: (person) =>
+        person.admin.requested.length ? (
+          <ChipOverflow
+            items={person.admin.requested}
+            max={1}
+            itemLabel={(group) => group.title}
+            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
+          />
+        ) : (
+          <Unset />
+        ),
+    },
+    {
+      id: "representative",
+      label: "Representative",
+      width: 184,
+      priority: 6,
+      mobile: "hidden",
+      cell: (person) =>
+        person.profile.studentRepresentative ? (
+          <span className="block truncate">{person.profile.studentRepresentative}</span>
+        ) : (
+          <Unset />
+        ),
+    },
+    {
+      id: "associations",
+      label: "Other associations",
+      width: 168,
+      priority: 6,
+      mobile: "hidden",
+      cell: (person) =>
+        person.profile.otherAssociations.length ? (
+          <ChipOverflow
+            items={person.profile.otherAssociations}
+            max={1}
+            itemLabel={(association) => association}
+            renderItem={(association) => <TruncatedChip key={association} label={association} />}
+          />
+        ) : (
+          <Unset />
+        ),
+    },
+    {
+      id: "availableAsCapo",
+      label: "Available as Capo",
+      width: 144,
+      priority: 6,
+      mobile: "hidden",
+      cell: (person) => (person.admin.availableAsCapo ? "Yes" : <Unset />),
+    },
+    {
+      id: "capoOfReference",
+      label: "Capo Admin of reference",
+      width: 184,
+      priority: 3,
+      mobile: "hidden",
+      cell: (person) =>
+        person.admin.capoScope ? (
+          <TruncatedChip label={`Capo Admin · ${person.admin.capoScope}`} />
+        ) : person.admin.capoOfReference ? (
+          <span className="block truncate">{person.admin.capoOfReference.name}</span>
+        ) : (
+          <Unset />
+        ),
+    },
+    {
+      id: "member",
+      label: "Member",
+      width: 88,
+      priority: 3,
+      mobile: "hidden",
+      cell: (person) => (isMember(person) ? "Yes" : <span className="text-(--pn-fg-muted)">No</span>),
+    },
+    {
+      id: "census",
+      label: `Census ${year}`,
+      width: 152,
+      mobile: "hidden",
+      cell: (person) => <CensusCell person={person} />,
+    },
+  ]
+}
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
@@ -259,6 +259,7 @@ const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 export function AdminsPage({ people }: { people: PersonRow[] }) {
   const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
+  const censusYear = currentYear()
   const admins = people.filter(isAdmin)
   const active = admins.filter((person) => person.admin.status === "active")
 
@@ -273,7 +274,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
   const [pageSize, setPageSize] = useState(20)
   const [dialog, setDialog] = useState<AdminDialog | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogKey, setDialogKey] = useState(0)
+  const dialogKey = useOpenGeneration(dialogOpen)
 
   const inScope = admins.filter((person) => person.admin.status === scope)
   const filtered = inScope.filter(
@@ -320,7 +321,6 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
 
   function open(kind: AdminDialog["kind"], admin: Admin) {
     setDialog({ kind, admin })
-    setDialogKey((value) => value + 1)
     setDialogOpen(true)
   }
 
@@ -394,7 +394,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
       <PageContent>
         <DataTable
           label="Admins"
-          columns={columns}
+          columns={tableColumns(censusYear)}
           rows={rows}
           getRowId={(person) => person.id}
           rowLabel={personName}
@@ -423,50 +423,43 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
                 ) : (
                   <span aria-hidden className="size-9 max-shell:hidden" />
                 )}
-                <Menu>
-                  <MenuTrigger
-                    render={
-                      <IconButton
-                        label="More actions"
-                        ariaLabel={`More actions for ${personName(person)}`}
-                        icon={EllipsisVertical}
-                      />
-                    }
-                  />
-                  <MenuContent>
-                    <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: person.id }} />}>
-                      <UserRound />
-                      Open record
-                    </MenuItem>
-                    {canWrite && activeAdmin && !person.admin.capoScope ? (
-                      <MenuItem onClick={() => open("capoRef", person)}>
-                        <UserRoundCog />
-                        Capo Admin of reference
-                      </MenuItem>
-                    ) : null}
-                    {canAppoint && activeAdmin ? (
-                      <MenuItem onClick={() => open("capoScope", person)}>
-                        <Crown />
-                        {person.admin.capoScope ? "Change Capo Admin scope" : "Appoint as Capo Admin"}
-                      </MenuItem>
-                    ) : null}
-                    {canAppoint && activeAdmin && person.admin.capoScope ? (
-                      <MenuItem variant="destructive" onClick={() => open("endCapo", person)}>
-                        <Crown />
-                        End Capo Admin role
-                      </MenuItem>
-                    ) : null}
-                    {canWrite && activeAdmin ? (
-                      <>
-                        <MenuSeparator />
-                        <MenuItem variant="destructive" onClick={() => open("end", person)}>
-                          <UserMinus />
-                          End admin role
-                        </MenuItem>
-                      </>
-                    ) : null}
-                  </MenuContent>
-                </Menu>
+                <ActionMenu
+                  label={`More actions for ${personName(person)}`}
+                  actions={[
+                    canWrite &&
+                      activeAdmin &&
+                      !person.admin.capoScope && {
+                        label: "Capo Admin of reference",
+                        ariaLabel: `Capo Admin of reference for ${personName(person)}`,
+                        icon: UserRoundCog,
+                        onClick: () => open("capoRef", person),
+                      },
+                    canAppoint &&
+                      activeAdmin && {
+                        label: person.admin.capoScope ? "Change Capo Admin scope" : "Appoint as Capo Admin",
+                        ariaLabel: `${person.admin.capoScope ? "Change Capo Admin scope of" : "Appoint as Capo Admin"} ${personName(person)}`,
+                        icon: Crown,
+                        onClick: () => open("capoScope", person),
+                      },
+                    canAppoint &&
+                      activeAdmin &&
+                      person.admin.capoScope !== null && {
+                        label: "End Capo Admin role",
+                        ariaLabel: `End the Capo Admin role of ${personName(person)}`,
+                        icon: Crown,
+                        destructive: true,
+                        onClick: () => open("endCapo", person),
+                      },
+                    canWrite &&
+                      activeAdmin && {
+                        label: "End admin role",
+                        ariaLabel: `End the admin role of ${personName(person)}`,
+                        icon: UserMinus,
+                        destructive: true,
+                        onClick: () => open("end", person),
+                      },
+                  ]}
+                />
               </RowActions>
             )
           }}

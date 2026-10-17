@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { setPersonNote } from "./people-write.functions"
 
-const SAVE_ERROR = "The note could not be saved. Try again."
+const SAVE_ERROR = "Couldn't save the note. Try again."
 
 /** HR notes on a record: visible to the Direttivo and HR only. */
 export function NotesDialog({
@@ -31,7 +31,7 @@ export function NotesDialog({
       await save({ data: { id: personId, note: value.trim() } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(caught instanceof Error ? errorMessage(caught, SAVE_ERROR) : SAVE_ERROR, { cause: caught })
+      throw new Error(errorMessage(caught, SAVE_ERROR), { cause: caught })
     }
     await refresh("Note saved.")
     onOpenChange(false)

@@ -94,3 +94,13 @@ permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permiss
 
 Placement: `{page (0-based), x, y, width, height}` as fractions of the displayed page (crop box after rotation),
 origin top-left.
+
+## People fee receipts
+
+People › Receipts reuses this signing flow through `people.receipts.prepareSignatures({receiptIds})` (1–10 distinct
+IDs), then passes the returned `requestId`s to `esign.jobs.create`. The bridge requires the People receipt-signing
+permission, the actual President/Vice-president and `esign:sign`; it does not require general request management.
+The backend fixes the issued PDF, officer and placement, persists receipt/request ownership and completes/delivers
+receipts after eSign completion without a browser callback. Retrying preparation reuses the request. Manual
+ZIP/download/upload remains supported; both paths share completion and concurrency guards. This bridge is part of
+the **pending People backend contract**: see [`../people/contract.md`](../people/contract.md#fees-and-receipts).

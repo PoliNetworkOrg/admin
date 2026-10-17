@@ -62,8 +62,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
       await (approved ? approve : decline)({ data: { requestId: request.id } })
     } catch (caught) {
       console.error(caught)
-      const fallback = approved ? "The request couldn't be approved." : "The request couldn't be declined."
-      appToast.error(caught instanceof Error ? errorMessage(caught, fallback) : fallback)
+      appToast.error(errorMessage(caught, approved ? "Couldn't approve the request." : "Couldn't decline the request."))
       setPending(null)
       return
     }

@@ -10,6 +10,8 @@ import {
   IconButton,
   InlineAlert,
   PlatformGlyph,
+  RadioCard,
+  RadioCardGroup,
   SegmentedControl,
   StatusBadge,
   Unset,
@@ -21,7 +23,7 @@ import { cn } from "@/lib/utils"
 import { commitCensusImport, previewCensusImport } from "./people-census.functions"
 import { CENSUS_ANSWER } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { RadioCard, StateBadge } from "./people-ui"
+import { StateBadge } from "./people-ui"
 import { type Campaign, IMPORT_TABS, type ImportPreview, type ImportTab } from "./people.contract"
 
 type Step = "upload" | "review" | "duplicates" | "telegram" | "confirm"
@@ -171,8 +173,9 @@ export function ImportWizard({
         result = await upload({ data: form })
       } catch (caught) {
         console.error(caught)
-        const fallback = "The file couldn't be read. Check it's the Forms export and try again."
-        throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+        throw new Error(errorMessage(caught, "Couldn't read the file. Check it's the Forms export and try again."), {
+          cause: caught,
+        })
       }
       setPreview(result)
       setDuplicates({})
@@ -196,8 +199,9 @@ export function ImportWizard({
       imported = result.imported
     } catch (caught) {
       console.error(caught)
-      const fallback = "The responses couldn't be imported. Nothing was saved; try again."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't import the responses. Nothing was saved; try again."), {
+        cause: caught,
+      })
     }
     await refresh(`${pluralize(imported, "row")} imported.`)
     onOpenChange(false)
@@ -562,31 +566,23 @@ export function ImportWizard({
           ))}
         </div>
         <p className="text-[13px] text-(--pn-fg-muted)">Highlighted values differ.</p>
-        <fieldset className="grid grid-cols-1 gap-2 shell:grid-cols-2">
-          <legend className="sr-only">Same person or different people</legend>
+        <RadioCardGroup<Choice>
+          label="Same person or different people"
+          hideLabel
+          value={choice ?? null}
+          onValueChange={(next) => {
+            setDuplicates((current) => ({ ...current, [item.pairId]: next }))
+            if (pair < preview.duplicates.length - 1) setPair(pair + 1)
+          }}
+          className="grid grid-cols-1 gap-2 shell:grid-cols-2"
+        >
           <RadioCard
-            name={`pair-${item.pairId}`}
             value="same"
-            checked={choice === "same"}
-            onSelect={() => {
-              setDuplicates((current) => ({ ...current, [item.pairId]: "same" }))
-              if (pair < preview.duplicates.length - 1) setPair(pair + 1)
-            }}
             label="Same person"
             description={`The answer goes on ${item.recordId}; the file's values update the record.`}
           />
-          <RadioCard
-            name={`pair-${item.pairId}`}
-            value="different"
-            checked={choice === "different"}
-            onSelect={() => {
-              setDuplicates((current) => ({ ...current, [item.pairId]: "different" }))
-              if (pair < preview.duplicates.length - 1) setPair(pair + 1)
-            }}
-            label="Different people"
-            description="The row is added as a new person."
-          />
-        </fieldset>
+          <RadioCard value="different" label="Different people" description="The row is added as a new person." />
+        </RadioCardGroup>
       </>
     )
   }

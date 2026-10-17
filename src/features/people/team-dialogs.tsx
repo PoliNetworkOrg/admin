@@ -1,16 +1,25 @@
 import { useServerFn } from "@tanstack/react-start"
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 
-import { fieldControl, fieldHintId, FormDialog, FormField, Spinner } from "@/components/primitives"
+import {
+  DateField,
+  fieldControl,
+  fieldHintId,
+  FormDialog,
+  FormField,
+  RadioCard,
+  RadioCardGroup,
+  SelectField,
+  Spinner,
+} from "@/components/primitives"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-import { DateField } from "./date-field"
 import { teamName, todayIso } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
 import { addTeamMember, endTeamMembership, getTeamCandidates, updateTeamFields } from "./people-teams.functions"
-import { ChoiceChips, type PersonOption, PersonPicker, RadioCard, SelectField } from "./people-ui"
+import { ChoiceChips, type PersonOption, PersonPicker } from "./people-ui"
 import { TEAM_IDS, type TeamFields, teamFields, type TeamId } from "./people.contract"
 
 type Role = "member" | "lead"
@@ -98,31 +107,18 @@ export function AddToTeamDialog({
   const refresh = useRefreshAfter()
   const [team, setTeam] = useState<TeamId | null>(fixedTeam ?? null)
   const [person, setPerson] = useState<PersonOption | null>(fixedPerson ?? null)
-  const [candidates, setCandidates] = useState<PersonOption[] | null>(null)
-  const [candidatesError, setCandidatesError] = useState(false)
   const [role, setRole] = useState<Role>("member")
   const [since, setSince] = useState(todayIso())
   const [fields, setFields] = useState<TeamFields>(fixedTeam ? emptyFields(fixedTeam) : {})
   const [submitted, setSubmitted] = useState(false)
 
-  useEffect(() => {
-    if (!open || fixedPerson || !team) return
-    let active = true
-    setCandidates(null)
-    setCandidatesError(false)
-    loadCandidates({ data: { teamId: team } }).then(
-      (rows) => {
-        if (active) setCandidates(rows.map((row) => ({ id: row.id, name: row.name })))
-      },
-      (caught) => {
-        console.error(caught)
-        if (active) setCandidatesError(true)
-      }
+  const { data: candidateRows, failed: candidatesError } = useLoaded(
+    useMemo(
+      () => (open && !fixedPerson && team ? () => loadCandidates({ data: { teamId: team } }) : null),
+      [open, fixedPerson, team, loadCandidates]
     )
-    return () => {
-      active = false
-    }
-  }, [open, fixedPerson, team, loadCandidates])
+  )
+  const candidates = candidateRows?.map((row) => ({ id: row.id, name: row.name })) ?? null
 
   const teamError = submitted && !team ? "Choose a team." : undefined
   const personError = submitted && !person ? "Choose a person." : undefined
@@ -136,8 +132,7 @@ export function AddToTeamDialog({
       await add({ data: { teamId: team, personId: person.id, role, since, fields: cleanFields(fields) } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The person could not be added to the team."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't add the person to the team."), { cause: caught })
     }
     await refresh(`${person.name} added to ${teamName(team)}.`)
     onOpenChange(false)
@@ -199,26 +194,17 @@ export function AddToTeamDialog({
         )}
         <div className="grid grid-cols-1 gap-4 shell:grid-cols-2">
           {canAppoint ? (
-            <fieldset className="flex flex-col gap-2 shell:col-span-2">
-              <legend className="mb-2 text-[13px] font-medium">Role</legend>
-              <div className="grid grid-cols-1 gap-2 shell:grid-cols-2">
-                <RadioCard
-                  name="team-role"
-                  value="member"
-                  checked={role === "member"}
-                  onSelect={() => setRole("member")}
-                  label="Member"
-                />
-                <RadioCard
-                  name="team-role"
-                  value="lead"
-                  checked={role === "lead"}
-                  onSelect={() => setRole("lead")}
-                  label="Team Lead"
-                  description="Manages the team's members from Teams."
-                />
-              </div>
-            </fieldset>
+            <div className="shell:col-span-2">
+              <RadioCardGroup
+                label="Role"
+                value={role}
+                onValueChange={setRole}
+                className="grid grid-cols-1 gap-2 shell:grid-cols-2"
+              >
+                <RadioCard value="member" label="Member" />
+                <RadioCard value="lead" label="Team Lead" description="Manages the team's members from Teams." />
+              </RadioCardGroup>
+            </div>
           ) : null}
           <FormField label="Since" htmlFor="team-add-since" error={sinceError}>
             <DateField
@@ -257,8 +243,7 @@ export function EditTeamFieldsDialog({
       await save({ data: { teamId: target.team, personId: target.personId, fields: cleanFields(fields) } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The team fields could not be saved."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't save the team fields."), { cause: caught })
     }
     await refresh("Team fields saved.")
     onOpenChange(false)
@@ -326,8 +311,7 @@ export function EndTeamMembershipDialog({
       })
     } catch (caught) {
       console.error(caught)
-      const fallback = "The membership could not be ended."
-      throw new Error(caught instanceof Error ? errorMessage(caught, fallback) : fallback, { cause: caught })
+      throw new Error(errorMessage(caught, "Couldn't end the membership."), { cause: caught })
     }
     await refresh("Membership ended.")
     onOpenChange(false)

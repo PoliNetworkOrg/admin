@@ -1,4 +1,5 @@
 import type { StatusTone } from "@/components/primitives"
+import { academicYear, dateOnlyValue } from "@/lib/date-only"
 import { formatDate } from "@/lib/format"
 
 import {
@@ -7,14 +8,20 @@ import {
   type CensusEntry,
   type FeeStatus,
   type MemberStatus,
+  type PaymentMethod,
   type PersonRow,
+  type PhotoConsent,
+  type ReceiptStatus,
+  type Signer,
   TEAMS,
   type TeamId,
   YEARS,
 } from "./people.contract"
 
-/** The academic year whose census is current; the census campaign list names it too. */
-export const CURRENT_YEAR = "2026/27"
+/** The academic year whose census and fees are current. */
+export function currentYear() {
+  return academicYear(todayIso())
+}
 
 export function personName(person: Pick<PersonRow, "profile">) {
   return `${person.profile.firstName} ${person.profile.lastName}`
@@ -85,8 +92,9 @@ export function formatDay(value: string) {
   return formatDate(new Date(value.length === 10 ? `${value}T12:00:00Z` : value))
 }
 
+/** Today in the browser's timezone, as an ISO date: date inputs start from it. */
 export function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return dateOnlyValue(new Date())
 }
 
 export function isExpired(date: string) {
@@ -102,6 +110,12 @@ export const ACCOUNT_STATUS = {
   review: { label: "Needs review", tone: "warning" },
 } satisfies Record<AccountStatus, Tone>
 
+export const PHOTO_CONSENT = {
+  granted: { label: "Granted", tone: "success" },
+  denied: { label: "Denied", tone: "neutral" },
+  revoked: { label: "Revoked", tone: "neutral" },
+} satisfies Record<PhotoConsent, Tone>
+
 export const MEMBER_STATUS = {
   active: { label: "Active", tone: "success", description: "Full member for the current year." },
   suspended: { label: "Suspended", tone: "danger", description: "Rights paused by the Direttivo; keeps the number." },
@@ -115,6 +129,18 @@ export const FEE_STATUS = {
   due: { label: "Due", tone: "warning" },
   unpaid: { label: "Unpaid", tone: "danger" },
 } satisfies Record<FeeStatus, Tone>
+
+export const RECEIPT_STATUS = {
+  toSign: { label: "To sign", tone: "warning" },
+  signed: { label: "Signed", tone: "brand" },
+  sent: { label: "Sent", tone: "success" },
+  failed: { label: "Send failed", tone: "danger" },
+  voided: { label: "Voided", tone: "neutral" },
+} satisfies Record<ReceiptStatus, Tone>
+
+export const SIGNER_LABEL = { president: "President", vicePresident: "Vice-president" } satisfies Record<Signer, string>
+
+export const PAYMENT_METHOD = { transfer: "Bank transfer", cash: "Cash" } satisfies Record<PaymentMethod, string>
 
 export const CENSUS_ANSWER = {
   continues: { label: "Continues", tone: "success" },

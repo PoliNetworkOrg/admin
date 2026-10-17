@@ -13,3 +13,10 @@ export function dateOnlyValue(date: Date) {
   const pad = (value: number) => String(value).padStart(2, "0")
   return `${String(date.getFullYear()).padStart(4, "0")}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/** The academic year a calendar date (`YYYY-MM-DD`) falls in. Years start on 1 September: "2026-10-17" → "2026/27". */
+export function academicYear(date: string) {
+  const year = Number(date.slice(0, 4))
+  const start = Number(date.slice(5, 7)) >= 9 ? year : year - 1
+  return `${start}/${String(start + 1).slice(-2)}`
+}

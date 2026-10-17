@@ -2,20 +2,19 @@ import { useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { type ChangeEvent, useState } from "react"
 
-import { checkboxControl, fieldControl, fieldHintId, FormDialog, FormField } from "@/components/primitives"
+import { checkboxControl, fieldControl, fieldHintId, FormDialog, FormField, SelectField } from "@/components/primitives"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { yearOf } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { SelectField } from "./people-ui"
 import { createPerson, updatePerson } from "./people-write.functions"
 import { CAMPUSES, type Campus, COURSES, type PersonRow, TELEGRAM_USERNAME_PATTERN, YEARS } from "./people.contract"
 
 type Year = (typeof YEARS)[number]
 
-const SAVE_ERROR = "The person could not be saved. Check the values and try again."
+const SAVE_ERROR = "Couldn't save the person. Check the values and try again."
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validTelegram(value: string) {
@@ -105,7 +104,7 @@ export function PersonDialog({
       }
     } catch (caught) {
       console.error(caught)
-      throw new Error(caught instanceof Error ? errorMessage(caught, SAVE_ERROR) : SAVE_ERROR, { cause: caught })
+      throw new Error(errorMessage(caught, SAVE_ERROR), { cause: caught })
     }
     await refresh("Profile saved.")
     onOpenChange(false)

@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { EllipsisVertical, Link2, Mail, Plus, UserRound, UsersRound } from "lucide-react"
+import { Link2, Mail, Plus, UsersRound } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -9,14 +8,12 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   RowActions,
   type TableSort,
   Unset,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -29,7 +26,7 @@ import {
   activeTeams,
   CENSUS_ANSWER,
   censusEntry,
-  CURRENT_YEAR,
+  currentYear,
   hasNoRoles,
   isActiveAdmin,
   isMember,
@@ -38,7 +35,7 @@ import {
   roleLabels,
   teamName,
 } from "./people-format"
-import { FilterMenu, MonoChip, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
+import { ActionMenu, MonoChip, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import {
   ACCOUNT_STATUSES,
   type AccountStatus,
@@ -75,7 +72,7 @@ function matchesFilters(person: PersonRow, filters: Filters) {
   if (filters.campus && person.profile.campus !== filters.campus) return false
   if (filters.account && person.account.status !== filters.account) return false
   if (filters.census) {
-    const entry = censusEntry(person, CURRENT_YEAR)
+    const entry = censusEntry(person, currentYear())
     if (filters.census === "none" ? !entry || entry.answer !== null : entry?.answer !== filters.census) return false
   }
   return true
@@ -205,11 +202,12 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [addOpen, setAddOpen] = useState(false)
-  const [addKey, setAddKey] = useState(0)
+  const addKey = useOpenGeneration(addOpen)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const [linkTarget, setLinkTarget] = useState<PersonRow | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
+  const linkKey = useOpenGeneration(linkOpen)
 
   const filtered = people.filter((person) => matchesFilters(person, filters) && matchesQuery(person, deferredQuery))
   const sign = sort.direction === "asc" ? 1 : -1
@@ -229,7 +227,6 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
   }
 
   function openAdd() {
-    setAddKey((key) => key + 1)
     setAddOpen(true)
   }
 
@@ -312,9 +309,9 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                   value={filters.census}
                   onChange={(value) => setFilter("census", value)}
                   options={[
-                    { value: "continues", label: `Continues in ${CURRENT_YEAR}` },
-                    { value: "leaving", label: `Leaving in ${CURRENT_YEAR}` },
-                    { value: "none", label: `No ${CURRENT_YEAR} answer` },
+                    { value: "continues", label: `Continues in ${currentYear()}` },
+                    { value: "leaving", label: `Leaving in ${currentYear()}` },
+                    { value: "none", label: `No ${currentYear()} answer` },
                   ]}
                 />
               </>
@@ -355,34 +352,21 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                     ) : (
                       <span aria-hidden className="size-9 max-shell:hidden" />
                     )}
-                    <Menu>
-                      <MenuTrigger
-                        render={
-                          <IconButton
-                            label="More actions"
-                            ariaLabel={`More actions for ${personName(person)}`}
-                            icon={EllipsisVertical}
-                          />
-                        }
-                      />
-                      <MenuContent>
-                        <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: person.id }} />}>
-                          <UserRound />
-                          Open record
-                        </MenuItem>
-                        {person.account.status !== "linked" ? (
-                          <MenuItem
-                            onClick={() => {
-                              setLinkTarget(person)
-                              setLinkOpen(true)
-                            }}
-                          >
-                            <Link2 />
-                            Link account
-                          </MenuItem>
-                        ) : null}
-                      </MenuContent>
-                    </Menu>
+                    <ActionMenu
+                      keepSlot
+                      label={`More actions for ${personName(person)}`}
+                      actions={[
+                        person.account.status !== "linked" && {
+                          label: "Link account",
+                          ariaLabel: `Link an account to ${personName(person)}`,
+                          icon: Link2,
+                          onClick: () => {
+                            setLinkTarget(person)
+                            setLinkOpen(true)
+                          },
+                        },
+                      ]}
+                    />
                   </RowActions>
                 )
               : undefined
@@ -434,7 +418,7 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
           <AccountActionDialog action={accountAction} open={accountOpen} onOpenChange={setAccountOpen} />
           {linkTarget ? (
             <LinkAccountDialog
-              key={linkTarget.id}
+              key={`${linkTarget.id}-${linkKey}`}
               open={linkOpen}
               onOpenChange={setLinkOpen}
               person={{ id: linkTarget.id, name: personName(linkTarget), firstName: linkTarget.profile.firstName }}

@@ -84,6 +84,7 @@ export type MobileBottomNavProps = {
 /** Below 760px: the five services as a bottom tab bar; the current one is accent with a top indicator. */
 export function MobileBottomNav({ match, serviceHref, pending, className }: MobileBottomNavProps) {
   const services = useVisibleServices().filter(isRailService)
+  const compactLabels = services.length > 6
   const activeId = serviceFor(match).id
 
   return (
@@ -115,7 +116,12 @@ export function MobileBottomNav({ match, serviceHref, pending, className }: Mobi
             <span aria-hidden className="max-w-full truncate">
               {service.id === "whatsapp" ? (
                 <>
-                  <span className="min-[360px]:hidden">WA</span>
+                  <span className={compactLabels ? "min-[440px]:hidden" : "min-[360px]:hidden"}>WA</span>
+                  <span className={compactLabels ? "max-[440px]:hidden" : "max-[360px]:hidden"}>{service.short}</span>
+                </>
+              ) : service.id === "telegram" && compactLabels ? (
+                <>
+                  <span className="min-[360px]:hidden">TG</span>
                   <span className="max-[360px]:hidden">{service.short}</span>
                 </>
               ) : (

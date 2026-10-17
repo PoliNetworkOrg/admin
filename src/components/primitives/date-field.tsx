@@ -1,7 +1,6 @@
 import { CalendarIcon } from "lucide-react"
 import { useRef, useState } from "react"
 
-import { buttonMotion, fieldControl, floatingMotion, raisedSurface } from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
@@ -9,7 +8,9 @@ import { dateOnlyValue, parseDateOnly } from "@/lib/date-only"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { SelectField } from "./people-ui"
+import { fieldControl } from "./form-field"
+import { buttonMotion, floatingMotion, raisedSurface } from "./motion"
+import { SelectField } from "./select-field"
 
 const MONTHS = [
   "January",
@@ -26,7 +27,11 @@ const MONTHS = [
   "December",
 ].map((label, index) => ({ value: String(index), label }))
 
-/** A custom calendar at every viewport; its stored value is ISO, its visible date matches the rest of the app. */
+/**
+ * A calendar date: a custom picker at every viewport, with month and year selects over the grid. The value is ISO
+ * (`YYYY-MM-DD`, or `""` when empty); the button shows the same day–month–year as read-only dates. The year select
+ * covers the last `pastYears` and the next `futureYears`, widened to include the chosen date.
+ */
 export function DateField({
   id,
   value,
@@ -34,6 +39,8 @@ export function DateField({
   invalid = false,
   describedBy,
   disabled = false,
+  pastYears = 10,
+  futureYears = 1,
 }: {
   id: string
   value: string
@@ -41,13 +48,16 @@ export function DateField({
   invalid?: boolean
   describedBy?: string
   disabled?: boolean
+  pastYears?: number
+  futureYears?: number
 }) {
   const selected = parseDateOnly(value)
   const [open, setOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
   const [month, setMonth] = useState(() => selected ?? new Date())
-  const firstYear = Math.min(1900, month.getFullYear())
-  const lastYear = Math.max(new Date().getFullYear() + 10, month.getFullYear())
+  const thisYear = new Date().getFullYear()
+  const firstYear = Math.min(thisYear - pastYears, month.getFullYear())
+  const lastYear = Math.max(thisYear + futureYears, month.getFullYear())
   const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => {
     const year = String(lastYear - index)
     return { value: year, label: year }

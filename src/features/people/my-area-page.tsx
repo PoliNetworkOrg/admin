@@ -29,13 +29,15 @@ import {
   FormField,
   IconButton,
   InlineAlert,
-  KeyValueList,
   type KeyValueItem,
+  KeyValueList,
   PlatformGlyph,
   SectionCard,
   SectionHeading,
+  SelectField,
   StatusBadge,
   Unset,
+  useOpenGeneration,
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -43,6 +45,7 @@ import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AskToBeAddedDialog, CorrectionDialog, LeavingDialog } from "./my-area-dialogs"
+import { MyFeeCard } from "./my-fee-card"
 import {
   activeTeams,
   CENSUS_ANSWER,
@@ -53,23 +56,14 @@ import {
   MEMBER_STATUS,
   nextYear,
   personName,
+  PHOTO_CONSENT,
   teamName,
   telegramUrl,
   yearOf,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { answerMyCensus, confirmMyMatch, rejectMyMatch, revokePhotoConsent } from "./people-self.functions"
-import {
-  ChoiceChips,
-  MonoChip,
-  PersonAvatar,
-  PersonCell,
-  Row,
-  RowIcon,
-  Rows,
-  SelectField,
-  StateBadge,
-} from "./people-ui"
+import { ChoiceChips, MonoChip, PersonAvatar, PersonCell, Row, RowIcon, Rows, StateBadge } from "./people-ui"
 import { CAMPUSES, type Campus, COURSES, type MyArea, type TeamId, YEARS } from "./people.contract"
 
 type Linked = Extract<MyArea, { state: "linked" }>
@@ -96,8 +90,7 @@ function MatchView({ area }: { area: Match }) {
       await (yes ? confirm : reject)()
     } catch (caught) {
       console.error(caught)
-      const fallback = "That didn't work. Try again."
-      appToast.error(caught instanceof Error ? errorMessage(caught, fallback) : fallback)
+      appToast.error(errorMessage(caught, "That didn't work. Try again."))
       setPending(null)
       return
     }
@@ -159,7 +152,7 @@ function MatchView({ area }: { area: Match }) {
 
 function NoRecordView({ sentOn }: { sentOn: string | null }) {
   const [askOpen, setAskOpen] = useState(false)
-  const [askKey, setAskKey] = useState(0)
+  const askKey = useOpenGeneration(askOpen)
   return (
     <>
       <PageBar width="settings" />
@@ -180,7 +173,6 @@ function NoRecordView({ sentOn }: { sentOn: string | null }) {
               <Button
                 className={buttonMotion}
                 onClick={() => {
-                  setAskKey((value) => value + 1)
                   setAskOpen(true)
                 }}
               >
@@ -214,7 +206,7 @@ function CensusCard({ area }: { area: Linked }) {
   const [keepTeams, setKeepTeams] = useState<TeamId[]>(teams)
   const [saving, setSaving] = useState(false)
   const [leavingOpen, setLeavingOpen] = useState(false)
-  const [leavingKey, setLeavingKey] = useState(0)
+  const leavingKey = useOpenGeneration(leavingOpen)
 
   if (!campaign) return null
   const answer = { course, year, campus, keepGroups, keepTeams }
@@ -251,8 +243,7 @@ function CensusCard({ area }: { area: Linked }) {
       await save({ data: { ...answer, answer: "continues", reason: "", note: "" } })
     } catch (caught) {
       console.error(caught)
-      const fallback = "Your answer couldn't be saved. Try again."
-      appToast.error(caught instanceof Error ? errorMessage(caught, fallback) : fallback)
+      appToast.error(errorMessage(caught, "Your answer couldn't be saved. Try again."))
       setSaving(false)
       return
     }
@@ -282,7 +273,6 @@ function CensusCard({ area }: { area: Linked }) {
             className={buttonMotion}
             disabled={saving}
             onClick={() => {
-              setLeavingKey((value) => value + 1)
               setLeavingOpen(true)
             }}
           >
@@ -374,7 +364,7 @@ function LinkedView({ area }: { area: Linked }) {
   const revoke = useServerFn(revokePhotoConsent)
   const refresh = useRefreshAfter()
   const [correctionOpen, setCorrectionOpen] = useState(false)
-  const [correctionKey, setCorrectionKey] = useState(0)
+  const correctionKey = useOpenGeneration(correctionOpen)
   const [revokeOpen, setRevokeOpen] = useState(false)
   const { profile, member, admin, consents } = person
   const teams = activeTeams(person)
@@ -467,6 +457,8 @@ function LinkedView({ area }: { area: Linked }) {
         <div className="flex flex-col gap-6">
           <CensusCard key={person.census.map((entry) => `${entry.year}:${entry.answer}`).join()} area={area} />
 
+          {person.fees ? <MyFeeCard fees={person.fees} instructions={area.feeInstructions} /> : null}
+
           <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-4">
               <SectionCard title="My roles" padding="flush">
@@ -480,7 +472,7 @@ function LinkedView({ area }: { area: Linked }) {
                             Member <MonoChip>{member.number}</MonoChip>
                           </>
                         }
-                        meta={`Admitted ${formatDay(member.admittedOn)}${member.fee ? ` · Fee: ${FEE_STATUS[member.fee].label}` : ""}`}
+                        meta={`Admitted ${formatDay(member.admittedOn)}${member.fee && !person.fees ? ` · Fee: ${FEE_STATUS[member.fee].label}` : ""}`}
                         end={<StateBadge state={MEMBER_STATUS[member.status]} />}
                       />
                     ) : null}
@@ -590,7 +582,6 @@ function LinkedView({ area }: { area: Linked }) {
                     size="sm"
                     className={buttonMotion}
                     onClick={() => {
-                      setCorrectionKey((value) => value + 1)
                       setCorrectionOpen(true)
                     }}
                   >
@@ -617,13 +608,13 @@ function LinkedView({ area }: { area: Linked }) {
                     title="Photo and video"
                     meta={
                       consents.photo
-                        ? `${photoGranted ? "Granted" : consents.photo.status === "denied" ? "Denied" : "Revoked"} ${formatDay(consents.photo.on)}`
+                        ? `${PHOTO_CONSENT[consents.photo.status].label} ${formatDay(consents.photo.on)}`
                         : "Not granted"
                     }
                     end={
                       photoGranted ? (
                         <>
-                          <StatusBadge tone="success">Granted</StatusBadge>
+                          <StateBadge state={PHOTO_CONSENT.granted} />
                           <Button
                             size="sm"
                             variant="outline"
@@ -634,9 +625,9 @@ function LinkedView({ area }: { area: Linked }) {
                           </Button>
                         </>
                       ) : (
-                        <StatusBadge tone="neutral">
-                          {consents.photo?.status === "revoked" ? "Revoked" : "Denied"}
-                        </StatusBadge>
+                        <StateBadge
+                          state={PHOTO_CONSENT[consents.photo?.status === "revoked" ? "revoked" : "denied"]}
+                        />
                       )
                     }
                   />

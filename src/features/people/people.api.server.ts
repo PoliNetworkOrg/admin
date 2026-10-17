@@ -3,6 +3,9 @@ import type { z } from "zod"
 import { createUntypedBackendClient } from "@/server/backend.server"
 
 import {
+  type PrepareReceiptSignaturesInput,
+  type ReceiptSignature,
+  receiptSignaturesSchema,
   type AddTeamMemberInput,
   type AnswerCensusInput,
   type AnswersInput,
@@ -25,6 +28,22 @@ import {
   type EndAdminInput,
   type EndTeamInput,
   exportResultSchema,
+  type FeeRemindInput,
+  type FeeReview,
+  feeReviewSchema,
+  type FilePayload,
+  fileSchema,
+  issuedSchema,
+  type MarkPaidInput,
+  type ReceiptsPage,
+  receiptsPageSchema,
+  type RejectFeeInput,
+  type SendSignedInput,
+  sendResultSchema,
+  type SignedUpload,
+  signedUploadSchema,
+  type TransferInput,
+  type VoidReceiptInput,
   type ImportCommitInput,
   importedSchema,
   type ImportPreview,
@@ -107,6 +126,22 @@ export type PeopleApi = {
   answerCensus: (input: AnswerCensusInput) => Promise<void>
   requestCorrection: (input: CorrectionInput) => Promise<void>
   revokePhotoConsent: () => Promise<void>
+  getFeeReview: (input: { personId: string }) => Promise<FeeReview>
+  getFeeUpload: (input: { personId: string }) => Promise<FilePayload>
+  approveFee: (input: { personId: string }) => Promise<{ receipt: string }>
+  rejectFee: (input: RejectFeeInput) => Promise<void>
+  markFeePaid: (input: MarkPaidInput) => Promise<{ receipt: string }>
+  remindFees: (input: FeeRemindInput) => Promise<{ sent: number; skipped: number }>
+  listReceipts: (input: { year: string | null }) => Promise<ReceiptsPage>
+  downloadReceipt: (input: { receiptId: string }) => Promise<FilePayload>
+  prepareReceiptSignatures: (input: PrepareReceiptSignaturesInput) => Promise<ReceiptSignature[]>
+  downloadReceiptsToSign: () => Promise<FilePayload>
+  previewSignedReceipts: (files: File[]) => Promise<SignedUpload>
+  sendSignedReceipts: (input: SendSignedInput) => Promise<{ sent: number; failed: number }>
+  retryReceipt: (input: { receiptId: string }) => Promise<void>
+  voidReceipt: (input: VoidReceiptInput) => Promise<void>
+  uploadTransferReceipt: (file: File, input: TransferInput) => Promise<void>
+  downloadMyReceipt: (input: { receiptId: string }) => Promise<FilePayload>
 }
 
 /**
@@ -173,6 +208,32 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     answerCensus: (input) => mutate("me.answerCensus", input),
     requestCorrection: (input) => mutate("me.requestCorrection", input),
     revokePhotoConsent: () => mutate("me.revokePhotoConsent"),
+    getFeeReview: (input) => query("fees.review", input, feeReviewSchema),
+    getFeeUpload: (input) => query("fees.upload", input, fileSchema),
+    approveFee: (input) => mutateParsed("fees.approve", input, issuedSchema),
+    rejectFee: (input) => mutate("fees.reject", input),
+    markFeePaid: (input) => mutateParsed("fees.markPaid", input, issuedSchema),
+    remindFees: (input) => mutateParsed("fees.remind", input, remindResultSchema),
+    listReceipts: (input) => query("receipts.list", input, receiptsPageSchema),
+    downloadReceipt: (input) => query("receipts.download", input, fileSchema),
+    prepareReceiptSignatures: (input) => mutateParsed("receipts.prepareSignatures", input, receiptSignaturesSchema),
+    downloadReceiptsToSign: () => mutateParsed("receipts.toSign", undefined, fileSchema),
+    previewSignedReceipts: (files) => {
+      const form = new FormData()
+      for (const file of files) form.append("files", file)
+      return mutateParsed("receipts.previewSigned", form, signedUploadSchema)
+    },
+    sendSignedReceipts: (input) => mutateParsed("receipts.sendSigned", input, sendResultSchema),
+    retryReceipt: (input) => mutate("receipts.retry", input),
+    voidReceipt: (input) => mutate("receipts.void", input),
+    uploadTransferReceipt: (file, input) => {
+      const form = new FormData()
+      form.set("file", file)
+      form.set("transferDate", input.transferDate)
+      form.set("amountCents", String(input.amountCents))
+      return mutate("me.uploadTransferReceipt", form)
+    },
+    downloadMyReceipt: (input) => query("me.receipt", input, fileSchema),
   }
 }
 
