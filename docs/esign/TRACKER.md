@@ -80,7 +80,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   Auto-pairing (`AbilitaCIE`/`AbbinaCIE`/`cie_enable`); `PINSent` stops provider fallback. sign-agent PR #2 (merged).
 - ☑ Worker subprocess (Rosetta for the x86_64 macOS module, HOME for its pairing cache), install + `polinetwork-sign://`
   scheme, macOS universal .app/.dmg, Windows GUI exe, Linux tar/.deb, CI on 3 OSes, `doctor`. sign-agent PR #1 (merged).
-- ◐ Release v0.1.0 (tag pushed; release workflow).
+- ☑ Release v0.1.0 (Windows zip, macOS universal .app/.dmg, Linux tar.gz/.deb amd64+arm64). Verified on this Mac:
+  loads the installed Software CIE module through the x86_64 worker and sees the BIT4ID reader.
+- ◐ Review round 2 agent findings (subagent, branch `fix/cie-review`): validate EF.SOD against the Italian CSCA before
+  sending the PIN; never repeat VERIFY on 6Cxx. Then release v0.1.1.
 
 ### Phase 2 — backend
 
@@ -109,7 +112,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   (`backend/scripts/esign-store-smoke.ts`) caught a jsonb double-encoding issue in the new queries.
 - ☑ Fallback: upload a PDF signed with the official app (verified as current version + one CIE signature).
 - ☑ Smart placement (box under "Il Presidente"/role label), navigation badge for documents to sign.
-- ◐ Review round 2 (Sol 6.1 on the Personal Codex account).
+- ☑ Review round 2 (Sol 6.1, Personal account; its safety filter cut the final report, partial notes in
+  `/tmp/esign-review-r2b/`): round-1 fixes confirmed; new findings fixed — ByteRange gap must be exactly /Contents,
+  change policy for uploaded signatures (`pdf/diff.ts`, checked against a pyHanko signature), retry lease, per-signer
+  email size budget, bounded OCSP read, fresh popup per signature, delivery polling, scope switch.
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
 
 ## Manual steps for the maintainer (cannot be automated here)
