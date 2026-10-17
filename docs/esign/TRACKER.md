@@ -130,7 +130,7 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   NFC v3 reader: run the local end-to-end below without `--soft`, place the CIE on the reader and sign (expect a macOS
   "access data from other apps" prompt the first time, and Rosetta for the official module).
 - ☐ macOS notarization (Developer ID, hardened runtime + `disable-library-validation`) and Windows code signing.
-- ☐ Release the backend (merge backend#73), then replace admin's `vendor/` tarball with the published version.
+- ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 
 ## Local end-to-end
 
