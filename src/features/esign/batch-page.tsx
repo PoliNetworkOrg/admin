@@ -265,7 +265,6 @@ function DocumentViewer({
       data={bytes}
       pages={item.pdf?.pages ?? []}
       focus={first ? { page: first.page, y: first.y + first.height / 2 } : null}
-      className="h-[calc(100dvh-250px)] min-h-[480px]"
       overlay={(page) =>
         request.signers.flatMap((signer, index) => {
           if (signer.status !== "pending") return []
