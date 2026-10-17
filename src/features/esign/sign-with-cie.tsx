@@ -49,6 +49,7 @@ const AGENT_ERRORS = new Map([
   ["middleware_missing", "The agent found no CIE software. Open the setup guide."],
   ["not_paired", "This CIE is not set up on this computer yet. Open the setup guide."],
   ["card_unsupported", "This card isn't a supported CIE."],
+  ["card_untrusted", "The card couldn't be verified as a genuine CIE, so the PIN wasn't sent to it."],
   ["device_error", "The card couldn't complete the signature. Try again."],
   ["signature_invalid", "The card's signature didn't match. Try again."],
 ])
