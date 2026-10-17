@@ -669,7 +669,9 @@ export function NewEsignRequestPage({
                           {person.sub === me && <span className="text-(--pn-fg-muted)"> (you)</span>}
                         </span>
                         {person.email && (
-                          <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                          <span className="max-w-1/2 truncate font-mono text-[12px] text-(--pn-fg-muted)">
+                            {person.email}
+                          </span>
                         )}
                       </button>
                     </li>
