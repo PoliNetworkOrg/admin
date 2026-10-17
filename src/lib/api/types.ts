@@ -23,3 +23,13 @@ export type WaGroup = ApiOutput["wa"]["groups"]["getAll"][number]
 export type GroupWithLabels = ApiOutput["groups"]["search"]["getAll"][number]
 
 export type GroupLinkReport = ApiOutput["web"]["reports"]["list"][number]
+
+export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number]
+export type EsignRequestDetail = ApiOutput["esign"]["requests"]["get"]
+export type EsignSigner = EsignRequest["signers"][number]
+export type EsignProfile = ApiOutput["esign"]["signers"]["list"][number]
+export type EsignPdfInfo = ApiOutput["esign"]["documents"]["get"]["pdf"]
+export type EsignDriveListing = ApiOutput["esign"]["drive"]["list"]
+export type EsignDriveItem = EsignDriveListing["items"][number]
+export type EsignConfig = ApiOutput["esign"]["config"]
+export type EsignDrive = EsignConfig["drives"][number]

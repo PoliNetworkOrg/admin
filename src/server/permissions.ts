@@ -24,6 +24,9 @@ export const PERMISSIONS = [
   "people:members:read",
   "people:members:write",
   "people:appoint",
+  "esign:sign",
+  "esign:requests:manage",
+  "esign:drives:manage",
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]

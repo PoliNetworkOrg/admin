@@ -9,7 +9,16 @@ import type { DashboardUser } from "@/lib/auth"
 import type { ShellUser } from "./account-avatar"
 import { CommandPalette } from "./command-palette"
 import { MobileBottomNav, MobileTopBar } from "./mobile-nav"
-import { type DashboardPath, matchPath, type Service, type ServiceId, sectionFor, serviceFor, services } from "./nav"
+import {
+  type DashboardPath,
+  matchPath,
+  type PendingCounts,
+  type Service,
+  type ServiceId,
+  sectionFor,
+  serviceFor,
+  services,
+} from "./nav"
 import { servicePanelVisible, type ShellFrame, ShellFrameContext, useRenderedPathname } from "./page-bar"
 import { Panel, SectionPills } from "./panel"
 import { Rail } from "./rail"
@@ -22,8 +31,8 @@ const DESKTOP_QUERY = "(min-width: 760px)"
 
 /**
  * The panel slides in from under the rail when a service page follows Overview/Account and back out the other way;
- * below 1440px the content column follows with the same transform, so its edge stays locked to the panel's.
- * Wider screens reserve the panel's space and keep the content stationary. Exits run faster than
+ * the content column follows with the same transform, so its edge stays locked to the panel's. Pages without a
+ * panel give its space back, so their content centers between the rail and the window's edge. Exits run faster than
  * enters. Both slides animate `transform` strings, which Motion hands to WAAPI: they start in the commit that
  * mounts the next page and keep running off the main thread while it renders (an `x` or `layout` animation is
  * driven per frame from JS and stalls behind that commit).
@@ -84,9 +93,7 @@ export type DashboardShellProps = {
   /** The signed-in user `/dashboard` loaded: ID-token claims. */
   user: DashboardUser
   /** Pending reports for the Reports dot and the Reports › Open count; streams in, null when it couldn't be loaded. */
-  pendingReports: Promise<number | null>
-  /** People › Linking's Needs review count; streams in, null when it couldn't be loaded or isn't readable. */
-  needsReview: Promise<number | null>
+  pending: PendingCounts
 }
 
 /**
@@ -94,15 +101,15 @@ export type DashboardShellProps = {
  * service's section pills, then the page), then the bottom nav. Pages render their header through `PageBar` and
  * their body inside `PageContent`; both scroll with the page.
  */
-export function DashboardShell({ user, pendingReports, needsReview }: DashboardShellProps) {
+export function DashboardShell({ user, pending }: DashboardShellProps) {
   return (
     <SignOutProvider>
-      <DashboardFrame user={user} pendingReports={pendingReports} needsReview={needsReview} />
+      <DashboardFrame user={user} pending={pending} />
     </SignOutProvider>
   )
 }
 
-function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: DashboardShellProps) {
+function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
   const pathname = useRenderedPathname()
   const match = matchPath(pathname)
   const rawService = serviceFor(match)
@@ -133,7 +140,7 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
     const column = columnRef.current
     if (!column || columnHadPanel.current === hasPanel) return
     columnHadPanel.current = hasPanel
-    if (reduceMotion || !isDesktop || window.matchMedia("(min-width: 1440px)").matches) return
+    if (reduceMotion || !isDesktop) return
     const offset = new DOMMatrixReadOnly(getComputedStyle(column).transform).m41
     const width = panelWidth()
     const from = `translateX(${offset + (hasPanel ? -width : width)}px)`
@@ -159,12 +166,12 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
             serviceHref={serviceHref}
             onOpenPalette={openPalette}
             user={user}
-            pendingReports={pendingReports}
+            pending={pending}
             className="relative z-10 max-shell:hidden"
           />
           {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. The leaving panel
               keeps the props it last rendered with, so `exit` names its own transition. */}
-          <div className="relative shrink-0 min-[1440px]:w-60 max-shell:hidden">
+          <div className="relative shrink-0 max-shell:hidden">
             <AnimatePresence initial={false} mode="popLayout">
               {hasPanel ? (
                 <motion.div
@@ -176,9 +183,9 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
                     transition: reduceMotion ? { duration: 0 } : panelEnter,
                   }}
                   exit={{ transform: "translateX(-100%)", transition: reduceMotion ? { duration: 0 } : panelExit }}
-                  className="flex h-full shrink-0 min-[1440px]:absolute min-[1440px]:inset-y-0 min-[1440px]:left-0"
+                  className="flex h-full shrink-0"
                 >
-                  <Panel service={service} match={match} pendingReports={pendingReports} needsReview={needsReview} />
+                  <Panel service={service} match={match} pending={pending} />
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -194,24 +201,13 @@ function DashboardFrame({ user: dashboardUser, pendingReports, needsReview }: Da
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
             >
               {hasPanel ? (
-                <SectionPills
-                  service={service}
-                  match={match}
-                  pendingReports={pendingReports}
-                  needsReview={needsReview}
-                  className="shell:hidden"
-                />
+                <SectionPills service={service} match={match} pending={pending} className="shell:hidden" />
               ) : null}
               <main className="flex min-h-full flex-col">
                 <Outlet />
               </main>
             </div>
-            <MobileBottomNav
-              match={match}
-              serviceHref={serviceHref}
-              pendingReports={pendingReports}
-              className="shell:hidden"
-            />
+            <MobileBottomNav match={match} serviceHref={serviceHref} pending={pending} className="shell:hidden" />
           </div>
 
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onSignOut={onSignOut} />

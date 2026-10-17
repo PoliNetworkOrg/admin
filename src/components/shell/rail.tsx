@@ -19,7 +19,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
-import { type DashboardPath, isRailService, type PageMatch, type Service, serviceById, serviceFor } from "./nav"
+import {
+  isRailService,
+  type DashboardPath,
+  type PageMatch,
+  type PendingCounts,
+  type Service,
+  type ServiceId,
+  serviceById,
+  serviceFor,
+  servicePending,
+} from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
 import { useHasAdminAccess, useVisibleServices } from "./use-can"
@@ -99,7 +109,7 @@ export type RailProps = {
   onOpenPalette: () => void
   user: ShellUser
   /** Pending reports: a dot on Reports while there are any. */
-  pendingReports: Promise<number | null>
+  pending: PendingCounts
   className?: string
 }
 
@@ -108,9 +118,11 @@ const iconProps = { className: "size-5", strokeWidth: 1.75 } as const
 /** The accent dot on Reports while reports are open; nothing while loading, at zero or on a failed load. */
 export function OpenReportsDot({
   count: countPromise,
+  label,
   className,
 }: {
   count: Promise<number | null>
+  label: string
   className?: string
 }) {
   const count = use(useDeferredValue(countPromise))
@@ -122,13 +134,32 @@ export function OpenReportsDot({
         className
       )}
     >
-      <span className="sr-only">, open reports</span>
+      <span className="sr-only">, {label}</span>
     </span>
   )
 }
 
+/** The dot on a service with something waiting (open reports, documents to sign). */
+export function ServiceDot({
+  service,
+  pending,
+  className,
+}: {
+  service: ServiceId
+  pending: PendingCounts
+  className?: string
+}) {
+  const target = servicePending(service, pending)
+  if (!target) return null
+  return (
+    <Suspense fallback={null}>
+      <OpenReportsDot count={target.count} label={target.label} className={className} />
+    </Suspense>
+  )
+}
+
 /** The 64px service rail. One tab stop; ↑/↓, Home and End move between items. */
-export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, className }: RailProps) {
+export function Rail({ match, serviceHref, onOpenPalette, user, pending, className }: RailProps) {
   const panelServices = useVisibleServices().filter(isRailService)
   const hasAdminAccess = useHasAdminAccess()
   const navRef = useRef<HTMLElement>(null)
@@ -234,11 +265,7 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pendingReports, 
           target={{ kind: "link", to: serviceHref(service) }}
         >
           <ServiceGlyph service={service} className={iconProps.className} />
-          {service.id === "reports" ? (
-            <Suspense fallback={null}>
-              <OpenReportsDot count={pendingReports} />
-            </Suspense>
-          ) : null}
+          <ServiceDot service={service.id} pending={pending} />
         </RailItem>
       ))}
 
