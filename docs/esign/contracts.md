@@ -32,34 +32,34 @@ Dashboard                      Admin BFF                Backend                 
 
 Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:47321` or `localhost:47321`.
 
-| Route                 | Caller                  | Notes                                                                                  |
-| --------------------- | ----------------------- | -------------------------------------------------------------------------------------- |
-| `GET /`               | anyone                  | "Agent is running" page                                                                |
-| `GET /sign`           | popup navigation        | Query `ticket` (43 chars base64url), `origin` (must be in the allowlist). Serves the UI |
-| `GET /api/job`        | the agent's own page    | Same-origin only (`Origin`/`Sec-Fetch-Site` checks). Job + card status                 |
-| `POST /api/sign`      | the agent's own page    | `{ticket, origin, pin}`; runs the whole signature; returns the outcome                 |
-| `GET /api/status`     | the agent's own page    | Providers, readers, card presence                                                      |
+| Route             | Caller               | Notes                                                                                   |
+| ----------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| `GET /`           | anyone               | "Agent is running" page                                                                 |
+| `GET /sign`       | popup navigation     | Query `ticket` (43 chars base64url), `origin` (must be in the allowlist). Serves the UI |
+| `GET /api/job`    | the agent's own page | Same-origin only (`Origin`/`Sec-Fetch-Site` checks). Job + card status                  |
+| `POST /api/sign`  | the agent's own page | `{ticket, origin, pin}`; runs the whole signature; returns the outcome                  |
+| `GET /api/status` | the agent's own page | Providers, readers, card presence                                                       |
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
 Providers (tried in order, first with a card present; never falls back after a PIN was sent to a card):
 
-| Name     | What                                                    | PIN given to the device           |
-| -------- | ------------------------------------------------------- | --------------------------------- |
-| `cie-mw` | Official CIE middleware PKCS#11 (needs pairing in app)  | last 4 digits (middleware caches the first 4) |
-| `opencie`| OpenCIE PKCS#11 (direct card access, no pairing)        | 8 digits                          |
-| `cie`    | Built-in direct PC/SC implementation of the IAS protocol | 8 digits                          |
-| `soft`   | Development key (`--soft`), never valid                 | 8 digits (`12345678`)             |
+| Name      | What                                                     | PIN given to the device                       |
+| --------- | -------------------------------------------------------- | --------------------------------------------- |
+| `cie-mw`  | Official CIE middleware PKCS#11 (needs pairing in app)   | last 4 digits (middleware caches the first 4) |
+| `opencie` | OpenCIE PKCS#11 (direct card access, no pairing)         | 8 digits                                      |
+| `cie`     | Built-in direct PC/SC implementation of the IAS protocol | 8 digits                                      |
+| `soft`    | Development key (`--soft`), never valid                  | 8 digits (`12345678`)                         |
 
 Agent → backend (through the dashboard origin, `{origin}/api/esign/agent/…`, proxied by the BFF to the backend's
 `/esign/agent/…`). Authentication is the ticket in the path; no cookies, no bearer tokens.
 
-| Request                                       | Body                                     | Response                                                                      |
-| --------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------- |
-| `GET  /api/esign/agent/jobs/{ticket}`         |                                          | `{job: {id, status, expiresAt, document: {title, fileName, pages}, signer: {name, role}, placement: {page}, requestedBy}}` |
-| `POST /api/esign/agent/jobs/{ticket}/prepare` | `{certificate: b64 DER, chain?: b64[]}`  | `{toBeSigned: b64 SHA-256, algorithm: "RSASSA-PKCS1-v1_5-SHA256"}`            |
-| `POST /api/esign/agent/jobs/{ticket}/complete`| `{signature: b64}`                       | `{status: "completed", request: {status, remaining}}`                         |
-| `POST /api/esign/agent/jobs/{ticket}/fail`    | `{code, message?}`                       | `{status}` — records cancellations / card errors for the dashboard            |
+| Request                                        | Body                                    | Response                                                                                                                   |
+| ---------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `GET  /api/esign/agent/jobs/{ticket}`          |                                         | `{job: {id, status, expiresAt, document: {title, fileName, pages}, signer: {name, role}, placement: {page}, requestedBy}}` |
+| `POST /api/esign/agent/jobs/{ticket}/prepare`  | `{certificate: b64 DER, chain?: b64[]}` | `{toBeSigned: b64 SHA-256, algorithm: "RSASSA-PKCS1-v1_5-SHA256"}`                                                         |
+| `POST /api/esign/agent/jobs/{ticket}/complete` | `{signature: b64}`                      | `{status: "completed", request: {status, remaining}}`                                                                      |
+| `POST /api/esign/agent/jobs/{ticket}/fail`     | `{code, message?}`                      | `{status}` — records cancellations / card errors for the dashboard                                                         |
 
 Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expired` (410), `job_done` (409),
 `document_changed` (409), `certificate_invalid` (422), `signer_mismatch` (403), `signature_invalid` (422).

@@ -46,11 +46,11 @@ Sign PDFs with the Italian CIE (NFC reader + PIN) from the admin dashboard, with
 
 ## Repos and branches
 
-| Layer    | Repo                                  | Branch / location                                                      |
-| -------- | ------------------------------------- | ---------------------------------------------------------------------- |
-| Native   | `PoliNetworkOrg/sign-agent` (new, Go) | `main` + PRs; local checkout `~/dev/polinetwork/sign-agent`            |
-| Backend  | `PoliNetworkOrg/backend`              | `feat/esign`, worktree `~/dev/polinetwork/.esign-worktrees/backend`    |
-| Frontend | `PoliNetworkOrg/admin`                | `feat/esign` in `~/dev/polinetwork/admin`                              |
+| Layer    | Repo                                  | Branch / location                                                   |
+| -------- | ------------------------------------- | ------------------------------------------------------------------- |
+| Native   | `PoliNetworkOrg/sign-agent` (new, Go) | `main` + PRs; local checkout `~/dev/polinetwork/sign-agent`         |
+| Backend  | `PoliNetworkOrg/backend`              | `feat/esign`, worktree `~/dev/polinetwork/.esign-worktrees/backend` |
+| Frontend | `PoliNetworkOrg/admin`                | `feat/esign` in `~/dev/polinetwork/admin`                           |
 
 The main backend checkout (`~/dev/polinetwork/backend`) is on another branch with uncommitted work: never touch it.
 
