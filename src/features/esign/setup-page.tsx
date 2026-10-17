@@ -42,20 +42,20 @@ const CIE_SOFTWARE = {
 const AGENT_STEPS = {
   macos: (
     <>
-      Download the macOS app, unzip it and open <strong>PoliNetwork Sign Agent</strong>. It moves itself to your
-      Applications folder and starts whenever you log in.
+      Download the macOS app, unzip it and open <strong>PoliNetwork eSign</strong>. It moves itself to your Applications
+      folder and starts whenever you log in.
     </>
   ),
   windows: (
     <>
-      Download the Windows archive, extract it and run <strong>sign-agent.exe install</strong> from the folder (or
-      double-click <strong>install.cmd</strong>). It starts whenever you log in.
+      Download the Windows archive, extract it and double-click <strong>esign.exe</strong>. It installs itself and
+      starts whenever you log in.
     </>
   ),
   linux: (
     <>
-      Download the archive for your architecture, extract it and run{" "}
-      <code className="font-mono text-[12px]">./sign-agent install</code>. It runs as a user service.
+      On Arch-based systems run <code className="font-mono text-[12px]">yay -S polinetwork-esign-bin</code>; on Debian,
+      Ubuntu or Fedora download the .deb or .rpm and install it with apt or dnf. It starts whenever you log in.
     </>
   ),
 }
@@ -96,7 +96,7 @@ function Step({
   )
 }
 
-/** How to prepare a computer to sign with the CIE: reader, CIE software, the PoliNetwork Sign Agent, a check. */
+/** How to prepare a computer to sign with the CIE: reader, CIE software, PoliNetwork eSign, a check. */
 export function EsignSetupPage() {
   const [os, setOs] = useState<Os>("macos")
   useEffect(() => setOs(detectOs()), [])
@@ -145,7 +145,7 @@ export function EsignSetupPage() {
               library placed next to it.
             </p>
           </Step>
-          <Step number={3} icon={Download} title="Install the PoliNetwork Sign Agent">
+          <Step number={3} icon={Download} title="Install PoliNetwork eSign">
             <p>{AGENT_STEPS[os]}</p>
             <div>
               <Button

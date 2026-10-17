@@ -4,7 +4,7 @@ Research date: 17 October 2026. Scope: the HTTPS PoliNetwork admin dashboard, a 
 
 ## Recommended architecture
 
-Use a user-activated `polinetwork-sign://` link to launch the agent, then let the agent connect outbound to a fixed PoliNetwork HTTPS/WSS service. Keep document approval and PIN entry in native agent UI. The dashboard receives job status through its ordinary authenticated backend connection. HTTPS polling is the fallback when a proxy blocks WSS. This avoids making Safari loopback behavior, browser local-network permission, or local certificate installation prerequisites for signing.
+Use a user-activated `polinetwork-esign://` link to launch the agent, then let the agent connect outbound to a fixed PoliNetwork HTTPS/WSS service. Keep document approval and PIN entry in native agent UI. The dashboard receives job status through its ordinary authenticated backend connection. HTTPS polling is the fallback when a proxy blocks WSS. This avoids making Safari loopback behavior, browser local-network permission, or local certificate installation prerequisites for signing.
 
 For a strictly TypeScript backend, use a pinned `@cantoo/pdf-lib` for parsing and incremental PDF serialization, plus `pkijs` and `asn1js` for certificate/CMS structures. Own the small signing-specific adapter: field and appearance creation, fixed-width placeholder offsets, immutable prepare state, DER attribute ordering, external-signature verification, and final byte insertion. Do not write a general PDF parser or use upstream `pdf-lib.save()` on an already signed document.
 
@@ -110,7 +110,7 @@ Chrome and Firefox native messaging use a registered native host and framed mess
 This sequence is a proposed application protocol:
 
 1. The authenticated admin session creates a signing job bound to the document revision, user, selected page/rectangle, expected operation and expiry. Backend authorization uses the existing BFF/session rules.
-2. A user click opens `polinetwork-sign://sign?ticket=...`. The ticket is short-lived, random and single-use. It contains no PIN, document body, session cookie or reusable bearer credential. Logs redact it.
+2. A user click opens `polinetwork-esign://sign?ticket=...`. The ticket is short-lived, random and single-use. It contains no PIN, document body, session cookie or reusable bearer credential. Logs redact it.
 3. The agent accepts only the `sign` action and a bounded ticket format. It contacts a compiled/configured allowlisted PoliNetwork HTTPS backend. The URI cannot supply arbitrary callbacks, shell commands, paths or PKCS#11 module locations.
 4. Redeem the ticket for a restricted job session. Bind it to an enrolled agent key or a fresh key with a browser/native pairing confirmation. A scheme registration is not proof of agent identity; an intercepted ticket must not silently enroll an arbitrary replacement agent.
 5. The agent reads the selected signing certificate and sends its DER certificate/chain to the backend. The backend must know the certificate before producing `signing-certificate-v2` and the final to-be-signed digest.
