@@ -94,15 +94,28 @@ function openPopup(): Window | null {
  */
 export function SignWithCie({
   items,
+  prepare,
   disabled,
   children,
   onSigned,
-}: {
-  items: SignItem[]
+  onStopped,
+}: (
+  | { items: SignItem[]; prepare?: never }
+  | {
+      items?: never
+      /**
+       * Decides in the click what to sign, for documents that don't exist yet: null leaves the popup closed (the caller
+       * shows why), else the popup opens and the promise's documents are signed (none: it closes again).
+       */
+      prepare: () => Promise<SignItem[]> | null
+    }
+) & {
   disabled?: boolean
   children?: ReactNode
   /** After the signatures are saved and the page data reloaded. */
   onSigned?: () => void
+  /** After the dialog closes before every document is signed, or the signature couldn't start (with why). */
+  onStopped?: (error: string | null) => void
 }) {
   const router = useRouter()
   const startFn = useServerFn(startEsignSignature)
@@ -114,7 +127,6 @@ export function SignWithCie({
   const [error, setError] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
-  const batch = items.length > 1
 
   const reload = useCallback(async () => {
     try {
@@ -139,6 +151,7 @@ export function SignWithCie({
   )
 
   const jobs = phase && "jobs" in phase ? phase.jobs : null
+  const batch = (jobs ?? items ?? []).length > 1
 
   useEffect(() => {
     if (!jobs) return
@@ -188,6 +201,8 @@ export function SignWithCie({
   }, [jobs, statusFn, finish])
 
   async function start() {
+    const prepared = prepare ? prepare() : Promise.resolve(items ?? [])
+    if (!prepared) return
     setError(null)
     setStates(new Map())
     finishing.current = false
@@ -198,15 +213,21 @@ export function SignWithCie({
       popup = openPopup()
       popupRef.current = popup
       setPhase({ kind: "starting" })
+      const toSign = await prepared
+      if (toSign.length === 0) {
+        popup?.close()
+        setPhase(null)
+        return
+      }
       const started = await startFn({
-        data: { items: items.map((item) => ({ requestId: item.requestId, places: item.places })) },
+        data: { items: toSign.map((item) => ({ requestId: item.requestId, places: item.places })) },
       })
       const url = agentSignUrl(
         started.map((s) => s.ticket),
         window.location.origin
       )
       if (popup && !popup.closed) popup.location.href = url
-      const titles = new Map(items.map((item) => [item.requestId, item.title]))
+      const titles = new Map(toSign.map((item) => [item.requestId, item.title]))
       setPhase({
         kind: "waiting",
         jobs: started.map((s) => ({ jobId: s.jobId, requestId: s.requestId, title: titles.get(s.requestId) ?? "" })),
@@ -218,7 +239,9 @@ export function SignWithCie({
       console.error(cause)
       popup?.close()
       setPhase(null)
-      setError(cause instanceof Error ? cause.message : "Couldn't start the signature.")
+      const message = cause instanceof Error ? cause.message : "Couldn't start the signature."
+      setError(message)
+      onStopped?.(message)
     }
   }
 
@@ -227,7 +250,7 @@ export function SignWithCie({
     const current = phase
     setPhase(null)
     popupRef.current?.close()
-    if (!current || !("jobs" in current)) return
+    if (!current || !("jobs" in current)) return onStopped?.(null)
     const open = current.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending"))
     if (open.length > 0) {
       try {
@@ -237,6 +260,7 @@ export function SignWithCie({
       }
     }
     if (open.length < current.jobs.length) await reload()
+    onStopped?.(null)
   }
 
   function reopen(url: string) {
@@ -256,11 +280,11 @@ export function SignWithCie({
       <LoadingButton
         icon={PenLine}
         pending={phase?.kind === "starting"}
-        disabled={disabled || items.length === 0}
+        disabled={disabled || items?.length === 0}
         onClick={start}
         className="h-10"
       >
-        {children ?? (batch ? `Sign ${items.length} documents` : "Sign with CIE")}
+        {children ?? (items && items.length > 1 ? `Sign ${items.length} documents` : "Sign with CIE")}
       </LoadingButton>
       {error && <InlineAlert className="mt-2">{error}</InlineAlert>}
       <Dialog open={phase !== null && phase.kind !== "starting"} onOpenChange={(open) => !open && void close()}>
