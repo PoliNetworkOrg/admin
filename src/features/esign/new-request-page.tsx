@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowDown, ArrowUp, Cloud, FileUp, MapPin, Search, Trash2, UserPlus } from "lucide-react"
-import { type DragEvent, useId, useMemo, useState } from "react"
+import { type DragEvent, useEffect, useId, useMemo, useState } from "react"
 
 import {
   checkboxControl,
@@ -23,12 +23,13 @@ import { cn } from "@/lib/utils"
 
 import { DriveBrowser } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
-import { type PageSize, PdfViewer, sizeOnPage, usePdfBytes } from "./pdf-viewer"
+import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: { id: string; path: string } | null }
-type SignerDraft = { sub: string; name: string; role: string; placement: BoxPlacement }
+/** `manual`: the user moved the box, so a role no longer places it. */
+type SignerDraft = { sub: string; name: string; role: string; placement: BoxPlacement; manual: boolean }
 
 const ROLES = ["Presidente", "Vicepresidente", "Segretario", "Tesoriere", "Consigliere", "Socio"]
 /** A signature box of 190 × 62 pt, the size of a typical handwritten-signature space. */
@@ -44,6 +45,26 @@ function defaultPlacement(index: number, pages: PageSize[]): BoxPlacement {
   const x = column === 0 ? 1 - 0.07 - size.width : 0.07
   const y = Math.max(0.02, 1 - 0.07 - size.height - row * (size.height + 0.03))
   return { page, x, y, ...size }
+}
+
+const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase()
+
+/**
+ * Where a role's signature goes: under the last label naming it ("Il Segretario", "Firma del Presidente"), or above it
+ * when the label sits at the bottom of the page. Null when the document doesn't name the role.
+ */
+function placementForRole(role: string, anchors: TextAnchor[], pages: PageSize[]): BoxPlacement | null {
+  const word = fold(role.trim())
+  if (word.length < 4) return null
+  const anchor = anchors.findLast((a) => fold(a.text).includes(word))
+  const page = anchor ? pages[anchor.page] : undefined
+  if (!anchor || !page) return null
+  const size = sizeOnPage(page, BOX_PT.width, BOX_PT.height)
+  const center = anchor.x + anchor.width / 2
+  const x = Math.min(Math.max(center - size.width / 2, 0.02), 1 - size.width - 0.02)
+  const below = anchor.y + anchor.height + 0.008
+  const y = below + size.height <= 0.98 ? below : Math.max(0.02, anchor.y - size.height - 0.008)
+  return { page: anchor.page, x, y, ...size }
 }
 
 function baseName(fileName: string) {
@@ -74,6 +95,19 @@ export function NewEsignRequestPage({
   const [docError, setDocError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const bytes = usePdfBytes(base64)
+  const [anchors, setAnchors] = useState<TextAnchor[]>([])
+  useEffect(() => {
+    if (!bytes) return setAnchors([])
+    let cancelled = false
+    extractTextAnchors(bytes)
+      .then((found) => {
+        if (!cancelled) setAnchors(found)
+      })
+      .catch((error) => console.error(error))
+    return () => {
+      cancelled = true
+    }
+  }, [bytes])
 
   const [signers, setSigners] = useState<SignerDraft[]>([])
   const [placing, setPlacing] = useState<number | null>(null)
@@ -144,7 +178,13 @@ export function NewEsignRequestPage({
   function addSigner(person: EsignProfile) {
     setSigners((current) => [
       ...current,
-      { sub: person.sub, name: person.name, role: "", placement: defaultPlacement(current.length, pages) },
+      {
+        sub: person.sub,
+        name: person.name,
+        role: "",
+        placement: defaultPlacement(current.length, pages),
+        manual: false,
+      },
     ])
     setSearch("")
   }
@@ -173,6 +213,7 @@ export function NewEsignRequestPage({
         x: Math.min(Math.max(x - size.width / 2, 0), 1 - size.width),
         y: Math.min(Math.max(y - size.height / 2, 0), 1 - size.height),
       },
+      manual: true,
     })
     setPlacing(null)
   }
@@ -277,7 +318,7 @@ export function NewEsignRequestPage({
                           number={index + 1}
                           state="active"
                           editable
-                          onChange={(placement) => updateSigner(index, { placement })}
+                          onChange={(placement) => updateSigner(index, { placement, manual: true })}
                         />
                       ) : null
                     )
@@ -421,7 +462,11 @@ export function NewEsignRequestPage({
                           value={s.role}
                           maxLength={80}
                           className={cn(fieldControl, "h-9 flex-1")}
-                          onChange={(event) => updateSigner(index, { role: event.target.value })}
+                          onChange={(event) => {
+                            const role = event.target.value
+                            const placed = s.manual ? null : placementForRole(role, anchors, pages)
+                            updateSigner(index, placed ? { role, placement: placed } : { role })
+                          }}
                         />
                         <Button
                           variant={placing === index ? "secondary" : "outline"}

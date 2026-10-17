@@ -280,3 +280,42 @@ export function usePdfBytes(base64: string | null) {
     return bytes
   }, [base64])
 }
+
+/** A run of text on a page, in fractions of the displayed page (origin top-left). */
+export type TextAnchor = { page: number; text: string; x: number; y: number; width: number; height: number }
+
+/** The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". */
+export async function extractTextAnchors(data: Uint8Array, maxPages = 50): Promise<TextAnchor[]> {
+  const pdfjs = await loadPdfjs()
+  const task = pdfjs.getDocument({ data: data.slice() })
+  try {
+    const pdf = await task.promise
+    const anchors: TextAnchor[] = []
+    for (let index = 0; index < Math.min(pdf.numPages, maxPages); index++) {
+      const page = await pdf.getPage(index + 1)
+      const viewport = page.getViewport({ scale: 1 })
+      const content = await page.getTextContent()
+      for (const item of content.items) {
+        if (!("str" in item) || item.str.trim() === "") continue
+        const [, , , , x, y] = item.transform
+        const corners = [
+          viewport.convertToViewportPoint(x, y),
+          viewport.convertToViewportPoint(x + item.width, y + item.height),
+        ]
+        const left = Math.min(corners[0][0], corners[1][0])
+        const top = Math.min(corners[0][1], corners[1][1])
+        anchors.push({
+          page: index,
+          text: item.str,
+          x: left / viewport.width,
+          y: top / viewport.height,
+          width: Math.abs(corners[1][0] - corners[0][0]) / viewport.width,
+          height: Math.abs(corners[1][1] - corners[0][1]) / viewport.height,
+        })
+      }
+    }
+    return anchors
+  } finally {
+    void task.destroy()
+  }
+}

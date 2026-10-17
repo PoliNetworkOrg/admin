@@ -38,6 +38,8 @@ function arrowDelta(key: string, step: number): [number, number] | null {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 /**
+ * Colors come from the light palette in both themes: the box sits on a white sheet of paper.
+ *
  * A signature's place on a page, drawn over the PDF in percentages so it follows the zoom. Editable boxes drag from
  * anywhere, resize from the corner handle, and move with the arrow keys (Shift for larger steps, Alt to resize).
  */
@@ -124,10 +126,10 @@ export function SignatureBox({
         "group/box absolute flex touch-none flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
         "outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
         state === "active" &&
-          "border-(--pn-accent) bg-[color-mix(in_oklab,var(--pn-accent-soft)_82%,transparent)] text-(--pn-accent)",
+          "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
         state === "pending" &&
-          "border-dashed border-(--pn-fg-muted) bg-[color-mix(in_oklab,white_70%,transparent)] text-(--pn-fg-muted)",
-        state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-fg)",
+          "border-dashed border-(--pn-n-500) bg-[color-mix(in_oklab,white_70%,transparent)] text-(--pn-n-600)",
+        state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-solid)",
         editable && "cursor-move"
       )}
       style={{
