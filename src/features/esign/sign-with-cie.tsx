@@ -128,11 +128,11 @@ export function SignWithCie({
     async (count: number, total: number) => {
       if (finishing.current) return
       finishing.current = true
+      await reload()
       setPhase(null)
       popupRef.current = null
       if (count === total) appToast.success(count === 1 ? "Document signed." : `${count} documents signed.`)
       else appToast.warning(`${count} of ${total} documents signed.`)
-      await reload()
       onSigned?.()
     },
     [reload, onSigned]

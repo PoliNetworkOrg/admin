@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
   ArrowDown,
@@ -112,6 +112,7 @@ export function NewEsignRequestPage({
   me: string
 }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const uploadFn = useServerFn(uploadEsignDocument)
   const importFn = useServerFn(importEsignDriveDocument)
   const contentFn = useServerFn(getEsignDocumentContent)
@@ -315,8 +316,9 @@ export function NewEsignRequestPage({
     if (problems.length > 0 || !staged) return
     setSubmitting(true)
     setSubmitError(null)
+    let request: Awaited<ReturnType<typeof createFn>>
     try {
-      const request = await createFn({
+      request = await createFn({
         data: {
           title: title.trim(),
           documentId: staged.id,
@@ -327,13 +329,24 @@ export function NewEsignRequestPage({
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
         },
       })
-      appToast.success("Request created.")
-      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: request.id } })
     } catch (error) {
       console.error(error)
       setSubmitError(error instanceof Error ? error.message : "Couldn't create the request.")
       setSubmitting(false)
+      return
     }
+    // The request exists from here on: a failed reload or navigation must not offer to create it again.
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+    try {
+      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: request.id } })
+    } catch (error) {
+      console.error(error)
+    }
+    appToast.success("Request created.")
   }
 
   function onDrop(event: DragEvent) {
