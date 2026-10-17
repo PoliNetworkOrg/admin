@@ -75,10 +75,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☑ Popup page + same-origin API (Host check, no cross-site), ticket-based backend client.
 - ☑ Session-based providers: `cie-mw` (official PKCS#11, last-4 PIN), `opencie`, `soft`; ordered fallback before PIN.
 - ☑ SoftHSM2 PKCS#11 tests in Linux Docker (`scripts/test-softhsm.sh`).
-- ◐ Subagent A, branch `feat/direct-cie`: direct PC/SC `cie` provider, card simulator, interop harness against the
-  official middleware (pcscd + vpcd), auto-pairing (`AbilitaCIE` / `cie_enable`).
-- ◐ Subagent B, branch `feat/packaging`: worker subprocess (Rosetta for the x86_64 macOS module), install + URL scheme,
-  macOS .app, CI matrix, releases, `doctor`.
+- ☑ Direct PC/SC `cie` provider + card simulator + interop harness (`scripts/interop/run.sh`): the official middleware,
+  built unmodified, pairs and signs against the simulator; `cie`, `cie-mw` (also in the worker) and `opencie` sign too.
+  Auto-pairing (`AbilitaCIE`/`AbbinaCIE`/`cie_enable`); `PINSent` stops provider fallback. sign-agent PR #2 (merged).
+- ☑ Worker subprocess (Rosetta for the x86_64 macOS module, HOME for its pairing cache), install + `polinetwork-sign://`
+  scheme, macOS universal .app/.dmg, Windows GUI exe, Linux tar/.deb, CI on 3 OSes, `doctor`. sign-agent PR #1 (merged).
+- ◐ Release v0.1.0 (tag pushed; release workflow).
 
 ### Phase 2 — backend
 
@@ -103,7 +105,11 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 
 - ☑ End-to-end test: dashboard (agent mode) → backend (dev, throwaway Postgres `esign-pg`) → agent (soft token) →
   PDF validated by pdfsig + pyHanko. How to run it: see "Local end-to-end" below.
-- ◐ Code review round 1 (Sol 6.1, security + correctness).
+- ☑ Review round 1 (Sol 6.1): 15 findings (4 high), all fixed with regression tests; Postgres smoke script
+  (`backend/scripts/esign-store-smoke.ts`) caught a jsonb double-encoding issue in the new queries.
+- ☑ Fallback: upload a PDF signed with the official app (verified as current version + one CIE signature).
+- ☑ Smart placement (box under "Il Presidente"/role label), navigation badge for documents to sign.
+- ◐ Review round 2 (Sol 6.1 on the Personal Codex account).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
 
 ## Manual steps for the maintainer (cannot be automated here)
@@ -112,7 +118,11 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Azure app registration: Graph application permission `Files.ReadWrite.All` (or `Sites.Selected`) + admin consent;
   `Mail.Send` already used.
 - ☐ Configure backend env for the OneDrive drive and default folders (see backend README once written).
-- ☐ Test with a real CIE + reader on macOS/Windows/Linux.
+- ☐ Test with a real CIE + reader on macOS/Windows/Linux. This Mac already has Software CIE and a BIT4ID miniLector AIR
+  NFC v3 reader: run the local end-to-end below without `--soft`, place the CIE on the reader and sign (expect a macOS
+  "access data from other apps" prompt the first time, and Rosetta for the official module).
+- ☐ macOS notarization (Developer ID, hardened runtime + `disable-library-validation`) and Windows code signing.
+- ☐ Release the backend (merge backend#73), then replace admin's `vendor/` tarball with the published version.
 
 ## Local end-to-end
 

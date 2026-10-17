@@ -42,7 +42,8 @@ Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:4732
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
-Providers (tried in order, first with a card present; never falls back after a PIN was sent to a card):
+Providers (tried in order, first with a card present; never falls back once a PIN reached a module or card —
+`token.Error.PINSent`):
 
 | Name      | What                                                     | PIN given to the device                       |
 | --------- | -------------------------------------------------------- | --------------------------------------------- |
