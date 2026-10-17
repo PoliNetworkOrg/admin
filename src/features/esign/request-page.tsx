@@ -11,7 +11,6 @@ import {
   InlineAlert,
   LoadingButton,
   SectionCard,
-  Unset,
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -402,16 +401,17 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                         </span>
                         <SignerStatusBadge signer={signer} turn={request.turn.includes(signer.sub)} />
                       </div>
-                      <div className="text-[13px] text-(--pn-fg-muted)">
-                        {signer.role ?? (signer.places.length > 1 ? null : <Unset />)}
-                        {signer.places.length > 1 && (
-                          <>
-                            {signer.role && " · "}
-                            {kindsLabel(signer.places)}
-                          </>
-                        )}
-                        {signer.signedAt && <> · {formatDateTime(new Date(signer.signedAt))}</>}
-                      </div>
+                      {(signer.role || signer.places.length > 1 || signer.signedAt) && (
+                        <div className="text-[13px] text-(--pn-fg-muted)">
+                          {[
+                            signer.role,
+                            signer.places.length > 1 && kindsLabel(signer.places),
+                            signer.signedAt && formatDateTime(new Date(signer.signedAt)),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      )}
                       {signer.status === "signed" && signer.certificateIssuer && (
                         <div
                           className="truncate text-[12px] text-(--pn-fg-muted)"
