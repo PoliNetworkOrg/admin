@@ -33,6 +33,7 @@ import { Route as DashboardEsignSignRouteImport } from './routes/dashboard/esign
 import { Route as DashboardEsignSetupRouteImport } from './routes/dashboard/esign/setup'
 import { Route as DashboardEsignNewRouteImport } from './routes/dashboard/esign/new'
 import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esign/inbox'
+import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
@@ -167,6 +168,11 @@ const DashboardEsignInboxRoute = DashboardEsignInboxRouteImport.update({
   path: '/esign/inbox',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardEsignDrivesRoute = DashboardEsignDrivesRouteImport.update({
+  id: '/esign/drives',
+  path: '/esign/drives',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
   id: '/azure/members',
   path: '/azure/members',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
@@ -623,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardEsignInboxRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/esign/drives': {
+      id: '/dashboard/esign/drives'
+      path: '/esign/drives'
+      fullPath: '/dashboard/esign/drives'
+      preLoaderRoute: typeof DashboardEsignDrivesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/azure/members': {
       id: '/dashboard/azure/members'
       path: '/azure/members'
@@ -728,6 +747,7 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
+  DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
   DashboardEsignInboxRoute: typeof DashboardEsignInboxRoute
   DashboardEsignNewRoute: typeof DashboardEsignNewRoute
   DashboardEsignSetupRoute: typeof DashboardEsignSetupRoute
@@ -749,6 +769,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
+  DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,
   DashboardEsignInboxRoute: DashboardEsignInboxRoute,
   DashboardEsignNewRoute: DashboardEsignNewRoute,
   DashboardEsignSetupRoute: DashboardEsignSetupRoute,
