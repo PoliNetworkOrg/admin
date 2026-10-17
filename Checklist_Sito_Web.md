@@ -76,7 +76,8 @@ Ultimo aggiornamento: 17/10/2026
 - [ ] Sistemare il link rotto "Collabora con noi" — 👤
 
 ## Documenti (da creare)
-- [ ] Pagina con statuto, regolamenti interni, regole utenti, privacy, cookie e bilanci (valutare 5x1000 e donazioni) — 👤
+- [ ] Progettare la pagina (design) con statuto, regolamenti interni, regole utenti, privacy, cookie e bilanci (valutare 5x1000 e donazioni) — 👤 Simone (designer), da progettare
+- [ ] Implementare la pagina dopo il design — 👤
 
 ## Dashboard utente
 - [ ] Valutare il Figma di Enrico e, se ha senso, implementarla — 👤
