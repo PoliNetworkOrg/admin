@@ -158,6 +158,7 @@ export function NewEsignRequestPage({
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [createdRequest, setCreatedRequest] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
 
   const pages = staged?.pdf.pages ?? []
@@ -312,6 +313,7 @@ export function NewEsignRequestPage({
   ].filter((p): p is string => Boolean(p))
 
   async function submit() {
+    if (submitting || createdRequest) return
     setAttempted(true)
     if (problems.length > 0 || !staged) return
     setSubmitting(true)
@@ -335,7 +337,7 @@ export function NewEsignRequestPage({
       setSubmitting(false)
       return
     }
-    // The request exists from here on: a failed reload or navigation must not offer to create it again.
+    setCreatedRequest(request.id)
     try {
       await router.invalidate({ sync: true })
     } catch (error) {
@@ -346,6 +348,7 @@ export function NewEsignRequestPage({
     } catch (error) {
       console.error(error)
     }
+    setSubmitting(false)
     appToast.success("Request created.")
   }
 
@@ -363,7 +366,7 @@ export function NewEsignRequestPage({
         back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
         context="New request"
         right={
-          <LoadingButton className="h-10" pending={submitting} onClick={submit}>
+          <LoadingButton className="h-10" pending={submitting} disabled={createdRequest !== null} onClick={submit}>
             Create request
           </LoadingButton>
         }
@@ -494,6 +497,14 @@ export function NewEsignRequestPage({
           <div className="flex min-w-0 flex-col gap-4">
             {attempted && problems.length > 0 && <InlineAlert>{problems[0]}</InlineAlert>}
             {submitError && <InlineAlert>{submitError}</InlineAlert>}
+            {createdRequest && (
+              <InlineAlert tone="info">
+                Request created.{" "}
+                <a className="text-(--pn-accent) underline" href={`/dashboard/esign/requests/${createdRequest}`}>
+                  Open request
+                </a>
+              </InlineAlert>
+            )}
             {staged && (
               <SectionCard
                 title="Document"

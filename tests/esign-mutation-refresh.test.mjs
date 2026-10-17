@@ -1,76 +1,199 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { setImmediate } from "node:timers/promises"
+import { runInNewContext } from "node:vm"
 
 import ts from "typescript"
 
-async function handler(path, name) {
+// Run the production handlers with controlled network, router and React state dependencies.
+async function handler(path, name, dependencies) {
   const text = await readFile(path, "utf8")
   const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   let found
   function visit(node) {
     if (ts.isFunctionDeclaration(node) && node.name?.text === name) found = node
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name) found = node
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name)
+      found = node.initializer
     if (!found) ts.forEachChild(node, visit)
   }
   visit(source)
   assert.ok(found, `${name} not found in ${path}`)
-  return found
+  const compiled = ts.transpileModule(`const handler = ${found.getText()}`, {
+    compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.None },
+  }).outputText
+  return runInNewContext(`${compiled}; handler`, { ...dependencies })
 }
 
-function calls(node, pattern) {
-  const found = []
-  function visit(current) {
-    if (ts.isCallExpression(current) && pattern.test(current.expression.getText())) found.push(current)
-    ts.forEachChild(current, visit)
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((yes, no) => {
+    resolve = yes
+    reject = no
+  })
+  return { promise, resolve, reject }
+}
+
+function environment() {
+  const events = []
+  const state = {}
+  const reload = deferred()
+  const dependencies = {
+    Error,
+    router: {
+      invalidate: (options) => {
+        assert.equal(options.sync, true)
+        events.push("reload")
+        return reload.promise
+      },
+    },
+    console: { error: (error) => events.push(["logged", error.message]) },
+    appToast: Object.fromEntries(
+      ["success", "warning", "error"].map((tone) => [tone, (message) => events.push([tone, message])])
+    ),
+    useCallback: (callback) => callback,
   }
-  visit(node)
-  return found
-}
-
-function insideTryBlock(node) {
-  for (let current = node.parent; current; current = current.parent) {
-    if (ts.isBlock(current) && ts.isTryStatement(current.parent) && current.parent.tryBlock === current) return current
+  function setter(key) {
+    return (value) => {
+      state[key] = value
+    }
   }
-  return null
+  return { events, state, reload, dependencies, setter }
 }
 
-const RELOAD = /^(router\.invalidate|reload)$/
-const TOAST = /^appToast\./
-
-function assertReloadBeforeToasts(fn, label) {
-  const reloads = calls(fn, RELOAD)
-  const toasts = calls(fn, TOAST)
-  assert.ok(reloads.length > 0, `${label} reloads the loaders`)
-  assert.ok(toasts.length > 0, `${label} shows a toast`)
-  const reloadAt = Math.min(...reloads.map((c) => c.getStart()))
-  for (const toast of toasts)
-    assert.ok(toast.getStart() > reloadAt, `${label}: ${toast.getText()} comes before the loaders reload`)
+async function composer(env, overrides = {}) {
+  return handler("src/features/esign/new-request-page.tsx", "submit", {
+    ...env.dependencies,
+    submitting: false,
+    createdRequest: null,
+    setAttempted: env.setter("attempted"),
+    setSubmitting: env.setter("submitting"),
+    setSubmitError: env.setter("error"),
+    setCreatedRequest: env.setter("createdRequest"),
+    problems: [],
+    staged: { id: "document-1" },
+    title: "Request",
+    ordered: true,
+    signers: [],
+    saveToDrive: false,
+    folder: null,
+    recipients: [],
+    createFn: async () => {
+      env.events.push("create")
+      return { id: "request-1" }
+    },
+    navigate: async (options) => {
+      env.events.push(["navigate", options.params.requestId])
+    },
+    ...overrides,
+  })
 }
 
-void test("creating an eSign request reloads the shell before the toast and keeps later failures out of the create error", async () => {
-  const submit = await handler("src/features/esign/new-request-page.tsx", "submit")
-  assertReloadBeforeToasts(submit, "submit")
-
-  const [create] = calls(submit, /^createFn$/)
-  const createTry = insideTryBlock(create)
-  assert.ok(createTry, "createFn is awaited in its own try")
-  for (const later of [...calls(submit, RELOAD), ...calls(submit, /^navigate$/), ...calls(submit, TOAST)])
-    assert.ok(later.getStart() >= createTry.end, `${later.getText()} is outside createFn's try`)
-
-  const [navigate] = calls(submit, /^navigate$/)
-  const [invalidate] = calls(submit, RELOAD)
-  assert.ok(navigate.getStart() > invalidate.getStart(), "the new request opens after the loaders reload")
-  assert.match(navigate.getText(), /requestId: request\.id/, "it opens the request just created")
+void test("creation waits for loader refresh before navigation and notification", async () => {
+  const env = environment()
+  const submit = await composer(env)
+  const pending = submit()
+  await setImmediate()
+  assert.deepEqual(env.events, ["create", "reload"])
+  assert.equal(env.state.submitting, true)
+  env.reload.resolve()
+  await pending
+  assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"], ["success", "Request created."]])
 })
 
-void test("signing with CIE reloads the page before closing the dialog and toasting", async () => {
-  const finish = await handler("src/features/esign/sign-with-cie.tsx", "finish")
-  assertReloadBeforeToasts(finish, "finish")
-  const [close] = calls(finish, /^setPhase$/)
-  assert.ok(close.getStart() > calls(finish, RELOAD)[0].getStart(), "the dialog closes after the reload")
+void test("a failed create stays retryable without navigation or a success notification", async () => {
+  const env = environment()
+  await (
+    await composer(env, {
+      createFn: async () => {
+        throw new Error("Create refused")
+      },
+    })
+  )()
+  assert.equal(env.state.error, "Create refused")
+  assert.equal(env.state.submitting, false)
+  assert.equal(env.state.createdRequest, undefined)
+  assert.deepEqual(env.events, [["logged", "Create refused"]])
 })
 
-void test("retrying an eSign delivery reloads the page before toasting the outcome", async () => {
-  assertReloadBeforeToasts(await handler("src/features/esign/request-page.tsx", "retry"), "retry")
+void test("refresh and navigation failure preserve the created request without allowing another create", async () => {
+  const env = environment()
+  const submit = await composer(env, {
+    navigate: async () => {
+      throw new Error("Navigation failed")
+    },
+  })
+  const pending = submit()
+  await setImmediate()
+  env.reload.reject(new Error("Refresh failed"))
+  await pending
+  assert.equal(env.state.createdRequest, "request-1")
+  assert.equal(env.state.submitting, false)
+  assert.equal(env.state.error, null)
+  assert.deepEqual(env.events, [
+    "create",
+    "reload",
+    ["logged", "Refresh failed"],
+    ["logged", "Navigation failed"],
+    ["success", "Request created."],
+  ])
+  await (
+    await composer(env, { createdRequest: env.state.createdRequest })
+  )()
+  assert.equal(env.events.filter((event) => event === "create").length, 1)
 })
+
+for (const refreshFails of [false, true]) {
+  void test(`CIE completion waits for refresh, including failure=${refreshFails}, before closing and notifying`, async () => {
+    const env = environment()
+    const dependencies = {
+      ...env.dependencies,
+      finishing: { current: false },
+      setPhase: env.setter("phase"),
+      popupRef: { current: {} },
+      onSigned: () => env.events.push("signed"),
+    }
+    dependencies.reload = await handler("src/features/esign/sign-with-cie.tsx", "reload", dependencies)
+    const finish = await handler("src/features/esign/sign-with-cie.tsx", "finish", dependencies)
+    const pending = finish(1, 2)
+    assert.deepEqual(env.events, ["reload"])
+    assert.equal(env.state.phase, undefined)
+    if (refreshFails) env.reload.reject(new Error("Refresh failed"))
+    else env.reload.resolve()
+    await pending
+    assert.equal(env.state.phase, null)
+    assert.equal(dependencies.popupRef.current, null)
+    assert.deepEqual(env.events.slice(-2), [["warning", "1 of 2 documents signed."], "signed"])
+    await finish(1, 2)
+    assert.equal(env.events.filter((event) => event === "reload").length, 1)
+  })
+}
+
+for (const outcome of ["delivered", "failed", "throws"]) {
+  void test(`delivery retry waits for refresh before reporting ${outcome}`, async () => {
+    const env = environment()
+    const retry = await handler("src/features/esign/request-page.tsx", "retry", {
+      ...env.dependencies,
+      request: { id: "request-1" },
+      setRetrying: env.setter("retrying"),
+      retryFn: async () => {
+        if (outcome === "throws") throw new Error("Delivery refused")
+        return outcome === "failed" ? { status: "failed", error: "Mailbox refused" } : { status: "delivered" }
+      },
+    })
+    const pending = retry()
+    await setImmediate()
+    assert.ok(!env.events.some((event) => Array.isArray(event) && event[0] !== "logged"))
+    assert.equal(env.state.retrying, true)
+    env.reload.resolve()
+    await pending
+    assert.equal(env.state.retrying, false)
+    assert.deepEqual(
+      env.events.at(-1),
+      outcome === "delivered"
+        ? ["success", "Document delivered."]
+        : ["error", outcome === "failed" ? "Couldn't deliver the document. Mailbox refused" : "Delivery refused"]
+    )
+  })
+}
