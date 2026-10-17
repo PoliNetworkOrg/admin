@@ -157,6 +157,9 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
 
 ## Log
 
+- 2026-10-17: merged backend#75 (released @polinetwork/backend 1.9.0), sign-agent#6 (released PoliNetwork eSign
+  v0.2.0) and admin#105; the upload fallback warns signers with several places. Flux rolls out the new images.
+
 - 2026-10-17: several places per signer and batch signing with one PIN (backend#75, sign-agent#6, admin PR); merge
   order: backend → bump admin → agent release v0.2.0 together with the backend deploy (protocol 2).
 
