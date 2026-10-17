@@ -31,9 +31,9 @@ function inFilter(request: EsignRequest, filter: StatusFilter) {
   return request.status === filter
 }
 
-function NewRequestButton() {
+function NewRequestButton({ variant = "default" }: { variant?: "default" | "outline" }) {
   return (
-    <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/new" />}>
+    <Button variant={variant} className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/new" />}>
       <Plus aria-hidden /> New request
     </Button>
   )
@@ -165,7 +165,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     ? "When someone asks for your signature, the document shows up here."
                     : "Start a request from a PDF in OneDrive or on your computer, choose who signs and where."
                 }
-                action={canManage && !inbox ? <NewRequestButton /> : undefined}
+                action={canManage && !inbox ? <NewRequestButton variant="outline" /> : undefined}
               />
             ) : (
               <EmptyState

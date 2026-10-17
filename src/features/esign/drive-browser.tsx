@@ -117,7 +117,11 @@ export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, cl
       )}
       {mode === "folder" && listing && (
         <div className="flex shrink-0 items-center justify-end border-t border-(--pn-line) bg-(--pn-surface) p-2">
-          <Button size="sm" onClick={() => onPickFolder?.({ id: listing.folder.id, path: listing.path })}>
+          <Button
+            size="sm"
+            disabled={loading}
+            onClick={() => onPickFolder?.({ id: listing.folder.id, path: listing.path })}
+          >
             Save here
           </Button>
         </div>

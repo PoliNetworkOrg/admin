@@ -106,10 +106,21 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const myTurn = request.myTurn && mySigner !== undefined
   const [placement, setPlacement] = useState<BoxPlacement | null>(mySigner?.placement ?? null)
   useEffect(() => setPlacement(mySigner?.placement ?? null), [mySigner?.placement])
-  const [focusPage, setFocusPage] = useState<number | null>(null)
+  const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   useEffect(() => {
-    if (myTurn && mySigner) setFocusPage(mySigner.placement.page)
+    if (myTurn && mySigner)
+      setFocus({ page: mySigner.placement.page, y: mySigner.placement.y + mySigner.placement.height / 2 })
   }, [myTurn, mySigner])
+
+  // Delivery (OneDrive, email) runs after the last signature: follow it until it settles.
+  const delivering = request.status === "completed" && request.delivery?.status === "pending"
+  useEffect(() => {
+    if (!delivering) return
+    const timer = window.setTimeout(() => {
+      router.invalidate().catch((error) => console.error(error))
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [delivering, router])
 
   const names = useMemo(() => {
     const map = new Map(request.signers.map((s) => [s.sub, s.name]))
@@ -190,7 +201,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
               <PdfViewer
                 data={bytes}
                 pages={pages}
-                focusPage={focusPage}
+                focus={focus}
                 className="h-[calc(100dvh-210px)] min-h-[480px]"
                 overlay={(page) =>
                   request.signers.map((signer, index) => {
@@ -237,8 +248,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             {myTurn && (
               <SectionCard title="Your signature">
                 <p className="text-[14px] text-pretty text-(--pn-fg-muted)">
-                  Drag the blue box to adjust where your signature goes, then choose Sign with CIE. You need the card,
-                  its PIN and the NFC reader.
+                  Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top. You need
+                  the card, its PIN and the NFC reader.
                 </p>
                 {signingNow && signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
@@ -246,12 +257,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                   </InlineAlert>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <SignWithCie
-                    requestId={request.id}
-                    placement={placement ?? undefined}
-                    disabled={!!signingNow && signingNow.sub !== me}
-                  />
-                  <Button variant="ghost" className="h-10 text-(--pn-danger-fg)" onClick={() => setDeclineOpen(true)}>
+                  <Button variant="outline" className="h-10 text-(--pn-danger-fg)" onClick={() => setDeclineOpen(true)}>
                     <X aria-hidden /> Decline
                   </Button>
                 </div>

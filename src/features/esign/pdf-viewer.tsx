@@ -19,8 +19,8 @@ type PdfViewerProps = {
   onPageClick?: (page: number, x: number, y: number) => void
   /** Pointer style over pages, e.g. "crosshair" while placing a signature. */
   cursor?: "default" | "crosshair"
-  /** Page to scroll into view when it changes. */
-  focusPage?: number | null
+  /** A point to bring to the middle of the viewer when it changes: a page and a fraction of its height. */
+  focus?: { page: number; y: number } | null
   className?: string
 }
 
@@ -44,15 +44,7 @@ function loadPdfjs() {
  * The dashboard's own PDF viewer (pdf.js), so every browser shows documents the same way and signatures can be placed
  * on them. Pages render lazily as they near the viewport, at the device pixel ratio; signature appearances are drawn.
  */
-export function PdfViewer({
-  data,
-  pages,
-  overlay,
-  onPageClick,
-  cursor = "default",
-  focusPage,
-  className,
-}: PdfViewerProps) {
+export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default", focus, className }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
@@ -96,11 +88,18 @@ export function PdfViewer({
   const fitScale = containerWidth > 0 ? Math.min((containerWidth - 32) / maxWidth, 1.5) : 0
   const scale = zoom === "fit" ? fitScale : zoom
 
+  const focusPage = focus?.page
+  const focusY = focus?.y ?? 0.5
   useEffect(() => {
-    if (focusPage === null || focusPage === undefined) return
-    const element = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${focusPage}"]`)
-    element?.scrollIntoView({ block: "center", behavior: "smooth" })
-  }, [focusPage])
+    if (focusPage === undefined || scale <= 0) return
+    // Scroll the viewer only: scrollIntoView would also move the page around it.
+    const container = scrollRef.current
+    const element = container?.querySelector<HTMLElement>(`[data-page="${focusPage}"]`)
+    if (!container || !element) return
+    const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+    const top = offset + element.offsetHeight * focusY - container.clientHeight / 2
+    container.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
+  }, [focusPage, focusY, scale])
 
   function step(direction: 1 | -1) {
     const current = zoom === "fit" ? fitScale : zoom

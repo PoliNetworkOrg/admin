@@ -260,7 +260,11 @@ export function NewEsignRequestPage({
                   pages={pages}
                   cursor={placing !== null ? "crosshair" : "default"}
                   onPageClick={place}
-                  focusPage={signers.length ? signers[signers.length - 1].placement.page : null}
+                  focus={
+                    signers.at(-1)
+                      ? { page: signers[signers.length - 1].placement.page, y: signers[signers.length - 1].placement.y }
+                      : null
+                  }
                   className="h-[calc(100dvh-210px)] min-h-[480px]"
                   overlay={(page) =>
                     signers.map((s, index) =>
