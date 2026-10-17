@@ -63,10 +63,12 @@ function environment() {
 }
 
 async function composer(env, overrides = {}) {
-  return handler("src/features/esign/new-request-page.tsx", "submit", {
+  const path = "src/features/esign/new-request-page.tsx"
+  const dependencies = {
     ...env.dependencies,
     submitting: false,
-    createdRequest: null,
+    created: { current: null },
+    creating: { current: false },
     setAttempted: env.setter("attempted"),
     setSubmitting: env.setter("submitting"),
     setSubmitError: env.setter("error"),
@@ -81,18 +83,26 @@ async function composer(env, overrides = {}) {
     recipients: [],
     createFn: async () => {
       env.events.push("create")
-      return { id: "request-1" }
+      return { id: "request-1", title: "Request" }
     },
     navigate: async (options) => {
       env.events.push(["navigate", options.params.requestId])
     },
     ...overrides,
-  })
+  }
+  dependencies.create = await handler(path, "create", dependencies)
+  dependencies.openRequest = await handler(path, "openRequest", dependencies)
+  return {
+    submit: await handler(path, "submit", dependencies),
+    createAndSign: await handler(path, "createAndSign", dependencies),
+    signingStopped: await handler(path, "signingStopped", dependencies),
+    dependencies,
+  }
 }
 
 void test("creation waits for loader refresh before navigation and notification", async () => {
   const env = environment()
-  const submit = await composer(env)
+  const { submit } = await composer(env)
   const pending = submit()
   await setImmediate()
   assert.deepEqual(env.events, ["create", "reload"])
@@ -104,13 +114,12 @@ void test("creation waits for loader refresh before navigation and notification"
 
 void test("a failed create stays retryable without navigation or a success notification", async () => {
   const env = environment()
-  await (
-    await composer(env, {
-      createFn: async () => {
-        throw new Error("Create refused")
-      },
-    })
-  )()
+  const { submit } = await composer(env, {
+    createFn: async () => {
+      throw new Error("Create refused")
+    },
+  })
+  await submit()
   assert.equal(env.state.error, "Create refused")
   assert.equal(env.state.submitting, false)
   assert.equal(env.state.createdRequest, undefined)
@@ -119,7 +128,7 @@ void test("a failed create stays retryable without navigation or a success notif
 
 void test("refresh and navigation failure preserve the created request without allowing another create", async () => {
   const env = environment()
-  const submit = await composer(env, {
+  const { submit } = await composer(env, {
     navigate: async () => {
       throw new Error("Navigation failed")
     },
@@ -138,11 +147,91 @@ void test("refresh and navigation failure preserve the created request without a
     ["logged", "Navigation failed"],
     ["success", "Request created."],
   ])
-  await (
-    await composer(env, { createdRequest: env.state.createdRequest })
-  )()
+  await submit()
   assert.equal(env.events.filter((event) => event === "create").length, 1)
 })
+
+void test("create-and-sign waits for refreshed loaders and reuses its created request", async () => {
+  const env = environment()
+  const { createAndSign, dependencies } = await composer(env)
+  const pending = createAndSign()
+  await setImmediate()
+  assert.deepEqual(env.events, ["create", "reload"])
+  assert.equal(env.state.createdRequest, "request-1")
+  assert.equal(createAndSign(), null)
+  env.reload.resolve()
+  const items = await pending
+  assert.equal(items[0].requestId, "request-1")
+  assert.equal(items[0].title, "Request")
+  assert.equal((await dependencies.create("other-document")).id, "request-1")
+  assert.deepEqual(env.events, ["create", "reload"])
+})
+
+void test("overlapping submit and create-and-sign never create duplicate requests", async () => {
+  const env = environment()
+  const network = deferred()
+  const { submit, createAndSign } = await composer(env, {
+    createFn: async () => {
+      env.events.push("create")
+      return network.promise
+    },
+  })
+  const pending = submit()
+  assert.deepEqual(Array.from(await createAndSign()), [])
+  assert.deepEqual(env.events, ["create"])
+  network.resolve({ id: "request-1", title: "Request" })
+  await setImmediate()
+  env.reload.resolve()
+  await pending
+  assert.equal(env.events.filter((event) => event === "create").length, 1)
+})
+
+void test("create-and-sign remains retryable when creation fails", async () => {
+  const env = environment()
+  let calls = 0
+  const { createAndSign } = await composer(env, {
+    createFn: async () => {
+      if (++calls === 1) throw new Error("Create refused")
+      return { id: "request-1", title: "Request" }
+    },
+  })
+  assert.deepEqual(Array.from(await createAndSign()), [])
+  assert.equal(env.state.error, "Create refused")
+  assert.equal(env.state.createdRequest, undefined)
+  const pending = createAndSign()
+  await setImmediate()
+  env.reload.resolve()
+  assert.equal((await pending)[0].requestId, "request-1")
+  assert.equal(env.state.error, null)
+  assert.equal(calls, 2)
+})
+
+for (const failure of [null, "Agent unavailable"]) {
+  void test(`stopped signing retains a created request after refresh and navigation failures: ${failure}`, async () => {
+    const env = environment()
+    const { createAndSign, signingStopped } = await composer(env, {
+      navigate: async () => {
+        throw new Error("Navigation failed")
+      },
+    })
+    const pending = createAndSign()
+    await setImmediate()
+    assert.deepEqual(env.events, ["create", "reload"])
+    env.reload.reject(new Error("Refresh failed"))
+    assert.equal((await pending)[0].requestId, "request-1")
+    await signingStopped(failure)
+    assert.equal(env.state.createdRequest, "request-1")
+    assert.equal(env.state.error, null)
+    assert.deepEqual(env.events.at(-2), ["logged", "Navigation failed"])
+    assert.deepEqual(
+      env.events.at(-1),
+      failure
+        ? ["error", "Request created, but the signature couldn't start. Agent unavailable"]
+        : ["success", "Request created. Sign it here when you're ready."]
+    )
+    assert.equal(createAndSign(), null)
+  })
+}
 
 for (const refreshFails of [false, true]) {
   void test(`CIE completion waits for refresh, including failure=${refreshFails}, before closing and notifying`, async () => {

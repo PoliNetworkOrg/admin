@@ -71,7 +71,7 @@ Permissions: `esign:sign` (see own inbox, sign when it is your turn), `esign:req
 browse OneDrive). Requests are visible to their signers and creator.
 
 - `esign.profile.sync({name, email})` → upserts the caller's signer profile (BFF passes ID-token claims).
-- `esign.signers.list()` → signer profiles (manage).
+- `esign.signers.list()` → registered IdP users with `esign:sign`, including those who have not opened Signatures; each includes eligible drives (manage).
 - `esign.config()` → `{drives: [{id, label}], canManage, maxPdfBytes}`; `drives` is empty without OneDrive.
 - `esign.drive.list({driveId, folderId?})` → `{folder, path, items: [{id, name, kind: folder|pdf, size, modifiedAt}]}`.
   Item IDs are only unique within their drive, so every drive call names one.

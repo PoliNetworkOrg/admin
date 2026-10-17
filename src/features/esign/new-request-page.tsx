@@ -15,7 +15,7 @@ import {
   TriangleAlert,
   UserPlus,
 } from "lucide-react"
-import { type DragEvent, useEffect, useId, useMemo, useState } from "react"
+import { type DragEvent, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   checkboxControl,
@@ -51,6 +51,7 @@ import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
+import { SignWithCie } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
@@ -102,14 +103,22 @@ function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
+function draftOf(person: EsignProfile, index: number, pages: PageSize[]): SignerDraft {
+  const where = defaultPlacement(index, pages)
+  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false }
+}
+
 export function NewEsignRequestPage({
   config,
   signers: people,
   me,
+  withMe,
 }: {
   config: EsignConfig
   signers: EsignProfile[]
   me: string
+  /** Start with the viewer as the first signer ("Sign a document"). */
+  withMe: boolean
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -141,7 +150,10 @@ export function NewEsignRequestPage({
     }
   }, [bytes])
 
-  const [signers, setSigners] = useState<SignerDraft[]>([])
+  const [signers, setSigners] = useState<SignerDraft[]>(() => {
+    const self = withMe ? people.find((p) => p.sub === me) : undefined
+    return self ? [draftOf(self, 0, [])] : []
+  })
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
@@ -217,12 +229,9 @@ export function NewEsignRequestPage({
   }
 
   function addSigner(person: EsignProfile) {
-    const where = defaultPlacement(signers.length, pages)
-    setSigners((current) => [
-      ...current,
-      { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false },
-    ])
-    setFocus({ page: where.page, y: where.y })
+    const draft = draftOf(person, signers.length, pages)
+    setSigners((current) => [...current, draft])
+    setFocus({ page: draft.places[0].page, y: draft.places[0].y })
     setSearch("")
   }
 
@@ -293,7 +302,8 @@ export function NewEsignRequestPage({
       .filter((p) => !signers.some((s) => s.sub === p.sub))
       .filter((p) => usedDrives.every((d) => p.drives.includes(d)))
       .filter((p) => needle === "" || `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle))
-  }, [people, signers, search, usedDrives.join()])
+      .sort((a, b) => Number(b.sub === me) - Number(a.sub === me))
+  }, [people, signers, search, me, usedDrives.join()])
   const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
   const eligible = people.filter((p) => usedDrives.every((d) => p.drives.includes(d)))
 
@@ -312,18 +322,27 @@ export function NewEsignRequestPage({
     ...outsiders.map((s) => `${s.name} can't sign documents of ${driveLabel(blockedDrive(s.sub) ?? "")}.`),
   ].filter((p): p is string => Boolean(p))
 
-  async function submit() {
-    if (submitting || createdRequest) return
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return
-    setSubmitting(true)
+  // When the viewer signs first, creating the request and signing it are one step.
+  const myIndex = signers.findIndex((s) => s.sub === me)
+  const signsFirst = myIndex === 0 || (myIndex > 0 && !ordered)
+  const onlyMe = signsFirst && signers.length === 1
+
+  /** Creates the request once: a signature that doesn't start leaves it on its page, ready to sign again. */
+  const created = useRef<{ id: string; title: string } | null>(null)
+
+  const creating = useRef(false)
+
+  async function create(documentId: string) {
+    if (created.current) return created.current
+    if (creating.current) return null
+    creating.current = true
     setSubmitError(null)
     let request: Awaited<ReturnType<typeof createFn>>
     try {
       request = await createFn({
         data: {
           title: title.trim(),
-          documentId: staged.id,
+          documentId,
           ordered,
           signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, places: s.places })),
           output:
@@ -334,22 +353,53 @@ export function NewEsignRequestPage({
     } catch (error) {
       console.error(error)
       setSubmitError(error instanceof Error ? error.message : "Couldn't create the request.")
-      setSubmitting(false)
-      return
+      return null
+    } finally {
+      creating.current = false
     }
+    created.current = { id: request.id, title: request.title }
     setCreatedRequest(request.id)
     try {
       await router.invalidate({ sync: true })
     } catch (error) {
       console.error(error)
     }
+    return created.current
+  }
+
+  async function openRequest(id: string) {
     try {
-      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: request.id } })
+      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: id } })
     } catch (error) {
       console.error(error)
     }
+  }
+
+  async function submit() {
+    if (submitting || created.current) return
+    setAttempted(true)
+    if (problems.length > 0 || !staged) return
+    setSubmitting(true)
+    const request = await create(staged.id)
+    if (!request) return setSubmitting(false)
+    await openRequest(request.id)
     setSubmitting(false)
     appToast.success("Request created.")
+  }
+
+  function createAndSign() {
+    if (submitting || created.current) return null
+    setAttempted(true)
+    if (problems.length > 0 || !staged) return null
+    return create(staged.id).then((request) => (request ? [{ requestId: request.id, title: request.title }] : []))
+  }
+
+  async function signingStopped(error: string | null) {
+    const request = created.current
+    if (!request) return
+    await openRequest(request.id)
+    if (error) appToast.error(`Request created, but the signature couldn't start. ${error}`)
+    else appToast.success("Request created. Sign it here when you're ready.")
   }
 
   function onDrop(event: DragEvent) {
@@ -364,11 +414,22 @@ export function NewEsignRequestPage({
       <PageBar
         width="record"
         back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
-        context="New request"
+        context={onlyMe ? "Sign a document" : "New request"}
         right={
-          <LoadingButton className="h-10" pending={submitting} disabled={createdRequest !== null} onClick={submit}>
-            Create request
-          </LoadingButton>
+          signsFirst ? (
+            <SignWithCie
+              prepare={createAndSign}
+              disabled={submitting || createdRequest !== null}
+              onSigned={() => created.current && void openRequest(created.current.id)}
+              onStopped={signingStopped}
+            >
+              {onlyMe ? "Sign with CIE" : "Create and sign"}
+            </SignWithCie>
+          ) : (
+            <LoadingButton className="h-10" pending={submitting} disabled={createdRequest !== null} onClick={submit}>
+              Create request
+            </LoadingButton>
+          )
         }
       />
       <PageContent width="record">
@@ -634,9 +695,14 @@ export function NewEsignRequestPage({
                         className="flex h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[14px] hover:bg-(--pn-hover)"
                       >
                         <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                        <span className="min-w-0 flex-1 truncate">{person.name}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {person.name}
+                          {person.sub === me && <span className="text-(--pn-fg-muted)"> (you)</span>}
+                        </span>
                         {person.email && (
-                          <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                          <span className="max-w-1/2 truncate font-mono text-[12px] text-(--pn-fg-muted)">
+                            {person.email}
+                          </span>
                         )}
                       </button>
                     </li>
@@ -645,11 +711,13 @@ export function NewEsignRequestPage({
                     <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
                       {search.trim() !== ""
                         ? "Nobody matches."
-                        : eligible.length === 0
+                        : eligible.length === 0 && usedDrives.length > 0
                           ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
-                          : usedDrives.length > 0
-                            ? "Everyone allowed to sign these documents is added."
-                            : "Everyone who can sign is added. People appear here after they open Signatures once."}
+                          : eligible.length === 0
+                            ? "No registered people currently have permission to sign."
+                            : usedDrives.length > 0
+                              ? "Everyone allowed to sign these documents is added."
+                              : "Everyone who can sign is added."}
                     </li>
                   )}
                 </ul>
@@ -669,7 +737,9 @@ export function NewEsignRequestPage({
                   <span>
                     Sign in this order
                     <span className="block text-[12px] text-(--pn-fg-muted)">
-                      Each signer is asked after the previous one signs.
+                      {signsFirst && ordered
+                        ? "You sign first, as soon as the request is created; each next signer is asked after the previous one signs."
+                        : "Each signer is asked after the previous one signs."}
                     </span>
                   </span>
                 </label>

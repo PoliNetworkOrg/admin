@@ -202,25 +202,27 @@ function RuleEditor({
         </p>
       )}
       {!disabled && (
-        <div className="relative max-w-[420px]">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
-          />
-          <Input
-            id={searchId}
-            aria-label={`Add a role or permission to ${title}`}
-            placeholder="Add a role or permission…"
-            value={query}
-            className={cn(fieldControl, "h-9 pl-9")}
-            onFocus={() => setOpen(true)}
-            onClick={() => setOpen(true)}
-            onBlur={() => setOpen(false)}
-            onChange={(event) => {
-              setQuery(event.target.value)
-              setOpen(true)
-            }}
-          />
+        <div className="max-w-[420px]">
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
+            />
+            <Input
+              id={searchId}
+              aria-label={`Add a role or permission to ${title}`}
+              placeholder="Add a role or permission…"
+              value={query}
+              className={cn(fieldControl, "h-9 pl-9")}
+              onFocus={() => setOpen(true)}
+              onClick={() => setOpen(true)}
+              onBlur={() => setOpen(false)}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setOpen(true)
+              }}
+            />
+          </div>
           {open && (
             <div className="mt-1 max-h-72 overflow-y-auto rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-surface) p-1">
               <OptionGroup label="Roles" icon={UsersRound} entries={roles} onPick={(key) => add("roles", key)} />
