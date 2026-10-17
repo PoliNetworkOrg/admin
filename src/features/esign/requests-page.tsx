@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router"
-import { FileSignature, Files, Plus } from "lucide-react"
+import { FileSignature, Files, PenLine, Plus } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import { AvatarGroup, DataTable, type DataTableColumn, EmptyState } from "@/components/primitives"
@@ -31,10 +31,16 @@ function inFilter(request: EsignRequest, filter: StatusFilter) {
   return request.status === filter
 }
 
-function NewRequestButton({ variant = "default" }: { variant?: "default" | "outline" }) {
+/** In To sign it starts with the viewer as the first signer, who may then add others. */
+function NewRequestButton({ variant = "default", self }: { variant?: "default" | "outline"; self: boolean }) {
   return (
-    <Button variant={variant} className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/new" />}>
-      <Plus aria-hidden /> New request
+    <Button
+      variant={variant}
+      className="h-10"
+      nativeButton={false}
+      render={<Link to="/dashboard/esign/new" search={self ? { self: true } : {}} />}
+    >
+      {self ? <PenLine aria-hidden /> : <Plus aria-hidden />} {self ? "Sign a document" : "New request"}
     </Button>
   )
 }
@@ -115,7 +121,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
         right={
           canManage || waiting > 1 ? (
             <>
-              {canManage && <NewRequestButton variant={waiting > 1 ? "outline" : "default"} />}
+              {canManage && <NewRequestButton variant={waiting > 1 ? "outline" : "default"} self={inbox} />}
               {waiting > 1 && (
                 <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/sign" />}>
                   <Files aria-hidden /> Sign {waiting} together
@@ -178,7 +184,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     ? "When someone asks for your signature, the document shows up here."
                     : "Start a request from a PDF in OneDrive or on your computer, choose who signs and where."
                 }
-                action={canManage && !inbox ? <NewRequestButton variant="outline" /> : undefined}
+                action={canManage ? <NewRequestButton variant="outline" self={inbox} /> : undefined}
               />
             ) : (
               <EmptyState

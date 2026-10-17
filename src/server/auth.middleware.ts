@@ -148,6 +148,15 @@ export const esignSignWriteMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
+/** CIE signatures: choose which roles and permissions may use each drive. */
+export const esignDrivesManageMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "esign:sign")
+    requirePermission(context.permissions, "esign:drives:manage")
+    return next()
+  })
+
 /** CIE signatures: upload documents, browse the shared drive, create, cancel and redeliver requests. */
 export const esignRequestsManageMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])

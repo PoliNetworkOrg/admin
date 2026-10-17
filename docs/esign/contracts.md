@@ -71,7 +71,7 @@ Permissions: `esign:sign` (see own inbox, sign when it is your turn), `esign:req
 browse OneDrive). Requests are visible to their signers and creator.
 
 - `esign.profile.sync({name, email})` → upserts the caller's signer profile (BFF passes ID-token claims).
-- `esign.signers.list()` → signer profiles (manage).
+- `esign.signers.list()` → registered IdP users with `esign:sign`, including those who have not opened Signatures; each includes eligible drives (manage).
 - `esign.config()` → `{drives: [{id, label}], canManage, maxPdfBytes}`; `drives` is empty without OneDrive.
 - `esign.drive.list({driveId, folderId?})` → `{folder, path, items: [{id, name, kind: folder|pdf, size, modifiedAt}]}`.
   Item IDs are only unique within their drive, so every drive call names one.
@@ -82,6 +82,12 @@ browse OneDrive). Requests are visible to their signers and creator.
   update); each signer has 1–20 places, at least one a signature, and appears once in the request.
 - `esign.requests.list({scope: "inbox"|"mine"|"all", status?})`, `esign.requests.get({id})`.
 - `esign.requests.cancel({id})`, `esign.requests.decline({id, reason})`, `esign.requests.retryDelivery({id})`.
+- `esign.drive.access()` (`esign:drives:manage`) → `{drives: [{id, label, request: {roles, permissions}, sign: {roles,
+permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permissions: [{key, name}]}}`;
+  `esign.drive.setAccess({driveId, request, sign})`. A rule names roles and permissions, any of which grants it; an
+  empty rule keeps the default (request: `esign:requests:manage`; sign: everyone who signs). `request` covers browsing
+  the drive, using it in a request and seeing its requests; `sign` covers being chosen as signer and signing. Requests
+  record `drives` (source and output); `esign.config().drives` and `esign.signers.list()[].drives` are filtered.
 - `esign.jobs.create({items: [{requestId, places?}]})` (1–10, all or none) → `[{requestId, jobId, ticket, expiresAt}]`,
   opened together in one agent window; `places` moves the caller's boxes (one position per place) before signing.
   `esign.jobs.statuses({jobIds})`, `esign.jobs.cancel({jobIds})`.

@@ -32,8 +32,23 @@ const CIE_SOFTWARE = {
     url: "https://github.com/italia/cie-middleware-linux/releases/latest",
     note: (
       <>
-        Also install the smart-card service: <code className="font-mono text-[12px]">sudo apt install pcscd</code> (or
-        your distribution's <code className="font-mono text-[12px]">pcsc-lite</code>).
+        Also set up the smart-card service for your distribution:
+        <span className="block">
+          Debian/Ubuntu: <code className="font-mono text-[12px]">sudo apt install pcscd</code>
+        </span>
+        <span className="block">
+          Arch: <code className="font-mono text-[12px]">sudo pacman -S pcsclite ccid</code>, then{" "}
+          <code className="font-mono text-[12px]">sudo systemctl enable --now pcscd.service</code>. See the{" "}
+          <a
+            className="text-(--pn-accent) hover:underline"
+            href="https://wiki.archlinux.org/title/Smartcards"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ArchWiki smart-card guide
+          </a>
+          .
+        </span>
       </>
     ),
   },

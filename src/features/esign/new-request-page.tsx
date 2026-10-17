@@ -12,9 +12,10 @@ import {
   Search,
   Stamp,
   Trash2,
+  TriangleAlert,
   UserPlus,
 } from "lucide-react"
-import { type DragEvent, useEffect, useId, useMemo, useState } from "react"
+import { type DragEvent, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   checkboxControl,
@@ -50,6 +51,7 @@ import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
+import { SignWithCie } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
@@ -101,14 +103,22 @@ function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
+function draftOf(person: EsignProfile, index: number, pages: PageSize[]): SignerDraft {
+  const where = defaultPlacement(index, pages)
+  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false }
+}
+
 export function NewEsignRequestPage({
   config,
   signers: people,
   me,
+  withMe,
 }: {
   config: EsignConfig
   signers: EsignProfile[]
   me: string
+  /** Start with the viewer as the first signer ("Sign a document"). */
+  withMe: boolean
 }) {
   const navigate = useNavigate()
   const uploadFn = useServerFn(uploadEsignDocument)
@@ -139,7 +149,10 @@ export function NewEsignRequestPage({
     }
   }, [bytes])
 
-  const [signers, setSigners] = useState<SignerDraft[]>([])
+  const [signers, setSigners] = useState<SignerDraft[]>(() => {
+    const self = withMe ? people.find((p) => p.sub === me) : undefined
+    return self ? [draftOf(self, 0, [])] : []
+  })
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
@@ -214,12 +227,9 @@ export function NewEsignRequestPage({
   }
 
   function addSigner(person: EsignProfile) {
-    const where = defaultPlacement(signers.length, pages)
-    setSigners((current) => [
-      ...current,
-      { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false },
-    ])
-    setFocus({ page: where.page, y: where.y })
+    const draft = draftOf(person, signers.length, pages)
+    setSigners((current) => [...current, draft])
+    setFocus({ page: draft.places[0].page, y: draft.places[0].y })
     setSearch("")
   }
 
@@ -276,12 +286,24 @@ export function NewEsignRequestPage({
     setPlacing(null)
   }
 
+  // The drives the request uses decide who may sign it: where the PDF came from, and where it is saved.
+  const usedDrives = [
+    ...new Set([staged?.folder?.driveId, saveToDrive ? folder?.driveId : undefined].filter((d) => d !== undefined)),
+  ]
+  const blockedDrive = (sub: string) => {
+    const person = people.find((p) => p.sub === sub)
+    return usedDrives.find((d) => !person?.drives.includes(d))
+  }
   const available = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase()
     return people
       .filter((p) => !signers.some((s) => s.sub === p.sub))
+      .filter((p) => usedDrives.every((d) => p.drives.includes(d)))
       .filter((p) => needle === "" || `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle))
-  }, [people, signers, search])
+      .sort((a, b) => Number(b.sub === me) - Number(a.sub === me))
+  }, [people, signers, search, me, usedDrives.join()])
+  const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
+  const eligible = people.filter((p) => usedDrives.every((d) => p.drives.includes(d)))
 
   const recipients = emails
     .split(/[\s,;]+/)
@@ -295,18 +317,25 @@ export function NewEsignRequestPage({
     saveToDrive && !folder && "Choose the OneDrive folder.",
     saveToDrive && fileName.trim() === "" && "Name the signed file.",
     badEmail && `“${badEmail}” isn't an email address.`,
+    ...outsiders.map((s) => `${s.name} can't sign documents of ${driveLabel(blockedDrive(s.sub) ?? "")}.`),
   ].filter((p): p is string => Boolean(p))
 
-  async function submit() {
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return
-    setSubmitting(true)
+  // When the viewer signs first, creating the request and signing it are one step.
+  const myIndex = signers.findIndex((s) => s.sub === me)
+  const signsFirst = myIndex === 0 || (myIndex > 0 && !ordered)
+  const onlyMe = signsFirst && signers.length === 1
+
+  /** Creates the request once: a signature that doesn't start leaves it on its page, ready to sign again. */
+  const created = useRef<{ id: string; title: string } | null>(null)
+
+  async function create(documentId: string) {
+    if (created.current) return created.current
     setSubmitError(null)
     try {
       const request = await createFn({
         data: {
           title: title.trim(),
-          documentId: staged.id,
+          documentId,
           ordered,
           signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, places: s.places })),
           output:
@@ -314,13 +343,41 @@ export function NewEsignRequestPage({
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
         },
       })
-      appToast.success("Request created.")
-      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: request.id } })
+      created.current = { id: request.id, title: request.title }
+      return created.current
     } catch (error) {
       console.error(error)
       setSubmitError(error instanceof Error ? error.message : "Couldn't create the request.")
-      setSubmitting(false)
+      return null
     }
+  }
+
+  function openRequest(id: string) {
+    return navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: id } })
+  }
+
+  async function submit() {
+    setAttempted(true)
+    if (problems.length > 0 || !staged) return
+    setSubmitting(true)
+    const request = await create(staged.id)
+    if (!request) return setSubmitting(false)
+    appToast.success("Request created.")
+    await openRequest(request.id)
+  }
+
+  function createAndSign() {
+    setAttempted(true)
+    if (problems.length > 0 || !staged) return null
+    return create(staged.id).then((request) => (request ? [{ requestId: request.id, title: request.title }] : []))
+  }
+
+  function signingStopped(error: string | null) {
+    const request = created.current
+    if (!request) return
+    if (error) appToast.error(`Request created, but the signature couldn't start. ${error}`)
+    else appToast.success("Request created. Sign it here when you're ready.")
+    void openRequest(request.id)
   }
 
   function onDrop(event: DragEvent) {
@@ -335,11 +392,21 @@ export function NewEsignRequestPage({
       <PageBar
         width="record"
         back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
-        context="New request"
+        context={onlyMe ? "Sign a document" : "New request"}
         right={
-          <LoadingButton className="h-10" pending={submitting} onClick={submit}>
-            Create request
-          </LoadingButton>
+          signsFirst ? (
+            <SignWithCie
+              prepare={createAndSign}
+              onSigned={() => created.current && void openRequest(created.current.id)}
+              onStopped={signingStopped}
+            >
+              {onlyMe ? "Sign with CIE" : "Create and sign"}
+            </SignWithCie>
+          ) : (
+            <LoadingButton className="h-10" pending={submitting} onClick={submit}>
+              Create request
+            </LoadingButton>
+          )
         }
       />
       <PageContent width="record">
@@ -537,6 +604,12 @@ export function NewEsignRequestPage({
                           )
                         }}
                       />
+                      {blockedDrive(s.sub) !== undefined && (
+                        <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
+                          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                          Can't sign documents of {driveLabel(blockedDrive(s.sub) ?? "")}
+                        </p>
+                      )}
                       <PlacesEditor
                         name={s.name}
                         places={s.places}
@@ -591,21 +664,37 @@ export function NewEsignRequestPage({
                         className="flex h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[14px] hover:bg-(--pn-hover)"
                       >
                         <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                        <span className="min-w-0 flex-1 truncate">{person.name}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {person.name}
+                          {person.sub === me && <span className="text-(--pn-fg-muted)"> (you)</span>}
+                        </span>
                         {person.email && (
-                          <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                          <span className="max-w-1/2 truncate font-mono text-[12px] text-(--pn-fg-muted)">
+                            {person.email}
+                          </span>
                         )}
                       </button>
                     </li>
                   ))}
                   {available.length === 0 && (
                     <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
-                      {people.length <= signers.length
-                        ? "Everyone who can sign is added. People appear here after they open Signatures once."
-                        : "Nobody matches."}
+                      {search.trim() !== ""
+                        ? "Nobody matches."
+                        : eligible.length === 0 && usedDrives.length > 0
+                          ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
+                          : eligible.length === 0
+                            ? "No registered people currently have permission to sign."
+                            : usedDrives.length > 0
+                              ? "Everyone allowed to sign these documents is added."
+                              : "Everyone who can sign is added."}
                     </li>
                   )}
                 </ul>
+                {available.length > 0 && eligible.length < people.length && (
+                  <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
+                    Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
+                  </p>
+                )}
               </div>
               {signers.length > 1 && (
                 <label className="mt-3 flex items-start gap-2 text-[14px]">
@@ -617,7 +706,9 @@ export function NewEsignRequestPage({
                   <span>
                     Sign in this order
                     <span className="block text-[12px] text-(--pn-fg-muted)">
-                      Each signer is asked after the previous one signs.
+                      {signsFirst && ordered
+                        ? "You sign first, as soon as the request is created; each next signer is asked after the previous one signs."
+                        : "Each signer is asked after the previous one signs."}
                     </span>
                   </span>
                 </label>
