@@ -191,13 +191,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   async function retry() {
     setRetrying(true)
+    let delivery: Awaited<ReturnType<typeof retryFn>> | undefined
+    let failure: string | null = null
     try {
-      const delivery = await retryFn({ data: { id: request.id } })
-      if (delivery?.status === "failed") appToast.error(`Couldn't deliver the document. ${delivery.error ?? ""}`.trim())
-      else appToast.success("Document delivered.")
+      delivery = await retryFn({ data: { id: request.id } })
     } catch (error) {
       console.error(error)
-      appToast.error(error instanceof Error ? error.message : "Couldn't deliver the document.")
+      failure = error instanceof Error ? error.message : "Couldn't deliver the document."
     }
     try {
       await router.invalidate({ sync: true })
@@ -205,6 +205,10 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       console.error(error)
     }
     setRetrying(false)
+    if (failure !== null) appToast.error(failure)
+    else if (delivery?.status === "failed")
+      appToast.error(`Couldn't deliver the document. ${delivery.error ?? ""}`.trim())
+    else appToast.success("Document delivered.")
   }
 
   const actions = (

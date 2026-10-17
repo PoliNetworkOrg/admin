@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
   ArrowDown,
@@ -122,6 +122,7 @@ export function NewEsignRequestPage({
   withMe: boolean
 }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const uploadFn = useServerFn(uploadEsignDocument)
   const importFn = useServerFn(importEsignDriveDocument)
   const contentFn = useServerFn(getEsignDocumentContent)
@@ -170,6 +171,7 @@ export function NewEsignRequestPage({
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [createdRequest, setCreatedRequest] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
 
   const pages = staged?.pdf.pages ?? []
@@ -331,11 +333,16 @@ export function NewEsignRequestPage({
   /** Creates the request once: a signature that doesn't start leaves it on its page, ready to sign again. */
   const created = useRef<{ id: string; title: string } | null>(null)
 
+  const creating = useRef(false)
+
   async function create(documentId: string) {
     if (created.current) return created.current
+    if (creating.current) return null
+    creating.current = true
     setSubmitError(null)
+    let request: Awaited<ReturnType<typeof createFn>>
     try {
-      const request = await createFn({
+      request = await createFn({
         data: {
           title: title.trim(),
           documentId,
@@ -346,41 +353,56 @@ export function NewEsignRequestPage({
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
         },
       })
-      created.current = { id: request.id, title: request.title }
-      return created.current
     } catch (error) {
       console.error(error)
       setSubmitError(error instanceof Error ? error.message : "Couldn't create the request.")
       return null
+    } finally {
+      creating.current = false
+    }
+    created.current = { id: request.id, title: request.title }
+    setCreatedRequest(request.id)
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+    return created.current
+  }
+
+  async function openRequest(id: string) {
+    try {
+      await navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: id } })
+    } catch (error) {
+      console.error(error)
     }
   }
 
-  function openRequest(id: string) {
-    return navigate({ to: "/dashboard/esign/requests/$requestId", params: { requestId: id } })
-  }
-
   async function submit() {
+    if (submitting || created.current) return
     setAttempted(true)
     if (problems.length > 0 || !staged) return
     setSubmitting(true)
     const request = await create(staged.id)
     if (!request) return setSubmitting(false)
-    appToast.success("Request created.")
     await openRequest(request.id)
+    setSubmitting(false)
+    appToast.success("Request created.")
   }
 
   function createAndSign() {
+    if (submitting || created.current) return null
     setAttempted(true)
     if (problems.length > 0 || !staged) return null
     return create(staged.id).then((request) => (request ? [{ requestId: request.id, title: request.title }] : []))
   }
 
-  function signingStopped(error: string | null) {
+  async function signingStopped(error: string | null) {
     const request = created.current
     if (!request) return
+    await openRequest(request.id)
     if (error) appToast.error(`Request created, but the signature couldn't start. ${error}`)
     else appToast.success("Request created. Sign it here when you're ready.")
-    void openRequest(request.id)
   }
 
   function onDrop(event: DragEvent) {
@@ -400,13 +422,14 @@ export function NewEsignRequestPage({
           signsFirst ? (
             <SignWithCie
               prepare={createAndSign}
+              disabled={submitting || createdRequest !== null}
               onSigned={() => created.current && void openRequest(created.current.id)}
               onStopped={signingStopped}
             >
               {onlyMe ? "Sign with CIE" : "Create and sign"}
             </SignWithCie>
           ) : (
-            <LoadingButton className="h-10" pending={submitting} onClick={submit}>
+            <LoadingButton className="h-10" pending={submitting} disabled={createdRequest !== null} onClick={submit}>
               Create request
             </LoadingButton>
           )
@@ -538,6 +561,14 @@ export function NewEsignRequestPage({
           <div className="flex min-w-0 flex-col gap-4">
             {attempted && problems.length > 0 && <InlineAlert>{problems[0]}</InlineAlert>}
             {submitError && <InlineAlert>{submitError}</InlineAlert>}
+            {createdRequest && (
+              <InlineAlert tone="info">
+                Request created.{" "}
+                <a className="text-(--pn-accent) underline" href={`/dashboard/esign/requests/${createdRequest}`}>
+                  Open request
+                </a>
+              </InlineAlert>
+            )}
             {staged && (
               <SectionCard
                 title="Document"
