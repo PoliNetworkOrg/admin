@@ -12,6 +12,7 @@ import {
   Search,
   Stamp,
   Trash2,
+  TriangleAlert,
   UserPlus,
 } from "lucide-react"
 import { type DragEvent, useEffect, useId, useMemo, useState } from "react"
@@ -276,12 +277,23 @@ export function NewEsignRequestPage({
     setPlacing(null)
   }
 
+  // The drives the request uses decide who may sign it: where the PDF came from, and where it is saved.
+  const usedDrives = [
+    ...new Set([staged?.folder?.driveId, saveToDrive ? folder?.driveId : undefined].filter((d) => d !== undefined)),
+  ]
+  const blockedDrive = (sub: string) => {
+    const person = people.find((p) => p.sub === sub)
+    return usedDrives.find((d) => !person?.drives.includes(d))
+  }
   const available = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase()
     return people
       .filter((p) => !signers.some((s) => s.sub === p.sub))
+      .filter((p) => usedDrives.every((d) => p.drives.includes(d)))
       .filter((p) => needle === "" || `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle))
-  }, [people, signers, search])
+  }, [people, signers, search, usedDrives.join()])
+  const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
+  const eligible = people.filter((p) => usedDrives.every((d) => p.drives.includes(d)))
 
   const recipients = emails
     .split(/[\s,;]+/)
@@ -295,6 +307,7 @@ export function NewEsignRequestPage({
     saveToDrive && !folder && "Choose the OneDrive folder.",
     saveToDrive && fileName.trim() === "" && "Name the signed file.",
     badEmail && `“${badEmail}” isn't an email address.`,
+    ...outsiders.map((s) => `${s.name} can't sign documents of ${driveLabel(blockedDrive(s.sub) ?? "")}.`),
   ].filter((p): p is string => Boolean(p))
 
   async function submit() {
@@ -537,6 +550,12 @@ export function NewEsignRequestPage({
                           )
                         }}
                       />
+                      {blockedDrive(s.sub) !== undefined && (
+                        <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
+                          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                          Can't sign documents of {driveLabel(blockedDrive(s.sub) ?? "")}
+                        </p>
+                      )}
                       <PlacesEditor
                         name={s.name}
                         places={s.places}
@@ -600,12 +619,21 @@ export function NewEsignRequestPage({
                   ))}
                   {available.length === 0 && (
                     <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
-                      {people.length <= signers.length
-                        ? "Everyone who can sign is added. People appear here after they open Signatures once."
-                        : "Nobody matches."}
+                      {search.trim() !== ""
+                        ? "Nobody matches."
+                        : eligible.length === 0
+                          ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
+                          : usedDrives.length > 0
+                            ? "Everyone allowed to sign these documents is added."
+                            : "Everyone who can sign is added. People appear here after they open Signatures once."}
                     </li>
                   )}
                 </ul>
+                {available.length > 0 && eligible.length < people.length && (
+                  <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
+                    Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
+                  </p>
+                )}
               </div>
               {signers.length > 1 && (
                 <label className="mt-3 flex items-start gap-2 text-[14px]">

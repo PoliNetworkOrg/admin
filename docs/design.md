@@ -447,5 +447,9 @@ Rules that the templates above don't imply.
   With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
   is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
   document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
+  to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
+  line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
+  not sign the documents of the chosen drives are left out of the list, with a line saying why.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.

@@ -123,6 +123,9 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   mark, covered by it); the person appears once in the dashboard (backend#75, admin PR, sign-agent#6).
 - ☑ Sign several documents with one PIN: "Sign N together" in To sign opens a document strip to check each, then one
   agent window signs them all (agent protocol 2; older agents are asked to update).
+- ☑ Drive access by role or permission (Signatures › Drives): who may request with each drive and who may be asked to
+  sign its documents; default unchanged (auth#62 roles + catalog in the snapshot, auth-kit#2, backend, admin).
+- ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
 

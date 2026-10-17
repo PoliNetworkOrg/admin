@@ -9,6 +9,7 @@ import {
   FolderKanban,
   FolderTree,
   Globe,
+  HardDrive,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
@@ -86,6 +87,7 @@ export type PageMatch =
   | { kind: "esign-request"; id: string }
   | { kind: "esign-new" }
   | { kind: "esign-sign" }
+  | { kind: "esign-drives" }
   | { kind: "esign-setup" }
   | { kind: "reports-open" }
   | { kind: "reports-closed" }
@@ -261,6 +263,13 @@ const esign: Service = {
       permission: "esign:sign",
       searchPlaceholder: "Search by title or signer…",
     },
+    {
+      id: "drives",
+      title: "Drives",
+      icon: HardDrive,
+      path: "/dashboard/esign/drives",
+      permission: "esign:drives:manage",
+    },
     { id: "setup", title: "Setup", icon: MonitorDown, path: "/dashboard/esign/setup", permission: "esign:sign" },
   ],
 }
@@ -357,6 +366,7 @@ export function matchPath(pathname: string): PageMatch {
       if (second === "requests") return { kind: "esign-requests" }
       if (second === "new") return { kind: "esign-new" }
       if (second === "sign") return { kind: "esign-sign" }
+      if (second === "drives") return { kind: "esign-drives" }
       if (second === "setup") return { kind: "esign-setup" }
     }
     if (second === "requests" && third !== undefined && /^[0-9a-f-]{36}$/i.test(third)) {
@@ -403,6 +413,7 @@ export function serviceFor(match: PageMatch): Service {
     case "esign-request":
     case "esign-new":
     case "esign-sign":
+    case "esign-drives":
     case "esign-setup":
       return esign
     case "reports-open":
@@ -452,6 +463,8 @@ export function sectionFor(match: PageMatch): Section | null {
     case "esign-request":
     case "esign-new":
       return section(esign, "requests")
+    case "esign-drives":
+      return section(esign, "drives")
     case "esign-setup":
       return section(esign, "setup")
     case "reports-open":
