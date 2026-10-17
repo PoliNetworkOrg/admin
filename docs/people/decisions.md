@@ -127,7 +127,9 @@ Known prototype defects to not reproduce:
 | Admin only  | `people:self`                                                                                                                 | My area                                           |
 
 Fees add `people:fees:write` (the Direttivo, or whoever handles payments) and `people:receipts:sign` (the President
-and the Vice-president, who sign only as the officer on their own record).
+and the Vice-president, who sign only as the officer on their own record). Direct CIE signing also needs `esign:sign`;
+it reuses PoliNetwork eSign with a durable backend receipt/request association. ZIP download and signed-file upload
+remain an option.
 
 Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes and
 full census answers need `people:read`. The backend enforces all of this again; the dashboard only hides.

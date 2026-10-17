@@ -117,7 +117,7 @@ service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and th
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
 font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
 accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
-bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. Section pills and bottom nav are the only navigation; there
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -475,6 +475,7 @@ Rules that the templates above don't imply.
 - **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
   Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
   icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
+  Sign with CIE uses the shared eSign flow; Download to sign and Upload signed stay in its signing-options menu.
   Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`submitTone="danger"`, Back on
   the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
   roles. Amounts are `formatCents` ("€10.00") with tabular numbers.

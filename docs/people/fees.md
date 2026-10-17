@@ -16,11 +16,13 @@ People prototype it fixes structure and copy, while spacing comes from the primi
 3. **The system issues the receipt** on approval or Mark as paid: a PDF filled in from the record, numbered in issue
    order per fee year (`2026/042`: the fee year's first calendar year and a sequence never reused, voided ones
    included). It is **To sign**.
-4. **The President signs** (`people:receipts:sign`): **People › Receipts › Download to sign** gives a ZIP of the
-   receipts waiting for them; they sign each PDF outside the dashboard with the CIE app and come back to **Upload
-   signed**. The backend matches each file by the receipt number in its name and checks the signature; the President
-   corrects any match by hand and sends. Each receipt becomes **Signed**, then **Sent** once emailed to the member's
-   Microsoft 365 address, or **Send failed** with the mail server's reason (Retry sending on the row).
+4. **The President signs** (`people:receipts:sign`, plus `esign:sign` for CIE): **People › Receipts › Sign with CIE**
+   opens the existing [PoliNetwork eSign](https://github.com/PoliNetworkOrg/esign) flow, up to 10 receipts with one PIN.
+   The backend prepares or reuses a durable eSign request for each receipt, fixing the PDF and its signing officer.
+   The PIN stays in the local eSign window. Completion saves the signed PDF and emails it to the member even if the
+   dashboard has closed. A receipt becomes **Signed**, then **Sent**, or **Send failed** with Retry sending on the row.
+   **Download to sign** and **Upload signed** remain available in the signing options for signing externally with the
+   CIE app. The backend matches uploaded files by number, verifies their signature and lets the officer correct matches.
 5. **The President's own receipt** is signed by the **Vice-president**: it waits in their queue, and the President's
    upload marks it **Needs another signer**.
 6. Receipts are **never deleted**. **Void receipt** keeps the number and the file with a reason; voiding this year's
@@ -40,12 +42,12 @@ Fee states (from the People contract, unchanged): **Due** (warning) before the d
 
 ## Permissions
 
-| Permission             | Gives                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `people:members:read`  | People › Receipts (read-only), the record's Fees and receipts card, receipt downloads                  |
-| `people:fees:write`    | Review receipt, Mark as paid, Send reminder(s), Retry sending, Void receipt                            |
-| `people:receipts:sign` | Download to sign, Upload signed, for the officer on the signed-in record (President or Vice-president) |
-| `people:self`          | My area's fee card: pay, upload the transfer receipt, download one's own signed receipts               |
+| Permission             | Gives                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `people:members:read`  | People › Receipts (read-only), the record's Fees and receipts card, receipt downloads                                                |
+| `people:fees:write`    | Review receipt, Mark as paid, Send reminder(s), Retry sending, Void receipt                                                          |
+| `people:receipts:sign` | Prepare CIE receipt requests, Download to sign, Upload signed, for the officer on the signed-in record (President or Vice-president) |
+| `people:self`          | My area's fee card: pay, upload the transfer receipt, download one's own signed receipts                                             |
 
 These names are provisional, in the style of the People permissions. Holding `people:receipts:sign` is not enough: the
 backend signs only for the person who holds the office (`viewerSigner`), so the queue and the ZIP follow the record,
@@ -63,7 +65,7 @@ not the permission.
   issue. Reject switches the dialog to a required reason with three one-click starts; Back returns.
 - **People › Receipts** (new section, `Receipt` icon, after Member register): fee-year menu, search, a segmented filter
   over the pipeline with totals, and a table (Receipt, Member, Amount, Issued on, Signer, Status). Signers see "n
-  receipts are waiting for your signature" and the two header actions; the section shows their count in the panel, like
+  receipts are waiting for your signature", Sign with CIE and a signing-options menu; the section shows their count in the panel, like
   Reports › Open. A danger alert leads to Send failed.
 - **Upload signed receipts** (lg dialog): one row per file with its receipt (a select to correct the match) and the
   outcome: Signed, Not signed, Needs another signer, No receipt, Duplicate or Already signed. "Send n receipts" sends
@@ -94,3 +96,16 @@ The sample data adds fee years and receipts from their own seed: a sent 2025/26 
 receipts in payment order with the newest to sign, one Send failed and one Voided. `AGENT_PERSON=P-0007` (default) is
 the President, `P-0098` the Vice-president, `P-0045` has a receipt to review and `P-0021` a rejected one. A file counts
 as signed when it is a `.p7m`, holds a PDF signature dictionary (`/ByteRange`) or has "signed"/"firmata" in its name.
+
+## Integration with eSign
+
+The existing `esign.jobs.create`, job-status polling, cancellation and `/api/esign/agent/…` proxy are reused without
+changes to the local agent. `people.receipts.prepareSignatures` (see [`contract.md`](contract.md)) is the backend
+bridge. It needs both `people:receipts:sign` and `esign:sign`, plus `admin:access`, but does not grant the general
+`esign:requests:manage` permission. The backend must create the association and finish the receipt transaction;
+copying files back in a browser callback would lose completion when the page closes.
+
+**Backend implementation remains pending**, together with the rest of the People contract. The dashboard implements
+the validated adapter and shared CIE UI, not PDF signing or email delivery. Agent mode deliberately reports that CIE
+signing needs the backend; it does not invent eSign request IDs or mark sample receipts signed through the CIE action.
+The existing manual demo remains available.

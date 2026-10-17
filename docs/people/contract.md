@@ -332,23 +332,24 @@ type Receipt = {
 type Fees = { current: FeeDetail | null; receipts: Receipt[] } // newest first, voided included
 ```
 
-| Procedure                         | Kind     | Input                                                                  | Output                                                                                       | Needs                  |
-| --------------------------------- | -------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- |
-| `people.fees.review`              | query    | `{ personId }`                                                         | `{ person, memberNumber, m365Email, fee: FeeDetail, rejections, nextReceipt }`               | `people:fees:write`    |
-| `people.fees.upload`              | query    | `{ personId }`                                                         | file: the uploaded transfer receipt                                                          | `people:fees:write`    |
-| `people.fees.approve`             | mutation | `{ personId }`                                                         | `{ receipt }` (the number issued)                                                            | `people:fees:write`    |
-| `people.fees.reject`              | mutation | `{ personId, reason }`                                                 | `void` (fee back to Due, or Unpaid after the deadline)                                       | `people:fees:write`    |
-| `people.fees.markPaid`            | mutation | `{ personId, paidOn, amountCents, method, note }`                      | `{ receipt }`                                                                                | `people:fees:write`    |
-| `people.fees.remind`              | mutation | `{ personId: PersonId \| null }`                                       | `{ sent, skipped }` (all: Due and Unpaid, skips reminded < 3 days)                           | `people:fees:write`    |
-| `people.receipts.list`            | query    | `{ year: string \| null }` (null: current fee year)                    | `{ year, years, viewerSigner, officers: { president, vicePresident }, receipts }`            | `people:members:read`  |
-| `people.receipts.download`        | query    | `{ receiptId }`                                                        | file: the signed copy once there is one, else the generated PDF                              | `people:members:read`  |
-| `people.receipts.toSign`          | mutation | —                                                                      | file: a ZIP of the receipts waiting for the caller's signature                               | `people:receipts:sign` |
-| `people.receipts.previewSigned`   | mutation | `FormData` (`files`: up to 100 PDF or .p7m, 10 MB each)                | `{ uploadId, files: { fileId, fileName, size, receiptId, signature: { valid, signer } }[] }` | `people:receipts:sign` |
-| `people.receipts.sendSigned`      | mutation | `{ uploadId, assignments: Record<fileId, receiptId> }`                 | `{ sent, failed }`                                                                           | `people:receipts:sign` |
-| `people.receipts.retry`           | mutation | `{ receiptId }`                                                        | `void`                                                                                       | `people:fees:write`    |
-| `people.receipts.void`            | mutation | `{ receiptId, reason }`                                                | `void`                                                                                       | `people:fees:write`    |
-| `people.me.uploadTransferReceipt` | mutation | `FormData` (`file` PDF/JPG/PNG ≤ 10 MB, `transferDate`, `amountCents`) | `void` (fee → Receipt uploaded)                                                              | `people:self`          |
-| `people.me.receipt`               | query    | `{ receiptId }`                                                        | file: one of the caller's own signed receipts                                                | `people:self`          |
+| Procedure                           | Kind     | Input                                                                  | Output                                                                                       | Needs                                 |
+| ----------------------------------- | -------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `people.fees.review`                | query    | `{ personId }`                                                         | `{ person, memberNumber, m365Email, fee: FeeDetail, rejections, nextReceipt }`               | `people:fees:write`                   |
+| `people.fees.upload`                | query    | `{ personId }`                                                         | file: the uploaded transfer receipt                                                          | `people:fees:write`                   |
+| `people.fees.approve`               | mutation | `{ personId }`                                                         | `{ receipt }` (the number issued)                                                            | `people:fees:write`                   |
+| `people.fees.reject`                | mutation | `{ personId, reason }`                                                 | `void` (fee back to Due, or Unpaid after the deadline)                                       | `people:fees:write`                   |
+| `people.fees.markPaid`              | mutation | `{ personId, paidOn, amountCents, method, note }`                      | `{ receipt }`                                                                                | `people:fees:write`                   |
+| `people.fees.remind`                | mutation | `{ personId: PersonId \| null }`                                       | `{ sent, skipped }` (all: Due and Unpaid, skips reminded < 3 days)                           | `people:fees:write`                   |
+| `people.receipts.list`              | query    | `{ year: string \| null }` (null: current fee year)                    | `{ year, years, viewerSigner, officers: { president, vicePresident }, receipts }`            | `people:members:read`                 |
+| `people.receipts.download`          | query    | `{ receiptId }`                                                        | file: the signed copy once there is one, else the generated PDF                              | `people:members:read`                 |
+| `people.receipts.prepareSignatures` | mutation | `{ receiptIds: string[] }` (1–10 distinct IDs)                         | `{ receiptId, requestId: UUID, title }[]`                                                    | `people:receipts:sign` + `esign:sign` |
+| `people.receipts.toSign`            | mutation | —                                                                      | file: a ZIP of the receipts waiting for the caller's signature                               | `people:receipts:sign`                |
+| `people.receipts.previewSigned`     | mutation | `FormData` (`files`: up to 100 PDF or .p7m, 10 MB each)                | `{ uploadId, files: { fileId, fileName, size, receiptId, signature: { valid, signer } }[] }` | `people:receipts:sign`                |
+| `people.receipts.sendSigned`        | mutation | `{ uploadId, assignments: Record<fileId, receiptId> }`                 | `{ sent, failed }`                                                                           | `people:receipts:sign`                |
+| `people.receipts.retry`             | mutation | `{ receiptId }`                                                        | `void`                                                                                       | `people:fees:write`                   |
+| `people.receipts.void`              | mutation | `{ receiptId, reason }`                                                | `void`                                                                                       | `people:fees:write`                   |
+| `people.me.uploadTransferReceipt`   | mutation | `FormData` (`file` PDF/JPG/PNG ≤ 10 MB, `transferDate`, `amountCents`) | `void` (fee → Receipt uploaded)                                                              | `people:self`                         |
+| `people.me.receipt`                 | query    | `{ receiptId }`                                                        | file: one of the caller's own signed receipts                                                | `people:self`                         |
 
 Backend rules for fees and receipts:
 
@@ -356,6 +357,19 @@ Backend rules for fees and receipts:
   `viewerSigner` is the caller's office, and only when they also hold `people:receipts:sign`. Every receipt's `signer`
   is `president`, except the President's own (`vicePresident`). `toSign`, `previewSigned` and `sendSigned` act only on
   receipts whose `signer` is the caller's office.
+- **CIE preparation**: `prepareSignatures` requires `admin:access`, both signing permissions and the actual officer
+  on the linked, confirmed People record. Validate the whole batch before creating anything: 1–10 distinct receipts,
+  all `toSign`, all assigned to that officer. Resolve officer IdP subjects on the backend; the browser never chooses
+  a signer, PDF, placement, recipient or output drive. Create or reuse one active eSign request per receipt/version
+  under a uniqueness constraint; retries return the same requests. Use the issued PDF with its hash and fixed signature
+  placement, the caller's office, and no separate eSign delivery (the receipt pipeline owns the email).
+- **CIE completion**: bind the receipt to its eSign request persistently. The eSign completion transaction verifies
+  the signature, officer, current receipt/version and `toSign` status, stores the signed PDF, writes Activity and queues
+  the receipt email exactly once. Cancellation or failure leaves the receipt `toSign` for retry or manual upload;
+  voiding invalidates active eSign requests/jobs. A manual upload also completes or cancels the linked request/jobs.
+  Use concurrency guards so an upload and CIE completion cannot replace each other's file or send twice. Completion
+  and delivery must work with the browser closed, including requests signed later from Signatures › To sign. A
+  receipt's active eSign request is system-owned: generic request deletion must not break receipt retention/audit.
 - **Numbering**: per fee year, `YYYY/NNN` from the year's first calendar year; issued atomically, never reused, voided
   ones included.
 - **Signatures**: verify each file for real (PAdES in the PDF or a CAdES `.p7m`), that the certificate is the officer's,

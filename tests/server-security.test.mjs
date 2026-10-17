@@ -219,6 +219,13 @@ test("dashboard server functions attach their scoped authorization middleware", 
 })
 
 test("dashboard mutations enforce their exact write scope", async () => {
+  // Receipt preparation joins two domains; manual signing keeps its original People scope.
+  const combinedScopes = {
+    "src/features/people/people-receipts.functions.ts:prepareReceiptSignatures": [
+      "peopleReceiptsSignMiddleware",
+      "esignSignWriteMiddleware",
+    ],
+  }
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts"]],
     ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
@@ -262,7 +269,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
       for (const mutation of mutations) {
         assert.deepEqual(
           mutation.middleware,
-          [expectedMiddleware],
+          combinedScopes[`${file}:${mutation.name}`] ?? [expectedMiddleware],
           `${file}:${mutation.name} must use its dedicated middleware`
         )
       }
@@ -306,7 +313,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/census-page.tsx": ["people:write", "people:read"],
     "src/features/people/linking-page.tsx": "people:write",
     "src/features/people/members-page.tsx": ["people:members:write", "people:fees:write"],
-    "src/features/people/receipts-page.tsx": ["people:receipts:sign", "people:fees:write"],
+    "src/features/people/receipts-page.tsx": ["people:receipts:sign", "people:fees:write", "esign:sign"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -361,7 +368,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],
     "src/features/people/member-dialogs.tsx": ["createMember", "setMemberStatus", "setMemberNumber", "exportMembers"],
     "src/features/people/fee-dialogs.tsx": ["approveFee", "rejectFee", "markFeePaid", "sendFeeReminders"],
-    "src/features/people/receipts-page.tsx": ["downloadReceiptsToSign", "retryReceipt"],
+    "src/features/people/receipts-page.tsx": ["downloadReceiptsToSign", "retryReceipt", "prepareReceiptSignatures"],
     "src/features/people/receipt-dialogs.tsx": ["previewSignedReceipts", "sendSignedReceipts", "voidReceipt"],
     "src/features/people/my-fee-card.tsx": ["uploadMyTransferReceipt"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],

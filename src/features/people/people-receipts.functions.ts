@@ -1,9 +1,19 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { peopleMembersReadMiddleware, peopleReceiptsSignMiddleware } from "@/server/auth.middleware"
+import {
+  esignSignWriteMiddleware,
+  peopleMembersReadMiddleware,
+  peopleReceiptsSignMiddleware,
+} from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
-import { MAX_SIGNED_FILES, receiptInputSchema, receiptsInputSchema, sendSignedInputSchema } from "./people.contract"
+import {
+  MAX_SIGNED_FILES,
+  prepareReceiptSignaturesInputSchema,
+  receiptInputSchema,
+  receiptsInputSchema,
+  sendSignedInputSchema,
+} from "./people.contract"
 
 const SIGNED_MAX_SIZE = 10 * 1024 * 1024
 const SIGNED_EXTENSIONS = /\.(pdf|p7m)$/i
@@ -45,3 +55,9 @@ export const sendSignedReceipts = createServerFn({ method: "POST" })
   .middleware([peopleReceiptsSignMiddleware])
   .validator(sendSignedInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).sendSignedReceipts(data))
+
+/** Creates or reuses durable eSign requests for these receipts; the backend fixes the PDF and the officer. */
+export const prepareReceiptSignatures = createServerFn({ method: "POST" })
+  .middleware([peopleReceiptsSignMiddleware, esignSignWriteMiddleware])
+  .validator(prepareReceiptSignaturesInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).prepareReceiptSignatures(data))
