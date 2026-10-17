@@ -31,8 +31,8 @@ const DESKTOP_QUERY = "(min-width: 760px)"
 
 /**
  * The panel slides in from under the rail when a service page follows Overview/Account and back out the other way;
- * below 1440px the content column follows with the same transform, so its edge stays locked to the panel's.
- * Wider screens reserve the panel's space and keep the content stationary. Exits run faster than
+ * the content column follows with the same transform, so its edge stays locked to the panel's. Pages without a
+ * panel give its space back, so their content centers between the rail and the window's edge. Exits run faster than
  * enters. Both slides animate `transform` strings, which Motion hands to WAAPI: they start in the commit that
  * mounts the next page and keep running off the main thread while it renders (an `x` or `layout` animation is
  * driven per frame from JS and stalls behind that commit).
@@ -140,7 +140,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
     const column = columnRef.current
     if (!column || columnHadPanel.current === hasPanel) return
     columnHadPanel.current = hasPanel
-    if (reduceMotion || !isDesktop || window.matchMedia("(min-width: 1440px)").matches) return
+    if (reduceMotion || !isDesktop) return
     const offset = new DOMMatrixReadOnly(getComputedStyle(column).transform).m41
     const width = panelWidth()
     const from = `translateX(${offset + (hasPanel ? -width : width)}px)`
@@ -171,7 +171,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
           />
           {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. The leaving panel
               keeps the props it last rendered with, so `exit` names its own transition. */}
-          <div className="relative shrink-0 min-[1440px]:w-60 max-shell:hidden">
+          <div className="relative shrink-0 max-shell:hidden">
             <AnimatePresence initial={false} mode="popLayout">
               {hasPanel ? (
                 <motion.div
@@ -183,7 +183,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
                     transition: reduceMotion ? { duration: 0 } : panelEnter,
                   }}
                   exit={{ transform: "translateX(-100%)", transition: reduceMotion ? { duration: 0 } : panelExit }}
-                  className="flex h-full shrink-0 min-[1440px]:absolute min-[1440px]:inset-y-0 min-[1440px]:left-0"
+                  className="flex h-full shrink-0"
                 >
                   <Panel service={service} match={match} pending={pending} />
                 </motion.div>
