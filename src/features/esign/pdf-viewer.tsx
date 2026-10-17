@@ -59,6 +59,8 @@ export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default
     setError(null)
     loadPdfjs()
       .then(async (pdfjs) => {
+        // Cleaned up while pdf.js was loading: a task created now would never be destroyed.
+        if (cancelled) return
         // pdf.js takes ownership of the buffer: give it a copy.
         task = pdfjs.getDocument({ data: data.slice() })
         const loaded = await task.promise
@@ -203,7 +205,17 @@ function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onClick, ch
   }, [index, onVisible, root])
 
   useEffect(() => {
-    if (!doc || !near) return
+    if (!doc || !near) {
+      // Far from the viewport, or the document is changing: free the bitmap (width × height × 4 bytes at the device
+      // pixel ratio). The previous run's cleanup has already cancelled its render, so nothing is still drawing here.
+      const canvas = canvasRef.current
+      if (canvas) {
+        canvas.width = 0
+        canvas.height = 0
+      }
+      setRendered(false)
+      return
+    }
     let task: RenderTask | null = null
     let cancelled = false
     const timer = window.setTimeout(() => {
