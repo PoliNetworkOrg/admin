@@ -621,11 +621,13 @@ export function NewEsignRequestPage({
                     <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
                       {search.trim() !== ""
                         ? "Nobody matches."
-                        : eligible.length === 0
+                        : eligible.length === 0 && usedDrives.length > 0
                           ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
-                          : usedDrives.length > 0
-                            ? "Everyone allowed to sign these documents is added."
-                            : "Everyone who can sign is added. People appear here after they open Signatures once."}
+                          : eligible.length === 0
+                            ? "No registered people currently have permission to sign."
+                            : usedDrives.length > 0
+                              ? "Everyone allowed to sign these documents is added."
+                              : "Everyone who can sign is added."}
                     </li>
                   )}
                 </ul>
