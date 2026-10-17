@@ -20,7 +20,7 @@ import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { declineEsignRequest, getEsignDocumentContent } from "./esign.functions"
+import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { RequestStatusBadge, SignerStatusBadge, signedProgress } from "./request-status"
 import { cancelEsignRequest, retryEsignDelivery } from "./requests.functions"
@@ -79,6 +79,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const declineFn = useServerFn(declineEsignRequest)
   const cancelFn = useServerFn(cancelEsignRequest)
   const retryFn = useServerFn(retryEsignDelivery)
+  const uploadSignedFn = useServerFn(uploadSignedEsignDocument)
+  const [uploadingSigned, setUploadingSigned] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const { request, events, currentDocumentId, signingNow, pdf, me } = detail
 
   const [content, setContent] = useState<{ base64: string; fileName: string } | null>(null)
@@ -144,6 +147,29 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     }
     setDeclineOpen(false)
     appToast.success("Request declined.")
+  }
+
+  async function uploadSigned(file: File) {
+    setUploadingSigned(true)
+    setUploadError(null)
+    try {
+      const form = new FormData()
+      form.set("requestId", request.id)
+      form.set("file", file)
+      await uploadSignedFn({ data: form })
+    } catch (error) {
+      console.error(error)
+      setUploadError(error instanceof Error ? error.message : "Couldn't upload the signed PDF.")
+      setUploadingSigned(false)
+      return
+    }
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+    setUploadingSigned(false)
+    appToast.success("Document signed.")
   }
 
   async function retry() {
@@ -261,6 +287,28 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     <X aria-hidden /> Decline
                   </Button>
                 </div>
+                <details className="mt-4 text-[13px] text-(--pn-fg-muted)">
+                  <summary className="cursor-pointer text-(--pn-accent) select-none">Can't use the Sign Agent?</summary>
+                  <p className="mt-2 text-pretty">
+                    Download the PDF, sign it with the official Software CIE or CieSign app, then upload the signed
+                    file. It must be this exact version with your signature added.
+                  </p>
+                  <label className="mt-2 inline-flex">
+                    <span className="sr-only">Signed PDF</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      disabled={uploadingSigned}
+                      className="text-[13px] file:mr-3 file:h-9 file:rounded-(--pn-r-3) file:border file:border-(--pn-line-strong) file:bg-(--pn-surface) file:px-3 file:text-(--pn-fg)"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        event.target.value = ""
+                        if (file) void uploadSigned(file)
+                      }}
+                    />
+                  </label>
+                  {uploadError && <InlineAlert className="mt-2">{uploadError}</InlineAlert>}
+                </details>
               </SectionCard>
             )}
 

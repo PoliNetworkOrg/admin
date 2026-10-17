@@ -88,3 +88,22 @@ export const declineEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
   .validator(z.object({ id: z.uuid(), reason: z.string().trim().max(500).nullable() }))
   .handler(({ data, context }) => context.backend.esign.requests.decline.mutate(data))
+
+function parseSignedUpload(data: FormData) {
+  const requestId = z.uuid().safeParse(data.get("requestId"))
+  const file = data.get("file")
+  if (!requestId.success) throw new Error("Unknown request")
+  if (!(file instanceof File) || file.size > 30 * 1024 * 1024) throw new Error("Choose a PDF up to 30 MB")
+  return { requestId: requestId.data, file }
+}
+
+/** The fallback when the agent can't run: a PDF the signer signed with the official CIE app. */
+export const uploadSignedEsignDocument = createServerFn({ method: "POST" })
+  .middleware([esignSignWriteMiddleware])
+  .validator(parseSignedUpload)
+  .handler(async ({ data, context }) => {
+    const form = new FormData()
+    form.set("requestId", data.requestId)
+    form.set("file", data.file)
+    return context.backend.esign.requests.uploadSigned.mutate(form)
+  })

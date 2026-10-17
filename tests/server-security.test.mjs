@@ -310,7 +310,12 @@ test("event handlers integrate protected server-function redirects with the rout
       "importEsignDriveDocument",
       "createEsignRequest",
     ],
-    "src/features/esign/request-page.tsx": ["declineEsignRequest", "cancelEsignRequest", "retryEsignDelivery"],
+    "src/features/esign/request-page.tsx": [
+      "declineEsignRequest",
+      "cancelEsignRequest",
+      "retryEsignDelivery",
+      "uploadSignedEsignDocument",
+    ],
     "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
     "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
     "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
