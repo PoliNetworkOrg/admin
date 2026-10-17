@@ -450,6 +450,8 @@ Rules that the templates above don't imply.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
-  not sign the documents of the chosen drives are left out of the list, with a line saying why.
+  not sign the documents of the chosen drives are left out of the list, with a line saying why. The signer picker
+  lists people only once a search is typed, each with the email under the name; the viewer carries a blue "You" chip
+  here and in signer lists.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.

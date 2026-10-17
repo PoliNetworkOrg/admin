@@ -1,3 +1,4 @@
+import { Chip } from "@/components/primitives/chip"
 import { StatusBadge } from "@/components/primitives/status-badge"
 import type { EsignRequest, EsignSigner } from "@/lib/api/types"
 
@@ -27,4 +28,13 @@ export function SignerStatusBadge({ signer, turn }: { signer: EsignSigner; turn:
 /** "1 of 2 signed". */
 export function signedProgress(request: Pick<EsignRequest, "signers" | "signedCount">) {
   return `${request.signedCount} of ${request.signers.length} signed`
+}
+
+/** Marks the signed-in user in a list of people. */
+export function YouChip() {
+  return (
+    <Chip size="tiny" className="shrink-0 border-transparent bg-(--pn-accent-soft) text-(--pn-accent)">
+      You
+    </Chip>
+  )
 }
