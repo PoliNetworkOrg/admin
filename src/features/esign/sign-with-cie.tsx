@@ -58,7 +58,9 @@ function openPopup(): Window | null {
   const height = 680
   const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2)
   const top = Math.max(0, window.screenY + (window.outerHeight - height) / 3)
-  const popup = window.open("", "pn-sign-agent", `popup=yes,width=${width},height=${height},left=${left},top=${top}`)
+  // A new name each time: a window still showing the agent's page is cross-origin, and writing to it would throw.
+  const name = `pn-sign-agent-${Date.now()}`
+  const popup = window.open("", name, `popup=yes,width=${width},height=${height},left=${left},top=${top}`)
   if (popup) {
     popup.document.title = "PoliNetwork Sign Agent"
     popup.document.body.style.cssText =
@@ -162,11 +164,13 @@ export function SignWithCie({
   async function start() {
     setError(null)
     finishing.current = false
-    // Opened synchronously in the click, so the browser doesn't block it.
-    const popup = openPopup()
-    popupRef.current = popup
-    setPhase({ kind: "starting" })
+    popupRef.current?.close()
+    let popup: Window | null = null
     try {
+      // Opened synchronously in the click, so the browser doesn't block it.
+      popup = openPopup()
+      popupRef.current = popup
+      setPhase({ kind: "starting" })
       const job = await startFn({ data: { requestId, placement } })
       const url = agentSignUrl(job.ticket, window.location.origin)
       if (popup && !popup.closed) popup.location.href = url
@@ -273,7 +277,13 @@ export function SignWithCie({
           )}
           <div className={dialogFooter}>
             {phase?.kind === "ended" ? (
-              <Button className="h-10" onClick={() => setPhase(null)}>
+              <Button
+                className="h-10"
+                onClick={() => {
+                  popupRef.current?.close()
+                  setPhase(null)
+                }}
+              >
                 Close
               </Button>
             ) : (

@@ -113,7 +113,8 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
         description={description}
         right={canManage ? <NewRequestButton /> : undefined}
         left={
-          requests.length > 0 ? (
+          // Managers keep the Mine/Everyone switch even when they have no requests of their own.
+          requests.length > 0 || (!inbox && canManage) ? (
             <Toolbar
               lead={
                 !inbox && canManage ? (
@@ -127,9 +128,9 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                   />
                 ) : undefined
               }
-              search={{ value: query, onChange: setQuery }}
+              search={requests.length > 0 ? { value: query, onChange: setQuery } : undefined}
               filters={
-                inbox ? undefined : (
+                inbox || requests.length === 0 ? undefined : (
                   <SegmentedControl
                     label="Status"
                     items={STATUS_ITEMS.map((item) => ({

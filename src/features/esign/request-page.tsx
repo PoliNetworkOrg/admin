@@ -119,10 +119,18 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const delivering = request.status === "completed" && request.delivery?.status === "pending"
   useEffect(() => {
     if (!delivering) return
-    const timer = window.setTimeout(() => {
-      router.invalidate().catch((error) => console.error(error))
+    let busy = false
+    const timer = window.setInterval(() => {
+      if (busy) return
+      busy = true
+      router
+        .invalidate()
+        .catch((error) => console.error(error))
+        .finally(() => {
+          busy = false
+        })
     }, 2000)
-    return () => window.clearTimeout(timer)
+    return () => window.clearInterval(timer)
   }, [delivering, router])
 
   const names = useMemo(() => {
