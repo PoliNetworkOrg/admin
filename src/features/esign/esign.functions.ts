@@ -39,6 +39,11 @@ export const getEsignHome = createServerFn()
     return { config, requests }
   })
 
+/** How many requests wait for the caller's signature, for the navigation badge. */
+export const getEsignPendingCount = createServerFn()
+  .middleware([esignReadMiddleware])
+  .handler(async ({ context }) => (await context.backend.esign.requests.list.query({ scope: "inbox" })).length)
+
 export const getEsignRequest = createServerFn()
   .middleware([esignReadMiddleware])
   .validator(z.object({ id: z.uuid() }))

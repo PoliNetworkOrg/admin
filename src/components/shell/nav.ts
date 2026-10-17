@@ -475,3 +475,29 @@ export function documentTitle(match: PageMatch): string {
   const current = sectionFor(match)
   return current ? `${current.title} - ${service.title} - PoliNetwork Admin` : `${service.title} - PoliNetwork Admin`
 }
+
+/** Counts that mark a service and one of its sections: open reports, documents waiting for the user's signature. */
+export type PendingCounts = { reports: Promise<number | null>; signatures: Promise<number | null> }
+
+const NO_COUNT: Promise<number | null> = Promise.resolve(null)
+
+/** The count behind a service's dot in the rail and bottom nav, if it has one. */
+export function servicePending(
+  id: ServiceId,
+  pending: PendingCounts
+): { count: Promise<number | null>; label: string } | null {
+  if (id === "reports") return { count: pending.reports, label: "open reports" }
+  if (id === "esign") return { count: pending.signatures, label: "documents to sign" }
+  return null
+}
+
+/** The count next to a section in the panel, if it has one. */
+export function sectionPending(
+  serviceId: ServiceId,
+  sectionId: string,
+  pending: PendingCounts
+): Promise<number | null> {
+  if (serviceId === "reports" && sectionId === "open") return pending.reports
+  if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
+  return NO_COUNT
+}
