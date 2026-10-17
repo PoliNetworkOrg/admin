@@ -82,8 +82,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   scheme, macOS universal .app/.dmg, Windows GUI exe, Linux tar/.deb, CI on 3 OSes, `doctor`. sign-agent PR #1 (merged).
 - ☑ Release v0.1.0 (Windows zip, macOS universal .app/.dmg, Linux tar.gz/.deb amd64+arm64). Verified on this Mac:
   loads the installed Software CIE module through the x86_64 worker and sees the BIT4ID reader.
-- ◐ Review round 2 agent findings (subagent, branch `fix/cie-review`): validate EF.SOD against the Italian CSCA before
-  sending the PIN; never repeat VERIFY on 6Cxx. Then release v0.1.1.
+- ☑ Review round 2 agent findings (sign-agent PR #3, merged): EF.SOD validated against pinned Italian CSCA00–05
+  before the PIN (`card_untrusted`, no fallback); VERIFY never repeated on 6Cxx. Released v0.1.1.
+- ☐ Confirm on a physical CIE that its SOD/EF.DH verify (the direct `cie` provider is tried last, after the official
+  middleware and OpenCIE).
 
 ### Phase 2 — backend
 
