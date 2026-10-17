@@ -14,6 +14,43 @@ function json(status: number, body: { error: { code: string; message: string } }
 }
 
 /**
+ * Reads at most MAX_BODY_BYTES within 10 seconds, stopping as soon as the limit is passed: anyone can reach this
+ * route, so an oversized or slow body must not be buffered. Null when too large or too slow.
+ */
+async function readLimited(request: Request): Promise<string | null> {
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return null
+  const reader = request.body?.getReader()
+  if (!reader) return ""
+  const chunks: Uint8Array[] = []
+  let size = 0
+  let timedOut = false
+  const deadline = setTimeout(() => {
+    timedOut = true
+    void reader.cancel()
+  }, 10_000)
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > MAX_BODY_BYTES) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(value)
+    }
+  } catch (error) {
+    console.error(error)
+    return null
+  } finally {
+    clearTimeout(deadline)
+  }
+  // A cancelled stream ends early: never forward a truncated body.
+  if (timedOut) return null
+  return new TextDecoder().decode(Buffer.concat(chunks))
+}
+
+/**
  * Forwards the sign agent's calls to the backend's `/esign/agent/…`. The agent reaches the dashboard's public origin,
  * not the in-cluster backend. Nothing from the browser session is used or forwarded.
  */
@@ -24,8 +61,9 @@ async function proxy({ request, params }: { request: Request; params: { _splat?:
   if (request.method === "POST") {
     if (!(request.headers.get("content-type") ?? "").startsWith("application/json"))
       return json(415, { error: { code: "bad_request", message: "Send JSON" } })
-    body = await request.text()
-    if (body.length > MAX_BODY_BYTES) return json(413, { error: { code: "bad_request", message: "Too large" } })
+    const read = await readLimited(request)
+    if (read === null) return json(413, { error: { code: "bad_request", message: "Too large" } })
+    body = read
   }
   try {
     const response = await fetch(`${env.BACKEND_URL}/esign/agent/${path}`, {

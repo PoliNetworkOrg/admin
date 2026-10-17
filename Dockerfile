@@ -2,6 +2,8 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Unreleased backend types for the e-signing branch; removed once @polinetwork/backend is published with them.
+COPY vendor ./vendor
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
