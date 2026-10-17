@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
-import { RequestStatusBadge, SignerStatusBadge, signedProgress } from "./request-status"
+import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "./request-status"
 import { cancelEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
@@ -391,9 +391,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <span className="truncate text-[14px] font-medium">
-                          {signer.name}
-                          {signer.sub === me && <span className="font-normal text-(--pn-fg-muted)"> (you)</span>}
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-[14px] font-medium">{signer.name}</span>
+                          {signer.sub === me && <YouChip />}
                         </span>
                         <SignerStatusBadge signer={signer} turn={request.turn.includes(signer.sub)} />
                       </div>

@@ -50,6 +50,7 @@ import { DriveBrowser, type DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
+import { YouChip } from "./request-status"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
@@ -304,6 +305,8 @@ export function NewEsignRequestPage({
       .filter((p) => needle === "" || `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle))
       .sort((a, b) => Number(b.sub === me) - Number(a.sub === me))
   }, [people, signers, search, me, usedDrives.join()])
+  // The picker lists people only once something is typed, so the whole directory is never shown at once.
+  const matches = search.trim() === "" ? [] : available
   const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
   const eligible = people.filter((p) => usedDrives.every((d) => p.drives.includes(d)))
 
@@ -593,9 +596,9 @@ export function NewEsignRequestPage({
                         <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
                           {index + 1}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">
-                          {s.name}
-                          {s.sub === me && <span className="font-normal text-(--pn-fg-muted)"> (you)</span>}
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <span className="truncate text-[14px] font-medium">{s.name}</span>
+                          {s.sub === me && <YouChip />}
                         </span>
                         <IconButton
                           label="Move up"
@@ -686,42 +689,46 @@ export function NewEsignRequestPage({
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </div>
-                <ul className="flex max-h-48 flex-col overflow-y-auto">
-                  {available.slice(0, 30).map((person) => (
-                    <li key={person.sub}>
-                      <button
-                        type="button"
-                        onClick={() => addSigner(person)}
-                        className="flex h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[14px] hover:bg-(--pn-hover)"
-                      >
-                        <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                        <span className="min-w-0 flex-1 truncate">
-                          {person.name}
-                          {person.sub === me && <span className="text-(--pn-fg-muted)"> (you)</span>}
-                        </span>
-                        {person.email && (
-                          <span className="max-w-1/2 truncate font-mono text-[12px] text-(--pn-fg-muted)">
-                            {person.email}
+                {(matches.length > 0 || available.length === 0) && (
+                  <ul className="flex max-h-60 flex-col overflow-y-auto">
+                    {matches.slice(0, 30).map((person) => (
+                      <li key={person.sub}>
+                        <button
+                          type="button"
+                          onClick={() => addSigner(person)}
+                          className="flex min-h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 py-1.5 text-left hover:bg-(--pn-hover)"
+                        >
+                          <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate text-[14px]">{person.name}</span>
+                              {person.sub === me && <YouChip />}
+                            </span>
+                            {person.email && (
+                              <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">
+                                {person.email}
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                  {available.length === 0 && (
-                    <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
-                      {search.trim() !== ""
-                        ? "Nobody matches."
-                        : eligible.length === 0 && usedDrives.length > 0
-                          ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
-                          : eligible.length === 0
-                            ? "No registered people currently have permission to sign."
-                            : usedDrives.length > 0
-                              ? "Everyone allowed to sign these documents is added."
-                              : "Everyone who can sign is added."}
-                    </li>
-                  )}
-                </ul>
-                {available.length > 0 && eligible.length < people.length && (
+                        </button>
+                      </li>
+                    ))}
+                    {available.length === 0 && (
+                      <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
+                        {search.trim() !== ""
+                          ? "Nobody matches."
+                          : eligible.length === 0 && usedDrives.length > 0
+                            ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
+                            : eligible.length === 0
+                              ? "No registered people currently have permission to sign."
+                              : usedDrives.length > 0
+                                ? "Everyone allowed to sign these documents is added."
+                                : "Everyone who can sign is added."}
+                      </li>
+                    )}
+                  </ul>
+                )}
+                {matches.length > 0 && eligible.length < people.length && (
                   <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
                     Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
                   </p>
