@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
 import { esignReadMiddleware, esignSignWriteMiddleware } from "@/server/auth.middleware"
+import type { BackendClient } from "@/server/backend.server"
 
 /** The audit payloads the backend writes; anything else is dropped. */
 const eventData = z
@@ -44,22 +45,44 @@ export const getEsignPendingCount = createServerFn()
   .middleware([esignReadMiddleware])
   .handler(async ({ context }) => (await context.backend.esign.requests.list.query({ scope: "inbox" })).length)
 
+/** A request with its audit trail and the pages and signatures of its current PDF. */
+async function requestDetail(backend: BackendClient, id: string) {
+  const detail = await backend.esign.requests.get.query({ id })
+  const document = detail.currentDocumentId
+    ? await backend.esign.documents.get.query({ documentId: detail.currentDocumentId })
+    : null
+  const events = detail.events.map((event) => {
+    const parsed = eventData.safeParse(event.data ?? {})
+    return { ...event, data: parsed.success ? parsed.data : {} }
+  })
+  return { ...detail, events, pdf: document?.pdf ?? null }
+}
+
 export const getEsignRequest = createServerFn()
   .middleware([esignReadMiddleware])
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data, context }) => {
-    const [config, detail] = await Promise.all([
+    const [config, detail, inbox] = await Promise.all([
       context.backend.esign.config.query(),
-      context.backend.esign.requests.get.query({ id: data.id }),
+      requestDetail(context.backend, data.id),
+      context.backend.esign.requests.list.query({ scope: "inbox" }),
     ])
-    const document = detail.currentDocumentId
-      ? await context.backend.esign.documents.get.query({ documentId: detail.currentDocumentId })
-      : null
-    const events = detail.events.map((event) => {
-      const parsed = eventData.safeParse(event.data ?? {})
-      return { ...event, data: parsed.success ? parsed.data : {} }
-    })
-    return { config, ...detail, events, pdf: document?.pdf ?? null, me: context.user.sub }
+    /** Other documents waiting for the caller, which can be signed together with this one. */
+    const alsoWaiting = inbox.filter((r) => r.myTurn && r.id !== data.id).length
+    return { config, ...detail, me: context.user.sub, alsoWaiting }
+  })
+
+/** Documents signed together with one PIN, at most this many. */
+export const MAX_BATCH = 10
+
+/** The documents waiting for the caller's signature, in inbox order, for signing them together. */
+export const getEsignBatch = createServerFn()
+  .middleware([esignReadMiddleware])
+  .handler(async ({ context }) => {
+    const inbox = await context.backend.esign.requests.list.query({ scope: "inbox" })
+    const waiting = inbox.filter((r) => r.myTurn)
+    const items = await Promise.all(waiting.slice(0, MAX_BATCH).map((r) => requestDetail(context.backend, r.id)))
+    return { items, more: Math.max(waiting.length - MAX_BATCH, 0), me: context.user.sub }
   })
 
 /** The PDF bytes of a document version, base64-encoded, for the viewer and downloads. */
@@ -68,20 +91,32 @@ export const getEsignDocumentContent = createServerFn()
   .validator(z.object({ documentId: z.uuid() }))
   .handler(({ data, context }) => context.backend.esign.documents.content.query(data))
 
+const jobIds = z.object({ jobIds: z.array(z.uuid()).min(1).max(MAX_BATCH) })
+
 export const getEsignJobStatus = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(z.object({ jobId: z.uuid() }))
-  .handler(({ data, context }) => context.backend.esign.jobs.status.query(data))
+  .validator(jobIds)
+  .handler(({ data, context }) => context.backend.esign.jobs.statuses.query(data))
 
-/** Starts the caller's signature: returns the single-use ticket the agent's page needs. */
+/**
+ * Starts the caller's signatures of one or more requests: returns a single-use ticket per request, all opened in one
+ * agent window. `places` are the caller's boxes as they dragged them, one per place, in order.
+ */
 export const startEsignSignature = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
-  .validator(z.object({ requestId: z.uuid(), placement: placement.optional() }))
+  .validator(
+    z.object({
+      items: z
+        .array(z.object({ requestId: z.uuid(), places: z.array(placement).max(20).optional() }))
+        .min(1)
+        .max(MAX_BATCH),
+    })
+  )
   .handler(({ data, context }) => context.backend.esign.jobs.create.mutate(data))
 
 export const cancelEsignSignature = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
-  .validator(z.object({ jobId: z.uuid() }))
+  .validator(jobIds)
   .handler(({ data, context }) => context.backend.esign.jobs.cancel.mutate(data))
 
 export const declineEsignRequest = createServerFn({ method: "POST" })

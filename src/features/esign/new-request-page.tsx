@@ -1,6 +1,19 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ArrowDown, ArrowUp, Cloud, FileUp, MapPin, Search, Trash2, UserPlus } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  Cloud,
+  FileUp,
+  MapPin,
+  PenLine,
+  Plus,
+  Search,
+  Stamp,
+  Trash2,
+  UserPlus,
+} from "lucide-react"
 import { type DragEvent, useEffect, useId, useMemo, useState } from "react"
 
 import {
@@ -12,6 +25,17 @@ import {
   LoadingButton,
   SectionCard,
 } from "@/components/primitives"
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/primitives/menu"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -24,12 +48,18 @@ import { cn } from "@/lib/utils"
 import { DriveBrowser, type DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
+import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
-/** `manual`: the user moved the box, so a role no longer places it. */
-type SignerDraft = { sub: string; name: string; role: string; placement: BoxPlacement; manual: boolean }
+/** `manual`: the user moved the first box, so a role no longer places it. */
+type SignerDraft = { sub: string; name: string; role: string; places: Place[]; manual: boolean }
+/** Where the next click on a page puts a box: a signer's existing place, or a new one when `place` is null. */
+type Placing = { signer: number; place: number | null }
+
+/** Boxes one signer may have in a document (the backend's limit). */
+const MAX_PLACES = 20
 
 const ROLES = ["Presidente", "Vicepresidente", "Segretario", "Tesoriere", "Consigliere", "Socio"]
 /** A signature box of 190 × 62 pt, the size of a typical handwritten-signature space. */
@@ -110,7 +140,10 @@ export function NewEsignRequestPage({
   }, [bytes])
 
   const [signers, setSigners] = useState<SignerDraft[]>([])
-  const [placing, setPlacing] = useState<number | null>(null)
+  const [placing, setPlacing] = useState<Placing | null>(null)
+  const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
+  /** The box whose menu is open, so it stands out among the same person's boxes. */
+  const [highlight, setHighlight] = useState<{ signer: string; place: number } | null>(null)
   const [ordered, setOrdered] = useState(true)
   const [search, setSearch] = useState("")
 
@@ -136,7 +169,9 @@ export function NewEsignRequestPage({
     setTitle(baseName(next.fileName))
     setFileName(`${baseName(next.fileName)} - firmato.pdf`)
     if (next.folder) setFolder(next.folder)
-    setSigners((current) => current.map((s, i) => ({ ...s, placement: defaultPlacement(i, next.pdf.pages) })))
+    setSigners((current) =>
+      current.map((s, i) => ({ ...s, places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature" }] }))
+    )
   }
 
   async function upload(file: File) {
@@ -179,16 +214,12 @@ export function NewEsignRequestPage({
   }
 
   function addSigner(person: EsignProfile) {
+    const where = defaultPlacement(signers.length, pages)
     setSigners((current) => [
       ...current,
-      {
-        sub: person.sub,
-        name: person.name,
-        role: "",
-        placement: defaultPlacement(current.length, pages),
-        manual: false,
-      },
+      { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false },
     ])
+    setFocus({ page: where.page, y: where.y })
     setSearch("")
   }
 
@@ -205,19 +236,43 @@ export function NewEsignRequestPage({
     })
   }
 
+  function updatePlaces(index: number, update: (places: Place[]) => Place[], manual = true) {
+    setSigners((current) =>
+      current.map((s, i) =>
+        i === index ? { ...s, places: withSignature(update(s.places)), manual: s.manual || manual } : s
+      )
+    )
+  }
+
+  function movePlace(index: number, at: number, placement: BoxPlacement) {
+    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p)), at === 0)
+  }
+
+  function removePlace(index: number, at: number) {
+    updatePlaces(index, (places) => places.filter((_, i) => i !== at), false)
+  }
+
   function place(page: number, x: number, y: number) {
     if (placing === null) return
     const size = sizeOnPage(pages[page], BOX_PT.width, BOX_PT.height)
-    updateSigner(placing, {
-      placement: {
-        page,
-        width: size.width,
-        height: size.height,
-        x: Math.min(Math.max(x - size.width / 2, 0), 1 - size.width),
-        y: Math.min(Math.max(y - size.height / 2, 0), 1 - size.height),
-      },
-      manual: true,
-    })
+    const placement = {
+      page,
+      width: size.width,
+      height: size.height,
+      x: Math.min(Math.max(x - size.width / 2, 0), 1 - size.width),
+      y: Math.min(Math.max(y - size.height / 2, 0), 1 - size.height),
+    }
+    const at = placing.place
+    // Clicked places keep reading order (page, then top to bottom), which is also the order they are signed in.
+    updatePlaces(
+      placing.signer,
+      (places) =>
+        (at === null
+          ? [...places, { ...placement, kind: "signature" as const }]
+          : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
+        ).sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x),
+      at === 0
+    )
     setPlacing(null)
   }
 
@@ -253,7 +308,7 @@ export function NewEsignRequestPage({
           title: title.trim(),
           documentId: staged.id,
           ordered,
-          signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, placement: s.placement })),
+          signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, places: s.places })),
           output:
             saveToDrive && folder ? { driveId: folder.driveId, folderId: folder.id, fileName: fileName.trim() } : null,
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
@@ -294,7 +349,9 @@ export function NewEsignRequestPage({
               <div className="flex flex-col gap-2">
                 {placing !== null && (
                   <InlineAlert tone="info">
-                    Click on the page where {signers[placing]?.name} signs.{" "}
+                    {placing.place === null
+                      ? `Click where ${signers[placing.signer]?.name} signs again.`
+                      : `Click the new spot for ${signers[placing.signer]?.name}.`}{" "}
                     <button type="button" className="text-(--pn-accent) underline" onClick={() => setPlacing(null)}>
                       Cancel
                     </button>
@@ -305,26 +362,28 @@ export function NewEsignRequestPage({
                   pages={pages}
                   cursor={placing !== null ? "crosshair" : "default"}
                   onPageClick={place}
-                  focus={
-                    signers.at(-1)
-                      ? { page: signers[signers.length - 1].placement.page, y: signers[signers.length - 1].placement.y }
-                      : null
-                  }
+                  focus={focus}
                   className="h-[calc(100dvh-210px)] min-h-[480px]"
                   overlay={(page) =>
-                    signers.map((s, index) =>
-                      s.placement.page === page ? (
-                        <SignatureBox
-                          key={s.sub}
-                          placement={s.placement}
-                          label={s.name}
-                          role={s.role || null}
-                          number={index + 1}
-                          state="active"
-                          editable
-                          onChange={(placement) => updateSigner(index, { placement, manual: true })}
-                        />
-                      ) : null
+                    signers.flatMap((s, index) =>
+                      s.places.map((p, at) =>
+                        p.page === page ? (
+                          <SignatureBox
+                            // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
+                            key={`${s.sub}-${at}`}
+                            placement={p}
+                            label={s.name}
+                            role={s.role || null}
+                            number={index + 1}
+                            kind={p.kind}
+                            state="active"
+                            editable
+                            highlighted={highlight?.signer === s.sub && highlight.place === at}
+                            onChange={(placement) => movePlace(index, at, placement)}
+                            onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
+                          />
+                        ) : null
+                      )
                     )
                   }
                 />
@@ -459,30 +518,46 @@ export function NewEsignRequestPage({
                           onClick={() => setSigners((current) => current.filter((_, i) => i !== index))}
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          aria-label={`Role of ${s.name}`}
-                          placeholder="Role (optional), e.g. Segretario"
-                          list={ids.roles}
-                          value={s.role}
-                          maxLength={80}
-                          className={cn(fieldControl, "h-9 flex-1")}
-                          onChange={(event) => {
-                            const role = event.target.value
-                            const placed = s.manual ? null : placementForRole(role, anchors, pages)
-                            updateSigner(index, placed ? { role, placement: placed } : { role })
-                          }}
-                        />
-                        <Button
-                          variant={placing === index ? "secondary" : "outline"}
-                          size="sm"
-                          disabled={!staged}
-                          onClick={() => setPlacing(placing === index ? null : index)}
-                        >
-                          <MapPin aria-hidden /> Place
-                        </Button>
-                      </div>
-                      <p className="text-[12px] text-(--pn-fg-muted) tabular-nums">Page {s.placement.page + 1}</p>
+                      <Input
+                        aria-label={`Role of ${s.name}`}
+                        placeholder="Role (optional), e.g. Segretario"
+                        list={ids.roles}
+                        value={s.role}
+                        maxLength={80}
+                        className={cn(fieldControl, "h-9")}
+                        onChange={(event) => {
+                          const role = event.target.value
+                          const placed = s.manual ? null : placementForRole(role, anchors, pages)
+                          if (placed) setFocus({ page: placed.page, y: placed.y })
+                          updateSigner(
+                            index,
+                            placed
+                              ? { role, places: s.places.map((p, at) => (at === 0 ? { ...placed, kind: p.kind } : p)) }
+                              : { role }
+                          )
+                        }}
+                      />
+                      <PlacesEditor
+                        name={s.name}
+                        places={s.places}
+                        disabled={!staged}
+                        adding={placing?.signer === index && placing.place === null}
+                        onShow={(at) => {
+                          setHighlight(at === null ? null : { signer: s.sub, place: at })
+                          const p = at === null ? undefined : s.places[at]
+                          if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
+                        }}
+                        onKind={(at, kind) =>
+                          updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)), false)
+                        }
+                        onMove={(at) => setPlacing({ signer: index, place: at })}
+                        onRemove={(at) => removePlace(index, at)}
+                        onAdd={() =>
+                          setPlacing(
+                            placing?.signer === index && placing.place === null ? null : { signer: index, place: null }
+                          )
+                        }
+                      />
                     </li>
                   ))}
                 </ol>
@@ -640,5 +715,94 @@ export function NewEsignRequestPage({
         </div>
       </PageContent>
     </>
+  )
+}
+
+/** A signer's boxes, one control each, listed under their name: the person appears once however many places. */
+function PlacesEditor({
+  name,
+  places,
+  disabled,
+  adding,
+  onShow,
+  onKind,
+  onMove,
+  onRemove,
+  onAdd,
+}: {
+  name: string
+  places: Place[]
+  disabled: boolean
+  adding: boolean
+  /** A place's menu opened (its index) or closed (null). */
+  onShow: (at: number | null) => void
+  onKind: (at: number, kind: Place["kind"]) => void
+  onMove: (at: number) => void
+  onRemove: (at: number) => void
+  onAdd: () => void
+}) {
+  const signatures = places.filter((p) => p.kind === "signature").length
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {places.map((p, at) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
+          <Menu key={at} onOpenChange={(open) => onShow(open ? at : null)}>
+            <MenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled}
+                  aria-label={`${p.kind === "mark" ? "Mark" : "Signature"} of ${name} on page ${p.page + 1}`}
+                  className="tabular-nums"
+                />
+              }
+            >
+              {p.kind === "mark" ? <Stamp aria-hidden /> : <PenLine aria-hidden />}
+              {p.kind === "mark" ? "Mark" : "Signature"} · p. {p.page + 1}
+              <ChevronDown aria-hidden className="text-(--pn-fg-muted)" />
+            </MenuTrigger>
+            <MenuContent align="start" className="w-60">
+              <MenuGroup>
+                <MenuLabel>Page {p.page + 1}</MenuLabel>
+                <MenuRadioGroup
+                  value={p.kind}
+                  onValueChange={(value: string) => onKind(at, value === "mark" ? "mark" : "signature")}
+                >
+                  <MenuRadioItem value="signature">Full signature</MenuRadioItem>
+                  <MenuRadioItem value="mark" disabled={p.kind === "signature" && signatures === 1}>
+                    Mark only
+                  </MenuRadioItem>
+                </MenuRadioGroup>
+                <p className="px-2 pt-0.5 pb-1.5 text-[12px] text-pretty text-(--pn-fg-muted)">
+                  A mark shows the signature again without signing twice.
+                </p>
+              </MenuGroup>
+              <MenuSeparator />
+              <MenuItem onClick={() => onMove(at)}>
+                <MapPin aria-hidden /> Move to another spot
+              </MenuItem>
+              <MenuItem variant="destructive" disabled={places.length === 1} onClick={() => onRemove(at)}>
+                <Trash2 aria-hidden /> Remove
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+        ))}
+        <Button
+          variant={adding ? "secondary" : "ghost"}
+          size="sm"
+          disabled={disabled || places.length >= MAX_PLACES}
+          onClick={onAdd}
+        >
+          <Plus aria-hidden /> Add place
+        </Button>
+      </div>
+      {places.length > 1 && (
+        <p className="text-[12px] text-pretty text-(--pn-fg-muted)">
+          {kindsLabel(places)} on {pagesLabel(places)}, signed with one PIN.
+        </p>
+      )}
+    </div>
   )
 }

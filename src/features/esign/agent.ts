@@ -7,9 +7,13 @@ export const AGENT_LAUNCH_URL = "polinetwork-esign://open"
 
 export const AGENT_RELEASES_URL = "https://github.com/PoliNetworkOrg/esign/releases/latest"
 
-/** The agent's signing page for a job. `origin` is this dashboard, which the agent checks against its allowlist. */
-export function agentSignUrl(ticket: string, origin: string) {
-  const params = new URLSearchParams({ ticket, origin })
+/**
+ * The agent's signing page for one or more jobs, signed with one PIN. `origin` is this dashboard, which the agent
+ * checks against its allowlist.
+ */
+export function agentSignUrl(tickets: string[], origin: string) {
+  const params = new URLSearchParams({ origin })
+  for (const ticket of tickets) params.append("ticket", ticket)
   return `${AGENT_ORIGINS[0]}/sign?${params}`
 }
 

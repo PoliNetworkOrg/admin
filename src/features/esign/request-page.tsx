@@ -1,6 +1,6 @@
-import { useRouter } from "@tanstack/react-router"
+import { Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Ban, Download, FolderUp, Mail, RotateCw, X } from "lucide-react"
+import { Ban, Download, Files, FolderUp, Mail, RotateCw, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -22,10 +22,11 @@ import { cn } from "@/lib/utils"
 
 import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
+import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
 import { RequestStatusBadge, SignerStatusBadge, signedProgress } from "./request-status"
 import { cancelEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
-import { type BoxPlacement, SignatureBox } from "./signature-box"
+import { SignatureBox } from "./signature-box"
 
 type EventData = { sub?: string; name?: string; path?: string; to?: string[]; error?: string; reason?: string | null }
 
@@ -34,6 +35,8 @@ type Detail = Omit<EsignRequestDetail, "events"> & {
   pdf: EsignPdfInfo | null
   me: string
   config: { drives: EsignDrive[]; canManage: boolean }
+  /** Other documents waiting for the viewer's signature. */
+  alsoWaiting: number
 }
 
 function eventText(event: Detail["events"][number], names: Map<string, string>) {
@@ -107,12 +110,18 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
   const myTurn = request.myTurn && mySigner !== undefined
-  const [placement, setPlacement] = useState<BoxPlacement | null>(mySigner?.placement ?? null)
-  useEffect(() => setPlacement(mySigner?.placement ?? null), [mySigner?.placement])
+  // The viewer's boxes as they drag them; fixed once some of them are signed.
+  const [myPlaces, setMyPlaces] = useState<Place[]>(mySigner?.places ?? [])
+  useEffect(() => setMyPlaces(mySigner?.places ?? []), [mySigner?.places])
+  const myDone = mySigner?.signaturesDone ?? 0
+  const myLeft = placesLeft(
+    myPlaces.map((place, at) => ({ ...place, at })),
+    myDone
+  )
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   useEffect(() => {
-    if (myTurn && mySigner)
-      setFocus({ page: mySigner.placement.page, y: mySigner.placement.y + mySigner.placement.height / 2 })
+    const first = mySigner && placesLeft(mySigner.places, mySigner.signaturesDone)[0]
+    if (myTurn && first) setFocus({ page: first.page, y: first.y + first.height / 2 })
   }, [myTurn, mySigner])
 
   // Delivery (OneDrive, email) runs after the last signature: follow it until it settles.
@@ -210,8 +219,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       </Button>
       {myTurn && (
         <SignWithCie
-          requestId={request.id}
-          placement={placement ?? undefined}
+          items={[{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }]}
           disabled={!!signingNow && signingNow.sub !== me}
         />
       )}
@@ -238,23 +246,34 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 focus={focus}
                 className="h-[calc(100dvh-210px)] min-h-[480px]"
                 overlay={(page) =>
-                  request.signers.map((signer, index) => {
-                    if (signer.status !== "pending") return null
-                    const mine = myTurn && signer.id === mySigner?.id && placement
-                    const where = mine ? placement : signer.placement
-                    if (where.page !== page) return null
-                    return (
-                      <SignatureBox
-                        key={signer.id}
-                        placement={where}
-                        label={signer.name}
-                        role={signer.role}
-                        number={request.signers.length > 1 ? index + 1 : undefined}
-                        state={mine ? "active" : "pending"}
-                        editable={Boolean(mine)}
-                        onChange={setPlacement}
-                      />
-                    )
+                  request.signers.flatMap((signer, index) => {
+                    if (signer.status !== "pending") return []
+                    const mine = myTurn && signer.id === mySigner?.id
+                    const left = mine
+                      ? myLeft
+                      : placesLeft(
+                          signer.places.map((place, at) => ({ ...place, at })),
+                          signer.signaturesDone
+                        )
+                    return left
+                      .filter((place) => place.page === page)
+                      .map((place) => (
+                        <SignatureBox
+                          key={`${signer.id}-${place.at}`}
+                          placement={place}
+                          label={signer.name}
+                          role={signer.role}
+                          number={request.signers.length > 1 ? index + 1 : undefined}
+                          kind={place.kind}
+                          state={mine ? "active" : "pending"}
+                          editable={mine && myDone === 0}
+                          onChange={(moved) =>
+                            setMyPlaces((current) =>
+                              current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
+                            )
+                          }
+                        />
+                      ))
                   })
                 }
               />
@@ -282,9 +301,30 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             {myTurn && (
               <SectionCard title="Your signature">
                 <p className="text-[14px] text-pretty text-(--pn-fg-muted)">
-                  Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top. You need
-                  the card, its PIN and the NFC reader.
+                  {myDone > 0
+                    ? `${myDone} of ${kindsLabel(myPlaces.filter((p) => p.kind === "signature"))} done. Choose Sign with CIE at the top to finish.`
+                    : myPlaces.length > 1
+                      ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
+                      : "Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top."}{" "}
+                  You need the card, its PIN and the NFC reader.
                 </p>
+                {detail.alsoWaiting > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2 text-[13px]">
+                    <span className="text-(--pn-fg-muted)">
+                      {detail.alsoWaiting === 1
+                        ? "1 more document is waiting for you."
+                        : `${detail.alsoWaiting} more documents are waiting for you.`}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      nativeButton={false}
+                      render={<Link to="/dashboard/esign/sign" />}
+                    >
+                      <Files aria-hidden /> Sign them together
+                    </Button>
+                  </div>
+                )}
                 {signingNow && signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
                     {signingNow.name} is signing right now. Try again in a few minutes.
@@ -303,6 +343,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     Download the PDF, sign it with the official Software CIE or CieSign app, then upload the signed
                     file. It must be this exact version with your signature added.
                   </p>
+                  {myPlaces.length > 1 && (
+                    <InlineAlert tone="warning" className="mt-2">
+                      The official app adds a single signature, and uploading it completes your part: your other{" "}
+                      {myPlaces.length - 1 === 1 ? "place stays" : "places stay"} empty. Use PoliNetwork eSign to sign
+                      in every place.
+                    </InlineAlert>
+                  )}
                   <label className="mt-2 inline-flex">
                     <span className="sr-only">Signed PDF</span>
                     <input
@@ -347,7 +394,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                         <SignerStatusBadge signer={signer} turn={request.turn.includes(signer.sub)} />
                       </div>
                       <div className="text-[13px] text-(--pn-fg-muted)">
-                        {signer.role ?? <Unset />}
+                        {signer.role ?? (signer.places.length > 1 ? null : <Unset />)}
+                        {signer.places.length > 1 && (
+                          <>
+                            {signer.role && " · "}
+                            {kindsLabel(signer.places)}
+                          </>
+                        )}
                         {signer.signedAt && <> · {formatDateTime(new Date(signer.signedAt))}</>}
                       </div>
                       {signer.status === "signed" && signer.certificateIssuer && (

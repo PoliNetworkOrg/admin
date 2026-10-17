@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router"
-import { FileSignature, Plus } from "lucide-react"
+import { FileSignature, Files, Plus } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import { AvatarGroup, DataTable, type DataTableColumn, EmptyState } from "@/components/primitives"
@@ -100,6 +100,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
     [requests, filter, deferred, inbox]
   )
   const narrowed = visible.length !== requests.length
+  const waiting = inbox ? requests.filter((r) => r.myTurn).length : 0
 
   const description = inbox
     ? requests.length
@@ -111,7 +112,18 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
     <>
       <PageBar
         description={description}
-        right={canManage ? <NewRequestButton /> : undefined}
+        right={
+          canManage || waiting > 1 ? (
+            <>
+              {canManage && <NewRequestButton variant={waiting > 1 ? "outline" : "default"} />}
+              {waiting > 1 && (
+                <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/sign" />}>
+                  <Files aria-hidden /> Sign {waiting} together
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
         left={
           // Managers keep the Mine/Everyone switch even when they have no requests of their own.
           requests.length > 0 || (!inbox && canManage) ? (

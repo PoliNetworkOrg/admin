@@ -85,6 +85,7 @@ export type PageMatch =
   | { kind: "esign-requests" }
   | { kind: "esign-request"; id: string }
   | { kind: "esign-new" }
+  | { kind: "esign-sign" }
   | { kind: "esign-setup" }
   | { kind: "reports-open" }
   | { kind: "reports-closed" }
@@ -355,6 +356,7 @@ export function matchPath(pathname: string): PageMatch {
       if (second === "inbox") return { kind: "esign-inbox" }
       if (second === "requests") return { kind: "esign-requests" }
       if (second === "new") return { kind: "esign-new" }
+      if (second === "sign") return { kind: "esign-sign" }
       if (second === "setup") return { kind: "esign-setup" }
     }
     if (second === "requests" && third !== undefined && /^[0-9a-f-]{36}$/i.test(third)) {
@@ -400,6 +402,7 @@ export function serviceFor(match: PageMatch): Service {
     case "esign-requests":
     case "esign-request":
     case "esign-new":
+    case "esign-sign":
     case "esign-setup":
       return esign
     case "reports-open":
@@ -443,6 +446,7 @@ export function sectionFor(match: PageMatch): Section | null {
     case "web-category":
       return section(web, "categories")
     case "esign-inbox":
+    case "esign-sign":
       return section(esign, "inbox")
     case "esign-requests":
     case "esign-request":
@@ -464,7 +468,8 @@ export function isDeepPage(match: PageMatch): boolean {
     match.kind === "web-category" ||
     match.kind === "web-tag" ||
     match.kind === "esign-request" ||
-    match.kind === "esign-new"
+    match.kind === "esign-new" ||
+    match.kind === "esign-sign"
   )
 }
 

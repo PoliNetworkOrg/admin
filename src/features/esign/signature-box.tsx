@@ -12,9 +12,13 @@ type SignatureBoxProps = {
   role?: string | null
   /** 1-based order shown in the corner when several signers share a document. */
   number?: number
+  /** A mark repeats the signer's first signature instead of being a signature of its own. */
+  kind?: "signature" | "mark"
   state: "active" | "pending" | "signed"
   /** Draggable, resizable and movable with the arrow keys. */
   editable?: boolean
+  /** Drawn with a ring, e.g. while its menu is open elsewhere on the page. */
+  highlighted?: boolean
   onChange?: (placement: BoxPlacement) => void
   onRemove?: () => void
 }
@@ -48,12 +52,16 @@ export function SignatureBox({
   label,
   role,
   number,
+  kind = "signature",
   state,
   editable,
+  highlighted,
   onChange,
   onRemove,
 }: SignatureBoxProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const detail = kind === "mark" ? (role ? `Mark · ${role}` : "Mark") : role
+  const what = kind === "mark" ? "Mark" : "Signature"
   const drag = useRef<{ mode: "move" | "resize"; startX: number; startY: number; origin: BoxPlacement } | null>(null)
 
   function start(event: PointerEvent<HTMLElement>, mode: "move" | "resize") {
@@ -113,8 +121,8 @@ export function SignatureBox({
       tabIndex={editable ? 0 : -1}
       aria-label={
         editable
-          ? `Signature of ${label}, page ${placement.page + 1}. Arrow keys move it, Alt with arrow keys resizes it.`
-          : `Signature of ${label}, page ${placement.page + 1}`
+          ? `${what} of ${label}, page ${placement.page + 1}. Arrow keys move it, Alt with arrow keys resizes it.`
+          : `${what} of ${label}, page ${placement.page + 1}`
       }
       onKeyDown={onKeyDown}
       onPointerDown={(event) => start(event, "move")}
@@ -130,6 +138,8 @@ export function SignatureBox({
         state === "pending" &&
           "border-dashed border-(--pn-n-500) bg-[color-mix(in_oklab,white_70%,transparent)] text-(--pn-n-600)",
         state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-solid)",
+        kind === "mark" && state === "active" && "border-dashed",
+        highlighted && "ring-4 ring-(--pn-accent)/35",
         editable && "cursor-move"
       )}
       style={{
@@ -149,7 +159,7 @@ export function SignatureBox({
             )}
             <span className="truncate">{label}</span>
           </span>
-          {role && <span className="truncate text-[clamp(8px,1.4cqw,12px)] leading-tight opacity-80">{role}</span>}
+          {detail && <span className="truncate text-[clamp(8px,1.4cqw,12px)] leading-tight opacity-80">{detail}</span>}
         </>
       )}
       {state === "signed" && (
@@ -160,7 +170,7 @@ export function SignatureBox({
       {editable && onRemove && (
         <button
           type="button"
-          aria-label={`Remove the signature of ${label}`}
+          aria-label={`Remove this ${what.toLowerCase()} of ${label}`}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={onRemove}
           className="absolute top-0.5 right-0.5 grid size-6 place-items-center rounded-full text-(--pn-fg-muted) opacity-0 transition-opacity duration-120 group-hover/box:opacity-100 group-focus-within/box:opacity-100 hover:bg-(--pn-hover) hover:text-(--pn-accent)"

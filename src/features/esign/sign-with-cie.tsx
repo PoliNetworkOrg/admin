@@ -1,6 +1,8 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
+  Circle,
+  CircleAlert,
   CircleCheck,
   ExternalLink,
   KeyRound,
@@ -22,23 +24,31 @@ import {
 import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AGENT_LAUNCH_URL, agentSignUrl, isAgentOrigin } from "./agent"
 import { cancelEsignSignature, getEsignJobStatus, startEsignSignature } from "./esign.functions"
 import type { BoxPlacement } from "./signature-box"
 
+/** A document to sign; `places` are the signer's boxes as they dragged them, one per place, in order. */
+export type SignItem = { requestId: string; title: string; places?: BoxPlacement[] }
+
+type Job = { jobId: string; requestId: string; title: string }
+type JobState = { status: string; errorCode: string | null; errorMessage: string | null; seen: boolean }
+
 type Phase =
   | { kind: "starting" }
-  | { kind: "waiting"; jobId: string; url: string; since: number }
-  | { kind: "pin"; jobId: string; url: string; errorCode: string | null; errorMessage: string | null }
+  | { kind: "waiting"; jobs: Job[]; url: string; since: number }
+  | { kind: "signing"; jobs: Job[]; url: string }
   | { kind: "ended"; reason: "cancelled" | "expired" | "failed"; message: string }
 
 const POLL_MS = 1200
 /** After this long without the agent fetching the job, it is probably not running. */
 const AGENT_TIMEOUT_MS = 7000
+const OPEN = new Set(["pending", "prepared"])
 
-/** What the agent reported, by its error code (esign `internal/token`). */
+/** What the agent reported, by its error code (esign `internal/token`, backend `agent_outdated`). */
 const AGENT_ERRORS = new Map([
   ["pin_incorrect", "Wrong PIN. Type it again in the agent window; after 3 wrong attempts the card blocks it."],
   ["pin_locked", "The PIN is blocked. Unblock it with the PUK in the CIE ID app, then try again."],
@@ -52,7 +62,13 @@ const AGENT_ERRORS = new Map([
   ["card_untrusted", "The card couldn't be verified as a genuine CIE, so the PIN wasn't sent to it."],
   ["device_error", "The card couldn't complete the signature. Try again."],
   ["signature_invalid", "The card's signature didn't match. Try again."],
+  ["agent_outdated", "This version of PoliNetwork eSign is too old. Install the latest one from the setup guide."],
 ])
+
+function errorText(state: JobState | undefined) {
+  if (!state?.errorCode || state.errorCode === "cancelled") return null
+  return AGENT_ERRORS.get(state.errorCode) ?? state.errorMessage ?? "The signature failed. Try again."
+}
 
 function openPopup(): Window | null {
   const width = 460
@@ -72,36 +88,35 @@ function openPopup(): Window | null {
 }
 
 /**
- * "Sign with CIE": starts a signature job, opens the agent's page in a popup (where the PIN is typed) and follows the
- * job until the signature is saved. The dashboard never talks to the agent: browsers block HTTPS pages from fetching
- * loopback addresses, but they allow opening a window there.
+ * "Sign with CIE": starts the signature of one or more documents, opens the agent's page in a popup (where one PIN
+ * signs them all) and follows the jobs until every signature is saved. The dashboard never talks to the agent:
+ * browsers block HTTPS pages from fetching loopback addresses, but they allow opening a window there.
  */
 export function SignWithCie({
-  requestId,
-  placement,
+  items,
   disabled,
-  children = "Sign with CIE",
+  children,
+  onSigned,
 }: {
-  requestId: string
-  placement?: BoxPlacement
+  items: SignItem[]
   disabled?: boolean
   children?: ReactNode
+  /** After the signatures are saved and the page data reloaded. */
+  onSigned?: () => void
 }) {
   const router = useRouter()
   const startFn = useServerFn(startEsignSignature)
   const cancelFn = useServerFn(cancelEsignSignature)
   const statusFn = useServerFn(getEsignJobStatus)
   const [phase, setPhase] = useState<Phase | null>(null)
+  const [states, setStates] = useState<Map<string, JobState>>(new Map())
   const [now, setNow] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
+  const batch = items.length > 1
 
-  const finish = useCallback(async () => {
-    if (finishing.current) return
-    finishing.current = true
-    setPhase(null)
-    appToast.success("Document signed.")
+  const reload = useCallback(async () => {
     try {
       await router.invalidate({ sync: true })
     } catch (cause) {
@@ -109,40 +124,49 @@ export function SignWithCie({
     }
   }, [router])
 
-  const jobId = phase && "jobId" in phase ? phase.jobId : null
+  const finish = useCallback(
+    async (count: number, total: number) => {
+      if (finishing.current) return
+      finishing.current = true
+      setPhase(null)
+      popupRef.current = null
+      if (count === total) appToast.success(count === 1 ? "Document signed." : `${count} documents signed.`)
+      else appToast.warning(`${count} of ${total} documents signed.`)
+      await reload()
+      onSigned?.()
+    },
+    [reload, onSigned]
+  )
+
+  const jobs = phase && "jobs" in phase ? phase.jobs : null
 
   useEffect(() => {
-    if (!jobId) return
+    if (!jobs) return
     let stopped = false
     const poll = async () => {
       try {
-        const status = await statusFn({ data: { jobId } })
+        const statuses = await statusFn({ data: { jobIds: jobs.map((j) => j.jobId) } })
         if (stopped) return
-        if (status.status === "completed") return void finish()
-        if (status.status === "cancelled" || status.status === "expired" || status.status === "failed") {
+        setStates(new Map(statuses.map((s) => [s.jobId, s])))
+        const done = statuses.filter((s) => s.status === "completed").length
+        const ended = statuses.find((s) => s.status !== "completed" && !OPEN.has(s.status))
+        if (statuses.every((s) => !OPEN.has(s.status))) {
+          if (done > 0 || !ended) return void finish(done, jobs.length)
+          const reason = ended.status === "expired" ? "expired" : ended.status === "cancelled" ? "cancelled" : "failed"
           setPhase({
             kind: "ended",
-            reason: status.status,
+            reason,
             message:
-              status.status === "expired"
+              reason === "expired"
                 ? "The signing link expired. Start again."
-                : status.status === "cancelled"
+                : reason === "cancelled"
                   ? "The signature was cancelled."
-                  : (status.errorMessage ?? "The signature failed."),
+                  : (ended.errorMessage ?? "The signature failed."),
           })
           return
         }
-        setPhase((current) => {
-          if (!current || !("jobId" in current) || current.jobId !== jobId) return current
-          if (!status.seen) return current
-          return {
-            kind: "pin",
-            jobId,
-            url: current.url,
-            errorCode: status.errorCode,
-            errorMessage: status.errorMessage,
-          }
-        })
+        if (statuses.some((s) => s.seen))
+          setPhase((current) => (current?.kind === "waiting" ? { kind: "signing", jobs, url: current.url } : current))
       } catch (cause) {
         console.error(cause)
       }
@@ -161,10 +185,11 @@ export function SignWithCie({
       window.clearInterval(tick)
       window.removeEventListener("message", onMessage)
     }
-  }, [jobId, statusFn, finish])
+  }, [jobs, statusFn, finish])
 
   async function start() {
     setError(null)
+    setStates(new Map())
     finishing.current = false
     popupRef.current?.close()
     let popup: Window | null = null
@@ -173,10 +198,21 @@ export function SignWithCie({
       popup = openPopup()
       popupRef.current = popup
       setPhase({ kind: "starting" })
-      const job = await startFn({ data: { requestId, placement } })
-      const url = agentSignUrl(job.ticket, window.location.origin)
+      const started = await startFn({
+        data: { items: items.map((item) => ({ requestId: item.requestId, places: item.places })) },
+      })
+      const url = agentSignUrl(
+        started.map((s) => s.ticket),
+        window.location.origin
+      )
       if (popup && !popup.closed) popup.location.href = url
-      setPhase({ kind: "waiting", jobId: job.jobId, url, since: Date.now() })
+      const titles = new Map(items.map((item) => [item.requestId, item.title]))
+      setPhase({
+        kind: "waiting",
+        jobs: started.map((s) => ({ jobId: s.jobId, requestId: s.requestId, title: titles.get(s.requestId) ?? "" })),
+        url,
+        since: Date.now(),
+      })
       setNow(Date.now())
     } catch (cause) {
       console.error(cause)
@@ -186,17 +222,21 @@ export function SignWithCie({
     }
   }
 
-  async function cancel() {
+  /** Closes the dialog, cancelling what isn't signed yet; reloads when part of a batch was signed. */
+  async function close() {
     const current = phase
     setPhase(null)
     popupRef.current?.close()
-    if (current && "jobId" in current) {
+    if (!current || !("jobs" in current)) return
+    const open = current.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending"))
+    if (open.length > 0) {
       try {
-        await cancelFn({ data: { jobId: current.jobId } })
+        await cancelFn({ data: { jobIds: open.map((j) => j.jobId) } })
       } catch (cause) {
         console.error(cause)
       }
     }
+    if (open.length < current.jobs.length) await reload()
   }
 
   function reopen(url: string) {
@@ -204,20 +244,26 @@ export function SignWithCie({
   }
 
   const silent = phase?.kind === "waiting" && now - phase.since > AGENT_TIMEOUT_MS
+  const signed = jobs?.filter((j) => states.get(j.jobId)?.status === "completed").length ?? 0
+  // A failure every open document shares (a wrong PIN, no card) is shown once, above the list.
+  const open = jobs?.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending")) ?? []
+  const firstCode = open[0] && states.get(open[0].jobId)?.errorCode
+  const sharedCode = firstCode && open.every((j) => states.get(j.jobId)?.errorCode === firstCode) ? firstCode : null
+  const sharedError = sharedCode && open[0] ? errorText(states.get(open[0].jobId)) : null
 
   return (
     <>
       <LoadingButton
         icon={PenLine}
         pending={phase?.kind === "starting"}
-        disabled={disabled}
+        disabled={disabled || items.length === 0}
         onClick={start}
         className="h-10"
       >
-        {children}
+        {children ?? (batch ? `Sign ${items.length} documents` : "Sign with CIE")}
       </LoadingButton>
       {error && <InlineAlert className="mt-2">{error}</InlineAlert>}
-      <Dialog open={phase !== null && phase.kind !== "starting"} onOpenChange={(open) => !open && void cancel()}>
+      <Dialog open={phase !== null && phase.kind !== "starting"} onOpenChange={(open) => !open && void close()}>
         <DialogContent className={cn(dialogPanel, "max-w-[460px]")} showCloseButton={false}>
           {phase?.kind === "waiting" && !silent && (
             <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
@@ -251,13 +297,24 @@ export function SignWithCie({
               </div>
             </Status>
           )}
-          {phase?.kind === "pin" && (
+          {phase?.kind === "signing" && (
             <Status icon={<KeyRound className="size-5" />} title="Type your PIN in the agent window">
-              <p>Keep the CIE on the reader. The PIN goes only to the card, never to PoliNetwork.</p>
-              {phase.errorCode && phase.errorCode !== "cancelled" && (
-                <InlineAlert className="mt-3">
-                  {AGENT_ERRORS.get(phase.errorCode) ?? phase.errorMessage ?? "The signature failed. Try again."}
-                </InlineAlert>
+              <p>
+                Keep the CIE on the reader. {batch ? `One PIN signs all ${phase.jobs.length} documents. ` : ""}
+                The PIN goes only to the card, never to PoliNetwork.
+              </p>
+              {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
+              {batch && (
+                <>
+                  <p className="mt-3 text-[13px] font-medium text-(--pn-fg) tabular-nums">
+                    {signed} of {pluralize(phase.jobs.length, "document")} signed
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-2" aria-live="polite">
+                    {phase.jobs.map((job) => (
+                      <JobRow key={job.jobId} job={job} state={states.get(job.jobId)} hideError={sharedCode !== null} />
+                    ))}
+                  </ul>
+                </>
               )}
               <Button variant="ghost" size="sm" className="mt-2 -ml-2" onClick={() => reopen(phase.url)}>
                 <ExternalLink aria-hidden /> Show the agent window
@@ -283,17 +340,15 @@ export function SignWithCie({
           )}
           <div className={dialogFooter}>
             {phase?.kind === "ended" ? (
-              <Button
-                className="h-10"
-                onClick={() => {
-                  popupRef.current?.close()
-                  setPhase(null)
-                }}
-              >
+              <Button className="h-10" onClick={() => void close()}>
                 Close
               </Button>
+            ) : signed > 0 ? (
+              <Button variant="outline" className="h-10" onClick={() => void close()}>
+                Stop here
+              </Button>
             ) : (
-              <Button variant="outline" className="h-10" onClick={() => void cancel()}>
+              <Button variant="outline" className="h-10" onClick={() => void close()}>
                 Cancel signature
               </Button>
             )}
@@ -301,6 +356,26 @@ export function SignWithCie({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function JobRow({ job, state, hideError }: { job: Job; state: JobState | undefined; hideError: boolean }) {
+  const done = state?.status === "completed"
+  const failure = done || hideError ? null : errorText(state)
+  return (
+    <li className="flex items-start gap-2 text-[13px]">
+      {done ? (
+        <CircleCheck aria-label="Signed" className="mt-0.5 size-4 shrink-0 text-(--pn-success-fg)" />
+      ) : failure ? (
+        <CircleAlert aria-label="Not signed" className="mt-0.5 size-4 shrink-0 text-(--pn-danger-fg)" />
+      ) : (
+        <Circle aria-label="Waiting" className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+      )}
+      <span className="min-w-0">
+        <span className="block truncate text-(--pn-fg)">{job.title}</span>
+        {failure && <span className="block text-pretty text-(--pn-danger-fg)">{failure}</span>}
+      </span>
+    </li>
   )
 }
 
