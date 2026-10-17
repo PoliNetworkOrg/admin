@@ -9,3 +9,11 @@ export function isTrustedRequest(method: string, origin: string | null, appOrigi
   if (SAFE_METHODS.has(method.toUpperCase())) return true
   return origin !== null && origin === appOrigin
 }
+
+/**
+ * The sign agent's proxy (`/api/esign/agent/…`) is called by the desktop agent, which sends no `Origin`. It reads no
+ * cookie and forwards no credential: the single-use ticket in the path is the only authority, so CSRF cannot apply.
+ */
+export function isCsrfExemptPath(pathname: string) {
+  return pathname.startsWith("/api/esign/agent/")
+}

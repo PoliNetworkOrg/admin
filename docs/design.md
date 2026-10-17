@@ -84,16 +84,16 @@ drawn with `ServiceGlyph`: its `logo` when it has one, else its monochrome `icon
 | Page    | Overview and Account pass their own `title` to `PageBar`                                         |
 
 **Rail** (64px, from 760px). One tab stop with roving focus (`↑/↓`, `Home/End`). The PoliNetwork logo is the link to
-Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the five
+Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the six
 services (logos for Telegram, WhatsApp and Microsoft 365). The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
-an accent dot while there are open reports. A service opens the last section visited in that service this session,
+an accent dot while there are open reports, Signatures while documents wait for the user's signature. A service opens the last section visited in that service this session,
 else its first. Theme toggle and the account avatar (the same active fill and indicator while Account is open) sit at the bottom; sign out lives on
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
 Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
-and accent icon without the bar (`data-ancestor`). The only count is the open reports next to Reports › Open, as a
+and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
 small accent pill.
 
 From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
@@ -448,6 +448,21 @@ Rules that the templates above don't imply.
   oldest-first, Closed newest-first. Closed columns are Reference, Status, Issue, Details, Date; mobile status and issue sit at the
   top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
+- **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
+  signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
+  Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. A person appears once
+  however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
+  menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
+  With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
+  is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
+  document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
+  to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
+  line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
+  not sign the documents of the chosen drives are left out of the list, with a line saying why. The signer picker
+  lists people only once a search is typed, each with the email under the name; the viewer carries a blue "You" chip
+  here and in signer lists.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
 - **People**: one record per person whether or not they have an account; Overview, Member register, Admins, Teams,

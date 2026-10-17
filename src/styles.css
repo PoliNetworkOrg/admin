@@ -105,6 +105,7 @@
   --pn-danger-fg: #8c2d28;
   --pn-danger-bg: #ffefed;
   --pn-danger-solid: #a43b35;
+  --pn-danger-solid-hover: #8c2d28;
   --pn-info-fg: var(--pn-brand-700);
   --pn-info-bg: var(--pn-brand-50);
   --pn-scrim: oklch(0.16 0.02 250 / 0.4);
@@ -204,6 +205,7 @@
   --pn-danger-fg: #ffa196;
   --pn-danger-bg: #3b1c19;
   --pn-danger-solid: #c9524a;
+  --pn-danger-solid-hover: #a83e37;
   --pn-info-fg: var(--pn-brand-300);
   --pn-info-bg: var(--pn-brand-900);
   --pn-scrim: oklch(0 0 0 / 0.6);

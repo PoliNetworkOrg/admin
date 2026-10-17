@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { RouteNotFound } from "@/components/route-error"
 import { canOpenPage, DashboardShell, documentTitle, matchPath, NO_PEOPLE_ROLES } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
+import { getEsignPendingCount } from "@/features/esign/esign.functions"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { getReceipts } from "@/features/people/people-receipts.functions"
 import { getLinkingReviews, getMyPeopleRoles } from "@/features/people/people.functions"
@@ -34,37 +35,54 @@ export const Route = createFileRoute("/dashboard")({
   // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same
   // permission as managing them.
   loader: ({ context }) => ({
-    pendingReports: hasPermission(context.permissions, "web:reports:manage")
-      ? getPendingGroupLinkReports().then(
-          (reports) => reports.length,
-          (error) => {
-            console.error(error)
-            return null
-          }
-        )
-      : Promise.resolve(null),
-    needsReview: hasPermission(context.permissions, "people:read")
-      ? getLinkingReviews().then(
-          (reviews) => reviews.length,
-          (error) => {
-            console.error(error)
-            return null
-          }
-        )
-      : Promise.resolve(null),
-    toSign: hasPermission(context.permissions, "people:receipts:sign")
-      ? getReceipts({ data: { year: null } }).then(
-          (page) =>
-            page.viewerSigner
-              ? page.receipts.filter((receipt) => receipt.status === "toSign" && receipt.signer === page.viewerSigner)
-                  .length
-              : null,
-          (error) => {
-            console.error(error)
-            return null
-          }
-        )
-      : Promise.resolve(null),
+    pending: {
+      receipts:
+        hasPermission(context.permissions, "admin:access") &&
+        hasPermission(context.permissions, "people:receipts:sign") &&
+        hasPermission(context.permissions, "people:members:read")
+          ? getReceipts({ data: { year: null } }).then(
+              (page) =>
+                page.viewerSigner
+                  ? page.receipts.filter(
+                      (receipt) => receipt.status === "toSign" && receipt.signer === page.viewerSigner
+                    ).length
+                  : null,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
+      linking:
+        hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:read")
+          ? getLinkingReviews().then(
+              (reviews) => reviews.length,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
+      reports: hasPermission(context.permissions, "web:reports:manage")
+        ? getPendingGroupLinkReports().then(
+            (reports) => reports.length,
+            (error) => {
+              console.error(error)
+              return null
+            }
+          )
+        : Promise.resolve(null),
+      // Documents waiting for the user's signature: a dot on Signatures and a count on To sign.
+      signatures: hasPermission(context.permissions, "esign:sign")
+        ? getEsignPendingCount().then(
+            (count) => count,
+            (error) => {
+              console.error(error)
+              return null
+            }
+          )
+        : Promise.resolve(null),
+    },
   }),
   staleTime: 60_000,
   // One title for every dashboard page, from the deepest match: "{Section} - {Service} - PoliNetwork Admin".
@@ -77,6 +95,6 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   const { user } = Route.useRouteContext()
-  const { pendingReports, needsReview, toSign } = Route.useLoaderData()
-  return <DashboardShell user={user} pendingReports={pendingReports} needsReview={needsReview} toSign={toSign} />
+  const { pending } = Route.useLoaderData()
+  return <DashboardShell user={user} pending={pending} />
 }

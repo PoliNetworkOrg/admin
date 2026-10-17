@@ -3,7 +3,15 @@ import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, u
 
 import { cn } from "@/lib/utils"
 
-import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } from "./nav"
+import {
+  type PageMatch,
+  type PendingCounts,
+  type Section,
+  type Service,
+  isDeepPage,
+  sectionFor,
+  sectionPending,
+} from "./nav"
 import { observeSectionScroll } from "./section-scroll"
 import { ServiceGlyph } from "./service-glyph"
 
@@ -49,11 +57,7 @@ export type SectionItemsProps = {
   service: Service
   match: PageMatch
   /** Streams in from the `/dashboard` loader; resolves to null when the reports couldn't be loaded. */
-  pendingReports: Promise<number | null>
-  /** People › Linking's Needs review queue, streamed like `pendingReports`. */
-  needsReview: Promise<number | null>
-  /** People › Receipts: the receipts waiting for the signed-in officer's signature, streamed the same way. */
-  toSign: Promise<number | null>
+  pending: PendingCounts
   /** `panel` for the desktop list, `pills` for the horizontally scrolling row under the mobile top bar. */
   variant?: "panel" | "pills"
 }
@@ -64,14 +68,7 @@ const pillActiveClass =
   "border-[color-mix(in_oklab,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
 
 /** The section links of one service; shared by the panel and the mobile section pills. */
-export function SectionItems({
-  service,
-  match,
-  pendingReports,
-  needsReview,
-  toSign,
-  variant = "panel",
-}: SectionItemsProps) {
+export function SectionItems({ service, match, pending, variant = "panel" }: SectionItemsProps) {
   const current = sectionFor(match)
   const deep = isDeepPage(match)
   const pills = variant === "pills"
@@ -101,21 +98,9 @@ export function SectionItems({
           )}
         />
         <span className="truncate">{section.title}</span>
-        {service.id === "reports" && section.id === "open" ? (
-          <Suspense fallback={null}>
-            <QueueCount count={pendingReports} label="pending" />
-          </Suspense>
-        ) : null}
-        {service.id === "people" && section.id === "receipts" ? (
-          <Suspense fallback={null}>
-            <QueueCount count={toSign} label="to sign" />
-          </Suspense>
-        ) : null}
-        {service.id === "people" && section.id === "linking" ? (
-          <Suspense fallback={null}>
-            <QueueCount count={needsReview} label="to review" />
-          </Suspense>
-        ) : null}
+        <Suspense fallback={null}>
+          <QueueCount count={sectionPending(service.id, section.id, pending)} label="pending" />
+        </Suspense>
       </Link>
     )
   })
@@ -124,14 +109,12 @@ export function SectionItems({
 export type PanelProps = {
   service: Service
   match: PageMatch
-  pendingReports: Promise<number | null>
-  needsReview: Promise<number | null>
-  toSign: Promise<number | null>
+  pending: PendingCounts
   className?: string
 }
 
 /** The 240px section panel (200px below 1100px). States the service name once, in its header. */
-export function Panel({ service, match, pendingReports, needsReview, toSign, className }: PanelProps) {
+export function Panel({ service, match, pending, className }: PanelProps) {
   return (
     <aside
       data-shell-panel=""
@@ -149,20 +132,14 @@ export function Panel({ service, match, pendingReports, needsReview, toSign, cla
         onKeyDown={onSectionListKeyDown}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
       >
-        <SectionItems
-          service={service}
-          match={match}
-          pendingReports={pendingReports}
-          needsReview={needsReview}
-          toSign={toSign}
-        />
+        <SectionItems service={service} match={match} pending={pending} />
       </nav>
     </aside>
   )
 }
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
-export function SectionPills({ service, match, pendingReports, needsReview, toSign, className }: PanelProps) {
+export function SectionPills({ service, match, pending, className }: PanelProps) {
   const ref = useRef<HTMLElement>(null)
   const currentPath = sectionFor(match)?.path
   useLayoutEffect(() => {
@@ -180,14 +157,7 @@ export function SectionPills({ service, match, pendingReports, needsReview, toSi
         className
       )}
     >
-      <SectionItems
-        service={service}
-        match={match}
-        pendingReports={pendingReports}
-        needsReview={needsReview}
-        toSign={toSign}
-        variant="pills"
-      />
+      <SectionItems service={service} match={match} pending={pending} variant="pills" />
     </nav>
   )
 }
