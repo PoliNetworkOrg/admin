@@ -16,7 +16,7 @@ import {
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import type { EsignDrive, EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -33,7 +33,7 @@ type Detail = Omit<EsignRequestDetail, "events"> & {
   events: (Omit<EsignRequestDetail["events"][number], "data"> & { data: EventData })[]
   pdf: EsignPdfInfo | null
   me: string
-  config: { drive: string | null; canManage: boolean }
+  config: { drives: EsignDrive[]; canManage: boolean }
 }
 
 function eventText(event: Detail["events"][number], names: Map<string, string>) {
@@ -385,7 +385,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                       ) : (
                         <span className="break-words">
                           {request.delivery?.driveItem ? "Saved to " : "Will be saved to "}
-                          {detail.config.drive ?? "OneDrive"}: {request.output.folderPath || "/"}
+                          {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
+                          {request.output.folderPath || "/"}
                           {request.output.folderPath ? "/" : ""}
                           {request.delivery?.driveItem?.name ?? request.output.fileName}
                         </span>

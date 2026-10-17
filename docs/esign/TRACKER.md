@@ -122,10 +122,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 
 ## Manual steps for the maintainer (cannot be automated here)
 
-- ☐ Create IdP permissions `esign:sign` and `esign:requests:manage` and grant them.
+- ☑ Create IdP permissions `esign:sign` and `esign:requests:manage` and grant them. They only reach the backend once
+  auth#61 adds `esign:` to the backend projection.
 - ☐ Azure app registration: Graph application permission `Files.ReadWrite.All` (or `Sites.Selected`) + admin consent;
   `Mail.Send` already used.
-- ☐ Configure backend env for the OneDrive drive and default folders (see backend README once written).
+- ☐ Set `ESIGN_DRIVES` on the backend: one `{id, label, driveId, rootId?}` per OneDrive/SharePoint library the
+  dashboard may use (backend README). Several drives are supported (backend#74).
 - ☐ Test with a real CIE + reader on macOS/Windows/Linux. This Mac already has Software CIE and a BIT4ID miniLector AIR
   NFC v3 reader: run the local end-to-end below without `--soft`, place the CIE on the reader and sign (expect a macOS
   "access data from other apps" prompt the first time, and Rosetta for the official module).
