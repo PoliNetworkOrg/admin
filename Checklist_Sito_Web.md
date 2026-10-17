@@ -59,7 +59,6 @@ Ultimo aggiornamento: 17/10/2026
 - [ ] Titolo, freccia "Conosci le persone", card della timeline, organigramma in codice — 🔀 [web#190](https://github.com/PoliNetworkOrg/web/pull/190), copre tutto — 👤
 - [ ] Dati dei direttivi passati — 👤
 - [ ] Ringraziamenti completi (mancano admin e collaboratori) — 👤
-- [ ] Decidere se togliere anche qui Growth, International e foto del direttivo — 👤
 
 ## Struttura (/about)
 - [ ] Pagina — 🔀 [web#186](https://github.com/PoliNetworkOrg/web/pull/186) e [web#191](https://github.com/PoliNetworkOrg/web/pull/191) fanno la stessa cosa, tenerne una — 👤
