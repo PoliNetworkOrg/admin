@@ -26,7 +26,7 @@ Sign PDFs with the Italian CIE (NFC reader + PIN) from the admin dashboard, with
  │        │ fetch (loopback)                                               │   signed attrs → digest      │
  │        ▼                                                                 │  finalize: CMS → embed       │
  │ ┌──────────────────────┐                                                 │  requests / signers / versions│
- │ │ sign-agent (Go)      │ 127.0.0.1:47321                                 │  OneDrive (Graph) + email    │
+ │ │ esign (Go)           │ 127.0.0.1:47321                                 │  OneDrive (Graph) + email    │
  │ │ cert + sign(digest)  │                                                 └──────────────────────────────┘
  │ │ PKCS#11 (CIE MW) or  │
  │ │ direct PC/SC (CIE)   │
@@ -46,11 +46,11 @@ Sign PDFs with the Italian CIE (NFC reader + PIN) from the admin dashboard, with
 
 ## Repos and branches
 
-| Layer    | Repo                                  | Branch / location                                                   |
-| -------- | ------------------------------------- | ------------------------------------------------------------------- |
-| Native   | `PoliNetworkOrg/sign-agent` (new, Go) | `main` + PRs; local checkout `~/dev/polinetwork/sign-agent`         |
-| Backend  | `PoliNetworkOrg/backend`              | `feat/esign`, worktree `~/dev/polinetwork/.esign-worktrees/backend` |
-| Frontend | `PoliNetworkOrg/admin`                | `feat/esign` in `~/dev/polinetwork/admin`                           |
+| Layer    | Repo                                               | Branch / location                                                   |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| Native   | `PoliNetworkOrg/esign` (new, Go; was `sign-agent`) | `main` + PRs; local checkout `~/dev/polinetwork/sign-agent`         |
+| Backend  | `PoliNetworkOrg/backend`                           | `feat/esign`, worktree `~/dev/polinetwork/.esign-worktrees/backend` |
+| Frontend | `PoliNetworkOrg/admin`                             | `feat/esign` in `~/dev/polinetwork/admin`                           |
 
 The main backend checkout (`~/dev/polinetwork/backend`) is on another branch with uncommitted work: never touch it.
 
@@ -71,18 +71,18 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 
 ### Phase 1 — sign agent (Go)
 
-- ☑ Repo `PoliNetworkOrg/sign-agent` (public, MIT), Go module.
+- ☑ Repo `PoliNetworkOrg/esign` (public, MIT; renamed from `sign-agent`), Go module.
 - ☑ Popup page + same-origin API (Host check, no cross-site), ticket-based backend client.
 - ☑ Session-based providers: `cie-mw` (official PKCS#11, last-4 PIN), `opencie`, `soft`; ordered fallback before PIN.
 - ☑ SoftHSM2 PKCS#11 tests in Linux Docker (`scripts/test-softhsm.sh`).
 - ☑ Direct PC/SC `cie` provider + card simulator + interop harness (`scripts/interop/run.sh`): the official middleware,
   built unmodified, pairs and signs against the simulator; `cie`, `cie-mw` (also in the worker) and `opencie` sign too.
-  Auto-pairing (`AbilitaCIE`/`AbbinaCIE`/`cie_enable`); `PINSent` stops provider fallback. sign-agent PR #2 (merged).
-- ☑ Worker subprocess (Rosetta for the x86_64 macOS module, HOME for its pairing cache), install + `polinetwork-sign://`
-  scheme, macOS universal .app/.dmg, Windows GUI exe, Linux tar/.deb, CI on 3 OSes, `doctor`. sign-agent PR #1 (merged).
+  Auto-pairing (`AbilitaCIE`/`AbbinaCIE`/`cie_enable`); `PINSent` stops provider fallback. esign PR #2 (merged).
+- ☑ Worker subprocess (Rosetta for the x86_64 macOS module, HOME for its pairing cache), install + `polinetwork-esign://`
+  scheme, macOS universal .app/.dmg, Windows GUI exe, Linux tar/.deb, CI on 3 OSes, `doctor`. esign PR #1 (merged).
 - ☑ Release v0.1.0 (Windows zip, macOS universal .app/.dmg, Linux tar.gz/.deb amd64+arm64). Verified on this Mac:
   loads the installed Software CIE module through the x86_64 worker and sees the BIT4ID reader.
-- ☑ Review round 2 agent findings (sign-agent PR #3, merged): EF.SOD validated against pinned Italian CSCA00–05
+- ☑ Review round 2 agent findings (esign PR #3, merged): EF.SOD validated against pinned Italian CSCA00–05
   before the PIN (`card_untrusted`, no fallback); VERIFY never repeated on 6Cxx. Released v0.1.1.
 - ☐ Confirm on a physical CIE that its SOD/EF.DH verify (the direct `cie` provider is tried last, after the official
   middleware and OpenCIE).
@@ -137,8 +137,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Test with a real CIE + reader on macOS/Windows/Linux. This Mac already has Software CIE and a BIT4ID miniLector AIR
   NFC v3 reader: run the local end-to-end below without `--soft`, place the CIE on the reader and sign (expect a macOS
   "access data from other apps" prompt the first time, and Rosetta for the official module).
-- ☐ Code signing (pipeline ready, sign-agent PR #4; steps in sign-agent `docs/code-signing.md`):
-  - macOS: upload `~/dev/polinetwork/.signing/sign-agent/developer-id.csr` as a Developer ID Application certificate on
+- ☐ Code signing (pipeline ready, esign PR #4; steps in esign `docs/code-signing.md`):
+  - macOS: upload `~/dev/polinetwork/.signing/esign/developer-id.csr` as a Developer ID Application certificate on
     the PoliNetwork APS Apple account (team 842636PS9J), create an App Store Connect API key, run
     `scripts/setup-macos-signing.sh secrets …`, tag a release.
   - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token.
@@ -150,7 +150,7 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 docker start esign-pg esign-redis   # throwaway Postgres (127.0.0.1:55433) and Redis (56379)
 cd ~/dev/polinetwork/.esign-worktrees/backend && bun ./src/server.ts      # .env.local: PORT=13000, DB on 55433
 cd ~/dev/polinetwork/admin && PORT=10431 AGENT_MODE=true BACKEND_URL=http://localhost:13000 pnpm exec vp dev --port 10431
-cd ~/dev/polinetwork/sign-agent && go run ./cmd/sign-agent --dev --soft    # PIN 12345678 (on this Mac: SDKROOT=…/MacOSX26.sdk)
+cd ~/dev/polinetwork/sign-agent && go run ./cmd/esign --dev --soft    # PIN 12345678 (on this Mac: SDKROOT=…/MacOSX26.sdk)
 ```
 
 Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
@@ -161,7 +161,7 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
   order: backend → bump admin → agent release v0.2.0 together with the backend deploy (protocol 2).
 
 - 2026-10-17: backend#73 merged (released @polinetwork/backend 1.7.0), admin#102 merged; agent v0.1.1; code-signing
-  pipeline merged (sign-agent #4).
+  pipeline merged (esign #4).
 
 - 2026-10-17: kickoff; branches created; research started.
 - 2026-10-17: PAdES engine done and validated; agent refactored to popup + ticket flow; agent repo published;

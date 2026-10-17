@@ -232,7 +232,7 @@ Within a fresh DH + DAPP session, verify the eight ASCII PUK digits with `00 20 
 
 Normal PIN change is `00 24 00 81`, data `oldPIN[8] || newPIN[8]`. All are SM-wrapped. See [IAS.cpp:167–193](https://github.com/italia/cie-middleware-linux/blob/a05337fc3ea3a526e6f173634c0f5ed0eb059859/cie-pkcs11/CSP/IAS.cpp#L167-L193), [PKCS#11 initialization:478–509](https://github.com/italia/cie-middleware-linux/blob/a05337fc3ea3a526e6f173634c0f5ed0eb059859/cie-pkcs11/PKCS11/CIEP11Template.cpp#L478-L509), [desktop UnlockPIN:338–392](https://github.com/italia/cie-middleware-linux/blob/a05337fc3ea3a526e6f173634c0f5ed0eb059859/cie-pkcs11/CSP/PINManager.cpp#L338-L392).
 
-PUK recovery need not be part of the first sign-agent release. It changes card state and risks exhausting a non-resettable PUK counter; the signing UI can direct the user to the official application. No reset/unblock command was executed for this report.
+PUK recovery need not be part of the first agent release. It changes card state and risks exhausting a non-resettable PUK counter; the signing UI can direct the user to the official application. No reset/unblock command was executed for this report.
 
 ## C. OpenSC and alternative stacks
 
