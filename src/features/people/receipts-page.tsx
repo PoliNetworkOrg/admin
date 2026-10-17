@@ -1,3 +1,4 @@
+import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { Ban, FileArchive, FileDown, Receipt as ReceiptIcon, RotateCw, Search, Upload } from "lucide-react"
 import { useDeferredValue, useState } from "react"
@@ -18,6 +19,7 @@ import {
 } from "@/components/primitives"
 import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
+import { SignWithCie } from "@/features/esign/sign-with-cie"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -25,9 +27,10 @@ import { formatCents } from "./people-fees"
 import { retryReceipt } from "./people-fees.functions"
 import { formatDay, RECEIPT_STATUS, SIGNER_LABEL } from "./people-format"
 import { errorMessage, useFileDownload, useRefreshAfter } from "./people-hooks"
-import { downloadReceipt, downloadReceiptsToSign } from "./people-receipts.functions"
+import { downloadReceipt, downloadReceiptsToSign, prepareReceiptSignatures } from "./people-receipts.functions"
 import { ActionMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
 import {
+  RECEIPT_SIGN_BATCH,
   RECEIPT_STATUSES,
   type Receipt,
   type ReceiptsPage as ReceiptsData,
@@ -55,6 +58,10 @@ function othersNote(others: readonly Receipt[]) {
 /** People › Receipts: the fee year's receipts as a queue, To sign → Signed → Sent, with Send failed and Voided. */
 export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (year: string) => void }) {
   const canSign = useCan("people:receipts:sign") && page.viewerSigner !== null
+  const canEsign = useCan("esign:sign")
+  const canWebSign = canSign && canEsign
+  const router = useRouter()
+  const prepareSignatures = useServerFn(prepareReceiptSignatures)
   const canFees = useCan("people:fees:write")
   const download = useServerFn(downloadReceipt)
   const downloadToSign = useServerFn(downloadReceiptsToSign)
@@ -62,6 +69,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
   const refresh = useRefreshAfter()
 
   const mine = page.receipts.filter((receipt) => receipt.status === "toSign" && receipt.signer === page.viewerSigner)
+  const batch = mine.slice(0, RECEIPT_SIGN_BATCH)
   // Receipts waiting for the other officer: the President's own, for the Vice-president.
   const others = page.receipts.filter((receipt) => receipt.status === "toSign" && receipt.signer !== page.viewerSigner)
   const failed = page.receipts.filter((receipt) => receipt.status === "failed")
@@ -89,6 +97,18 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
     if (receipt.signer === page.viewerSigner) return "You"
     const officer = receipt.signer === "president" ? page.officers.president : page.officers.vicePresident
     return officer?.name ?? SIGNER_LABEL[receipt.signer]
+  }
+
+  async function prepareSigning() {
+    const prepared = await prepareSignatures({ data: { receiptIds: batch.map((receipt) => receipt.id) } })
+    // The requests are already saved; a reload failure must not ask the officer to create them again.
+    try {
+      await router.invalidate({ sync: true })
+    } catch (caught) {
+      console.error(caught)
+      appToast.warning("Signing requests prepared, but the page couldn't refresh.")
+    }
+    return prepared.map(({ requestId, title }) => ({ requestId, title }))
   }
 
   async function saveToSign() {
@@ -216,19 +236,13 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
         }
         right={
           canSign ? (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className={buttonMotion}
-                onClick={() => {
-                  setUploadOpen(true)
-                }}
-              >
-                <Upload data-icon="inline-start" />
-                Upload signed
-              </Button>
-              {mine.length > 0 ? (
+            <div className="flex min-w-0 items-start gap-2 [&>button]:h-10">
+              {canWebSign && batch.length > 0 ? (
+                <div className="flex min-w-0 flex-1 flex-col shell:max-w-sm [&>button]:w-full">
+                  <SignWithCie prepare={prepareSigning}>Sign {pluralize(batch.length, "receipt")} with CIE</SignWithCie>
+                </div>
+              ) : null}
+              {!canWebSign && mine.length > 0 ? (
                 <LoadingButton
                   size="sm"
                   icon={FileArchive}
@@ -238,7 +252,21 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                   Download to sign ({mine.length})
                 </LoadingButton>
               ) : null}
-            </>
+              <ActionMenu
+                label="Receipt signing options"
+                actions={[
+                  canWebSign &&
+                    mine.length > 0 && {
+                      label: "Download to sign",
+                      icon: FileArchive,
+                      onClick: () => {
+                        if (downloading !== "toSign") void saveToSign()
+                      },
+                    },
+                  { label: "Upload signed", icon: Upload, onClick: () => setUploadOpen(true) },
+                ]}
+              />
+            </div>
           ) : undefined
         }
         left={
@@ -295,7 +323,9 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
               <span className="font-medium">
                 {pluralize(mine.length, "receipt")} {mine.length === 1 ? "is" : "are"} waiting for your signature.
               </span>{" "}
-              Download them, sign each PDF with the CIE app, then upload the signed files.
+              {canWebSign
+                ? `Sign here with CIE and PoliNetwork eSign, up to ${RECEIPT_SIGN_BATCH} receipts at a time. You can also download them and upload the signed files from the signing options.`
+                : "Download them, sign each PDF with the CIE app, then upload the signed files."}
               {othersNote(others)}
             </InlineAlert>
           ) : null}

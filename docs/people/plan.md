@@ -192,3 +192,9 @@ Newest last. One line per commit or session: date, what was done, what is next.
   Verified in agent mode at 1440 and 390, light and dark, as the President (`P-0007`) and a rejected member
   (`P-0021`): approve, reject, Mark as paid, reminders, download to sign, upload and send, retry, void, member upload.
   Next: the backend side.
+
+- 2026-10-17: reconciled #97 and #100 with main's eSign routes and shared pending counts. People › Receipts now
+  reuses `SignWithCie` for batches of up to ten and keeps manual download/upload in its options. Added the durable
+  `people.receipts.prepareSignatures` contract and adapter, both signing permissions, and regression tests for
+  officer restrictions, loader refresh and merged navigation. The People backend bridge remains pending, so agent
+  mode reports that requirement instead of simulating CIE success.

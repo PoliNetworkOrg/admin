@@ -80,3 +80,8 @@ Logout deletes the server session, attempts refresh revocation, and redirects to
 requests require an `Origin` exactly equal to `APP_URL`'s configured origin. Sessions and identity responses are not
 cacheable. Production cookies are host-only, `Secure`, `HttpOnly`, `SameSite=Lax`; tokens and client keys never appear
 in browser storage or route loader output.
+
+People receipt signing reuses PoliNetwork eSign's CIE popup and keeps ZIP download/signed-file upload as an option.
+The People backend (including the durable receipt/eSign bridge) is still pending; see
+[`docs/people/fees.md`](docs/people/fees.md#integration-with-esign). Agent mode previews the manual receipt flow and
+reports the backend requirement for CIE signing.

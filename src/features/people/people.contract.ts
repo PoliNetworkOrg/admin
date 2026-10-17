@@ -710,6 +710,28 @@ export const markPaidInputSchema = z.object({
 })
 export const feeRemindInputSchema = z.object({ personId: personIdSchema.nullable() })
 const receiptIdSchema = z.string().min(1).max(40)
+/** The existing eSign agent accepts at most ten documents with one PIN. */
+export const RECEIPT_SIGN_BATCH = 10
+export const prepareReceiptSignaturesInputSchema = z.object({
+  receiptIds: z
+    .array(receiptIdSchema)
+    .min(1)
+    .max(RECEIPT_SIGN_BATCH)
+    .refine((ids) => new Set(ids).size === ids.length, "Choose each receipt once."),
+})
+export const receiptSignaturesSchema = z
+  .array(
+    z.object({
+      receiptId: receiptIdSchema,
+      requestId: z.uuid(),
+      title: z.string().min(1).max(300),
+    })
+  )
+  .min(1)
+  .max(RECEIPT_SIGN_BATCH)
+export type PrepareReceiptSignaturesInput = z.infer<typeof prepareReceiptSignaturesInputSchema>
+export type ReceiptSignature = z.infer<typeof receiptSignaturesSchema>[number]
+
 export const receiptInputSchema = z.object({ receiptId: receiptIdSchema })
 export const voidReceiptInputSchema = z.object({ receiptId: receiptIdSchema, reason: reasonSchema })
 export const receiptsInputSchema = z.object({

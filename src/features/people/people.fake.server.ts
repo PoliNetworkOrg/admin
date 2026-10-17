@@ -1359,6 +1359,21 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:members:read")
       return receiptFile(findReceipt(input.receiptId))
     },
+    prepareReceiptSignatures: async (input) => {
+      require(viewer, "people:receipts:sign")
+      require(viewer, "esign:sign")
+      const signer = viewerSigner(viewer)
+      if (!signer) throw new Error("Only the President and the Vice-president sign receipts.")
+      for (const id of input.receiptIds) {
+        const receipt = findReceipt(id)
+        if (receipt.status !== "toSign") throw new Error(`Receipt ${receipt.number} is already signed.`)
+        if (receipt.signer !== signer) throw new Error(`Receipt ${receipt.number} needs another signer.`)
+      }
+      // Sample people have no backend identities or real eSign documents. Never simulate a valid CIE signature.
+      throw new Error(
+        "CIE signing needs the People backend and PoliNetwork eSign. Use Download to sign in this preview."
+      )
+    },
     downloadReceiptsToSign: async () => {
       require(viewer, "people:receipts:sign")
       const signer = viewerSigner(viewer)

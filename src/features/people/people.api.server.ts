@@ -3,6 +3,9 @@ import type { z } from "zod"
 import { createUntypedBackendClient } from "@/server/backend.server"
 
 import {
+  type PrepareReceiptSignaturesInput,
+  type ReceiptSignature,
+  receiptSignaturesSchema,
   type AcceptInviteInput,
   type AddTeamMemberInput,
   type AnswerCensusInput,
@@ -136,6 +139,7 @@ export type PeopleApi = {
   remindFees: (input: FeeRemindInput) => Promise<{ sent: number; skipped: number }>
   listReceipts: (input: { year: string | null }) => Promise<ReceiptsPage>
   downloadReceipt: (input: { receiptId: string }) => Promise<FilePayload>
+  prepareReceiptSignatures: (input: PrepareReceiptSignaturesInput) => Promise<ReceiptSignature[]>
   downloadReceiptsToSign: () => Promise<FilePayload>
   previewSignedReceipts: (files: File[]) => Promise<SignedUpload>
   sendSignedReceipts: (input: SendSignedInput) => Promise<{ sent: number; failed: number }>
@@ -219,6 +223,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     remindFees: (input) => mutateParsed("fees.remind", input, remindResultSchema),
     listReceipts: (input) => query("receipts.list", input, receiptsPageSchema),
     downloadReceipt: (input) => query("receipts.download", input, fileSchema),
+    prepareReceiptSignatures: (input) => mutateParsed("receipts.prepareSignatures", input, receiptSignaturesSchema),
     downloadReceiptsToSign: () => mutateParsed("receipts.toSign", undefined, fileSchema),
     previewSignedReceipts: (files) => {
       const form = new FormData()
