@@ -1,15 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { DataPageSkeleton } from "@/components/loading-skeleton"
-import { getTelegramGrants } from "@/features/telegram/grants.functions"
+
+import { TableSkeleton } from "@/components/primitives"
+import { PageBar, PageContent } from "@/components/shell"
 import { TelegramGrantsPage } from "@/features/telegram/grants-page"
+import { getTelegramGrantsWithGrantors } from "@/features/telegram/grants.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/grants")({
-  loader: () => getTelegramGrants(),
-  pendingComponent: () => <DataPageSkeleton columns={6} withTabs />,
+  loader: () => getTelegramGrantsWithGrantors(),
+  pendingComponent: () => (
+    <>
+      <PageBar />
+      <PageContent>
+        <TableSkeleton columns={6} label="Loading grants…" />
+      </PageContent>
+    </>
+  ),
   component: TelegramGrantsRoute,
 })
 
 function TelegramGrantsRoute() {
-  const grants = Route.useLoaderData()
-  return <TelegramGrantsPage grants={grants} />
+  return <TelegramGrantsPage grants={Route.useLoaderData()} />
 }

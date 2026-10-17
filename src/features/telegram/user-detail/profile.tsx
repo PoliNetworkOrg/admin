@@ -1,285 +1,382 @@
-import { useRouter } from "@tanstack/react-router"
-import {
-  CalendarClock,
-  ExternalLink,
-  History,
-  MessageCircle,
-  ShieldCheck,
-  UserPlus,
-  UserRound,
-  UsersRound,
-} from "lucide-react"
+import { Link } from "@tanstack/react-router"
+import { CalendarPlus, ExternalLink, ShieldX, UserX } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
+
+import {
+  buttonMotion,
+  buttonTones,
+  Chip,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  Hint,
+  CopyableText,
+  initialsOf,
+  RecordHeader,
+  SectionCard,
+  SectionEmpty,
+  StatusBadge,
+  Unset,
+} from "@/components/primitives"
+import { PageBar, PageContent, useCan } from "@/components/shell"
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import type { TgGrant } from "@/lib/api/types"
+import { formatDateTime, formatRange } from "@/lib/format"
+import { cn } from "@/lib/utils"
+
 import { InterruptGrantDialog } from "./grant-dialogs"
-import { AddGroupAdminDialog, RemoveGroupAdminDialog } from "./group-admin-dialog"
-import { RoleDialog } from "./role-dialog"
-import { Definition, DetailSection, SectionEmpty, SummaryCard } from "./sections"
 import type { TelegramUserDetail } from "./types"
 
-function formatDate(value: Date | string | null | undefined) {
-  if (!value) return "—"
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+const BACK = { label: "users", link: { to: "/dashboard/telegram/users" } } as const
+
+type Message = NonNullable<TelegramUserDetail["messages"]>[number]
+type Audit = NonNullable<TelegramUserDetail["audits"]>[number]
+
+export function TelegramUserNotFound({ userId }: { userId: string }) {
+  return (
+    <>
+      <PageBar width="record" back={BACK} context={userId} contextMono />
+      <PageContent width="record">
+        <h1 className="sr-only">User not found</h1>
+        <EmptyState
+          icon={UserX}
+          title="User not found"
+          text="No Telegram user has this ID. They may never have interacted with the bot."
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              className={buttonMotion}
+              nativeButton={false}
+              render={<Link to="/dashboard/telegram/users" />}
+            >
+              Back to users
+            </Button>
+          }
+        />
+      </PageContent>
+    </>
+  )
+}
+
+type OpenDialog = "none" | "grant" | "end-grant"
+
+/**
+ * Telegram user detail: grants, messages, audit log, each shown only with its read permission. Roles live in the
+ * IdP now (RFC v3 §11.4), so there is no role or group-admin management here.
+ */
+export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
+  const { user, messages, audits, grants } = data
+  const canWrite = useCan("tg:grants:manage")
+  const [dialog, setDialog] = useState<OpenDialog>("none")
+  const name = telegramUserName(user)
+
+  function closeDialog(open: boolean) {
+    if (!open) setDialog("none")
+  }
+
+  const headerActions = canWrite ? (
+    <>
+      {grants?.ongoing && (
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(buttonMotion, buttonTones.dangerOutline)}
+          onClick={() => setDialog("end-grant")}
+        >
+          <ShieldX aria-hidden data-icon="inline-start" />
+          End grant
+        </Button>
+      )}
+      <Button size="sm" className={buttonMotion} onClick={() => setDialog("grant")}>
+        <CalendarPlus aria-hidden data-icon="inline-start" />
+        Add grant
+      </Button>
+    </>
+  ) : undefined
+
+  const messagesCard = messages && (
+    <SectionCard title="Recent messages" count={messages.length}>
+      {messages.length === 0 ? (
+        <SectionEmpty title="No recent messages from this user" />
+      ) : (
+        <ol className="flex flex-col gap-6 pt-2">
+          {messages.map((message) => (
+            <MessageRow key={`${message.chatId}-${message.messageId}`} message={message} />
+          ))}
+        </ol>
+      )}
+    </SectionCard>
+  )
+  const grantsCard = grants && <GrantsSection ongoing={grants.ongoing} scheduled={grants.scheduled} />
+
+  return (
+    <>
+      <PageBar width="record" back={BACK} context={String(user.id)} contextMono right={headerActions} />
+      <PageContent width="record">
+        <div className="flex flex-col gap-6">
+          <RecordHeader
+            title={name}
+            avatar={
+              <span
+                aria-hidden
+                className="grid size-16 place-items-center rounded-full border border-(--pn-line-strong) bg-(--pn-muted) text-[20px] font-semibold text-(--pn-fg) max-shell:size-13 max-shell:text-[17px]"
+              >
+                {initialsOf(name)}
+              </span>
+            }
+            badge={grants?.ongoing ? <StatusBadge tone="success">Grant active</StatusBadge> : undefined}
+            meta={
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {user.username ? <span>@{user.username}</span> : <span>No username</span>}
+                <span className="inline-flex items-center gap-1 max-shell:basis-full">
+                  Telegram ID{" "}
+                  <CopyableText value={String(user.id)} what="Telegram ID" className="font-mono text-(--pn-fg)" />
+                </span>
+              </span>
+            }
+          />
+
+          {messagesCard && grantsCard ? (
+            <div className="grid items-start gap-4 min-[1000px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              {messagesCard}
+              {grantsCard}
+            </div>
+          ) : (
+            (messagesCard ?? grantsCard)
+          )}
+
+          {audits && (
+            <SectionCard title="Audit log" count={audits.length} padding="flush">
+              {audits.length === 0 ? (
+                <SectionEmpty title="No audit events for this user" />
+              ) : (
+                <DataTable
+                  label={`Audit log for ${name}`}
+                  columns={auditColumns}
+                  rows={audits}
+                  getRowId={(audit) => `${audit.id}-${audit.type}`}
+                  className="rounded-none border-0"
+                  empty={null}
+                />
+              )}
+            </SectionCard>
+          )}
+        </div>
+      </PageContent>
+
+      {canWrite && (
+        <>
+          <CreateGrantDialog open={dialog === "grant"} onOpenChange={closeDialog} user={user} />
+          <InterruptGrantDialog
+            open={dialog === "end-grant"}
+            onOpenChange={closeDialog}
+            userId={user.id}
+            userName={name}
+          />
+        </>
+      )}
+    </>
+  )
+}
+
+type GrantWindow = Pick<TgGrant, "validSince" | "validUntil">
+
+type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { key: string })[] }
+
+function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
+  // `tg.grants.checkUser` returns the ongoing grant without a key or reason; a user has at most one.
+  const count = (ongoing ? 1 : 0) + scheduled.length
+  return (
+    <SectionCard title="Grants" count={count} padding="flush">
+      {count === 0 ? (
+        <SectionEmpty
+          title="No active or scheduled grants"
+          hint="Grants let this user send links without automatic moderation."
+        />
+      ) : (
+        <ul className="flex flex-col gap-3 p-4">
+          {ongoing ? (
+            <li className="flex flex-col gap-2.5 rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-sunken) p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">Ongoing</span>
+                <StatusBadge tone="success">Active</StatusBadge>
+              </div>
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-1.5 text-[13px]">
+                <dt className="text-(--pn-fg-muted)">From</dt>
+                <dd className="tabular-nums">{formatDateTime(ongoing.validSince)}</dd>
+                <dt className="text-(--pn-fg-muted)">Until</dt>
+                <dd className="tabular-nums">{formatDateTime(ongoing.validUntil)}</dd>
+              </dl>
+            </li>
+          ) : null}
+          {scheduled.map((grant) => (
+            <li
+              key={grant.key}
+              className="flex flex-col gap-1.5 rounded-(--pn-r-4) border border-dashed border-(--pn-line-strong) p-3.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">Scheduled</span>
+                <StatusBadge tone="brand">Scheduled</StatusBadge>
+              </div>
+              <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">
+                {formatRange(grant.validSince, grant.validUntil)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
+  )
 }
 
 function messageLink(chatId: number, messageId: number) {
   return `https://t.me/c/${String(chatId).replace("-100", "")}/${messageId}`
 }
 
-function groupLink(chatId: number, messageId: number, inviteLink?: string | null) {
-  return inviteLink ?? messageLink(chatId, messageId)
-}
+const externalLink =
+  "inline-flex min-w-0 items-center gap-1 text-(--pn-accent) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent-hover) hover:underline"
 
-function GrantDetails({
-  label,
-  status,
-  validSince,
-  validUntil,
-}: {
-  label: string
-  status: "Active" | "Scheduled"
-  validSince: Date | string
-  validUntil: Date | string
-}) {
+function MessageRow({ message }: { message: Message }) {
+  const link = messageLink(message.chatId, message.messageId)
   return (
-    <dl className="grid gap-2 text-xs">
-      <Definition label={label}>
-        <Badge variant={status === "Scheduled" ? "secondary" : "default"}>{status}</Badge>
-      </Definition>
-      <Definition label="Valid from">{formatDate(validSince)}</Definition>
-      <Definition label="Valid until">{formatDate(validUntil)}</Definition>
-    </dl>
+    <li className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 items-center gap-2 text-[13px]">
+        <Hint label={`Chat ${message.chatId}`}>
+          <a
+            href={message.group?.inviteLink ?? link}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 truncate font-semibold text-(--pn-fg) transition-[color] duration-120 hover:text-(--pn-accent)"
+          >
+            {message.group?.title ?? `Chat ${message.chatId}`}
+          </a>
+        </Hint>
+      </div>
+      <blockquote className="w-fit max-w-full rounded-(--pn-r-4) rounded-tl-(--pn-r-1) bg-(--pn-muted) px-4 py-3 text-[15px] leading-6 whitespace-pre-wrap text-(--pn-fg) [overflow-wrap:anywhere]">
+        {message.message}
+      </blockquote>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <time dateTime={message.timestamp.toISOString()} className="text-(--pn-fg-muted) tabular-nums">
+          {formatDateTime(message.timestamp)}
+        </time>
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open message ${message.messageId} in ${message.group?.title ?? `chat ${message.chatId}`}`}
+          className={cn(externalLink, "font-medium")}
+        >
+          Open message
+          <ExternalLink aria-hidden className="size-3 shrink-0" />
+        </a>
+      </div>
+    </li>
   )
 }
 
-export function TelegramUserProfile({ data }: { data: TelegramUserDetail }) {
-  const router = useRouter()
-  const [adminDialogOpen, setAdminDialogOpen] = useState(false)
-  const { user, roles, configuredRoles, groupAdmin, groups, messages, audits, ongoingGrant, scheduledGrants } = data
-  const administeredGroups = groupAdmin.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-  const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed account"
-
-  return (
-    <>
-      <Card className="mt-5 [--card-spacing:--spacing(5)]">
-        <CardHeader className="flex flex-row items-center gap-4 max-[600px]:flex-wrap">
-          <Avatar className="size-14">
-            <AvatarFallback className="bg-primary font-mono text-base font-semibold text-primary-foreground">
-              {(user.firstName?.[0] ?? user.username?.[0] ?? String(user.id).slice(-2)).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] font-medium tracking-[0.08em] text-primary uppercase">
-              Telegram profile · {user.id}
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em]">{displayName}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {user.username ? `@${user.username}` : "No Telegram username"}
-            </p>
-          </div>
-          <Badge variant="secondary">
-            {roles.length} role{roles.length === 1 ? "" : "s"}
-          </Badge>
-        </CardHeader>
-      </Card>
-
-      <section className="mt-[18px] grid grid-cols-3 gap-3.5 max-[900px]:grid-cols-1">
-        <SummaryCard icon={UserRound} label="IDENTITY">
-          <dl className="grid gap-2 text-xs">
-            <Definition label="Telegram ID">
-              <span className="font-mono text-[10px]">{user.id}</span>
-            </Definition>
-            <Definition label="Name">{displayName}</Definition>
-            <Definition label="Username">{user.username ? `@${user.username}` : "—"}</Definition>
-          </dl>
-        </SummaryCard>
-        <SummaryCard
-          icon={ShieldCheck}
-          label="ROLES"
-          actions={
-            <>
-              <RoleDialog mode="add" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
-              <RoleDialog mode="remove" userId={user.id} roles={roles} configuredRoles={configuredRoles} />
-            </>
-          }
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {roles.length ? (
-              roles.map((role) => (
-                <Badge key={role} className="h-5 bg-accent px-1.5 font-mono text-[9px] text-primary">
-                  {role}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-[11px] italic text-muted-foreground">No assigned roles</span>
-            )}
-          </div>
-        </SummaryCard>
-        <SummaryCard
-          icon={CalendarClock}
-          label="GRANTS"
-          actions={
-            <>
-              <CreateGrantDialog user={user} />
-              {ongoingGrant && <InterruptGrantDialog userId={user.id} displayName={displayName} />}
-            </>
-          }
-        >
-          {ongoingGrant || scheduledGrants.length ? (
-            <div className="grid gap-4">
-              {ongoingGrant && (
-                <GrantDetails
-                  label="Ongoing"
-                  status="Active"
-                  validSince={ongoingGrant.validSince}
-                  validUntil={ongoingGrant.validUntil}
-                />
-              )}
-              {scheduledGrants.map((scheduledGrant, index) => (
-                <GrantDetails
-                  key={`${scheduledGrant.validSince.toString()}-${scheduledGrant.validUntil.toString()}-${index}`}
-                  label={`Scheduled ${index + 1}`}
-                  status="Scheduled"
-                  validSince={scheduledGrant.validSince}
-                  validUntil={scheduledGrant.validUntil}
-                />
-              ))}
-            </div>
-          ) : (
-            <span className="text-[11px] italic text-muted-foreground">No active or scheduled grants</span>
-          )}
-        </SummaryCard>
-      </section>
-
-      <DetailSection
-        icon={UsersRound}
-        title="Group administration"
-        count={administeredGroups.length}
-        action={
-          <Button variant="outline" size="sm" className="text-[10px]" onClick={() => setAdminDialogOpen(true)}>
-            <UserPlus data-icon="inline-start" /> Add group
-          </Button>
-        }
-      >
-        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-          {administeredGroups.map((entry) => (
-            <Card size="sm" key={entry.group.id}>
-              <CardContent className="p-5">
-                <h3 className="text-[13px]">{entry.group.title}</h3>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.group.id}</p>
-                <small className="mt-3 block text-[10px] text-muted-foreground">
-                  Added by {entry.addedBy.firstName}
-                  {entry.addedBy.username ? ` · @${entry.addedBy.username}` : ""}
-                </small>
-                <div className="mt-3 border-t border-border pt-3">
-                  <RemoveGroupAdminDialog
-                    userId={user.id}
-                    groupId={entry.group.id}
-                    groupTitle={entry.group.title}
-                    onSaved={async () => {
-                      toast.success("Group administrator removed.")
-                      try {
-                        await router.invalidate({ sync: true })
-                      } catch (error) {
-                        console.error(error)
-                        toast.warning("The assignment was removed, but the latest user data could not be refreshed.")
-                      }
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {!administeredGroups.length && <SectionEmpty text="This user does not administer any group." />}
-        </div>
-      </DetailSection>
-      <AddGroupAdminDialog
-        open={adminDialogOpen}
-        userId={user.id}
-        groups={groups}
-        administeredGroupIds={new Set(administeredGroups.map((entry) => entry.group.id))}
-        onClose={() => setAdminDialogOpen(false)}
-        onSaved={async () => {
-          setAdminDialogOpen(false)
-          toast.success("Group administrator added.")
-          try {
-            await router.invalidate({ sync: true })
-          } catch (error) {
-            console.error(error)
-            toast.warning("The administrator was added, but the latest user data could not be refreshed.")
-          }
-        }}
-      />
-      <DetailSection icon={MessageCircle} title="Recent messages" count={messages.length}>
-        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-          {messages.map((message) => (
-            <Card size="sm" key={`${message.chatId}-${message.messageId}`} className="gap-0 py-0">
-              <CardContent className="p-0">
-                <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/35 px-5 py-4">
-                  <div className="min-w-0">
-                    <a
-                      className="group/link inline-flex max-w-full items-center gap-1.5 rounded-sm font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-                      href={groupLink(message.chatId, message.messageId, message.group?.inviteLink)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <span className="truncate">{message.group?.title ?? `Chat ${message.chatId}`}</span>
-                      <ExternalLink className="size-3.5 shrink-0 opacity-65 transition-opacity group-hover/link:opacity-100" />
-                    </a>
-                    <p className="mt-1 font-mono text-[9px] text-muted-foreground">Chat {message.chatId}</p>
-                  </div>
-                  <time className="shrink-0 text-right text-[10px] leading-4 text-muted-foreground">
-                    {formatDate(message.timestamp)}
-                  </time>
-                </div>
-                <div className="px-5 py-4">
-                  <p className="border-l-2 border-primary/35 pl-3 text-[13px] leading-5 whitespace-pre-wrap">
-                    {message.message}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[9px] text-muted-foreground">Message #{message.messageId}</span>
-                    <a
-                      className="flex items-center gap-1 rounded-sm font-mono text-[10px] font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
-                      href={messageLink(message.chatId, message.messageId)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open message <ExternalLink className="size-3.5" />
-                    </a>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {!messages.length && <SectionEmpty text="No recent messages from this user." />}
-        </div>
-      </DetailSection>
-      <DetailSection icon={History} title="Audit log" count={audits.length}>
-        <div className="grid grid-cols-2 gap-3.5 max-[900px]:grid-cols-1">
-          {audits.map((audit) => (
-            <Card size="sm" key={`${audit.id}-${audit.type}`}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[13px]">{audit.type}</h3>
-                  <time className="shrink-0 text-[10px] text-muted-foreground">{formatDate(audit.createdAt)}</time>
-                </div>
-                <p className="mt-3 text-xs leading-[1.5]">{audit.reason ?? "No reason provided"}</p>
-                {audit.groupTitle && (
-                  <small className="mt-2 block text-[10px] text-muted-foreground">
-                    {audit.groupTitle} · {audit.groupId}
-                  </small>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-          {!audits.length && <SectionEmpty text="No audit events found for this user." />}
-        </div>
-      </DetailSection>
-    </>
-  )
+/** "ban_all" → "Ban all". */
+function humanize(value: string) {
+  const text = value.replaceAll("_", " ")
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+/**
+ * Who acted, as a person reads it: the Telegram admin's name, "Moderation bot" for automatic actions, "User {id}"
+ * for a bare Telegram ID, and a dashboard or IdP account by kind (its subject stays in the tooltip, never as the name).
+ */
+type AuditActor = { name: string; title?: string }
+
+function auditActor(audit: Audit): AuditActor {
+  if (audit.admin) return { name: telegramUserName(audit.admin) }
+  if (audit.actorTgId !== null) return { name: `User ${audit.actorTgId}` }
+  if (audit.adminId !== null) return { name: `User ${audit.adminId}` }
+  if (audit.actorSub) {
+    return {
+      name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account",
+      title: `IdP subject ${audit.actorSub}`,
+    }
+  }
+  if (audit.client === "bot" || audit.basis === "automatic") return { name: "Moderation bot" }
+  return { name: "Unknown actor" }
+}
+
+const auditColumns: DataTableColumn<Audit>[] = [
+  {
+    id: "actor",
+    label: "Actor",
+    minWidth: 160,
+    // Cards: actor, type and date share the first line.
+    mobile: "inline",
+    cell: (audit) => {
+      const actor = auditActor(audit)
+      return (
+        <Hint label={actor.title ?? actor.name}>
+          <span className="block truncate">{actor.name}</span>
+        </Hint>
+      )
+    },
+  },
+  {
+    id: "type",
+    label: "Type",
+    minWidth: 120,
+    cell: (audit) => <Chip className="h-6 rounded-full">{humanize(audit.type)}</Chip>,
+  },
+  {
+    id: "client",
+    label: "Client",
+    minWidth: 120,
+    mobile: "hidden",
+    cell: (audit) =>
+      audit.client ? (
+        <Chip className="h-6 rounded-(--pn-r-2) bg-(--pn-muted) font-normal">{humanize(audit.client)}</Chip>
+      ) : (
+        <Unset />
+      ),
+  },
+  {
+    id: "date",
+    label: "Date",
+    minWidth: 170,
+    mobile: "end",
+    className: "whitespace-nowrap tabular-nums",
+    cell: (audit) => formatDateTime(audit.createdAt),
+  },
+  {
+    id: "reason",
+    label: "Reason",
+    priority: 2,
+    minWidth: 180,
+    className: "max-w-[280px]",
+    mobile: "text",
+    cell: (audit) =>
+      audit.reason ? (
+        <Hint overflowOnly label={audit.reason}>
+          <span className="block truncate max-shell:whitespace-normal">{audit.reason}</span>
+        </Hint>
+      ) : (
+        <Unset />
+      ),
+  },
+  {
+    id: "group",
+    label: "Group",
+    priority: 1,
+    minWidth: 220,
+    mobile: "full",
+    cell: (audit) =>
+      audit.groupTitle && audit.groupId !== null ? (
+        <span className="flex min-w-0 items-baseline gap-2">
+          <Hint overflowOnly label={audit.groupTitle}>
+            <span className="truncate">{audit.groupTitle}</span>
+          </Hint>
+          <span className="shrink-0 font-mono text-(--pn-fg-muted) tabular-nums">{audit.groupId}</span>
+        </span>
+      ) : (
+        <Unset />
+      ),
+  },
+]

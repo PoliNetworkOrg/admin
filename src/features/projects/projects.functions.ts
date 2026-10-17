@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { adminMiddleware, writeAdminMiddleware } from "@/server/auth.middleware"
+
+import { adminMiddleware, webContentWriteMiddleware } from "@/server/auth.middleware"
+
 import { parseProjectForm } from "./projects.validation"
 import type { Project } from "./types"
 
@@ -35,17 +37,16 @@ export const getProjects = createServerFn()
   })
 
 export const createProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(parseProjectForm)
   .handler(async ({ data, context }) => {
     const formData = projectFormData(data)
-    formData.set("createdBy", String(context.telegramId))
     const project = await context.backend.web.projects.addProject.mutate(formData)
     return projectFields(project)
   })
 
 export const editProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator((data: FormData) => {
     const id = Number(data.get("id"))
     if (!Number.isInteger(id) || id <= 0) throw new Error("INVALID_ID")
@@ -54,14 +55,13 @@ export const editProject = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const formData = projectFormData(data)
     formData.set("id", String(data.id))
-    formData.set("modifiedBy", String(context.telegramId))
     const result = await context.backend.web.projects.editProject.mutate(formData)
     if ("error" in result) throw new Error(result.error)
     return projectFields(result)
   })
 
 export const deleteProject = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(z.object({ id: z.number().int().positive() }))
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.deleteProject.mutate(data)
@@ -70,7 +70,7 @@ export const deleteProject = createServerFn({ method: "POST" })
   })
 
 export const reorderProjects = createServerFn({ method: "POST" })
-  .middleware([writeAdminMiddleware])
+  .middleware([webContentWriteMiddleware])
   .validator(z.object({ projectIds: z.array(z.number().int().positive()).min(1) }))
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.reorderProjects.mutate(data)

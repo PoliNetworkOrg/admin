@@ -1,7 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
-import { DetailPageSkeleton } from "@/components/loading-skeleton"
-import { TelegramUserProfile } from "@/features/telegram/user-detail/profile"
-import { UserDetailBackLink } from "@/features/telegram/user-detail/sections"
+
+import { RecordSkeleton } from "@/components/primitives"
+import { PageBar, PageContent } from "@/components/shell"
+import { TelegramUserDetailPage, TelegramUserNotFound } from "@/features/telegram/user-detail/profile"
 import { getTelegramUserDetails } from "@/features/telegram/users.functions"
 
 export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
@@ -10,16 +11,28 @@ export const Route = createFileRoute("/dashboard/telegram/users/$userId")({
     if (!Number.isInteger(userId) || userId <= 0) throw notFound()
     return getTelegramUserDetails({ data: { userId } })
   },
-  pendingComponent: DetailPageSkeleton,
-  component: UserProfileRoute,
+  pendingComponent: UserDetailPending,
+  notFoundComponent: UserNotFoundRoute,
+  component: UserDetailRoute,
 })
 
-function UserProfileRoute() {
-  const data = Route.useLoaderData()
+function UserDetailPending() {
+  const { userId } = Route.useParams()
   return (
-    <div className="animate-appear">
-      <UserDetailBackLink />
-      <TelegramUserProfile data={data} />
-    </div>
+    <>
+      <PageBar back={{ label: "users", link: { to: "/dashboard/telegram/users" } }} context={userId} contextMono />
+      <PageContent width="record">
+        <RecordSkeleton label="Loading user…" />
+      </PageContent>
+    </>
   )
+}
+
+function UserNotFoundRoute() {
+  const { userId } = Route.useParams()
+  return <TelegramUserNotFound userId={userId} />
+}
+
+function UserDetailRoute() {
+  return <TelegramUserDetailPage data={Route.useLoaderData()} />
 }

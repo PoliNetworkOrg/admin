@@ -1,18 +1,20 @@
 import assert from "node:assert/strict"
 import { readdir, readFile } from "node:fs/promises"
 import test from "node:test"
+
 import ts from "typescript"
-import { parseProfilePictureForm } from "../src/features/account/account.validation.ts"
+
 import {
   associationLinksInput,
   associationSaveErrorMessage,
   parseCreateAssociationForm,
 } from "../src/features/associations/associations.validation.ts"
+import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
-import { forwardAuthRequest } from "../src/server/auth-proxy-core.ts"
-import { hasAdminRole, hasWriteAdminRole, isAgentModeEnabled } from "../src/server/authorization.ts"
-import { getForwardedCookieHeaders } from "../src/server/request-headers.ts"
+import { isValidWhatsappInviteLink } from "../src/features/whatsapp/whatsapp.validation.ts"
+import { isCsrfExemptPath, isTrustedRequest } from "../src/server/csrf.ts"
+import { isAgentModeEnabled } from "../src/server/permissions.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
 async function sourceFiles(directory) {
@@ -25,6 +27,47 @@ async function sourceFiles(directory) {
     })
   )
   return files.flat()
+}
+
+function referencesSymbol(node, symbol, checker) {
+  let found = false
+
+  function visit(current) {
+    if (ts.isIdentifier(current) && checker.getSymbolAtLocation(current) === symbol) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(current, visit)
+  }
+
+  visit(node)
+  return found
+}
+
+function handlerLogsError(root, errorParameter, checker) {
+  const errorSymbol = checker.getSymbolAtLocation(errorParameter)
+  if (!errorSymbol) return false
+
+  let found = false
+
+  function visit(node) {
+    if (node !== root && (ts.isFunctionLike(node) || ts.isCatchClause(node))) return
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "console" &&
+      node.expression.name.text === "error" &&
+      node.arguments.some((argument) => referencesSymbol(argument, errorSymbol, checker))
+    ) {
+      found = true
+      return
+    }
+    if (!found) ts.forEachChild(node, visit)
+  }
+
+  visit(root)
+  return found
 }
 
 function exportedServerFunctions(source, file) {
@@ -88,6 +131,18 @@ test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", false), false)
 })
 
+test("only the sign agent's ticket proxy skips the Origin check", async () => {
+  assert.equal(isCsrfExemptPath("/api/esign/agent/jobs/abc/prepare"), true)
+  assert.equal(isCsrfExemptPath("/api/esign/agentx"), false)
+  assert.equal(isCsrfExemptPath("/_serverFn/abc"), false)
+  assert.equal(isCsrfExemptPath("/auth/logout"), false)
+  assert.equal(isTrustedRequest("POST", null, "https://admin.polinetwork.org"), false)
+  const proxy = await readFile(new URL("../src/routes/api/esign/agent/$.ts", import.meta.url), "utf8")
+  // The proxy forwards only ticket paths, and nothing from the browser session.
+  assert.match(proxy, /const AGENT_PATH = \/\^jobs\\\/\[A-Za-z0-9_-\]\{43\}/)
+  assert.doesNotMatch(proxy, /cookie|authorization|readRequestSession|sessionMiddleware/i)
+})
+
 test("the backend URL only falls back during development or compilation", () => {
   assert.equal(resolveBackendUrl("https://backend.example", "production", "start"), "https://backend.example")
   assert.equal(resolveBackendUrl(undefined, "development", "dev"), "http://localhost:3000")
@@ -96,73 +151,44 @@ test("the backend URL only falls back during development or compilation", () => 
   assert.equal(resolveBackendUrl(undefined, undefined, undefined), undefined)
 })
 
-test("only dashboard administrator roles authorize access", () => {
-  assert.equal(hasAdminRole(["owner"]), true)
-  assert.equal(hasAdminRole(["direttivo"]), true)
-  assert.equal(hasAdminRole(["president"]), true)
-  assert.equal(hasAdminRole(["hr"]), true)
-  assert.equal(hasAdminRole(["creator"]), false)
-  assert.equal(hasAdminRole(["creator", "owner"]), false)
-  assert.equal(hasAdminRole([]), false)
-})
-
-test("HR dashboard access is read-only", () => {
-  assert.equal(hasWriteAdminRole(["owner"]), true)
-  assert.equal(hasWriteAdminRole(["direttivo"]), true)
-  assert.equal(hasWriteAdminRole(["president"]), true)
-  assert.equal(hasWriteAdminRole(["hr"]), false)
-  assert.equal(hasWriteAdminRole(["hr", "direttivo"]), true)
-  assert.equal(hasWriteAdminRole(["creator", "owner"]), false)
-})
-
-test("forwarded cookies are derived independently for every request", () => {
-  const first = getForwardedCookieHeaders(new Headers({ cookie: "session=first" }))
-  const second = getForwardedCookieHeaders(new Headers({ cookie: "session=second" }))
-  const anonymous = getForwardedCookieHeaders(new Headers())
-
-  assert.deepEqual(first, { cookie: "session=first" })
-  assert.deepEqual(second, { cookie: "session=second" })
-  assert.equal(anonymous, undefined)
-})
-
-test("the auth proxy preserves the request and exact upstream response", async () => {
-  const upstream = new Response("proxied", {
-    headers: [
-      ["set-cookie", "session=next; Path=/; HttpOnly"],
-      ["set-cookie", "csrf=next; Path=/; SameSite=Lax"],
-    ],
-  })
-  let forwarded
-  const response = await forwardAuthRequest(
-    new Request("https://admin.example/api/auth/callback?provider=passkey", {
-      headers: { cookie: "session=current" },
-    }),
-    "https://backend.example",
-    "/api/auth",
-    async (request) => {
-      forwarded = request
-      return upstream
-    }
+test("group label paths reject URL separators", async () => {
+  assert.equal(isValidLabelSegment("machine/learning"), false)
+  assert.equal(isValidLabelSegment("machine?learning"), false)
+  assert.equal(isValidLabelSegment("machine-learning"), true)
+  const validationSource = await readFile(
+    new URL("../src/features/group-labels/group-labels.validation.ts", import.meta.url),
+    "utf8"
   )
-
-  assert.equal(forwarded.url, "https://backend.example/api/auth/callback?provider=passkey")
-  assert.equal(forwarded.headers.get("cookie"), "session=current")
-  assert.equal(response, upstream)
-  assert.deepEqual(response.headers.getSetCookie(), [
-    "session=next; Path=/; HttpOnly",
-    "csrf=next; Path=/; SameSite=Lax",
-  ])
+  assert.match(validationSource, /segments\.some\(\(segment\) => !isValidLabelSegment\(segment\)\)/)
 })
 
-test("admin server functions attach the authorization middleware", async () => {
+test("WhatsApp group links require a real HTTPS invite code", () => {
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456"), true)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456?mode=ems_copy_t"), true)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/"), false)
+  assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/two/segments"), false)
+  assert.equal(isValidWhatsappInviteLink("http://chat.whatsapp.com/AbCdEf123456"), false)
+  assert.equal(isValidWhatsappInviteLink("https://example.com/AbCdEf123456"), false)
+  assert.equal(isValidWhatsappInviteLink("not a URL"), false)
+})
+
+test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
+    "src/features/azure/groups.functions.ts",
+    "src/features/esign/esign.functions.ts",
+    "src/features/esign/requests.functions.ts",
+    "src/features/esign/drives.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
+    "src/features/group-labels/group-labels.functions.ts",
+    "src/features/faqs/faqs.functions.ts",
     "src/features/telegram/grants.functions.ts",
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
+    "src/features/whatsapp/groups.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -173,59 +199,155 @@ test("admin server functions attach the authorization middleware", async () => {
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.includes("writeAdminMiddleware"),
+          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create)Middleware$/.test(name)),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
   }
 })
 
-test("dashboard mutations require a write-capable role", async () => {
-  const adminFunctionFiles = [
-    "src/features/associations/associations.functions.ts",
-    "src/features/azure/azure.functions.ts",
-    "src/features/guides/guides.functions.ts",
-    "src/features/projects/projects.functions.ts",
-    "src/features/telegram/grants.functions.ts",
-    "src/features/telegram/groups.functions.ts",
-    "src/features/telegram/users.functions.ts",
-  ]
+test("dashboard mutations enforce their exact write scope", async () => {
+  const entries = [
+    ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts"]],
+    ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
+    ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
+    ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
+    ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
+    ["grantsWriteMiddleware", ["src/features/telegram/grants.functions.ts"]],
+    ["telegramGroupsWriteMiddleware", ["src/features/telegram/groups.functions.ts"]],
+    ["whatsappGroupsWriteMiddleware", ["src/features/whatsapp/groups.functions.ts"]],
+    ["labelsWriteMiddleware", ["src/features/group-labels/group-labels.functions.ts"]],
+    [
+      "webContentWriteMiddleware",
+      [
+        "src/features/associations/associations.functions.ts",
+        "src/features/guides/guides.functions.ts",
+        "src/features/projects/projects.functions.ts",
+        "src/features/faqs/faqs.functions.ts",
+      ],
+    ],
+    ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
+  ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
-  for (const file of adminFunctionFiles) {
-    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
-    const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
-    for (const mutation of mutations) {
-      assert.ok(
-        mutation.middleware.includes("writeAdminMiddleware"),
-        `${file}:${mutation.name} must protect mutations with write access`
-      )
+  for (const { expectedMiddleware, files } of entries) {
+    for (const file of files) {
+      const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
+      const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
+      assert.ok(mutations.length > 0, `${file} must export at least one mutation`)
+      for (const mutation of mutations) {
+        assert.deepEqual(
+          mutation.middleware,
+          [expectedMiddleware],
+          `${file}:${mutation.name} must use its dedicated middleware`
+        )
+      }
     }
   }
+})
+
+test("dashboard mutation controls use their server's write scope", async () => {
+  const scopes = {
+    "src/features/azure/groups-page.tsx": "azure:groups:write",
+    "src/features/azure/members-page.tsx": "azure:members:create",
+    "src/features/esign/requests-page.tsx": "esign:requests:manage",
+    "src/features/esign/request-page.tsx": "esign:requests:manage",
+    "src/features/esign/drives-page.tsx": "esign:drives:manage",
+    "src/features/telegram/grants-page.tsx": "tg:grants:manage",
+    "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
+    "src/features/telegram/groups-page.tsx": ["tg:groups:manage", "groups:labels:write"],
+    "src/features/whatsapp/whatsapp-groups-page.tsx": ["wa:groups:manage", "groups:labels:write"],
+    "src/features/associations/associations-page.tsx": "web:content:write",
+    "src/features/faqs/faqs-page.tsx": "web:content:write",
+    "src/features/group-labels/group-labels-page.tsx": "groups:labels:write",
+    "src/features/groups-by-label/categories-page.tsx": "groups:labels:write",
+    "src/features/groups-by-label/category-page.tsx": "groups:labels:write",
+    "src/features/groups-by-label/tag-groups-page.tsx": ["groups:labels:write", "tg:groups:manage", "wa:groups:manage"],
+    "src/features/groups/group-row-actions.tsx": ["groups:labels:write", "tg:groups:manage", "wa:groups:manage"],
+    "src/features/groups-by-label/combined-groups-table.tsx": ["tg:groups:manage", "wa:groups:manage"],
+    "src/features/groups-by-label/add-group-to-label-dialog.tsx": "wa:groups:manage",
+    "src/features/group-link-reports/reports-page.tsx": "web:reports:manage",
+    "src/features/guides/guides-page.tsx": "web:content:write",
+    "src/features/projects/projects-page.tsx": "web:content:write",
+  }
+  const directory = new URL("../src", import.meta.url).pathname
+  const checked = new Set()
+  for (const file of await sourceFiles(directory)) {
+    const relativeFile = file.replace(`${directory}/`, "src/")
+    const source = ts.createSourceFile(file, await readFile(file, "utf8"), ts.ScriptTarget.Latest, true)
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useCan") {
+        assert.ok(Object.hasOwn(scopes, relativeFile), `${relativeFile} needs a write-scope entry`)
+        const expected = scopes[relativeFile]
+        assert.equal(node.arguments.length, expected === undefined ? 0 : 1, relativeFile)
+        if (expected !== undefined) {
+          assert.ok(ts.isStringLiteral(node.arguments[0]), `${relativeFile} must declare its write scope`)
+          assert.ok([expected].flat().includes(node.arguments[0].text), relativeFile)
+        }
+        checked.add(relativeFile)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  const compare = (a, b) => a.localeCompare(b)
+  assert.deepEqual([...checked].sort(compare), Object.keys(scopes).sort(compare))
 })
 
 test("session middleware marks identity-dependent responses private", async () => {
   const source = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
   assert.match(source, /setResponseHeader\("Cache-Control", "private, no-store"\)/)
   assert.match(source, /setResponseHeader\("Vary", "Cookie"\)/)
-  assert.match(source, /if \(!hasWriteAdminRole\(context\.roles\)\) throw new Error\("UNAUTHORIZED"\)/)
+  assert.match(source, /if \(!hasPermission\(permissions, permission\)\) throw new Error\("UNAUTHORIZED"\)/)
   assert.doesNotMatch(source, /new Error\("TELEGRAM_NOT_LINKED"\)/)
 })
 
 test("event handlers integrate protected server-function redirects with the router", async () => {
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
-    "src/features/account/use-account.ts": ["uploadProfilePicture"],
-    "src/features/associations/association-dialogs.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
+    "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
-    "src/features/azure/group-membership.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
-    "src/features/azure/member-dialog.tsx": ["createAzureMember", "setAzureMemberNumber"],
-    "src/features/guides/guide-dialogs.tsx": ["createGuide", "deleteGuide"],
+    "src/features/azure/member-dialog.tsx": ["createAzureMember"],
+    "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
+    "src/features/esign/new-request-page.tsx": [
+      "uploadEsignDocument",
+      "importEsignDriveDocument",
+      "createEsignRequest",
+    ],
+    "src/features/esign/request-page.tsx": [
+      "declineEsignRequest",
+      "cancelEsignRequest",
+      "retryEsignDelivery",
+      "uploadSignedEsignDocument",
+    ],
+    "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
+    "src/features/esign/drives-page.tsx": ["setEsignDriveAccess"],
+    "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
+    "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
+    "src/features/group-labels/add-category-dialog.tsx": ["createGroupLabel"],
+    "src/features/group-labels/add-tag-dialog.tsx": ["createGroupLabel", "createReleaseLabel"],
+    "src/features/group-labels/group-labels-dialog.tsx": ["tagGroup", "untagGroup"],
+    "src/features/group-labels/group-labels-page.tsx": ["editGroupLabel", "deleteGroupLabel"],
+    "src/features/group-labels/rename-label-dialog.tsx": ["renameGroupLabel"],
+    "src/features/group-link-reports/reports-page.tsx": ["resolveGroupLinkReport", "dismissGroupLinkReport"],
+    "src/features/groups/group-row-actions.tsx": ["setGroupVisibility", "setWhatsappGroupVisibility"],
+    "src/features/groups-by-label/add-child-label-dialog.tsx": ["createGroupLabel"],
+    "src/features/groups-by-label/add-group-to-label-dialog.tsx": [
+      "createGroupLabel",
+      "createWhatsappGroup",
+      "tagGroup",
+    ],
+    "src/features/groups-by-label/publish-tag-groups-dialog.tsx": [
+      "setGroupVisibility",
+      "setWhatsappGroupVisibility",
+      "untagGroup",
+    ],
+    "src/features/guides/guide-dialogs.tsx": ["createGuide"],
+    "src/features/guides/guides-page.tsx": ["deleteGuide"],
     "src/features/projects/projects-page.tsx": ["createProject", "deleteProject", "editProject", "reorderProjects"],
-    "src/features/telegram/groups-page.tsx": ["setGroupVisibility"],
     "src/features/telegram/leave-group-dialog.tsx": ["leaveTelegramGroup"],
     "src/features/telegram/user-detail/grant-dialogs.tsx": ["interruptTelegramGrant"],
-    "src/features/telegram/user-detail/group-admin-dialog.tsx": ["addTelegramGroupAdmin", "removeTelegramGroupAdmin"],
-    "src/features/telegram/user-detail/role-dialog.tsx": ["addTelegramUserRole", "removeTelegramUserRole"],
+    "src/features/whatsapp/delete-group-dialog.tsx": ["deleteWhatsappGroup"],
+    "src/features/whatsapp/whatsapp-group-dialog.tsx": ["createWhatsappGroup", "editWhatsappGroup"],
   }
 
   for (const [file, serverFunctions] of Object.entries(consumers)) {
@@ -234,27 +356,25 @@ test("event handlers integrate protected server-function redirects with the rout
       assert.match(source, new RegExp(`useServerFn\\(${serverFunction}\\)`), `${file} must wrap ${serverFunction}`)
     }
   }
+
+  const srcDirectory = new URL("../src", import.meta.url).pathname
+  const wrapped = new Set(Object.values(consumers).flat())
+  for (const file of (await sourceFiles(srcDirectory)).filter((path) => path.endsWith(".functions.ts"))) {
+    const source = await readFile(file, "utf8")
+    for (const mutation of exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)) {
+      assert.ok(
+        wrapped.has(mutation.name),
+        `${file.replace(`${srcDirectory}/`, "src/")}:${mutation.name} needs a useServerFn consumer entry`
+      )
+    }
+  }
 })
 
 test("the backend adapter cannot cache request headers at module scope", async () => {
   const source = await readFile(new URL("../src/server/backend.server.ts", import.meta.url), "utf8")
-  assert.match(source, /createBackendClient\(requestHeaders: Headers\)/)
+  assert.match(source, /createBackendClient\(accessToken: string \| null\)/)
   assert.doesNotMatch(source, /getRequestHeaders|getRequestHeader/)
   assert.doesNotMatch(source, /const\s+\w*backend\w*\s*=\s*createBackendClient/i)
-})
-
-test("profile picture validation rejects invalid and oversized files", () => {
-  const valid = new FormData()
-  valid.set("image", new File([new Uint8Array(8)], "avatar.png", { type: "image/png" }))
-  assert.equal(parseProfilePictureForm(valid).name, "avatar.png")
-
-  const wrongType = new FormData()
-  wrongType.set("image", new File([new Uint8Array(8)], "avatar.gif", { type: "image/gif" }))
-  assert.throws(() => parseProfilePictureForm(wrongType), /INVALID_IMAGE_TYPE/)
-
-  const oversized = new FormData()
-  oversized.set("image", new File([new Uint8Array(1024 * 1024 + 1)], "avatar.png", { type: "image/png" }))
-  assert.throws(() => parseProfilePictureForm(oversized), /IMAGE_TOO_LARGE/)
 })
 
 test("guide validation accepts only strict dated PDF uploads", () => {
@@ -369,6 +489,17 @@ test("web content save errors explain actionable validation failures", () => {
     associationSaveErrorMessage(new Error("INVALID_LOGO_TYPE")),
     "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
   )
+  assert.equal(
+    associationSaveErrorMessage(new Error("INVALID_FILE_TYPE")),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
+  assert.equal(
+    associationSaveErrorMessage({
+      message: "Input validation failed",
+      data: { zodError: { properties: { logo: { errors: ["Too big: expected value to be <= 1048576"] } } } },
+    }),
+    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
+  )
 })
 
 test("project and association mutations forward FormData to the backend", async () => {
@@ -390,16 +521,28 @@ test("project and association mutations forward FormData to the backend", async 
 test("every caught runtime error is written to the console", async () => {
   const srcDirectory = new URL("../src", import.meta.url).pathname
   const failures = []
+  const files = await sourceFiles(srcDirectory)
+  const program = ts.createProgram(files, {
+    allowJs: true,
+    jsx: ts.JsxEmit.Preserve,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    noEmit: true,
+    target: ts.ScriptTarget.Latest,
+  })
+  const checker = program.getTypeChecker()
 
-  for (const file of await sourceFiles(srcDirectory)) {
-    const source = await readFile(file, "utf8")
-    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  for (const file of files) {
+    const sourceFile = program.getSourceFile(file)
+    assert.ok(sourceFile, `TypeScript must load ${file}`)
 
     function visit(node) {
       if (ts.isCatchClause(node)) {
-        const errorName = node.variableDeclaration?.name.getText(sourceFile)
-        const body = node.block.getText(sourceFile)
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const errorParameter = node.variableDeclaration?.name
+        const logsCaughtError =
+          errorParameter && ts.isIdentifier(errorParameter)
+            ? handlerLogsError(node.block, errorParameter, checker)
+            : false
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
@@ -413,12 +556,17 @@ test("every caught runtime error is written to the console", async () => {
         node.expression.name.text === "catch"
       ) {
         const handler = node.arguments[0]
-        const errorName =
+        const errorParameter =
           handler && (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
-            ? handler.parameters[0]?.name.getText(sourceFile)
+            ? handler.parameters[0]?.name
             : undefined
-        const body = handler?.getText(sourceFile) ?? ""
-        const logsCaughtError = errorName && new RegExp(`console\\.error\\([^)]*\\b${errorName}\\b`).test(body)
+        const logsCaughtError =
+          errorParameter &&
+          ts.isIdentifier(errorParameter) &&
+          handler &&
+          (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
+            ? handlerLogsError(handler.body, errorParameter, checker)
+            : false
 
         if (!logsCaughtError) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
@@ -432,4 +580,19 @@ test("every caught runtime error is written to the console", async () => {
   }
 
   assert.deepEqual(failures, [], `Caught errors must be logged at: ${failures.join(", ")}`)
+})
+
+void test("the Azure directory read has its own permission boundary", async () => {
+  const source = await readFile(new URL("../src/features/azure/azure.functions.ts", import.meta.url), "utf8")
+  const read = exportedServerFunctions(source, "azure.functions.ts").find((fn) => fn.name === "getAzureMembers")
+  assert.ok(read)
+  assert.equal(read.isPost, false)
+  assert.deepEqual(read.middleware, ["azureMembersReadMiddleware"])
+  const middleware = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
+  const readMiddleware = middleware.slice(
+    middleware.indexOf("export const azureMembersReadMiddleware"),
+    middleware.indexOf("export const azureMembersCreateMiddleware")
+  )
+  assert.match(readMiddleware, /middleware\(\[adminMiddleware\]\)/)
+  assert.match(readMiddleware, /requirePermission\(context.permissions, "azure:members:read"\)/)
 })

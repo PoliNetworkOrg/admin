@@ -15,9 +15,13 @@ function TableSurface({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  containerClassName,
+  ...props
+}: React.ComponentProps<"table"> & { containerClassName?: string }) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div data-slot="table-container" className={cn("relative w-full overflow-x-auto", containerClassName)}>
       <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   )
@@ -46,7 +50,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/55 has-aria-expanded:bg-muted/70 data-[state=selected]:bg-muted",
+        "border-b transition-colors hover:bg-(--pn-hover) has-aria-expanded:bg-muted/70 data-[state=selected]:bg-muted",
         className
       )}
       {...props}

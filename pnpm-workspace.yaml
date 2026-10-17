@@ -1,0 +1,12 @@
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.9
+  vite-plus: 0.2.9
+overrides:
+  vite: "catalog:"
+  oxlint: 1.79.0
+  "@oxlint/plugins": 1.79.0
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"

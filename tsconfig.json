@@ -14,10 +14,11 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noUncheckedSideEffectImports": true,
-    "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "types": ["vite/client"],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*", "vite.config.ts", "tailwind.config.ts"]
 }

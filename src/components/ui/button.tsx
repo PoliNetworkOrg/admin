@@ -11,19 +11,19 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-[0_1px_2px_rgb(15_23_42/8%)] hover:bg-primary/90 dark:shadow-none",
         outline:
-          "border-border bg-card text-foreground shadow-[0_1px_2px_rgb(15_23_42/3%)] hover:border-input hover:bg-muted aria-expanded:bg-muted aria-expanded:text-foreground dark:shadow-none",
+          "border-border bg-card text-foreground shadow-[0_1px_2px_rgb(15_23_42/3%)] hover:border-(--pn-hover-line) hover:bg-(--pn-hover) aria-expanded:bg-muted aria-expanded:text-foreground dark:shadow-none",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-(--pn-hover) aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-(--pn-hover) hover:text-(--pn-accent) aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-(--pn-hover)",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive/10 text-destructive hover:bg-(--pn-hover) hover:text-(--pn-accent) focus-visible:border-ring focus-visible:ring-ring/20 dark:bg-destructive/20 dark:hover:bg-(--pn-hover) dark:focus-visible:ring-ring/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
         xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-9 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        sm: "h-9 gap-1.5 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-11 gap-1.5 px-3.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         icon: "size-10",
         "icon-xs":

@@ -9,24 +9,47 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as OnboardingUnauthorizedRouteImport } from './routes/onboarding/unauthorized'
-import { Route as OnboardingLinkRouteImport } from './routes/onboarding/link'
+import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
+import { Route as DashboardWebGroupLabelsRouteImport } from './routes/dashboard/web/group-labels'
+import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faqs'
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
+import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
+import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
+import { Route as DashboardEsignSignRouteImport } from './routes/dashboard/esign/sign'
+import { Route as DashboardEsignSetupRouteImport } from './routes/dashboard/esign/setup'
+import { Route as DashboardEsignNewRouteImport } from './routes/dashboard/esign/new'
+import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esign/inbox'
+import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
+import { Route as DashboardEsignRequestsIndexRouteImport } from './routes/dashboard/esign/requests/index'
+import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
+import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
+import { Route as DashboardEsignRequestsRequestIdRouteImport } from './routes/dashboard/esign/requests/$requestId'
+import { Route as ApiEsignAgentSplatRouteImport } from './routes/api/esign/agent/$'
 
+const UnauthorizedRoute = UnauthorizedRouteImport.update({
+  id: '/unauthorized',
+  path: '/unauthorized',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -47,36 +70,61 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const OnboardingUnauthorizedRoute = OnboardingUnauthorizedRouteImport.update({
-  id: '/onboarding/unauthorized',
-  path: '/onboarding/unauthorized',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingLinkRoute = OnboardingLinkRouteImport.update({
-  id: '/onboarding/link',
-  path: '/onboarding/link',
-  getParentRoute: () => rootRouteImport,
+const DashboardWebRoute = DashboardWebRouteImport.update({
+  id: '/web',
+  path: '/web',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAccountRoute = DashboardAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardWebProjectsRoute = DashboardWebProjectsRouteImport.update({
-  id: '/web/projects',
-  path: '/web/projects',
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
+  id: '/whatsapp/groups',
+  path: '/whatsapp/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardWebProjectsRoute = DashboardWebProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
 const DashboardWebGuidesRoute = DashboardWebGuidesRouteImport.update({
-  id: '/web/guides',
-  path: '/web/guides',
-  getParentRoute: () => DashboardRoute,
+  id: '/guides',
+  path: '/guides',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
+const DashboardWebGroupLabelsRoute = DashboardWebGroupLabelsRouteImport.update({
+  id: '/group-labels',
+  path: '/group-labels',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
+const DashboardWebFaqsRoute = DashboardWebFaqsRouteImport.update({
+  id: '/faqs',
+  path: '/faqs',
+  getParentRoute: () => DashboardWebRoute,
 } as any)
 const DashboardWebAssociationsRoute =
   DashboardWebAssociationsRouteImport.update({
-    id: '/web/associations',
-    path: '/web/associations',
-    getParentRoute: () => DashboardRoute,
+    id: '/associations',
+    path: '/associations',
+    getParentRoute: () => DashboardWebRoute,
   } as any)
 const DashboardTelegramGroupsRoute = DashboardTelegramGroupsRouteImport.update({
   id: '/telegram/groups',
@@ -86,6 +134,43 @@ const DashboardTelegramGroupsRoute = DashboardTelegramGroupsRouteImport.update({
 const DashboardTelegramGrantsRoute = DashboardTelegramGrantsRouteImport.update({
   id: '/telegram/grants',
   path: '/telegram/grants',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardReportsResolvedRoute =
+  DashboardReportsResolvedRouteImport.update({
+    id: '/reports/resolved',
+    path: '/reports/resolved',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardReportsGroupLinksRoute =
+  DashboardReportsGroupLinksRouteImport.update({
+    id: '/reports/group-links',
+    path: '/reports/group-links',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardEsignSignRoute = DashboardEsignSignRouteImport.update({
+  id: '/esign/sign',
+  path: '/esign/sign',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEsignSetupRoute = DashboardEsignSetupRouteImport.update({
+  id: '/esign/setup',
+  path: '/esign/setup',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEsignNewRoute = DashboardEsignNewRouteImport.update({
+  id: '/esign/new',
+  path: '/esign/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEsignInboxRoute = DashboardEsignInboxRouteImport.update({
+  id: '/esign/inbox',
+  path: '/esign/inbox',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEsignDrivesRoute = DashboardEsignDrivesRouteImport.update({
+  id: '/esign/drives',
+  path: '/esign/drives',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
@@ -98,16 +183,34 @@ const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   path: '/azure/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const DashboardWebGroupsByLabelIndexRoute =
+  DashboardWebGroupsByLabelIndexRouteImport.update({
+    id: '/groups-by-label/',
+    path: '/groups-by-label/',
+    getParentRoute: () => DashboardWebRoute,
+  } as any)
 const DashboardTelegramUsersIndexRoute =
   DashboardTelegramUsersIndexRouteImport.update({
     id: '/telegram/users/',
     path: '/telegram/users/',
     getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardEsignRequestsIndexRoute =
+  DashboardEsignRequestsIndexRouteImport.update({
+    id: '/esign/requests/',
+    path: '/esign/requests/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardWebTagsTagRoute = DashboardWebTagsTagRouteImport.update({
+  id: '/tags/$tag',
+  path: '/tags/$tag',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
+const DashboardWebGroupsByLabelSplatRoute =
+  DashboardWebGroupsByLabelSplatRouteImport.update({
+    id: '/groups-by-label/$',
+    path: '/groups-by-label/$',
+    getParentRoute: () => DashboardWebRoute,
   } as any)
 const DashboardTelegramUsersUserIdRoute =
   DashboardTelegramUsersUserIdRouteImport.update({
@@ -115,63 +218,128 @@ const DashboardTelegramUsersUserIdRoute =
     path: '/telegram/users/$userId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardEsignRequestsRequestIdRoute =
+  DashboardEsignRequestsRequestIdRouteImport.update({
+    id: '/esign/requests/$requestId',
+    path: '/esign/requests/$requestId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const ApiEsignAgentSplatRoute = ApiEsignAgentSplatRouteImport.update({
+  id: '/api/esign/agent/$',
+  path: '/api/esign/agent/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
+  '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
+  '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
+  '/dashboard/esign/new': typeof DashboardEsignNewRoute
+  '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
+  '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
+  '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
+  '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
+  '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
+  '/dashboard/esign/new': typeof DashboardEsignNewRoute
+  '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
+  '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/esign/requests': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/telegram/users': typeof DashboardTelegramUsersIndexRoute
+  '/dashboard/web/groups-by-label': typeof DashboardWebGroupsByLabelIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/unauthorized': typeof UnauthorizedRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/account': typeof DashboardAccountRoute
-  '/onboarding/link': typeof OnboardingLinkRoute
-  '/onboarding/unauthorized': typeof OnboardingUnauthorizedRoute
+  '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
+  '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
+  '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
+  '/dashboard/esign/new': typeof DashboardEsignNewRoute
+  '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
+  '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
+  '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
+  '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
+  '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
+  '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
+  '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -179,70 +347,133 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
+    | '/dashboard/web'
     | '/dashboard/'
-    | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
+    | '/dashboard/esign/inbox'
+    | '/dashboard/esign/new'
+    | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
+    | '/dashboard/whatsapp/groups'
+    | '/api/esign/agent/$'
+    | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
+    | '/dashboard/esign/requests/'
     | '/dashboard/telegram/users/'
+    | '/dashboard/web/groups-by-label/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
+    | '/dashboard/web'
     | '/dashboard'
-    | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
+    | '/dashboard/esign/inbox'
+    | '/dashboard/esign/new'
+    | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
+    | '/dashboard/whatsapp/groups'
+    | '/api/esign/agent/$'
+    | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
+    | '/dashboard/esign/requests'
     | '/dashboard/telegram/users'
+    | '/dashboard/web/groups-by-label'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
+    | '/unauthorized'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/dashboard/account'
-    | '/onboarding/link'
-    | '/onboarding/unauthorized'
+    | '/dashboard/web'
     | '/dashboard/'
-    | '/api/auth/$'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
+    | '/dashboard/esign/drives'
+    | '/dashboard/esign/inbox'
+    | '/dashboard/esign/new'
+    | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
+    | '/dashboard/reports/group-links'
+    | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/faqs'
+    | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
+    | '/dashboard/whatsapp/groups'
+    | '/api/esign/agent/$'
+    | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
+    | '/dashboard/web/groups-by-label/$'
+    | '/dashboard/web/tags/$tag'
+    | '/dashboard/esign/requests/'
     | '/dashboard/telegram/users/'
+    | '/dashboard/web/groups-by-label/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
-  OnboardingLinkRoute: typeof OnboardingLinkRoute
-  OnboardingUnauthorizedRoute: typeof OnboardingUnauthorizedRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  UnauthorizedRoute: typeof UnauthorizedRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
+  ApiEsignAgentSplatRoute: typeof ApiEsignAgentSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unauthorized': {
+      id: '/unauthorized'
+      path: '/unauthorized'
+      fullPath: '/unauthorized'
+      preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -271,19 +502,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/onboarding/unauthorized': {
-      id: '/onboarding/unauthorized'
-      path: '/onboarding/unauthorized'
-      fullPath: '/onboarding/unauthorized'
-      preLoaderRoute: typeof OnboardingUnauthorizedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/link': {
-      id: '/onboarding/link'
-      path: '/onboarding/link'
-      fullPath: '/onboarding/link'
-      preLoaderRoute: typeof OnboardingLinkRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dashboard/web': {
+      id: '/dashboard/web'
+      path: '/web'
+      fullPath: '/dashboard/web'
+      preLoaderRoute: typeof DashboardWebRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/account': {
       id: '/dashboard/account'
@@ -292,26 +516,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/whatsapp/groups': {
+      id: '/dashboard/whatsapp/groups'
+      path: '/whatsapp/groups'
+      fullPath: '/dashboard/whatsapp/groups'
+      preLoaderRoute: typeof DashboardWhatsappGroupsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/web/projects': {
       id: '/dashboard/web/projects'
-      path: '/web/projects'
+      path: '/projects'
       fullPath: '/dashboard/web/projects'
       preLoaderRoute: typeof DashboardWebProjectsRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/web/guides': {
       id: '/dashboard/web/guides'
-      path: '/web/guides'
+      path: '/guides'
       fullPath: '/dashboard/web/guides'
       preLoaderRoute: typeof DashboardWebGuidesRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/group-labels': {
+      id: '/dashboard/web/group-labels'
+      path: '/group-labels'
+      fullPath: '/dashboard/web/group-labels'
+      preLoaderRoute: typeof DashboardWebGroupLabelsRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/faqs': {
+      id: '/dashboard/web/faqs'
+      path: '/faqs'
+      fullPath: '/dashboard/web/faqs'
+      preLoaderRoute: typeof DashboardWebFaqsRouteImport
+      parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/web/associations': {
       id: '/dashboard/web/associations'
-      path: '/web/associations'
+      path: '/associations'
       fullPath: '/dashboard/web/associations'
       preLoaderRoute: typeof DashboardWebAssociationsRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/telegram/groups': {
       id: '/dashboard/telegram/groups'
@@ -325,6 +591,55 @@ declare module '@tanstack/react-router' {
       path: '/telegram/grants'
       fullPath: '/dashboard/telegram/grants'
       preLoaderRoute: typeof DashboardTelegramGrantsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reports/resolved': {
+      id: '/dashboard/reports/resolved'
+      path: '/reports/resolved'
+      fullPath: '/dashboard/reports/resolved'
+      preLoaderRoute: typeof DashboardReportsResolvedRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reports/group-links': {
+      id: '/dashboard/reports/group-links'
+      path: '/reports/group-links'
+      fullPath: '/dashboard/reports/group-links'
+      preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/esign/sign': {
+      id: '/dashboard/esign/sign'
+      path: '/esign/sign'
+      fullPath: '/dashboard/esign/sign'
+      preLoaderRoute: typeof DashboardEsignSignRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/esign/setup': {
+      id: '/dashboard/esign/setup'
+      path: '/esign/setup'
+      fullPath: '/dashboard/esign/setup'
+      preLoaderRoute: typeof DashboardEsignSetupRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/esign/new': {
+      id: '/dashboard/esign/new'
+      path: '/esign/new'
+      fullPath: '/dashboard/esign/new'
+      preLoaderRoute: typeof DashboardEsignNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/esign/inbox': {
+      id: '/dashboard/esign/inbox'
+      path: '/esign/inbox'
+      fullPath: '/dashboard/esign/inbox'
+      preLoaderRoute: typeof DashboardEsignInboxRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/esign/drives': {
+      id: '/dashboard/esign/drives'
+      path: '/esign/drives'
+      fullPath: '/dashboard/esign/drives'
+      preLoaderRoute: typeof DashboardEsignDrivesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/azure/members': {
@@ -341,12 +656,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dashboard/web/groups-by-label/': {
+      id: '/dashboard/web/groups-by-label/'
+      path: '/groups-by-label'
+      fullPath: '/dashboard/web/groups-by-label/'
+      preLoaderRoute: typeof DashboardWebGroupsByLabelIndexRouteImport
+      parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/telegram/users/': {
       id: '/dashboard/telegram/users/'
@@ -355,6 +670,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/esign/requests/': {
+      id: '/dashboard/esign/requests/'
+      path: '/esign/requests'
+      fullPath: '/dashboard/esign/requests/'
+      preLoaderRoute: typeof DashboardEsignRequestsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/web/tags/$tag': {
+      id: '/dashboard/web/tags/$tag'
+      path: '/tags/$tag'
+      fullPath: '/dashboard/web/tags/$tag'
+      preLoaderRoute: typeof DashboardWebTagsTagRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/groups-by-label/$': {
+      id: '/dashboard/web/groups-by-label/$'
+      path: '/groups-by-label/$'
+      fullPath: '/dashboard/web/groups-by-label/$'
+      preLoaderRoute: typeof DashboardWebGroupsByLabelSplatRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
     '/dashboard/telegram/users/$userId': {
       id: '/dashboard/telegram/users/$userId'
       path: '/telegram/users/$userId'
@@ -362,34 +698,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersUserIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/esign/requests/$requestId': {
+      id: '/dashboard/esign/requests/$requestId'
+      path: '/esign/requests/$requestId'
+      fullPath: '/dashboard/esign/requests/$requestId'
+      preLoaderRoute: typeof DashboardEsignRequestsRequestIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/api/esign/agent/$': {
+      id: '/api/esign/agent/$'
+      path: '/api/esign/agent/$'
+      fullPath: '/api/esign/agent/$'
+      preLoaderRoute: typeof ApiEsignAgentSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface DashboardWebRouteChildren {
+  DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
+  DashboardWebFaqsRoute: typeof DashboardWebFaqsRoute
+  DashboardWebGroupLabelsRoute: typeof DashboardWebGroupLabelsRoute
+  DashboardWebGuidesRoute: typeof DashboardWebGuidesRoute
+  DashboardWebProjectsRoute: typeof DashboardWebProjectsRoute
+  DashboardWebGroupsByLabelSplatRoute: typeof DashboardWebGroupsByLabelSplatRoute
+  DashboardWebTagsTagRoute: typeof DashboardWebTagsTagRoute
+  DashboardWebGroupsByLabelIndexRoute: typeof DashboardWebGroupsByLabelIndexRoute
+}
+
+const DashboardWebRouteChildren: DashboardWebRouteChildren = {
+  DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
+  DashboardWebFaqsRoute: DashboardWebFaqsRoute,
+  DashboardWebGroupLabelsRoute: DashboardWebGroupLabelsRoute,
+  DashboardWebGuidesRoute: DashboardWebGuidesRoute,
+  DashboardWebProjectsRoute: DashboardWebProjectsRoute,
+  DashboardWebGroupsByLabelSplatRoute: DashboardWebGroupsByLabelSplatRoute,
+  DashboardWebTagsTagRoute: DashboardWebTagsTagRoute,
+  DashboardWebGroupsByLabelIndexRoute: DashboardWebGroupsByLabelIndexRoute,
+}
+
+const DashboardWebRouteWithChildren = DashboardWebRoute._addFileChildren(
+  DashboardWebRouteChildren,
+)
+
 interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRoute
+  DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
+  DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
+  DashboardEsignInboxRoute: typeof DashboardEsignInboxRoute
+  DashboardEsignNewRoute: typeof DashboardEsignNewRoute
+  DashboardEsignSetupRoute: typeof DashboardEsignSetupRoute
+  DashboardEsignSignRoute: typeof DashboardEsignSignRoute
+  DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
+  DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
-  DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
-  DashboardWebGuidesRoute: typeof DashboardWebGuidesRoute
-  DashboardWebProjectsRoute: typeof DashboardWebProjectsRoute
+  DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
+  DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
+  DashboardEsignRequestsIndexRoute: typeof DashboardEsignRequestsIndexRoute
   DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRoute,
+  DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
+  DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,
+  DashboardEsignInboxRoute: DashboardEsignInboxRoute,
+  DashboardEsignNewRoute: DashboardEsignNewRoute,
+  DashboardEsignSetupRoute: DashboardEsignSetupRoute,
+  DashboardEsignSignRoute: DashboardEsignSignRoute,
+  DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
+  DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
-  DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
-  DashboardWebGuidesRoute: DashboardWebGuidesRoute,
-  DashboardWebProjectsRoute: DashboardWebProjectsRoute,
+  DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
+  DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
+  DashboardEsignRequestsIndexRoute: DashboardEsignRequestsIndexRoute,
   DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
 }
 
@@ -401,19 +793,22 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
-  OnboardingLinkRoute: OnboardingLinkRoute,
-  OnboardingUnauthorizedRoute: OnboardingUnauthorizedRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  UnauthorizedRoute: UnauthorizedRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
+  ApiEsignAgentSplatRoute: ApiEsignAgentSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

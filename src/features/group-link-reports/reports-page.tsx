@@ -1,0 +1,439 @@
+import { linkOptions, useRouter } from "@tanstack/react-router"
+import { useServerFn } from "@tanstack/react-start"
+import { Check, CircleCheck, FolderSearch, Inbox, X } from "lucide-react"
+import { useDeferredValue, useMemo, useState } from "react"
+
+import {
+  buttonMotion,
+  CountBadge,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  PlatformGlyph,
+  SegmentedControl,
+  StatusBadge,
+  Unset,
+  useFocusAfterRemoval,
+} from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Button } from "@/components/ui/button"
+import { formatLabelBreadcrumb, labelPathToUrlSegments } from "@/features/group-labels/label-tree"
+import { dismissGroupLinkReport, resolveGroupLinkReport } from "@/features/group-link-reports/reports.functions"
+import type { GroupLinkReport } from "@/lib/api/types"
+import { formatDate, hostOf } from "@/lib/format"
+import { cn } from "@/lib/utils"
+
+export type ReportStatus = "open" | "closed"
+type Segment = "all" | "tg" | "wa" | "missing" | "resolved" | "dismissed"
+
+const segments = {
+  open: [
+    { value: "all", label: "All" },
+    { value: "tg", label: "Telegram" },
+    { value: "wa", label: "WhatsApp" },
+    { value: "missing", label: "Missing group" },
+  ],
+  closed: [
+    { value: "all", label: "All" },
+    { value: "resolved", label: "Resolved" },
+    { value: "dismissed", label: "Dismissed" },
+  ],
+} satisfies Record<ReportStatus, { value: Segment; label: string }[]>
+
+const ISSUE_LABEL = {
+  broken_link: "Broken link",
+  missing: "Missing group",
+} satisfies Record<GroupLinkReport["reportType"], string>
+
+/** One row per broken group or missing label; `latest` supplies the row's text and date. */
+type ReportGroup = { key: string; latest: GroupLinkReport; ids: number[] }
+
+function ReportIssue({ report }: { report: GroupLinkReport }) {
+  return (
+    <>
+      {report.reportType === "broken_link" && report.type ? <PlatformGlyph platform={report.type} /> : null}
+      {report.reportType === "missing" && <FolderSearch aria-hidden className="size-4 shrink-0" />}
+      {ISSUE_LABEL[report.reportType]}
+    </>
+  )
+}
+
+function groupKey(report: GroupLinkReport) {
+  return report.reportType === "broken_link" ? `broken:${report.type}:${report.groupId}` : `missing:${report.label}`
+}
+
+function groupReports(reports: GroupLinkReport[]): ReportGroup[] {
+  const groups = new Map<string, ReportGroup>()
+  for (const report of reports) {
+    const key = groupKey(report)
+    const existing = groups.get(key)
+    if (!existing) {
+      groups.set(key, { key, latest: report, ids: [report.id] })
+      continue
+    }
+    existing.ids.push(report.id)
+    if (report.createdAt > existing.latest.createdAt) existing.latest = report
+  }
+  return [...groups.values()]
+}
+
+function inSegment(report: GroupLinkReport, segment: Segment) {
+  switch (segment) {
+    case "all":
+      return true
+    case "tg":
+    case "wa":
+      return report.reportType === "broken_link" && report.type === segment
+    case "missing":
+      return report.reportType === "missing"
+    case "resolved":
+    case "dismissed":
+      return report.status === segment
+  }
+}
+
+function reference(report: GroupLinkReport) {
+  if (report.reportType === "broken_link") return report.groupTitle
+  return report.label ? formatLabelBreadcrumb(report.label) : null
+}
+
+/** "t.me/joinchat/abc": the host without "www." plus the path. */
+function shortLink(url: string) {
+  if (!URL.canParse(url)) return url
+  const { pathname } = new URL(url)
+  return `${hostOf(url)}${pathname === "/" ? "" : pathname}`
+}
+
+function searchText(report: GroupLinkReport) {
+  return [
+    report.groupTitle,
+    report.label,
+    report.label && formatLabelBreadcrumb(report.label),
+    report.reportedLink,
+    report.details,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase()
+}
+
+/** Broken link → the platform's group list searched by title; missing group → the category page. */
+function reportTarget(report: GroupLinkReport) {
+  if (report.reportType === "missing") {
+    if (!report.label) return null
+    return linkOptions({
+      to: "/dashboard/web/groups-by-label/$",
+      params: { _splat: labelPathToUrlSegments(report.label).join("/") },
+    })
+  }
+  const search = report.groupTitle ? { q: report.groupTitle } : {}
+  if (report.type === "tg") return linkOptions({ to: "/dashboard/telegram/groups", search })
+  if (report.type === "wa") return linkOptions({ to: "/dashboard/whatsapp/groups", search })
+  return null
+}
+
+const LEAVE_MS = 120
+
+/** Reports › Open and Reports › Closed. */
+export function ReportsPage({ status, reports }: { status: ReportStatus; reports: GroupLinkReport[] }) {
+  const open = status === "open"
+  const router = useRouter()
+  const resolve = useServerFn(resolveGroupLinkReport)
+  const dismiss = useServerFn(dismissGroupLinkReport)
+  const canWrite = useCan("web:reports:manage")
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
+  const [segment, setSegment] = useState<Segment>("all")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  /** Rows fading out after Resolve/Dismiss, then rows hidden until the reloaded list drops them. */
+  const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set())
+  const focus = useFocusAfterRemoval<HTMLDivElement>("tbody tr")
+
+  const matching = useMemo(
+    () => (deferredQuery === "" ? reports : reports.filter((report) => searchText(report).includes(deferredQuery))),
+    [reports, deferredQuery]
+  )
+  const groups = groupReports(matching.filter((report) => inSegment(report, segment)))
+    .filter((group) => !removed.has(group.key))
+    .toSorted((a, b) => {
+      const order = a.latest.createdAt.getTime() - b.latest.createdAt.getTime()
+      return open ? order : -order
+    })
+  // Counts individual reports so it matches the panel badge; the ×n badges explain the grouped rows.
+  const reportCount = groups.reduce((sum, group) => sum + group.ids.length, 0)
+  const pageCount = Math.max(1, Math.ceil(groups.length / pageSize))
+  // Removing the last row of the last page moves back a page.
+  const currentPage = Math.min(page, pageCount)
+  const rows = groups.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const filteredView = deferredQuery !== "" || segment !== "all"
+  // Each segment's total ignores the search, like every segmented filter, so the counts stay put while typing.
+  const visibleReports = reports.filter((report) => !removed.has(groupKey(report)))
+  const segmentItems = segments[status].map((item) => ({
+    ...item,
+    count: visibleReports.filter((report) => inSegment(report, item.value)).length,
+  }))
+
+  function setKey(setter: typeof setLeaving, key: string, present: boolean) {
+    setter((current) => {
+      const next = new Set(current)
+      if (present) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }
+
+  async function settle(group: ReportGroup, action: "resolve" | "dismiss", trigger: HTMLElement) {
+    focus.capture(trigger, { restore: true })
+    setKey(setLeaving, group.key, true)
+    const unmount = window.setTimeout(() => setKey(setRemoved, group.key, true), LEAVE_MS)
+    try {
+      const input = { data: { ids: group.ids } }
+      await (action === "resolve" ? resolve(input) : dismiss(input))
+    } catch (caught) {
+      console.error(caught)
+      window.clearTimeout(unmount)
+      setKey(setLeaving, group.key, false)
+      setKey(setRemoved, group.key, false)
+      appToast.error("Couldn't update the report. Check your permissions and try again.")
+      return
+    }
+    // Reloads this list and the panel's open-reports count; the row stays hidden until the new list lands.
+    await router.invalidate({ sync: true })
+    window.clearTimeout(unmount)
+    setKey(setLeaving, group.key, false)
+    setKey(setRemoved, group.key, false)
+    appToast.success(action === "resolve" ? "Report resolved." : "Report dismissed.")
+  }
+
+  function openReport(group: ReportGroup) {
+    const target = reportTarget(group.latest)
+    if (target) void router.navigate(target)
+  }
+
+  function changeQuery(value: string) {
+    setQuery(value)
+    setPage(1)
+  }
+
+  function clearFilters() {
+    changeQuery("")
+    setSegment("all")
+  }
+
+  const columns: DataTableColumn<ReportGroup>[] = [
+    {
+      id: "reference",
+      label: "Reference",
+      minWidth: 220,
+      fill: true,
+      className: "max-shell:min-w-0 max-shell:w-full",
+      cell: ({ latest, ids }) => {
+        const text = reference(latest)
+        return (
+          <span className="block min-w-0">
+            <span className="flex min-w-0 items-start gap-2">
+              {text ? (
+                <Hint overflowOnly label={text}>
+                  <span className="min-w-0 flex-1 truncate">{text}</span>
+                </Hint>
+              ) : (
+                <Unset />
+              )}
+              {ids.length > 1 ? <CountBadge value={ids.length} prefix="×" label={`${ids.length} reports`} /> : null}
+              {!open && (
+                <span className="ml-auto flex shrink-0 flex-col items-end gap-1 shell:hidden">
+                  <StatusBadge tone={latest.status === "resolved" ? "success" : "neutral"}>
+                    {latest.status === "resolved" ? "Resolved" : "Dismissed"}
+                  </StatusBadge>
+                  <span className="flex items-center gap-1 text-xs font-normal text-(--pn-fg-muted)">
+                    <ReportIssue report={latest} />
+                  </span>
+                </span>
+              )}
+            </span>
+            <span
+              className={cn(
+                "mt-1 flex items-center gap-2 text-xs font-normal text-(--pn-fg-muted) shell:hidden",
+                !open && "hidden"
+              )}
+            >
+              <ReportIssue report={latest} />
+            </span>
+          </span>
+        )
+      },
+    },
+    ...(open
+      ? []
+      : [
+          {
+            id: "status",
+            label: "Status",
+            mobile: "hidden" as const,
+            priority: 1,
+            minWidth: 120,
+            cell: ({ latest }: ReportGroup) =>
+              latest.status === "resolved" ? (
+                <StatusBadge tone="success">Resolved</StatusBadge>
+              ) : (
+                <StatusBadge tone="neutral">Dismissed</StatusBadge>
+              ),
+          },
+        ]),
+    {
+      id: "issue",
+      label: "Issue",
+      minWidth: 160,
+      mobile: "hidden",
+      cell: ({ latest }) => (
+        <span className="flex items-center gap-2 whitespace-nowrap">
+          <ReportIssue report={latest} />
+        </span>
+      ),
+    },
+    {
+      id: "details",
+      label: "Details",
+      priority: 2,
+      minWidth: 220,
+      cell: ({ latest }) => {
+        const link = latest.reportType === "broken_link" ? latest.reportedLink : null
+        const text = link ?? latest.details
+        if (!text) return open ? <Unset /> : null
+        return (
+          <Hint overflowOnly label={text}>
+            <span className={cn("block max-w-[320px] truncate", link && "font-mono")}>
+              {link ? shortLink(link) : text}
+            </span>
+          </Hint>
+        )
+      },
+    },
+    {
+      id: "date",
+      label: "Date",
+      priority: 1,
+      minWidth: 120,
+      cell: ({ latest }) => <span className="whitespace-nowrap tabular-nums">{formatDate(latest.createdAt)}</span>,
+    },
+  ]
+
+  return (
+    <>
+      <PageBar
+        title={open ? "Open reports" : "Closed reports"}
+        description={open ? "Broken links and missing groups reported by students" : "Resolved and dismissed reports"}
+        left={
+          <Toolbar
+            search={{ value: query, onChange: changeQuery }}
+            filters={
+              <SegmentedControl
+                label={open ? "Filter by issue" : "Filter by status"}
+                items={segmentItems}
+                value={segment}
+                onValueChange={(next) => {
+                  setSegment(next)
+                  setPage(1)
+                }}
+              />
+            }
+            // Segment counts already show each option's total; the count appears only when search narrow
+            // the list further, and then just the matching number.
+            count={
+              deferredQuery ? <Count value={reportCount} noun={open ? "open report" : "closed report"} /> : undefined
+            }
+          />
+        }
+      />
+      <PageContent>
+        <div ref={focus.surfaceRef} tabIndex={-1} className="rounded-(--pn-r-5)">
+          <DataTable
+            label={open ? "Open reports" : "Closed reports"}
+            columns={columns}
+            rows={rows}
+            getRowId={(group) => group.key}
+            onRowClick={openReport}
+            rowLabel={(group) => reference(group.latest) ?? "report"}
+            rowHref={(group) => {
+              const target = reportTarget(group.latest)
+              return target && router.buildLocation(target).href
+            }}
+            actions={
+              open && canWrite
+                ? (group) => (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Dismiss report for ${reference(group.latest) ?? "this group"}`}
+                        onClick={(event) => void settle(group, "dismiss", event.currentTarget)}
+                        className={cn(buttonMotion, "h-9 px-2.5 text-(--pn-fg-muted) hover:text-(--pn-fg)")}
+                      >
+                        <X aria-hidden data-icon="inline-start" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Resolve report for ${reference(group.latest) ?? "this group"}`}
+                        onClick={(event) => void settle(group, "resolve", event.currentTarget)}
+                        className={cn(buttonMotion, "ml-1 h-9 px-2.5")}
+                      >
+                        <Check aria-hidden data-icon="inline-start" />
+                        Resolve
+                      </Button>
+                    </>
+                  )
+                : undefined
+            }
+            actionsWidth={222}
+            pagination={{
+              page: currentPage,
+              pageSize,
+              total: groups.length,
+              onPage: setPage,
+              onPageSize: (size) => {
+                setPageSize(size)
+                setPage(1)
+              },
+            }}
+            rowProps={(group) =>
+              leaving.has(group.key)
+                ? { className: "pointer-events-none opacity-0 transition-opacity duration-120 ease-(--pn-ease-in)" }
+                : {}
+            }
+            empty={
+              filteredView ? (
+                <EmptyState
+                  icon={open ? Inbox : CircleCheck}
+                  title="No reports match"
+                  text="Clear the search or choose another filter."
+                  action={
+                    <Button size="sm" variant="ghost" className={buttonMotion} onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : open ? (
+                <EmptyState
+                  icon={Inbox}
+                  title="No open reports"
+                  text="Broken Telegram or WhatsApp links and missing groups reported by students appear here."
+                />
+              ) : (
+                <EmptyState
+                  icon={CircleCheck}
+                  title="No closed reports"
+                  text="Resolved and dismissed reports appear here."
+                />
+              )
+            }
+          />
+        </div>
+      </PageContent>
+    </>
+  )
+}
