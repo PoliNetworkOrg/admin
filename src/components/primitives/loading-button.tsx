@@ -12,8 +12,7 @@ export const buttonTones = {
   dangerOutline:
     "text-(--pn-danger-fg) border-[color-mix(in_oklab,var(--pn-danger-fg)_40%,transparent)] hover:border-(--pn-hover-line) hover:bg-(--pn-hover) hover:text-(--pn-accent)",
   dangerGhost: "text-(--pn-danger-fg) hover:bg-(--pn-hover) hover:text-(--pn-accent)",
-  dangerSolid:
-    "bg-(--pn-danger-solid) text-white hover:bg-(--pn-accent-solid) hover:text-(--pn-accent-solid-fg) focus-visible:ring-0",
+  dangerSolid: "bg-(--pn-danger-solid) text-white hover:bg-(--pn-danger-solid-hover) focus-visible:ring-0",
 }
 
 type LoadingButtonProps = React.ComponentProps<typeof Button> & {
