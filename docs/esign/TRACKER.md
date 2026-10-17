@@ -129,7 +129,11 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Test with a real CIE + reader on macOS/Windows/Linux. This Mac already has Software CIE and a BIT4ID miniLector AIR
   NFC v3 reader: run the local end-to-end below without `--soft`, place the CIE on the reader and sign (expect a macOS
   "access data from other apps" prompt the first time, and Rosetta for the official module).
-- ☐ macOS notarization (Developer ID, hardened runtime + `disable-library-validation`) and Windows code signing.
+- ☐ Code signing (pipeline ready, sign-agent PR #4; steps in sign-agent `docs/code-signing.md`):
+  - macOS: upload `~/dev/polinetwork/.signing/sign-agent/developer-id.csr` as a Developer ID Application certificate on
+    the PoliNetwork APS Apple account (team 842636PS9J), create an App Store Connect API key, run
+    `scripts/setup-macos-signing.sh secrets …`, tag a release.
+  - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 
 ## Local end-to-end
@@ -144,6 +148,9 @@ cd ~/dev/polinetwork/sign-agent && go run ./cmd/sign-agent --dev --soft    # PIN
 Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
 
 ## Log
+
+- 2026-10-17: backend#73 merged (released @polinetwork/backend 1.7.0), admin#102 merged; agent v0.1.1; code-signing
+  pipeline merged (sign-agent #4).
 
 - 2026-10-17: kickoff; branches created; research started.
 - 2026-10-17: PAdES engine done and validated; agent refactored to popup + ticket flow; agent repo published;
