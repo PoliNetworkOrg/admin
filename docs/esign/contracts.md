@@ -72,10 +72,12 @@ browse OneDrive). Requests are visible to their signers and creator.
 
 - `esign.profile.sync({name, email})` → upserts the caller's signer profile (BFF passes ID-token claims).
 - `esign.signers.list()` → signer profiles (manage).
-- `esign.drive.list({folderId?})` → `{folder, breadcrumbs, items: [{id, name, kind: folder|pdf, size, modifiedAt}]}`.
-- `esign.documents.stage(FormData{file} | {driveItemId})` → `{documentId, fileName, pages: [{width,height}], signatures, sha256}`.
+- `esign.config()` → `{drives: [{id, label}], canManage, maxPdfBytes}`; `drives` is empty without OneDrive.
+- `esign.drive.list({driveId, folderId?})` → `{folder, path, items: [{id, name, kind: folder|pdf, size, modifiedAt}]}`.
+  Item IDs are only unique within their drive, so every drive call names one.
+- `esign.documents.upload(FormData{file})` / `esign.documents.fromDrive({driveId, itemId})` → `{documentId, fileName, pages: [{width,height}], signatures, sha256}`.
 - `esign.documents.content({documentId})` → `{base64}` (a staged or request document version).
-- `esign.requests.create({title, documentId, signers: [{sub, role, placement}], ordered, output: {folderId, fileName}, email?: {to[], message?}})`.
+- `esign.requests.create({title, documentId, signers: [{sub, role, placement}], ordered, output: {driveId, folderId, fileName}, email?: {to[], message?}})`.
 - `esign.requests.list({scope: "inbox"|"mine"|"all", status?})`, `esign.requests.get({id})`.
 - `esign.requests.cancel({id})`, `esign.requests.decline({id, reason})`, `esign.requests.retryDelivery({id})`.
 - `esign.jobs.create({requestId, placement?})` → `{jobId, ticket, expiresAt, agentUrl}`; `esign.jobs.status({jobId})`;

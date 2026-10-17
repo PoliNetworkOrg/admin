@@ -21,13 +21,13 @@ import type { EsignConfig, EsignPdfInfo, EsignProfile } from "@/lib/api/types"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { DriveBrowser } from "./drive-browser"
+import { DriveBrowser, type DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 
-type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: { id: string; path: string } | null }
+type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
 /** `manual`: the user moved the box, so a role no longer places it. */
 type SignerDraft = { sub: string; name: string; role: string; placement: BoxPlacement; manual: boolean }
 
@@ -87,7 +87,7 @@ export function NewEsignRequestPage({
   const createFn = useServerFn(createEsignRequest)
   const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId(), roles: useId() }
 
-  const [source, setSource] = useState<"drive" | "upload">(config.drive ? "drive" : "upload")
+  const [source, setSource] = useState<"drive" | "upload">(config.drives.length > 0 ? "drive" : "upload")
   const [staged, setStaged] = useState<Staged | null>(null)
   const [base64, setBase64] = useState<string | null>(null)
   const [busyItem, setBusyItem] = useState<string | null>(null)
@@ -115,8 +115,8 @@ export function NewEsignRequestPage({
   const [search, setSearch] = useState("")
 
   const [title, setTitle] = useState("")
-  const [saveToDrive, setSaveToDrive] = useState(Boolean(config.drive))
-  const [folder, setFolder] = useState<{ id: string; path: string } | null>(null)
+  const [saveToDrive, setSaveToDrive] = useState(config.drives.length > 0)
+  const [folder, setFolder] = useState<DriveFolder | null>(null)
   const [choosingFolder, setChoosingFolder] = useState(false)
   const [fileName, setFileName] = useState("")
   const [emails, setEmails] = useState("")
@@ -126,6 +126,9 @@ export function NewEsignRequestPage({
   const [attempted, setAttempted] = useState(false)
 
   const pages = staged?.pdf.pages ?? []
+  // One drive goes by its own name; several are browsed together under "OneDrive".
+  const drivesName = config.drives.length === 1 ? config.drives[0].label : "OneDrive"
+  const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
 
   function adopt(next: Staged, content: string) {
     setStaged(next)
@@ -157,11 +160,11 @@ export function NewEsignRequestPage({
     }
   }
 
-  async function importFromDrive(itemId: string, from: { id: string; path: string }) {
+  async function importFromDrive(itemId: string, from: DriveFolder) {
     setDocError(null)
     setBusyItem(itemId)
     try {
-      const result = await importFn({ data: { itemId } })
+      const result = await importFn({ data: { driveId: from.driveId, itemId } })
       const content = await contentFn({ data: { documentId: result.document.id } })
       adopt(
         { id: result.document.id, fileName: result.document.fileName, pdf: result.pdf, folder: from },
@@ -251,7 +254,8 @@ export function NewEsignRequestPage({
           documentId: staged.id,
           ordered,
           signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, placement: s.placement })),
-          output: saveToDrive && folder ? { folderId: folder.id, fileName: fileName.trim() } : null,
+          output:
+            saveToDrive && folder ? { driveId: folder.driveId, folderId: folder.id, fileName: fileName.trim() } : null,
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
         },
       })
@@ -341,14 +345,14 @@ export function NewEsignRequestPage({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-[17px] font-semibold">Choose the document</h2>
-                  {config.drive && (
+                  {config.drives.length > 0 && (
                     <div className="flex gap-1">
                       <Button
                         variant={source === "drive" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setSource("drive")}
                       >
-                        <Cloud aria-hidden /> {config.drive}
+                        <Cloud aria-hidden /> {drivesName}
                       </Button>
                       <Button
                         variant={source === "upload" ? "secondary" : "ghost"}
@@ -361,10 +365,11 @@ export function NewEsignRequestPage({
                   )}
                 </div>
                 {docError && <InlineAlert>{docError}</InlineAlert>}
-                {source === "drive" && config.drive ? (
+                {source === "drive" && config.drives.length > 0 ? (
                   <DriveBrowser
                     mode="file"
-                    label={`Files in ${config.drive}`}
+                    label="Files"
+                    drives={config.drives}
                     busyId={busyItem}
                     onPickFile={(item, from) => void importFromDrive(item.id, from)}
                     className="flex-1"
@@ -555,7 +560,7 @@ export function NewEsignRequestPage({
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </FormField>
-                {config.drive && (
+                {config.drives.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-2 text-[14px] font-medium">
                       <Checkbox
@@ -563,13 +568,15 @@ export function NewEsignRequestPage({
                         checked={saveToDrive}
                         onCheckedChange={(v) => setSaveToDrive(Boolean(v))}
                       />
-                      Save the signed PDF to {config.drive}
+                      Save the signed PDF to {drivesName}
                     </label>
                     {saveToDrive && (
                       <>
                         <div className="flex items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2">
                           <span className="min-w-0 truncate font-mono text-[12px]">
-                            {folder ? `/${folder.path}` : "No folder chosen"}
+                            {folder
+                              ? `${config.drives.length > 1 ? `${driveLabel(folder.driveId)}: ` : ""}/${folder.path}`
+                              : "No folder chosen"}
                           </span>
                           <Button variant="outline" size="sm" onClick={() => setChoosingFolder((v) => !v)}>
                             {choosingFolder ? "Close" : "Choose folder"}
@@ -578,7 +585,9 @@ export function NewEsignRequestPage({
                         {choosingFolder && (
                           <DriveBrowser
                             mode="folder"
-                            label={`Folders in ${config.drive}`}
+                            label="Folders"
+                            drives={config.drives}
+                            initialDriveId={folder?.driveId}
                             className="h-72"
                             onPickFolder={(picked) => {
                               setFolder(picked)

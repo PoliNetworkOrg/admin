@@ -3,20 +3,30 @@ import { ArrowUp, FileText, Folder, LoaderCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { IconButton, InlineAlert } from "@/components/primitives"
+import { floatingMotion, raisedSurface } from "@/components/primitives/motion"
 import { Button } from "@/components/ui/button"
-import type { EsignDriveItem, EsignDriveListing } from "@/lib/api/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { EsignDrive, EsignDriveItem, EsignDriveListing } from "@/lib/api/types"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { listEsignDrive } from "./requests.functions"
 
+/** A folder in one of the shared drives: item IDs are only unique within their drive. */
+export type DriveFolder = { driveId: string; id: string; path: string }
+
 type DriveBrowserProps = {
   /** "file" picks a PDF, "folder" picks the open folder. */
   mode: "file" | "folder"
+  /** What the list holds, e.g. "Files"; the drive's name is added. */
   label: string
+  /** The configured drives, at least one; a picker appears when there are several. */
+  drives: EsignDrive[]
+  /** The drive opened first, the first one by default. */
+  initialDriveId?: string
   /** A PDF, with the folder it is in. */
-  onPickFile?: (item: EsignDriveItem, folder: { id: string; path: string }) => void
-  onPickFolder?: (folder: { id: string; path: string }) => void
+  onPickFile?: (item: EsignDriveItem, folder: DriveFolder) => void
+  onPickFolder?: (folder: DriveFolder) => void
   /** The item being imported, shown with a spinner. */
   busyId?: string | null
   className?: string
@@ -28,19 +38,31 @@ function sizeLabel(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-/** Walks the association's shared drive (below its configured root) to pick a PDF or a folder. */
-export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, className }: DriveBrowserProps) {
+/** Walks the association's shared drives (each below its configured root) to pick a PDF or a folder. */
+export function DriveBrowser({
+  mode,
+  label,
+  drives,
+  initialDriveId,
+  onPickFile,
+  onPickFolder,
+  busyId,
+  className,
+}: DriveBrowserProps) {
   const listFn = useServerFn(listEsignDrive)
+  const [driveId, setDriveId] = useState(drives.some((d) => d.id === initialDriveId) ? initialDriveId : drives[0]?.id)
   const [folderId, setFolderId] = useState<string | undefined>(undefined)
+  const drive = drives.find((d) => d.id === driveId)
   const [listing, setListing] = useState<EsignDriveListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!driveId) return
     let cancelled = false
     setLoading(true)
     setError(null)
-    listFn({ data: { folderId } })
+    listFn({ data: { driveId, folderId } })
       .then((result) => {
         if (!cancelled) setListing(result)
       })
@@ -54,15 +76,42 @@ export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, cl
     return () => {
       cancelled = true
     }
-  }, [folderId, listFn])
+  }, [driveId, folderId, listFn])
 
   const items = listing?.items.filter((item) => mode === "file" || item.kind === "folder") ?? []
+  const here = listing && driveId ? { driveId, id: listing.folder.id, path: listing.path } : null
 
   return (
     <div
       className={cn("flex min-h-0 flex-col overflow-hidden rounded-(--pn-r-4) border border-(--pn-line)", className)}
     >
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-(--pn-line) bg-(--pn-surface) pr-2 pl-1">
+        {drives.length > 1 && (
+          <Select
+            items={drives.map((d) => ({ value: d.id, label: d.label }))}
+            value={driveId}
+            onValueChange={(value) => {
+              if (value === null) return
+              setListing(null)
+              setFolderId(undefined)
+              setDriveId(value)
+            }}
+          >
+            <SelectTrigger
+              aria-label="Drive"
+              className="h-8 max-w-[45%] shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={cn(raisedSurface, floatingMotion)}>
+              {drives.map((d) => (
+                <SelectItem key={d.id} value={d.id} className="h-9 text-[13px]">
+                  {d.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <IconButton
           label="Up one folder"
           icon={ArrowUp}
@@ -79,7 +128,10 @@ export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, cl
           <InlineAlert>{error}</InlineAlert>
         </div>
       ) : (
-        <ul aria-label={label} className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1">
+        <ul
+          aria-label={`${label} in ${drive?.label ?? "the drive"}`}
+          className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1"
+        >
           {listing && items.length === 0 && (
             <li className="px-4 py-6 text-center text-[13px] text-(--pn-fg-muted)">
               {mode === "file" ? "No PDFs or folders here" : "No folders here"}
@@ -90,11 +142,7 @@ export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, cl
               <button
                 type="button"
                 disabled={Boolean(busyId)}
-                onClick={() =>
-                  item.kind === "folder"
-                    ? setFolderId(item.id)
-                    : listing && onPickFile?.(item, { id: listing.folder.id, path: listing.path })
-                }
+                onClick={() => (item.kind === "folder" ? setFolderId(item.id) : here && onPickFile?.(item, here))}
                 className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) disabled:opacity-60"
               >
                 {item.kind === "folder" ? (
@@ -115,13 +163,9 @@ export function DriveBrowser({ mode, label, onPickFile, onPickFolder, busyId, cl
           ))}
         </ul>
       )}
-      {mode === "folder" && listing && (
+      {mode === "folder" && here && (
         <div className="flex shrink-0 items-center justify-end border-t border-(--pn-line) bg-(--pn-surface) p-2">
-          <Button
-            size="sm"
-            disabled={loading}
-            onClick={() => onPickFolder?.({ id: listing.folder.id, path: listing.path })}
-          >
+          <Button size="sm" disabled={loading} onClick={() => onPickFolder?.(here)}>
             Save here
           </Button>
         </div>

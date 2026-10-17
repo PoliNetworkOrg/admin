@@ -13,7 +13,7 @@ const placement = z.object({
   height: z.number().gt(0).max(1),
 })
 
-/** What a new request needs: dashboard users who can sign, and whether a shared drive is configured. */
+/** What a new request needs: dashboard users who can sign, and the shared drives (none without OneDrive). */
 export const getEsignComposer = createServerFn()
   .middleware([esignRequestsManageMiddleware])
   .handler(async ({ context }) => {
@@ -27,7 +27,7 @@ export const getEsignComposer = createServerFn()
 
 export const listEsignDrive = createServerFn()
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ folderId: z.string().min(1).optional() }))
+  .validator(z.object({ driveId: z.string().min(1), folderId: z.string().min(1).optional() }))
   .handler(({ data, context }) => context.backend.esign.drive.list.query(data))
 
 function parseUpload(data: FormData) {
@@ -49,7 +49,7 @@ export const uploadEsignDocument = createServerFn({ method: "POST" })
 
 export const importEsignDriveDocument = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ itemId: z.string().min(1) }))
+  .validator(z.object({ driveId: z.string().min(1), itemId: z.string().min(1) }))
   .handler(({ data, context }) => context.backend.esign.documents.fromDrive.mutate(data))
 
 export const createEsignRequest = createServerFn({ method: "POST" })
@@ -63,7 +63,13 @@ export const createEsignRequest = createServerFn({ method: "POST" })
         .array(z.object({ sub: z.string().min(1), role: z.string().trim().max(80).nullable(), placement }))
         .min(1)
         .max(10),
-      output: z.object({ folderId: z.string().min(1), fileName: z.string().trim().min(1).max(200) }).nullable(),
+      output: z
+        .object({
+          driveId: z.string().min(1),
+          folderId: z.string().min(1),
+          fileName: z.string().trim().min(1).max(200),
+        })
+        .nullable(),
       email: z.object({ to: z.array(z.email()).max(20), message: z.string().max(2000).nullable() }).nullable(),
     })
   )
