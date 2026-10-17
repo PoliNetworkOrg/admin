@@ -29,6 +29,7 @@ import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
+import { Route as DashboardEsignSignRouteImport } from './routes/dashboard/esign/sign'
 import { Route as DashboardEsignSetupRouteImport } from './routes/dashboard/esign/setup'
 import { Route as DashboardEsignNewRouteImport } from './routes/dashboard/esign/new'
 import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esign/inbox'
@@ -146,6 +147,11 @@ const DashboardReportsGroupLinksRoute =
     path: '/reports/group-links',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardEsignSignRoute = DashboardEsignSignRouteImport.update({
+  id: '/esign/sign',
+  path: '/esign/sign',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardEsignSetupRoute = DashboardEsignSetupRouteImport.update({
   id: '/esign/setup',
   path: '/esign/setup',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/dashboard/esign/inbox': typeof DashboardEsignInboxRoute
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
+  '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/inbox'
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
+    | '/dashboard/esign/sign'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/grants'
@@ -583,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/esign/sign': {
+      id: '/dashboard/esign/sign'
+      path: '/esign/sign'
+      fullPath: '/dashboard/esign/sign'
+      preLoaderRoute: typeof DashboardEsignSignRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/esign/setup': {
       id: '/dashboard/esign/setup'
       path: '/esign/setup'
@@ -712,6 +731,7 @@ interface DashboardRouteChildren {
   DashboardEsignInboxRoute: typeof DashboardEsignInboxRoute
   DashboardEsignNewRoute: typeof DashboardEsignNewRoute
   DashboardEsignSetupRoute: typeof DashboardEsignSetupRoute
+  DashboardEsignSignRoute: typeof DashboardEsignSignRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
@@ -732,6 +752,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardEsignInboxRoute: DashboardEsignInboxRoute,
   DashboardEsignNewRoute: DashboardEsignNewRoute,
   DashboardEsignSetupRoute: DashboardEsignSetupRoute,
+  DashboardEsignSignRoute: DashboardEsignSignRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,

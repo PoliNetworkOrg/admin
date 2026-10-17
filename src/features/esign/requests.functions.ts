@@ -60,7 +60,16 @@ export const createEsignRequest = createServerFn({ method: "POST" })
       documentId: z.uuid(),
       ordered: z.boolean(),
       signers: z
-        .array(z.object({ sub: z.string().min(1), role: z.string().trim().max(80).nullable(), placement }))
+        .array(
+          z.object({
+            sub: z.string().min(1),
+            role: z.string().trim().max(80).nullable(),
+            places: z
+              .array(placement.extend({ kind: z.enum(["signature", "mark"]) }))
+              .min(1)
+              .max(20),
+          })
+        )
         .min(1)
         .max(10),
       output: z

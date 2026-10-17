@@ -118,6 +118,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   `/tmp/esign-review-r2b/`): round-1 fixes confirmed; new findings fixed — ByteRange gap must be exactly /Contents,
   change policy for uploaded signatures (`pdf/diff.ts`, checked against a pyHanko signature), retry lease, per-signer
   email size budget, bounded OCSP read, fresh popup per signature, delivery polling, scope switch.
+- ☑ Several OneDrive/SharePoint drives (`ESIGN_DRIVES`, backend#74, admin#104).
+- ☑ Several places per signer: each place a full signature (one PDF signature each) or a mark (the first signature's
+  mark, covered by it); the person appears once in the dashboard (backend#75, admin PR, sign-agent#6).
+- ☑ Sign several documents with one PIN: "Sign N together" in To sign opens a document strip to check each, then one
+  agent window signs them all (agent protocol 2; older agents are asked to update).
+- ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
 
 ## Manual steps for the maintainer (cannot be automated here)
@@ -150,6 +156,9 @@ cd ~/dev/polinetwork/sign-agent && go run ./cmd/sign-agent --dev --soft    # PIN
 Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
 
 ## Log
+
+- 2026-10-17: several places per signer and batch signing with one PIN (backend#75, sign-agent#6, admin PR); merge
+  order: backend → bump admin → agent release v0.2.0 together with the backend deploy (protocol 2).
 
 - 2026-10-17: backend#73 merged (released @polinetwork/backend 1.7.0), admin#102 merged; agent v0.1.1; code-signing
   pipeline merged (sign-agent #4).
