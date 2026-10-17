@@ -84,24 +84,26 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 
 - ☑ PAdES engine: incremental update (classic xref + xref stream), visible appearance, CMS (PAdES B-B).
 - ☑ Validation: poppler `pdfsig` in tests; pyHanko (Docker) judges both signatures VALID with permitted changes.
-- ☐ Data model: requests, signers, versions, events (drizzle migration).
-- ☐ OneDrive drive abstraction (Graph + in-memory mock), browse/download/upload.
-- ☐ Email with attachment (Graph sendMail / dev mailer).
-- ☐ tRPC router `esign` with policies; publish types (`@polinetwork/backend`).
+- ☑ Data model: profiles, requests, signers, documents (versions), jobs, events — migration `0022_esign`.
+- ☑ OneDrive drive abstraction (Graph + in-memory mock), browse/download/upload, root containment.
+- ☑ Email with attachment (Graph sendMail / dev mailer), signer "your turn" notifications.
+- ☑ tRPC router `esign` + ticket-authenticated `/esign/agent/*`; CIE CA trust bundle; cron sweep.
+- ☑ Draft PR: PoliNetworkOrg/backend#73. Types package built locally; admin uses it via `file:` until released.
 
 ### Phase 3 — admin
 
-- ☐ Permissions `esign:sign`, `esign:requests:manage`; nav section; middleware; security test entries.
-- ☐ Agent client (detect, status, certificate, sign) with clear setup guidance.
-- ☐ PDF viewer (pdf.js) with page navigation, zoom, signature placement (drag/resize, snap to existing fields).
-- ☐ Pages: inbox (to sign), requests list, request detail/timeline, new request wizard (OneDrive picker / upload,
-  signers, placements, output folder, email).
-- ☐ Sign flow dialog: certificate → PIN → progress → done.
+- ☑ Permissions `esign:sign`, `esign:requests:manage`; nav service "Signatures"; middlewares; security tests.
+- ☑ Agent popup flow (`SignWithCie`): ticket → popup → status polling + postMessage, agent-not-running help.
+- ☑ PDF viewer (pdf.js) with zoom, lazy pages, draggable/resizable/keyboard signature boxes.
+- ☑ Pages: To sign, Requests, request detail (signers, delivery, activity), New request composer, Setup guide.
+- ☑ Agent proxy `/api/esign/agent/*` (CSRF-exempt, ticket paths only).
+- ☑ Draft PR: PoliNetworkOrg/admin#102.
 
 ### Phase 4 — integration and hardening
 
-- ☐ End-to-end test: dashboard (agent mode) → backend (dev) → agent (soft token) → validated PDF.
-- ☐ Code review rounds (Sol 6.1), security review.
+- ☑ End-to-end test: dashboard (agent mode) → backend (dev, throwaway Postgres `esign-pg`) → agent (soft token) →
+  PDF validated by pdfsig + pyHanko. How to run it: see "Local end-to-end" below.
+- ◐ Code review round 1 (Sol 6.1, security + correctness).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
 
 ## Manual steps for the maintainer (cannot be automated here)
@@ -112,8 +114,21 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Configure backend env for the OneDrive drive and default folders (see backend README once written).
 - ☐ Test with a real CIE + reader on macOS/Windows/Linux.
 
+## Local end-to-end
+
+```sh
+docker start esign-pg esign-redis   # throwaway Postgres (127.0.0.1:55433) and Redis (56379)
+cd ~/dev/polinetwork/.esign-worktrees/backend && bun ./src/server.ts      # .env.local: PORT=13000, DB on 55433
+cd ~/dev/polinetwork/admin && PORT=10431 AGENT_MODE=true BACKEND_URL=http://localhost:13000 pnpm exec vp dev --port 10431
+cd ~/dev/polinetwork/sign-agent && go run ./cmd/sign-agent --dev --soft    # PIN 12345678 (on this Mac: SDKROOT=…/MacOSX26.sdk)
+```
+
+Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
+
 ## Log
 
 - 2026-10-17: kickoff; branches created; research started.
 - 2026-10-17: PAdES engine done and validated; agent refactored to popup + ticket flow; agent repo published;
   subagents A (direct CIE) and B (packaging) started.
+- 2026-10-17: backend orchestration + admin UI done; first full E2E sign succeeded; draft PRs backend#73, admin#102;
+  Sol 6.1 review round 1 started.
