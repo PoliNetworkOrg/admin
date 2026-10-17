@@ -9,7 +9,16 @@ import type { DashboardUser } from "@/lib/auth"
 import type { ShellUser } from "./account-avatar"
 import { CommandPalette } from "./command-palette"
 import { MobileBottomNav, MobileTopBar } from "./mobile-nav"
-import { type DashboardPath, matchPath, type Service, type ServiceId, sectionFor, serviceFor, services } from "./nav"
+import {
+  type DashboardPath,
+  matchPath,
+  type PendingCounts,
+  type Service,
+  type ServiceId,
+  sectionFor,
+  serviceFor,
+  services,
+} from "./nav"
 import { servicePanelVisible, type ShellFrame, ShellFrameContext, useRenderedPathname } from "./page-bar"
 import { Panel, SectionPills } from "./panel"
 import { Rail } from "./rail"
@@ -84,7 +93,7 @@ export type DashboardShellProps = {
   /** The signed-in user `/dashboard` loaded: ID-token claims. */
   user: DashboardUser
   /** Pending reports for the Reports dot and the Reports › Open count; streams in, null when it couldn't be loaded. */
-  pendingReports: Promise<number | null>
+  pending: PendingCounts
 }
 
 /**
@@ -92,15 +101,15 @@ export type DashboardShellProps = {
  * service's section pills, then the page), then the bottom nav. Pages render their header through `PageBar` and
  * their body inside `PageContent`; both scroll with the page.
  */
-export function DashboardShell({ user, pendingReports }: DashboardShellProps) {
+export function DashboardShell({ user, pending }: DashboardShellProps) {
   return (
     <SignOutProvider>
-      <DashboardFrame user={user} pendingReports={pendingReports} />
+      <DashboardFrame user={user} pending={pending} />
     </SignOutProvider>
   )
 }
 
-function DashboardFrame({ user: dashboardUser, pendingReports }: DashboardShellProps) {
+function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
   const pathname = useRenderedPathname()
   const match = matchPath(pathname)
   const rawService = serviceFor(match)
@@ -157,7 +166,7 @@ function DashboardFrame({ user: dashboardUser, pendingReports }: DashboardShellP
             serviceHref={serviceHref}
             onOpenPalette={openPalette}
             user={user}
-            pendingReports={pendingReports}
+            pending={pending}
             className="relative z-10 max-shell:hidden"
           />
           {/* No entrance on first paint; `popLayout` lifts the leaving panel out of the flow at once. The leaving panel
@@ -176,7 +185,7 @@ function DashboardFrame({ user: dashboardUser, pendingReports }: DashboardShellP
                   exit={{ transform: "translateX(-100%)", transition: reduceMotion ? { duration: 0 } : panelExit }}
                   className="flex h-full shrink-0 min-[1440px]:absolute min-[1440px]:inset-y-0 min-[1440px]:left-0"
                 >
-                  <Panel service={service} match={match} pendingReports={pendingReports} />
+                  <Panel service={service} match={match} pending={pending} />
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -192,23 +201,13 @@ function DashboardFrame({ user: dashboardUser, pendingReports }: DashboardShellP
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
             >
               {hasPanel ? (
-                <SectionPills
-                  service={service}
-                  match={match}
-                  pendingReports={pendingReports}
-                  className="shell:hidden"
-                />
+                <SectionPills service={service} match={match} pending={pending} className="shell:hidden" />
               ) : null}
               <main className="flex min-h-full flex-col">
                 <Outlet />
               </main>
             </div>
-            <MobileBottomNav
-              match={match}
-              serviceHref={serviceHref}
-              pendingReports={pendingReports}
-              className="shell:hidden"
-            />
+            <MobileBottomNav match={match} serviceHref={serviceHref} pending={pending} className="shell:hidden" />
           </div>
 
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onSignOut={onSignOut} />

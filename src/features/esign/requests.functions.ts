@@ -1,0 +1,80 @@
+import { createServerFn } from "@tanstack/react-start"
+import { z } from "zod"
+
+import { esignRequestsManageMiddleware } from "@/server/auth.middleware"
+
+const MAX_PDF_BYTES = 30 * 1024 * 1024
+
+const placement = z.object({
+  page: z.number().int().min(0),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().gt(0).max(1),
+  height: z.number().gt(0).max(1),
+})
+
+/** What a new request needs: dashboard users who can sign, and whether a shared drive is configured. */
+export const getEsignComposer = createServerFn()
+  .middleware([esignRequestsManageMiddleware])
+  .handler(async ({ context }) => {
+    await context.backend.esign.profile.sync.mutate({ name: context.user.name, email: context.user.email || null })
+    const [config, signers] = await Promise.all([
+      context.backend.esign.config.query(),
+      context.backend.esign.signers.list.query(),
+    ])
+    return { config, signers, me: context.user.sub }
+  })
+
+export const listEsignDrive = createServerFn()
+  .middleware([esignRequestsManageMiddleware])
+  .validator(z.object({ folderId: z.string().min(1).optional() }))
+  .handler(({ data, context }) => context.backend.esign.drive.list.query(data))
+
+function parseUpload(data: FormData) {
+  const file = data.get("file")
+  if (!(file instanceof File)) throw new Error("Choose a PDF")
+  if (file.size > MAX_PDF_BYTES) throw new Error("The PDF is larger than 30 MB")
+  if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") throw new Error("Choose a PDF")
+  return file
+}
+
+export const uploadEsignDocument = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(parseUpload)
+  .handler(async ({ data, context }) => {
+    const form = new FormData()
+    form.set("file", data)
+    return context.backend.esign.documents.upload.mutate(form)
+  })
+
+export const importEsignDriveDocument = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(z.object({ itemId: z.string().min(1) }))
+  .handler(({ data, context }) => context.backend.esign.documents.fromDrive.mutate(data))
+
+export const createEsignRequest = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(
+    z.object({
+      title: z.string().trim().min(1).max(200),
+      documentId: z.uuid(),
+      ordered: z.boolean(),
+      signers: z
+        .array(z.object({ sub: z.string().min(1), role: z.string().trim().max(80).nullable(), placement }))
+        .min(1)
+        .max(10),
+      output: z.object({ folderId: z.string().min(1), fileName: z.string().trim().min(1).max(200) }).nullable(),
+      email: z.object({ to: z.array(z.email()).max(20), message: z.string().max(2000).nullable() }).nullable(),
+    })
+  )
+  .handler(({ data, context }) => context.backend.esign.requests.create.mutate(data))
+
+export const cancelEsignRequest = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(z.object({ id: z.uuid() }))
+  .handler(({ data, context }) => context.backend.esign.requests.cancel.mutate(data))
+
+export const retryEsignDelivery = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(z.object({ id: z.uuid() }))
+  .handler(({ data, context }) => context.backend.esign.requests.retryDelivery.mutate(data))

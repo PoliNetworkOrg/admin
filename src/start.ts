@@ -6,11 +6,13 @@ import { createMiddleware, createStart } from "@tanstack/react-start"
  * against the request URL instead of the configured origin.
  */
 const originCheckMiddleware = createMiddleware().server(async ({ request, next }) => {
-  const [{ resolveAppOrigin }, { isTrustedRequest }] = await Promise.all([
+  const [{ resolveAppOrigin }, { isCsrfExemptPath, isTrustedRequest }] = await Promise.all([
     import("@/server/auth-config"),
     import("@/server/csrf"),
   ])
   const appOrigin = resolveAppOrigin(process.env, process.env.NODE_ENV)
+  const { pathname } = new URL(request.url)
+  if (isCsrfExemptPath(pathname)) return next()
   if (!isTrustedRequest(request.method, request.headers.get("origin"), appOrigin)) {
     return new Response("Forbidden", { status: 403, headers: { "cache-control": "no-store" } })
   }
