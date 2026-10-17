@@ -54,8 +54,9 @@ const AGENT_STEPS = {
   ),
   linux: (
     <>
-      On Arch-based systems run <code className="font-mono text-[12px]">yay -S polinetwork-esign-bin</code>; on Debian,
-      Ubuntu or Fedora download the .deb or .rpm and install it with apt or dnf. It starts whenever you log in.
+      Download the package for your system and install it: the .pkg.tar.zst with{" "}
+      <code className="font-mono text-[12px]">sudo pacman -U</code> on Arch-based systems, the .deb with apt on Debian
+      or Ubuntu, the .rpm with dnf on Fedora. It starts whenever you log in.
     </>
   ),
 }
