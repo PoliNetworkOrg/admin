@@ -115,8 +115,9 @@ the `h1`.
 **Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
 service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
-font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the six services (current one
-accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
+font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
+accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -331,6 +332,10 @@ keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` 
 are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
 limit.
 
+Calendar dates use a custom picker at every viewport, display the same day–month–year format as read-only dates,
+and retain ISO values for the server. Month and year selectors are custom controls; calendars start on Monday.
+Grant date/time fields use the calendar and time wheels on touch devices too, with no native date/time fallback.
+
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
 (`appToast.success/info/warning/error`, never raw `toast`) confirm actions; untinted, tone on the icon only, at most
@@ -455,3 +460,20 @@ Rules that the templates above don't imply.
   here and in signer lists.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
+- **People**: one record per person whether or not they have an account; Overview, Member register, Admins, Teams,
+  Census and Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
+  Not linked included. Mobile list cards replace unlabelled column values with one line of role chips or status
+  badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
+  use `FormDialog` with `submitTone="danger"`; plain confirmations stay `ConfirmDialog`.
+- **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
+  record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
+- **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
+  quick filters scroll sideways on phones.
+- **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
+  itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
+- **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
+  saves nothing before Confirm. Reminders report sent and skipped counts after sending.
+- **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has
+  its own resolutions and a required reason.
+- **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
+  the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.

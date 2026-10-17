@@ -2,7 +2,7 @@ import { getRouteApi } from "@tanstack/react-router"
 
 import { hasPermission, type Permission } from "@/server/permissions"
 
-import { services } from "./nav"
+import { NO_PEOPLE_ROLES, sectionVisible, services } from "./nav"
 
 const dashboardRoute = getRouteApi("/dashboard")
 
@@ -15,16 +15,26 @@ export function useCan(permission: Permission) {
   return hasPermission(permissions, permission)
 }
 
-/** The sections available to the user, including read-specific and dedicated member permissions. */
+/** Whether the user has the full dashboard (`admin:access`), not only the restricted People view. */
+export function useHasAdminAccess() {
+  return dashboardRoute.useRouteContext({ select: (context) => hasPermission(context.permissions, "admin:access") })
+}
+
+/** The Capo Admin scope and led teams the signed-in person's record gives them. */
+export function usePeopleRoles() {
+  return dashboardRoute.useRouteContext({ select: (context) => context.peopleRoles ?? NO_PEOPLE_ROLES })
+}
+
+/**
+ * The sections available to the user: permissions, `admin:access` for everything but Account, and the roles from
+ * their People record (Capo Admin, Team Lead).
+ */
 export function useVisibleServices() {
   const permissions = dashboardRoute.useRouteContext({ select: (context) => context.permissions })
+  const roles = usePeopleRoles()
   return services.flatMap((service) => {
-    if (service.sections.length === 0) return [service]
-    const sections = service.sections.filter(
-      (section) =>
-        (!section.permission || hasPermission(permissions, section.permission)) &&
-        (!section.anyPermission || section.anyPermission.some((permission) => hasPermission(permissions, permission)))
-    )
+    if (service.sections.length === 0) return hasPermission(permissions, "admin:access") ? [service] : []
+    const sections = service.sections.filter((section) => sectionVisible(section, permissions, roles))
     return sections.length ? [{ ...service, sections, path: sections[0].path }] : []
   })
 }

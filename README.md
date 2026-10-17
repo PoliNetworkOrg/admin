@@ -5,6 +5,13 @@ Microsoft 365 supports a read-only member directory, creating a new association 
 workflow, and group membership management. Directory access requires `azure:members:read`; creation independently
 requires `azure:members:create`. Groups require `azure:groups:read`; adding and removing members `azure:groups:write`.
 
+**People** keeps one record per volunteer and member (Overview, Member register, Admins, Teams, Census, Linking), plus
+Telegram › Capo Admin and Account › My area for volunteers themselves. The dashboard talks to a typed `people.*`
+contract (`src/features/people/people.contract.ts`, documented in `docs/people/contract.md`); until the backend
+implements it, agent mode serves sample data from `people.fake.server.ts`. Permissions: `people:read`, `people:write`,
+`people:members:read`, `people:members:write`, `people:appoint`, and `people:self`, which alone admits non-admins to My
+area and, by the role on their record, Capo Admin or their team. See `docs/people/README.md`.
+
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
 **dedicated Redis**, separate from the shared backend Redis. Backend requests carry a user bearer token, and permissions
@@ -34,6 +41,8 @@ Set the following runtime variables (the build does not need secrets):
 | `BACKEND_RESOURCE`        | Backend OAuth resource/audience; defaults to `https://backend.internal.polinetwork.org`. Sent on every authorize, code exchange and refresh request.                                                                                                 |
 | `REDIS_URL`               | Dedicated dashboard Redis connection. Required outside development; development defaults to `redis://localhost:6379`. Never point to shared backend Redis.                                                                                           |
 | `SESSION_SECRET`          | Independent random secret of at least 32 characters, encrypting the 10-minute state/nonce/PKCE cookie. Rotation invalidates pending login attempts.                                                                                                  |
+| `AGENT_PERMISSIONS`       | Development only. Comma-separated permissions for the agent-mode user (default: all). `people:self` alone previews the restricted People view.                                                                                                       |
+| `AGENT_PERSON`            | Development only. The agent-mode user's People record (default `P-0007`, Direttivo). `P-0098` is a Capo Admin, `P-0034` the IT Team Lead, `P-0115` an IT member; `match:P-0115` previews the first sign-in, `none` a sign-in without a record.       |
 | `AGENT_MODE`              | Fake all-permission user in development only. Backend must be a local fake or local legacy test instance. Production ignores this mode.                                                                                                              |
 | `PORT`                    | Local listening port (3001 by default); use a port ≥10000 for agent previews.                                                                                                                                                                        |
 | `TEST_REDIS_URL`          | Opt-in disposable Redis for integration tests. Tests create/delete only UUID session keys.                                                                                                                                                           |

@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
-import { type DashboardPath, type PageMatch, type PendingCounts, type Service, serviceFor } from "./nav"
+import { isRailService, type DashboardPath, type PageMatch, type PendingCounts, type Service, serviceFor } from "./nav"
 import { ServiceDot } from "./rail"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
-import { useVisibleServices } from "./use-can"
+import { useHasAdminAccess, useVisibleServices } from "./use-can"
 
 const barButton = "size-10 text-(--pn-fg-muted) hover:text-(--pn-fg) active:not-aria-[haspopup]:translate-y-0"
 
@@ -29,6 +29,8 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
   const service = serviceFor(match)
   const { theme, toggleTheme } = useTheme()
   const title = service.id === "overview" ? "PoliNetwork Admin" : service.title
+  const hasAdminAccess = useHasAdminAccess()
+  const accountPath = useVisibleServices().find((candidate) => candidate.id === "account")?.path ?? "/dashboard/account"
 
   return (
     <header
@@ -38,8 +40,8 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
       )}
     >
       <Link
-        to="/dashboard"
-        aria-label="Overview"
+        to={hasAdminAccess ? "/dashboard" : "/dashboard/account/me"}
+        aria-label={hasAdminAccess ? "Overview" : "My area"}
         aria-current={service.id === "overview" ? "page" : undefined}
         className="grid size-9 shrink-0 place-items-center rounded-full"
       >
@@ -61,7 +63,7 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
         <Moon aria-hidden strokeWidth={1.75} className="size-5 dark:hidden" />
       </Button>
       <Link
-        to="/dashboard/account"
+        to={accountPath}
         aria-label="Account"
         aria-current={service.id === "account" ? "page" : undefined}
         className="grid size-10 shrink-0 place-items-center rounded-full aria-[current=page]:[&>span]:shadow-[0_0_0_2px_var(--pn-nav),0_0_0_4px_var(--pn-accent-solid)]"
@@ -81,14 +83,14 @@ export type MobileBottomNavProps = {
 
 /** Below 760px: the five services as a bottom tab bar; the current one is accent with a top indicator. */
 export function MobileBottomNav({ match, serviceHref, pending, className }: MobileBottomNavProps) {
-  const services = useVisibleServices().filter((service) => service.sections.length > 0)
+  const services = useVisibleServices().filter(isRailService)
   const activeId = serviceFor(match).id
 
   return (
     <nav
       aria-label="Services"
       className={cn(
-        "flex h-16 shrink-0 items-stretch border-t border-(--pn-line) bg-(--pn-nav) px-1 pb-[env(safe-area-inset-bottom)]",
+        "flex h-[calc(64px+env(safe-area-inset-bottom))] shrink-0 items-stretch border-t border-(--pn-line) bg-(--pn-nav) px-1 pb-[env(safe-area-inset-bottom)]",
         className
       )}
     >
@@ -111,7 +113,14 @@ export function MobileBottomNav({ match, serviceHref, pending, className }: Mobi
               <ServiceDot service={service.id} pending={pending} className="-top-0.5 -right-1" />
             </span>
             <span aria-hidden className="max-w-full truncate">
-              {service.short}
+              {service.id === "whatsapp" ? (
+                <>
+                  <span className="min-[360px]:hidden">WA</span>
+                  <span className="max-[360px]:hidden">{service.short}</span>
+                </>
+              ) : (
+                service.short
+              )}
             </span>
           </Link>
         )

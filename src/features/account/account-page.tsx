@@ -33,7 +33,7 @@ type AccountPageProps = {
 export function AccountPage({ user, permissions, accountUrl }: AccountPageProps) {
   return (
     <>
-      <PageBar title="Account" width="settings" />
+      <PageBar width="settings" />
       <PageContent width="settings">
         <div className="flex flex-col gap-12">
           <div className="flex flex-col gap-6">

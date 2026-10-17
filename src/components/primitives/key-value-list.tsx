@@ -29,7 +29,10 @@ function Value({ item }: { item: KeyValueItem }) {
   )
 }
 
-/** Read-only values. Vertical: one row per item with a 120px key column. Horizontal: items inline on one row. */
+/**
+ * Read-only values. Vertical: one row per item with a 120px key column, or the key above the value in containers
+ * narrower than 352px. Horizontal: items inline on one row.
+ */
 export function KeyValueList({ items, orientation = "vertical", className }: KeyValueListProps) {
   if (orientation === "horizontal") {
     return (
@@ -44,14 +47,20 @@ export function KeyValueList({ items, orientation = "vertical", className }: Key
     )
   }
 
+  // Narrower than 352px (phone cards) the key sits above its value, so values like emails get the full width.
   return (
-    <dl className={cn("grid grid-cols-[120px_minmax(0,1fr)] gap-x-4 gap-y-3", className)}>
-      {items.map((item) => (
-        <div key={item.key} className="col-span-2 grid grid-cols-subgrid items-baseline">
-          <dt className="text-[13px] leading-5 font-medium text-(--pn-fg-muted)">{item.key}</dt>
-          <Value item={item} />
-        </div>
-      ))}
-    </dl>
+    <div className={cn("@container", className)}>
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 @min-[22rem]:grid-cols-[120px_minmax(0,1fr)]">
+        {items.map((item) => (
+          <div
+            key={item.key}
+            className="grid gap-y-0.5 @min-[22rem]:col-span-2 @min-[22rem]:grid-cols-subgrid @min-[22rem]:items-baseline @min-[22rem]:gap-y-0"
+          >
+            <dt className="text-[13px] leading-5 font-medium text-(--pn-fg-muted)">{item.key}</dt>
+            <Value item={item} />
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }

@@ -9,6 +9,10 @@ export const env = createEnv({
       .enum(["true", "false"])
       .default("false")
       .transform((value) => value === "true"),
+    /** Development only: comma-separated permissions for the agent-mode user (default: all of them). */
+    AGENT_PERMISSIONS: z.string().optional(),
+    /** Development only: the agent-mode user's person record in the People sample data. */
+    AGENT_PERSON: z.string().default("P-0007"),
     NODE_ENV: z.enum(["development", "test", "production"]),
     BACKEND_URL: z.url(),
   },

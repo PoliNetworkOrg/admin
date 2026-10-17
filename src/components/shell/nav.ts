@@ -2,15 +2,21 @@ import {
   BookOpen,
   CircleCheck,
   CircleQuestionMark,
+  ClipboardList,
   Cloud,
+  Crown,
   FilePenLine,
   Files,
   Flag,
   FolderKanban,
   FolderTree,
   Globe,
+  IdCard,
   HardDrive,
   Inbox,
+  KeyRound,
+  LayoutList,
+  Link2,
   LayoutDashboard,
   type LucideIcon,
   MessageCircle,
@@ -20,6 +26,7 @@ import {
   Send,
   ShieldCheck,
   Tags,
+  UserCog,
   UserRound,
   Users,
   UsersRound,
@@ -30,12 +37,21 @@ import telegramLogo from "@/assets/svg/telegram.svg"
 import whatsappLogo from "@/assets/svg/whatsapp.svg"
 import { urlSegmentsToLabelPath } from "@/features/group-labels/label-tree"
 import type { FileRoutesByTo } from "@/routeTree.gen"
-import type { Permission } from "@/server/permissions"
+import { hasPermission, type Permission } from "@/server/permissions"
 
 /** Every navigable dashboard route path, as TanStack `Link`'s `to` accepts it. */
 export type DashboardPath = Extract<keyof FileRoutesByTo, `/dashboard${string}`>
 
-export type ServiceId = "overview" | "telegram" | "whatsapp" | "m365" | "web" | "esign" | "reports" | "account"
+export type ServiceId =
+  | "overview"
+  | "people"
+  | "telegram"
+  | "whatsapp"
+  | "m365"
+  | "web"
+  | "esign"
+  | "reports"
+  | "account"
 
 export type Section = {
   id: string
@@ -47,7 +63,22 @@ export type Section = {
   queryable?: boolean
   permission?: Permission
   anyPermission?: readonly Permission[]
+  /**
+   * Opens the section from the signed-in person's own record, without (or instead of) a permission: Capo Admins see
+   * Telegram › Capo Admin, Team Leads see People › Teams.
+   */
+  role?: PeopleRole
+  /** Open with `people:self` alone (Account). Every other section also needs `admin:access`. */
+  selfService?: boolean
 }
+
+/** Roles that come from the person's record (`people.me.roles`), not from IdP permissions. */
+export type PeopleRole = "capo" | "lead"
+
+/** What the signed-in person's record grants them in the navigation. */
+export type PeopleRoles = { capoScope: string | null; leads: readonly string[] }
+
+export const NO_PEOPLE_ROLES: PeopleRoles = { capoScope: null, leads: [] }
 
 /**
  * `path` is where the service lands (its first section, or its own page for Overview and Account). `logo` is the
@@ -67,6 +98,17 @@ export type Service = {
 export type PageMatch =
   | { kind: "overview" }
   | { kind: "account" }
+  | { kind: "account-me" }
+  | { kind: "people-overview" }
+  | { kind: "people-person"; personId: string }
+  | { kind: "people-members" }
+  | { kind: "people-admins" }
+  | { kind: "people-teams" }
+  | { kind: "people-team"; teamId: string }
+  | { kind: "people-census" }
+  | { kind: "people-campaign"; campaignId: string }
+  | { kind: "people-linking" }
+  | { kind: "telegram-capo" }
   | { kind: "telegram-users" }
   | { kind: "telegram-user"; userId: number }
   | { kind: "telegram-groups" }
@@ -108,8 +150,76 @@ const account: Service = {
   title: "Account",
   short: "Account",
   icon: UserRound,
-  path: "/dashboard/account",
-  sections: [],
+  path: "/dashboard/account/me",
+  sections: [
+    {
+      id: "me",
+      title: "My area",
+      icon: UserRound,
+      path: "/dashboard/account/me",
+      permission: "people:self",
+      selfService: true,
+    },
+    { id: "security", title: "Sign-in & security", icon: KeyRound, path: "/dashboard/account", selfService: true },
+  ],
+}
+
+const people: Service = {
+  id: "people",
+  title: "People",
+  short: "People",
+  icon: UsersRound,
+  path: "/dashboard/people",
+  sections: [
+    {
+      id: "overview",
+      title: "Overview",
+      icon: LayoutList,
+      path: "/dashboard/people",
+      permission: "people:read",
+      searchPlaceholder: "Search by name, email or Telegram…",
+    },
+    {
+      id: "members",
+      title: "Member register",
+      icon: IdCard,
+      path: "/dashboard/people/members",
+      permission: "people:members:read",
+      searchPlaceholder: "Search by name, number or email…",
+    },
+    {
+      id: "admins",
+      title: "Admins",
+      icon: UserCog,
+      path: "/dashboard/people/admins",
+      permission: "people:read",
+      searchPlaceholder: "Search by name, course or group…",
+    },
+    {
+      id: "teams",
+      title: "Teams",
+      icon: Users,
+      path: "/dashboard/people/teams",
+      permission: "people:read",
+      role: "lead",
+      searchPlaceholder: "Search team members…",
+    },
+    {
+      id: "census",
+      title: "Census",
+      icon: ClipboardList,
+      path: "/dashboard/people/census",
+      permission: "people:read",
+    },
+    {
+      id: "linking",
+      title: "Linking",
+      icon: Link2,
+      path: "/dashboard/people/linking",
+      permission: "people:read",
+      searchPlaceholder: "Search by name or email…",
+    },
+  ],
 }
 
 const telegram: Service = {
@@ -145,6 +255,7 @@ const telegram: Service = {
       permission: "tg:grants:read",
       searchPlaceholder: "Search user, reason or grantor…",
     },
+    { id: "capo", title: "Capo Admin", icon: Crown, path: "/dashboard/telegram/capo", role: "capo" },
   ],
 }
 
@@ -300,11 +411,41 @@ const reports: Service = {
   ],
 }
 
-/** Rail order: Overview (the logo), then the services with sections, then Account. */
-export const services: Service[] = [overview, telegram, whatsapp, m365, web, esign, reports, account]
+/** Rail order: Overview, services with sections, then Account. */
+export const services: Service[] = [overview, people, telegram, whatsapp, m365, web, esign, reports, account]
 
 /** The services that own a panel, in rail order. */
 export const panelServices: Service[] = services.filter((service) => service.sections.length > 0)
+
+/** Rail, bottom-nav and palette services: Account has sections but lives under the avatar. */
+export function isRailService(service: Service) {
+  return service.id !== "account" && service.sections.length > 0
+}
+
+/**
+ * Whether the user sees a section: a record role opens it on its own; otherwise its permissions, plus `admin:access`
+ * for every section that isn't self-service.
+ */
+export function sectionVisible(section: Section, permissions: readonly string[], roles: PeopleRoles) {
+  if (section.role === "capo" && roles.capoScope !== null) return true
+  if (section.role === "lead" && roles.leads.length > 0) return true
+  if (section.role && !section.permission && !section.anyPermission) return false
+  if (!section.selfService && !hasPermission(permissions, "admin:access")) return false
+  return (
+    (!section.permission || hasPermission(permissions, section.permission)) &&
+    (!section.anyPermission || section.anyPermission.some((permission) => hasPermission(permissions, permission)))
+  )
+}
+
+/** Whether the user may open this page; the `/dashboard` route sends everything else to My area or Sign-in. */
+export function canOpenPage(match: PageMatch, permissions: readonly string[], roles: PeopleRoles) {
+  if (match.kind === "not-found") return true
+  const current = sectionFor(match)
+  if (!current) return hasPermission(permissions, "admin:access")
+  // Team pages: a Team Lead without people:read only reaches their own team, which People › Teams opens directly.
+  if (match.kind === "people-team" && !hasPermission(permissions, "people:read")) return false
+  return sectionVisible(current, permissions, roles)
+}
 
 export function serviceById(id: ServiceId): Service {
   return services.find((service) => service.id === id) ?? overview
@@ -325,6 +466,7 @@ export function matchPath(pathname: string): PageMatch {
 
   if (head === undefined) return { kind: "overview" }
   if (head === "account" && second === undefined) return { kind: "account" }
+  if (head === "account" && second === "me" && third === undefined && rest.length === 0) return { kind: "account-me" }
 
   // Category pages take the whole label path as their splat.
   if (head === "web" && second === "groups-by-label" && third !== undefined) {
@@ -332,7 +474,22 @@ export function matchPath(pathname: string): PageMatch {
   }
   if (rest.length > 0) return { kind: "not-found" }
 
+  if (head === "people") {
+    if (second === undefined) return { kind: "people-overview" }
+    if (third === undefined) {
+      if (second === "members") return { kind: "people-members" }
+      if (second === "admins") return { kind: "people-admins" }
+      if (second === "teams") return { kind: "people-teams" }
+      if (second === "census") return { kind: "people-census" }
+      if (second === "linking") return { kind: "people-linking" }
+      if (/^P-\d{4,}$/.test(second)) return { kind: "people-person", personId: second }
+    }
+    if (second === "teams" && third !== undefined) return { kind: "people-team", teamId: third }
+    if (second === "census" && third !== undefined) return { kind: "people-campaign", campaignId: third }
+  }
+
   if (head === "telegram") {
+    if (second === "capo" && third === undefined) return { kind: "telegram-capo" }
     if (second === "users" && third === undefined) return { kind: "telegram-users" }
     if (second === "users" && third !== undefined && /^\d+$/.test(third)) {
       return { kind: "telegram-user", userId: Number(third) }
@@ -388,7 +545,19 @@ export function serviceFor(match: PageMatch): Service {
     case "not-found":
       return overview
     case "account":
+    case "account-me":
       return account
+    case "people-overview":
+    case "people-person":
+    case "people-members":
+    case "people-admins":
+    case "people-teams":
+    case "people-team":
+    case "people-census":
+    case "people-campaign":
+    case "people-linking":
+      return people
+    case "telegram-capo":
     case "telegram-users":
     case "telegram-user":
     case "telegram-groups":
@@ -426,9 +595,29 @@ export function serviceFor(match: PageMatch): Service {
 export function sectionFor(match: PageMatch): Section | null {
   switch (match.kind) {
     case "overview":
-    case "account":
     case "not-found":
       return null
+    case "account":
+      return section(account, "security")
+    case "account-me":
+      return section(account, "me")
+    case "people-overview":
+    case "people-person":
+      return section(people, "overview")
+    case "people-members":
+      return section(people, "members")
+    case "people-admins":
+      return section(people, "admins")
+    case "people-teams":
+    case "people-team":
+      return section(people, "teams")
+    case "people-census":
+    case "people-campaign":
+      return section(people, "census")
+    case "people-linking":
+      return section(people, "linking")
+    case "telegram-capo":
+      return section(telegram, "capo")
     case "telegram-users":
     case "telegram-user":
       return section(telegram, "users")
@@ -480,6 +669,9 @@ export function isDeepPage(match: PageMatch): boolean {
     match.kind === "telegram-user" ||
     match.kind === "web-category" ||
     match.kind === "web-tag" ||
+    match.kind === "people-person" ||
+    match.kind === "people-team" ||
+    match.kind === "people-campaign" ||
     match.kind === "esign-request" ||
     match.kind === "esign-new" ||
     match.kind === "esign-sign"
@@ -495,7 +687,11 @@ export function documentTitle(match: PageMatch): string {
 }
 
 /** Counts that mark a service and one of its sections: open reports, documents waiting for the user's signature. */
-export type PendingCounts = { reports: Promise<number | null>; signatures: Promise<number | null> }
+export type PendingCounts = {
+  reports: Promise<number | null>
+  signatures: Promise<number | null>
+  linking: Promise<number | null>
+}
 
 const NO_COUNT: Promise<number | null> = Promise.resolve(null)
 
@@ -517,5 +713,6 @@ export function sectionPending(
 ): Promise<number | null> {
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
+  if (serviceId === "people" && sectionId === "linking") return pending.linking
   return NO_COUNT
 }

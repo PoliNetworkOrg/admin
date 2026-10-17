@@ -24,15 +24,18 @@ const itemActiveClass = "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-
 const itemCurrentClass =
   "before:absolute before:inset-y-2.5 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
 
-/** Pending reports as a small accent pill next to Reports › Open; zero (or a failed load) renders nothing. */
-function PendingReportsCount({ count: countPromise }: { count: Promise<number | null> }) {
+/**
+ * A queue's size as a small accent pill next to its section (Reports › Open, People › Linking); zero (or a failed
+ * load) renders nothing.
+ */
+function QueueCount({ count: countPromise, label }: { count: Promise<number | null>; label: string }) {
   const count = use(useDeferredValue(countPromise))
   if (!count) return null
   return (
     <span className="ml-auto rounded-full bg-(--pn-accent-soft) px-1.75 font-mono text-[11px] leading-4.5 font-medium text-(--pn-accent) tabular-nums">
       <span className="sr-only">, </span>
       {count}
-      <span className="sr-only"> pending</span>
+      <span className="sr-only"> {label}</span>
     </span>
   )
 }
@@ -96,7 +99,7 @@ export function SectionItems({ service, match, pending, variant = "panel" }: Sec
         />
         <span className="truncate">{section.title}</span>
         <Suspense fallback={null}>
-          <PendingReportsCount count={sectionPending(service.id, section.id, pending)} />
+          <QueueCount count={sectionPending(service.id, section.id, pending)} label="pending" />
         </Suspense>
       </Link>
     )

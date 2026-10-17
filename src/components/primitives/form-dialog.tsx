@@ -50,6 +50,8 @@ type FormDialogProps = {
   /** May throw; the message appears above the footer. Close the dialog yourself on success. */
   onSubmit: () => Promise<void> | void
   canSubmit?: boolean
+  /** `danger` for a destructive submit that needs fields (a required reason), where `ConfirmDialog` can't hold them. */
+  submitTone?: "primary" | "danger"
   /**
    * Enter in a single-line input submits (default). Turn off for steps whose inputs use Enter themselves,
    * such as a lookup field; ⌘/Ctrl+Enter in textareas still submits.
@@ -79,6 +81,7 @@ export function FormDialog({
   submitLabel,
   onSubmit,
   canSubmit = true,
+  submitTone = "primary",
   submitOnEnter = true,
   error,
   notice,
@@ -177,7 +180,13 @@ export function FormDialog({
                   Cancel
                 </Button>
                 {submitLabel !== undefined && (
-                  <LoadingButton type="submit" size="default" pending={pending} disabled={!canSubmit}>
+                  <LoadingButton
+                    type="submit"
+                    size="default"
+                    pending={pending}
+                    disabled={!canSubmit}
+                    tone={submitTone === "danger" ? "dangerSolid" : "default"}
+                  >
                     {submitLabel}
                   </LoadingButton>
                 )}
