@@ -54,6 +54,7 @@ import { YouChip } from "./request-status"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
+import { useFillHeight } from "./use-fill-height"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
 /** `manual`: the user moved the first box, so a role no longer places it. */
@@ -127,6 +128,7 @@ export function NewEsignRequestPage({
   const importFn = useServerFn(importEsignDriveDocument)
   const contentFn = useServerFn(getEsignDocumentContent)
   const createFn = useServerFn(createEsignRequest)
+  const dropFill = useFillHeight<HTMLElement>()
   const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId(), roles: useId() }
 
   const [source, setSource] = useState<"drive" | "upload">(config.drives.length > 0 ? "drive" : "upload")
@@ -456,7 +458,6 @@ export function NewEsignRequestPage({
                   cursor={placing !== null ? "crosshair" : "default"}
                   onPageClick={place}
                   focus={focus}
-                  className="h-[calc(100dvh-210px)] min-h-[480px]"
                   overlay={(page) =>
                     signers.flatMap((s, index) =>
                       s.places.map((p, at) =>
@@ -490,6 +491,8 @@ export function NewEsignRequestPage({
                 }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
+                ref={dropFill.ref}
+                style={dropFill.style}
                 className={cn(
                   "flex h-[calc(100dvh-210px)] min-h-[480px] flex-col gap-3 rounded-(--pn-r-5) border bg-(--pn-surface) p-4",
                   dragging ? "border-(--pn-accent) bg-(--pn-accent-soft)" : "border-(--pn-line)"

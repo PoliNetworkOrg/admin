@@ -252,7 +252,6 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 data={bytes}
                 pages={pages}
                 focus={focus}
-                className="h-[calc(100dvh-210px)] min-h-[480px]"
                 overlay={(page) =>
                   request.signers.flatMap((signer, index) => {
                     if (signer.status !== "pending") return []

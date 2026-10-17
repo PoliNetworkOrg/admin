@@ -64,7 +64,7 @@ const gutter = "px-4 shell:px-6 min-[1200px]:px-9"
 /** Centers the page content at the template width with the shell's side padding, below the page header. */
 export function PageContent({ width = "wide", children }: { width?: ContentWidth; children: ReactNode }) {
   return (
-    <div className={cn("flex-1 pb-7 shell:pb-12", gutter)}>
+    <div data-page-content className={cn("flex-1 pb-7 shell:pb-12", gutter)}>
       <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
     </div>
   )

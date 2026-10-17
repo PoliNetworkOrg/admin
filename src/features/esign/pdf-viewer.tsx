@@ -6,6 +6,8 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
 
+import { useFillHeight } from "./use-fill-height"
+
 export type PageSize = { width: number; height: number }
 
 type PdfViewerProps = {
@@ -21,7 +23,6 @@ type PdfViewerProps = {
   cursor?: "default" | "crosshair"
   /** A point to bring to the middle of the viewer when it changes: a page and a fraction of its height. */
   focus?: { page: number; y: number } | null
-  className?: string
 }
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -44,8 +45,9 @@ function loadPdfjs() {
  * The dashboard's own PDF viewer (pdf.js), so every browser shows documents the same way and signatures can be placed
  * on them. Pages render lazily as they near the viewport, at the device pixel ratio; signature appearances are drawn.
  */
-export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default", focus, className }: PdfViewerProps) {
+export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default", focus }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fill = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
   const [doc, setDoc] = useState<{ pdf: PDFDocumentProxy; pdfjs: Pdfjs } | null>(null)
@@ -112,7 +114,9 @@ export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default
 
   return (
     <div
-      className={cn("flex min-h-0 flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)", className)}
+      ref={fill.ref}
+      style={fill.style}
+      className="flex h-[calc(100dvh-210px)] min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)"
     >
       <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
         <span className="px-2 text-[13px] text-(--pn-fg-muted) tabular-nums" aria-live="polite">
