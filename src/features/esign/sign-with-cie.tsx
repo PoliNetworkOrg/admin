@@ -38,7 +38,7 @@ const POLL_MS = 1200
 /** After this long without the agent fetching the job, it is probably not running. */
 const AGENT_TIMEOUT_MS = 7000
 
-/** What the agent reported, by its error code (sign-agent `internal/token`). */
+/** What the agent reported, by its error code (esign `internal/token`). */
 const AGENT_ERRORS = new Map([
   ["pin_incorrect", "Wrong PIN. Type it again in the agent window; after 3 wrong attempts the card blocks it."],
   ["pin_locked", "The PIN is blocked. Unblock it with the PUK in the CIE ID app, then try again."],
@@ -60,13 +60,13 @@ function openPopup(): Window | null {
   const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2)
   const top = Math.max(0, window.screenY + (window.outerHeight - height) / 3)
   // A new name each time: a window still showing the agent's page is cross-origin, and writing to it would throw.
-  const name = `pn-sign-agent-${Date.now()}`
+  const name = `pn-esign-${Date.now()}`
   const popup = window.open("", name, `popup=yes,width=${width},height=${height},left=${left},top=${top}`)
   if (popup) {
-    popup.document.title = "PoliNetwork Sign Agent"
+    popup.document.title = "PoliNetwork eSign"
     popup.document.body.style.cssText =
       "font:15px system-ui,sans-serif;color:#58626c;display:grid;place-items:center;height:90vh;margin:0"
-    popup.document.body.textContent = "Opening the PoliNetwork Sign Agent…"
+    popup.document.body.textContent = "Opening PoliNetwork eSign…"
   }
   return popup
 }
@@ -150,7 +150,8 @@ export function SignWithCie({
     const timer = window.setInterval(poll, POLL_MS)
     const tick = window.setInterval(() => setNow(Date.now()), 1000)
     function onMessage(event: MessageEvent) {
-      if (!isAgentOrigin(event.origin) || event.data?.type !== "pn-sign-agent") return
+      // Agents up to v0.1.x, named PoliNetwork Sign Agent, post "pn-sign-agent".
+      if (!isAgentOrigin(event.origin) || !["pn-esign", "pn-sign-agent"].includes(event.data?.type)) return
       void poll()
     }
     window.addEventListener("message", onMessage)
@@ -199,7 +200,7 @@ export function SignWithCie({
   }
 
   function reopen(url: string) {
-    popupRef.current = window.open(url, "pn-sign-agent", "popup=yes,width=460,height=680")
+    popupRef.current = window.open(url, "pn-esign", "popup=yes,width=460,height=680")
   }
 
   const silent = phase?.kind === "waiting" && now - phase.since > AGENT_TIMEOUT_MS
@@ -219,12 +220,16 @@ export function SignWithCie({
       <Dialog open={phase !== null && phase.kind !== "starting"} onOpenChange={(open) => !open && void cancel()}>
         <DialogContent className={cn(dialogPanel, "max-w-[460px]")} showCloseButton={false}>
           {phase?.kind === "waiting" && !silent && (
-            <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening the Sign Agent">
-              A window from the PoliNetwork Sign Agent opens on this computer. If it doesn't, open it again.
+            <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
+              A window from PoliNetwork eSign opens on this computer. If it doesn't, open it again.
             </Status>
           )}
           {phase?.kind === "waiting" && silent && (
-            <Status icon={<TriangleAlert className="size-5" />} tone="warning" title="The Sign Agent isn't answering">
+            <Status
+              icon={<TriangleAlert className="size-5" />}
+              tone="warning"
+              title="PoliNetwork eSign isn't answering"
+            >
               <p>
                 Start the agent, then open the signing window again. First time here? Install it from the setup guide.
               </p>

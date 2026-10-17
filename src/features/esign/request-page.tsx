@@ -296,7 +296,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                   </Button>
                 </div>
                 <details className="mt-4 text-[13px] text-(--pn-fg-muted)">
-                  <summary className="cursor-pointer text-(--pn-accent) select-none">Can't use the Sign Agent?</summary>
+                  <summary className="cursor-pointer text-(--pn-accent) select-none">
+                    Can't use PoliNetwork eSign?
+                  </summary>
                   <p className="mt-2 text-pretty">
                     Download the PDF, sign it with the official Software CIE or CieSign app, then upload the signed
                     file. It must be this exact version with your signature added.

@@ -441,6 +441,6 @@ Rules that the templates above don't imply.
 - **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
   signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
-  PoliNetwork Sign Agent's own page in a popup: the PIN is typed there, never in the dashboard.
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
