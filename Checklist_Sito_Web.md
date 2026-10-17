@@ -7,13 +7,13 @@ Ultimo aggiornamento: 17/10/2026
 ## Generale
 - [x] Footer corretto
 - [ ] Footer: collegare i link legali (privacy, cookie, termini) alla pagina Documenti — 👤
-- [ ] Header: "Appunti" → https://polinetwork.org/it/materials/view/ — 👤
+- [ ] Header: "Appunti" → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 - [ ] Sfondo animato — 🔀 [web#183](https://github.com/PoliNetworkOrg/web/pull/183) da aggiornare, ora rompe le pagine nuove — 👤
 - [ ] Animazioni dei componenti (es. "mostra di più") — 👤
 - [ ] Spaziature uniformi tra le sezioni — 🔀 [web#179](https://github.com/PoliNetworkOrg/web/pull/179) da aggiornare alle pagine nuove — 👤
 
 ## Home
-- [ ] Sezione Appunti → https://polinetwork.org/it/materials/view/ — 👤
+- [ ] Sezione Appunti → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 - [ ] Numeri con counter automatico basato sui dati attivi (es. progetti) — 👤
 
 ## Gruppi (ricerca in home e /groups)
@@ -21,7 +21,7 @@ Ultimo aggiornamento: 17/10/2026
 - [ ] Il gruppo Telegram generale di Ingegneria Informatica non compare nella ricerca — 👤
 
 ## Appunti
-- [ ] Per ora: tutti i link "Appunti" (header, home, matricole) → https://polinetwork.org/it/materials/view/ — 👤
+- [ ] Per ora: tutti i link "Appunti" (header, home, matricole) → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 - [ ] Da creare: caricamento e visualizzazione appunti sul nuovo sito — 👤
 
 ## Guide
@@ -44,7 +44,7 @@ Ultimo aggiornamento: 17/10/2026
 
 ## Progetti
 - [ ] Rivedere l'elenco: aggiungere i progetti nuovi, rimuovere quelli vecchi — 👤
-- [ ] Lista: aggiornare i contatti (ci sono ancora quelli personali di Lorenzo e Tommaso) — 👤
+- [ ] Lista: aggiornare i contatti (ci sono ancora quelli personali di Lorenzo e Tommaso) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192), tolti i contatti personali, resta info@polinetwork.org — 👤
 - [ ] Pagina dettaglio /projects/… — 🔀 [web#189](https://github.com/PoliNetworkOrg/web/pull/189), manca la visualizzazione dei link per piattaforma — 👤
 - [ ] Link per piattaforma (linux, mac, windows, web, ecc.) — 🔀 [backend#72](https://github.com/PoliNetworkOrg/backend/pull/72), fatto solo lato backend — 👤
 - [ ] Admin: gestione dei link per piattaforma — 👤
@@ -66,14 +66,14 @@ Ultimo aggiornamento: 17/10/2026
 - [ ] Organigramma: stesso componente in codice della Storia — 👤
 
 ## Team
-- [ ] Togliere sezione Direttivo, trafiletto Growth, team International e foto dei membri — 👤
+- [ ] Togliere sezione Direttivo, trafiletto Growth, team International e foto dei membri — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 
 ## Unisciti
 - [ ] Più spazio tra le sezioni (risolto da web#179 se aggiornata) — 👤
-- [ ] Comprimere l'immagine dei membri (22 MB) — 👤
+- [ ] Comprimere l'immagine dei membri (22 MB) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 
 ## Contatti
-- [ ] Sistemare il link rotto "Collabora con noi" — 👤
+- [ ] Sistemare il link rotto "Collabora con noi" — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
 
 ## Documenti (da creare)
 - [ ] Progettare la pagina (design) con statuto, regolamenti interni, regole utenti, privacy, cookie e bilanci (valutare 5x1000 e donazioni) — 👤 Simone (designer), da progettare
