@@ -316,6 +316,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/esign/request-page.tsx": [
       "declineEsignRequest",
       "cancelEsignRequest",
+      "deleteEsignRequest",
       "retryEsignDelivery",
       "uploadSignedEsignDocument",
     ],
