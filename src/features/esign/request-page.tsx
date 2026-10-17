@@ -341,6 +341,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     Download the PDF, sign it with the official Software CIE or CieSign app, then upload the signed
                     file. It must be this exact version with your signature added.
                   </p>
+                  {myPlaces.length > 1 && (
+                    <InlineAlert tone="warning" className="mt-2">
+                      The official app adds a single signature, and uploading it completes your part: your other{" "}
+                      {myPlaces.length - 1 === 1 ? "place stays" : "places stay"} empty. Use the Sign Agent to sign in
+                      every place.
+                    </InlineAlert>
+                  )}
                   <label className="mt-2 inline-flex">
                     <span className="sr-only">Signed PDF</span>
                     <input
