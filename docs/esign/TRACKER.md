@@ -14,6 +14,10 @@ Sign PDFs with the Italian CIE (NFC reader + PIN) from the admin dashboard, with
 
 ## Architecture (deferred / remote signing, like EU DSS + NexU)
 
+> Revised after research: the dashboard does **not** fetch the agent (Safari blocks HTTPS→loopback, Chrome/Firefox
+> prompt). It opens the agent's own page in a popup; the agent talks to the backend with a single-use ticket and the
+> PIN is typed on the local page. See [`contracts.md`](contracts.md). The diagram below is the original sketch.
+
 ```
  Browser (admin dashboard)                 Admin BFF (TanStack Start)        Backend (Bun, tRPC)
  ┌──────────────────────────┐  server fns  ┌───────────────────────┐  tRPC  ┌──────────────────────────────┐
@@ -62,22 +66,24 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 ### Phase 0 — research and design
 
 - ☑ Survey repos (admin, backend), permissions model (IdP data, no auth-repo code change).
-- ◐ Deep research (CIE, browser connectivity, PAdES) — Sol 6.1 subagents.
-- ☐ Freeze the API contracts (agent HTTP API, backend tRPC) in [`contracts.md`](contracts.md).
+- ☑ Deep research (CIE, browser connectivity, PAdES) — Sol 6.1 subagents.
+- ☑ Freeze the API contracts (agent HTTP API, backend tRPC) in [`contracts.md`](contracts.md).
 
 ### Phase 1 — sign agent (Go)
 
-- ☐ Repo, module, CI matrix (windows/macos/ubuntu), releases.
-- ☐ Loopback HTTP server: Origin allowlist, Host check, private-network headers, JSON API.
-- ☐ Token backends: `pkcs11` (CIE middleware module auto-discovery), `cie` (direct PC/SC), `soft` (dev/test key).
-- ☐ PIN errors (wrong PIN with remaining tries, blocked → PUK), card/reader detection.
-- ☐ Install helpers: autostart (LaunchAgent / HKCU Run / systemd user unit), custom URL scheme.
-- ☐ Tests with SoftHSM2 in Linux Docker; Windows via CI.
+- ☑ Repo `PoliNetworkOrg/sign-agent` (public, MIT), Go module.
+- ☑ Popup page + same-origin API (Host check, no cross-site), ticket-based backend client.
+- ☑ Session-based providers: `cie-mw` (official PKCS#11, last-4 PIN), `opencie`, `soft`; ordered fallback before PIN.
+- ☑ SoftHSM2 PKCS#11 tests in Linux Docker (`scripts/test-softhsm.sh`).
+- ◐ Subagent A, branch `feat/direct-cie`: direct PC/SC `cie` provider, card simulator, interop harness against the
+  official middleware (pcscd + vpcd), auto-pairing (`AbilitaCIE` / `cie_enable`).
+- ◐ Subagent B, branch `feat/packaging`: worker subprocess (Rosetta for the x86_64 macOS module), install + URL scheme,
+  macOS .app, CI matrix, releases, `doctor`.
 
 ### Phase 2 — backend
 
-- ☐ PAdES engine: incremental update (classic xref + xref stream), visible appearance, CMS (CAdES-BES/PAdES B-B).
-- ☐ Validation tests (pyHanko / pdfsig in Docker).
+- ☑ PAdES engine: incremental update (classic xref + xref stream), visible appearance, CMS (PAdES B-B).
+- ☑ Validation: poppler `pdfsig` in tests; pyHanko (Docker) judges both signatures VALID with permitted changes.
 - ☐ Data model: requests, signers, versions, events (drizzle migration).
 - ☐ OneDrive drive abstraction (Graph + in-memory mock), browse/download/upload.
 - ☐ Email with attachment (Graph sendMail / dev mailer).
@@ -109,3 +115,5 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 ## Log
 
 - 2026-10-17: kickoff; branches created; research started.
+- 2026-10-17: PAdES engine done and validated; agent refactored to popup + ticket flow; agent repo published;
+  subagents A (direct CIE) and B (packaging) started.
