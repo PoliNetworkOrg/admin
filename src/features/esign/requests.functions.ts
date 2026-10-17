@@ -89,6 +89,11 @@ export const cancelEsignRequest = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.uuid() }))
   .handler(({ data, context }) => context.backend.esign.requests.cancel.mutate(data))
 
+export const deleteEsignRequest = createServerFn({ method: "POST" })
+  .middleware([esignRequestsManageMiddleware])
+  .validator(z.object({ id: z.uuid() }))
+  .handler(({ data, context }) => context.backend.esign.requests.delete.mutate(data))
+
 export const retryEsignDelivery = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
   .validator(z.object({ id: z.uuid() }))

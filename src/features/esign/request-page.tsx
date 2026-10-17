@@ -1,6 +1,6 @@
-import { Link, useRouter } from "@tanstack/react-router"
+import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Ban, Download, Files, FolderUp, Mail, RotateCw, X } from "lucide-react"
+import { Ban, Download, Files, FolderUp, Mail, RotateCw, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -17,6 +17,7 @@ import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import type { EsignDrive, EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import { errorHasCode } from "@/lib/errors"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -24,7 +25,7 @@ import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
 import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "./request-status"
-import { cancelEsignRequest, retryEsignDelivery } from "./requests.functions"
+import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
 
@@ -77,10 +78,12 @@ function downloadBytes(bytes: Uint8Array, fileName: string) {
 
 export function EsignRequestPage({ detail }: { detail: Detail }) {
   const router = useRouter()
+  const navigate = useNavigate()
   const canManage = useCan("esign:requests:manage")
   const contentFn = useServerFn(getEsignDocumentContent)
   const declineFn = useServerFn(declineEsignRequest)
   const cancelFn = useServerFn(cancelEsignRequest)
+  const deleteFn = useServerFn(deleteEsignRequest)
   const retryFn = useServerFn(retryEsignDelivery)
   const uploadSignedFn = useServerFn(uploadSignedEsignDocument)
   const [uploadingSigned, setUploadingSigned] = useState(false)
@@ -149,6 +152,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   }, [request])
 
   const canCancel = request.status === "in_progress" && canManage
+  // A request in progress is cancelled first; a pending delivery still needs the request.
+  const canDelete = request.status !== "in_progress" && request.delivery?.status !== "pending" && canManage
   const pages = pdf?.pages ?? []
 
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -519,6 +524,42 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     console.error(error)
                   }
                   appToast.success("Request cancelled.")
+                }}
+              />
+            )}
+
+            {canDelete && (
+              <ConfirmDialog
+                title="Delete request?"
+                description={
+                  request.delivery?.driveItem
+                    ? "Its signers, activity and every version of the document are deleted. The copy saved to OneDrive stays."
+                    : "Its signers, activity and every version of the document are deleted. Download the PDF first if you need it."
+                }
+                confirmLabel="Delete request"
+                tone="danger"
+                icon={Trash2}
+                trigger={
+                  <Button variant="outline" className="h-10 self-start text-(--pn-danger-fg)">
+                    <Trash2 aria-hidden /> Delete request
+                  </Button>
+                }
+                onConfirm={async () => {
+                  try {
+                    await deleteFn({ data: { id: request.id } })
+                  } catch (error) {
+                    console.error(error)
+                    // Already gone: the outcome the user asked for.
+                    if (!errorHasCode(error, "NOT_FOUND")) throw error
+                  }
+                  try {
+                    // Leave first: reloading this page would look the deleted request up again.
+                    await navigate({ to: "/dashboard/esign/requests" })
+                    await router.invalidate({ sync: true })
+                  } catch (error) {
+                    console.error(error)
+                  }
+                  appToast.success("Request deleted.")
                 }}
               />
             )}
