@@ -245,7 +245,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
-    "src/features/azure/groups-page.tsx": "azure:groups:write",
+    "src/features/azure/membership-dialog.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": "azure:members:create",
     "src/features/esign/requests-page.tsx": "esign:requests:manage",
     "src/features/esign/request-page.tsx": "esign:requests:manage",
