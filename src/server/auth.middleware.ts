@@ -139,3 +139,37 @@ export const azureGroupsWriteMiddleware = createMiddleware({ type: "function" })
     requirePermission(context.permissions, "azure:groups:write")
     return next()
   })
+
+/** CIE signatures: see and sign the requests that involve the user. */
+export const esignReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "esign:sign")
+    return next()
+  })
+
+/** CIE signatures: start or cancel one's own signature, decline a request. */
+export const esignSignWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "esign:sign")
+    return next()
+  })
+
+/** CIE signatures: choose which roles and permissions may use each drive. */
+export const esignDrivesManageMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "esign:sign")
+    requirePermission(context.permissions, "esign:drives:manage")
+    return next()
+  })
+
+/** CIE signatures: upload documents, browse the shared drive, create, cancel and redeliver requests. */
+export const esignRequestsManageMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "esign:sign")
+    requirePermission(context.permissions, "esign:requests:manage")
+    return next()
+  })

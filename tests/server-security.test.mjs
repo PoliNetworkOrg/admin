@@ -13,6 +13,7 @@ import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { isValidWhatsappInviteLink } from "../src/features/whatsapp/whatsapp.validation.ts"
+import { isCsrfExemptPath, isTrustedRequest } from "../src/server/csrf.ts"
 import { isAgentModeEnabled } from "../src/server/permissions.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
@@ -130,6 +131,18 @@ test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", false), false)
 })
 
+test("only the sign agent's ticket proxy skips the Origin check", async () => {
+  assert.equal(isCsrfExemptPath("/api/esign/agent/jobs/abc/prepare"), true)
+  assert.equal(isCsrfExemptPath("/api/esign/agentx"), false)
+  assert.equal(isCsrfExemptPath("/_serverFn/abc"), false)
+  assert.equal(isCsrfExemptPath("/auth/logout"), false)
+  assert.equal(isTrustedRequest("POST", null, "https://admin.polinetwork.org"), false)
+  const proxy = await readFile(new URL("../src/routes/api/esign/agent/$.ts", import.meta.url), "utf8")
+  // The proxy forwards only ticket paths, and nothing from the browser session.
+  assert.match(proxy, /const AGENT_PATH = \/\^jobs\\\/\[A-Za-z0-9_-\]\{43\}/)
+  assert.doesNotMatch(proxy, /cookie|authorization|readRequestSession|sessionMiddleware/i)
+})
+
 test("the backend URL only falls back during development or compilation", () => {
   assert.equal(resolveBackendUrl("https://backend.example", "production", "start"), "https://backend.example")
   assert.equal(resolveBackendUrl(undefined, "development", "dev"), "http://localhost:3000")
@@ -165,6 +178,9 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/azure/groups.functions.ts",
+    "src/features/esign/esign.functions.ts",
+    "src/features/esign/requests.functions.ts",
+    "src/features/esign/drives.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/projects/projects.functions.ts",
     "src/features/group-labels/group-labels.functions.ts",
@@ -195,6 +211,9 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
     ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
     ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
+    ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
+    ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
+    ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
     ["grantsWriteMiddleware", ["src/features/telegram/grants.functions.ts"]],
     ["telegramGroupsWriteMiddleware", ["src/features/telegram/groups.functions.ts"]],
     ["whatsappGroupsWriteMiddleware", ["src/features/whatsapp/groups.functions.ts"]],
@@ -242,6 +261,9 @@ test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
     "src/features/azure/groups-page.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
+    "src/features/esign/requests-page.tsx": "esign:requests:manage",
+    "src/features/esign/request-page.tsx": "esign:requests:manage",
+    "src/features/esign/drives-page.tsx": "esign:drives:manage",
     "src/features/telegram/grants-page.tsx": "tg:grants:manage",
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
     "src/features/telegram/groups-page.tsx": ["tg:groups:manage", "groups:labels:write"],
@@ -299,6 +321,20 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
     "src/features/azure/member-number-dialog.tsx": ["setAzureMemberNumber"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
+    "src/features/esign/new-request-page.tsx": [
+      "uploadEsignDocument",
+      "importEsignDriveDocument",
+      "createEsignRequest",
+    ],
+    "src/features/esign/request-page.tsx": [
+      "declineEsignRequest",
+      "cancelEsignRequest",
+      "deleteEsignRequest",
+      "retryEsignDelivery",
+      "uploadSignedEsignDocument",
+    ],
+    "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
+    "src/features/esign/drives-page.tsx": ["setEsignDriveAccess"],
     "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
     "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
     "src/features/group-labels/add-category-dialog.tsx": ["createGroupLabel"],

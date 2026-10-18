@@ -19,6 +19,9 @@ export const PERMISSIONS = [
   "azure:members:write",
   "azure:groups:read",
   "azure:groups:write",
+  "esign:sign",
+  "esign:requests:manage",
+  "esign:drives:manage",
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
