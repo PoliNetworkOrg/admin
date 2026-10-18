@@ -4,7 +4,7 @@ import { z } from "zod"
 import { peopleReadMiddleware, peopleSelfMiddleware, peopleWriteMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
-import { answersInputSchema, searchAccountsInputSchema } from "./people.contract"
+import { answersInputSchema, personIdSchema, searchAccountsInputSchema } from "./people.contract"
 
 /** The Capo Admin scope and led teams on the signed-in person's record; they open Capo Admin and their team page. */
 export const getMyPeopleRoles = createServerFn({ method: "GET" })
@@ -17,7 +17,7 @@ export const getPeople = createServerFn({ method: "GET" })
 
 export const getPerson = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
-  .validator(z.object({ id: z.string().min(1) }))
+  .validator(z.object({ id: personIdSchema }))
   .handler(async ({ data, context }) => (await peopleApi(context)).getPerson(data.id))
 
 /** People › Linking's Needs review queue: sign-ins the backend couldn't link on its own. */

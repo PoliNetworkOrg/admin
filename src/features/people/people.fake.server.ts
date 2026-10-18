@@ -361,6 +361,19 @@ function buildPreview(fileName: string): ImportPreview {
 export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
   const actor = viewerName(viewer)
   return {
+    listMembers: async () => {
+      require(viewer, "people:members:read")
+      return data().people.map((person) => ({
+        id: person.id,
+        profile: {
+          firstName: person.profile.firstName,
+          lastName: person.profile.lastName,
+          personalEmail: viewer.permissions.includes("people:read") ? person.profile.personalEmail : null,
+        },
+        member: person.member,
+        account: { status: person.account.status },
+      }))
+    },
     listPeople: async () => {
       require(viewer, "people:read")
       return data().people.map((person) => row(person, viewer, true))

@@ -98,16 +98,32 @@ export const peopleWriteMiddleware = createMiddleware({ type: "function" })
 export const peopleTeamWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
   .server(({ next, context }) => {
-    if (!hasPermission(context.permissions, "people:write")) requirePermission(context.permissions, "people:self")
-    return next()
+    const generalAccess =
+      hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:write")
+    if (!generalAccess) requirePermission(context.permissions, "people:self")
+    return next({
+      context: {
+        permissions: generalAccess
+          ? context.permissions
+          : context.permissions.filter((permission) => permission !== "people:write"),
+      },
+    })
   })
 
 /** People › Teams reads: `people:read`, or a Team Lead (`people:self`) whose own team the backend returns. */
 export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
   .server(({ next, context }) => {
-    if (!hasPermission(context.permissions, "people:read")) requirePermission(context.permissions, "people:self")
-    return next()
+    const generalAccess =
+      hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:read")
+    if (!generalAccess) requirePermission(context.permissions, "people:self")
+    return next({
+      context: {
+        permissions: generalAccess
+          ? context.permissions
+          : context.permissions.filter((permission) => permission !== "people:read"),
+      },
+    })
   })
 
 /** People › Member register: read. */

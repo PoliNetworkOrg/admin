@@ -32,6 +32,8 @@ import {
   type Invite,
   inviteSchema,
   type LinkAccountInput,
+  memberRegisterRowSchema,
+  type MemberRegisterRow,
   type MemberNumberInput,
   type MemberStatusInput,
   type MyArea,
@@ -63,6 +65,7 @@ export type PeopleViewer = { permissions: readonly string[]; personId: string | 
 
 /** The `people.*` procedures (docs/people/contract.md), one method each. */
 export type PeopleApi = {
+  listMembers: () => Promise<MemberRegisterRow[]>
   listPeople: () => Promise<PersonRow[]>
   getPerson: (id: string) => Promise<PersonRecord>
   createPerson: (input: CreatePersonInput) => Promise<{ id: string }>
@@ -124,6 +127,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     schema.parse(await client.mutation(`people.${path}`, input))
 
   return {
+    listMembers: () => query("members.list", undefined, memberRegisterRowSchema.array()),
     listPeople: () => query("persons.list", undefined, personRowSchema.array()),
     getPerson: (id) => query("persons.get", { id }, personRecordSchema),
     createPerson: (input) => mutateParsed("persons.create", input, createdSchema),

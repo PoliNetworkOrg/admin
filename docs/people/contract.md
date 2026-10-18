@@ -134,6 +134,14 @@ Team fields (`TEAM_FIELDS`): `it` → `github` (text), `areas` (Frontend, Backen
 `tools` (Figma, Illustrator, Photoshop, After Effects, InDesign, Premiere), `portfolio` (URL); `hr` and `events` →
 `focus` (multi); `intl` → `languages` (multi).
 
+## Register projection
+
+`people.members.list()` returns `MemberRegisterRow[]` with `admin:access` + `people:members:read`, independently
+of `people:read`. Each row is `{ id, profile: { firstName, lastName, personalEmail }, member, account: { status } }`.
+Include past/current members and names of non-members for the existing admission picker. `personalEmail` is null
+without `people:read`. Never include volunteer fields, census, consents, phone, notes or account-link details.
+The UI links to full person records only with `people:read`. Write permissions do not imply read permissions.
+
 ## Procedures
 
 | Procedure                          | Kind     | Input                                                                                                      | Output                                                                                                                                                          | Needs                                                       |
@@ -260,7 +268,9 @@ them.
 The dashboard checks these too, but the backend owns them (from the security review of PR 97):
 
 - **`admin:access`**: every `people.*` procedure except `people.me.*`, `people.capo.*` and the team procedures needs it on
-  top of the permission in the table. `people:self` alone reaches only My area, Capo Admin and the caller's own team.
+  top of the permission in the table. `people:self` alone reaches only My area, Capo Admin and the caller's own team. For team procedures, the general
+  `people:read`/`people:write` branch requires `admin:access`; otherwise require `people:self` and an active, confirmed
+  Lead role over the requested team. A stray general permission without `admin:access` never widens team access.
 - **Member details**: `member` (number, status, fee, admission date, Microsoft 365 address) needs
   `people:members:read`, except on the caller's own record. Without it `member` is `null` and only `isMember` says
   whether the person is a current member, in every procedure that returns people.
@@ -273,9 +283,19 @@ The dashboard checks these too, but the backend owns them (from the security rev
 - **`people.members.export`**: every CSV cell is quoted, and a cell starting with `=`, `+`, `-`, `@`, tab or carriage
   return gets a leading `'`, so spreadsheets don't run it as a formula.
 - **`people.census.importPreview`**: check the content, not the extension: a real .xlsx (ZIP) or UTF-8 CSV, at most
-  10 MB uploaded, a cap on the decompressed size (e.g. 50 MB) and on the rows (e.g. 5,000), and reject anything else
+  10 MB uploaded, 50 MB decompressed, at most 1,000 ZIP entries and 5,000 response rows, and reject anything else
   before parsing.
 - **Input limits**: the input schemas in `people.contract.ts` bound every string, array and record (team fields: at most
   10 keys of 40 characters, values of 200, lists of 20; import decisions: at most 5,000). Telegram usernames are empty or
   5–32 letters, digits and underscores, with an optional leading `@`. `requestCorrection.field` is one of
   `CORRECTION_FIELDS`.
+
+Security review verification (PR #97): scope checks, unconfirmed matches, CSV escaping, ending Lead roles and member
+redaction are exercised in `tests/people-access.test.mjs`; bounded input and binary/renamed/oversized imports in
+`tests/people-input.test.mjs`. General People middleware starts from `adminMiddleware`; team exceptions follow the
+rule above. BFF workbook checks inspect the ZIP directory; the backend must enforce actual decompression and parsed
+row limits, not trust ZIP size declarations. The backend is pending, so these are requirements, not a production audit.
+
+Input limits also cover opaque IDs (128 chars), review resolutions (64), emails (254), academic years (`YYYY/YY`)
+requested roles (at most 3) and real ISO calendar dates (invalid days are rejected). Reject oversize requests before parsing; imports are bound to the caller, expire,
+and may only commit decisions for rows/pairs in that caller's preview.

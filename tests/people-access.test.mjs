@@ -149,3 +149,21 @@ void test("member details need people:members:read, except on the viewer's own r
   const self = fakePeopleApi({ permissions: ["people:read", "people:self"], personId: member.id })
   assert.deepEqual((await self.getPerson(member.id)).member, member.member)
 })
+
+void test("the member register works without people:read and exposes only register fields", async () => {
+  const reader = fakePeopleApi({ permissions: ["people:members:read"], personId: "none" })
+  const rows = await reader.listMembers()
+  assert.ok(rows.some((person) => person.member))
+  assert.ok(
+    rows.some((person) => !person.member),
+    "admission candidates remain available"
+  )
+  for (const person of rows) {
+    assert.deepEqual(Object.keys(person).sort(), ["account", "id", "member", "profile"])
+    assert.deepEqual(Object.keys(person.profile).sort(), ["firstName", "lastName", "personalEmail"])
+    assert.equal(person.profile.personalEmail, null)
+    assert.deepEqual(Object.keys(person.account), ["status"])
+  }
+  await assert.rejects(reader.listPeople(), unauthorized)
+  await assert.rejects(reader.getPerson(rows[0].id), unauthorized)
+})

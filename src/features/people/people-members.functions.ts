@@ -1,9 +1,14 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { peopleMembersWriteMiddleware } from "@/server/auth.middleware"
+import { peopleMembersReadMiddleware, peopleMembersWriteMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
 import { createMemberInputSchema, memberNumberInputSchema, memberStatusInputSchema } from "./people.contract"
+
+/** The register and names of admission candidates; no general People read permission needed. */
+export const getMemberRegister = createServerFn({ method: "GET" })
+  .middleware([peopleMembersReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listMembers())
 
 /** Registers a member; the backend starts the new-member workflow, which creates their Microsoft 365 account. */
 export const createMember = createServerFn({ method: "POST" })

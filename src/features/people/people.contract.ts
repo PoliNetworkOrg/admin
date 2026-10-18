@@ -32,6 +32,9 @@ export const MEMBER_STATUSES = ["active", "suspended", "expired", "former"] as c
 export const FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
 export const ACCOUNT_STATUSES = ["none", "invite", "linked", "review"] as const
 export const CENSUS_ANSWERS = ["continues", "leaving"] as const
+export const PHOTO_CONSENTS = ["granted", "denied", "revoked"] as const
+export type PhotoConsent = (typeof PHOTO_CONSENTS)[number]
+
 export const REVIEW_KINDS = ["telegram-conflict", "ask-to-be-added", "two-records", "not-me", "name-only"] as const
 
 export const teamIdSchema = z.enum(TEAM_IDS)
@@ -174,6 +177,15 @@ export type Consents = z.infer<typeof consentsSchema>
 export type PersonRow = z.infer<typeof personRowSchema>
 export type PersonRecord = z.infer<typeof personRecordSchema>
 export type Discrepancy = z.infer<typeof discrepancySchema>
+
+/** Register rows and admission candidates, without volunteer, census or account-link details. */
+export const memberRegisterRowSchema = z.object({
+  id: z.string(),
+  profile: profileSchema.pick({ firstName: true, lastName: true, personalEmail: true }),
+  member: membershipSchema.nullable(),
+  account: z.object({ status: z.enum(ACCOUNT_STATUSES) }),
+})
+export type MemberRegisterRow = z.infer<typeof memberRegisterRowSchema>
 
 export const teamSummarySchema = z.object({
   id: teamIdSchema,
@@ -406,8 +418,10 @@ export const TEAMS = {
 
 // Inputs. The server functions validate with these, and the fake and real APIs take the parsed values.
 
-const personIdSchema = z.string().regex(/^P-\d{4}$/)
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+export const personIdSchema = z.string().regex(/^P-\d{4}$/)
+const dateSchema = z.iso.date()
+const opaqueIdSchema = z.string().min(1).max(128)
+const academicYearSchema = z.string().regex(/^\d{4}\/\d{2}$/)
 const reasonSchema = z.string().trim().min(1).max(500)
 /** Telegram's own rule: 5–32 letters, digits or underscores. Empty when unknown; a leading @ is dropped. */
 export const TELEGRAM_USERNAME_PATTERN = /^@?[A-Za-z0-9_]{5,32}$/
@@ -423,7 +437,7 @@ const MAX_IMPORT_ROWS = 5000
 export const personInputSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
-  personalEmail: z.email(),
+  personalEmail: z.email().max(254),
   phone: z.string().trim().max(40),
   telegramUsername: telegramUsernameSchema,
   course: z.string().trim().min(1).max(120),
@@ -474,11 +488,11 @@ export const endTeamInputSchema = z.object({
   note: z.string().trim().max(500),
 })
 
-export const campaignInputSchema = z.object({ campaignId: z.string().min(1) })
-export const remindInputSchema = z.object({ campaignId: z.string().min(1), personId: personIdSchema.nullable() })
-export const answersInputSchema = z.object({ personId: personIdSchema, year: z.string().min(1) })
+export const campaignInputSchema = z.object({ campaignId: opaqueIdSchema })
+export const remindInputSchema = z.object({ campaignId: opaqueIdSchema, personId: personIdSchema.nullable() })
+export const answersInputSchema = z.object({ personId: personIdSchema, year: academicYearSchema })
 export const importCommitInputSchema = z.object({
-  importId: z.string().min(1),
+  importId: opaqueIdSchema,
   duplicates: z
     .record(importDecisionKey, z.enum(["same", "different"]))
     .refine((choices) => Object.keys(choices).length <= MAX_IMPORT_ROWS, "Too many decisions."),
@@ -488,23 +502,26 @@ export const importCommitInputSchema = z.object({
 })
 
 export const resolveReviewInputSchema = z.object({
-  reviewId: z.string().min(1),
-  resolution: z.string().min(1),
+  reviewId: opaqueIdSchema,
+  resolution: z.string().min(1).max(64),
   reason: reasonSchema,
 })
-export const reviewInputSchema = z.object({ reviewId: z.string().min(1) })
+export const reviewInputSchema = z.object({ reviewId: opaqueIdSchema })
 export const personRefInputSchema = z.object({ personId: personIdSchema })
 export const searchAccountsInputSchema = z.object({ personId: personIdSchema, query: z.string().trim().max(120) })
 export const linkAccountInputSchema = z.object({
   personId: personIdSchema,
-  accountId: z.string().min(1),
+  accountId: opaqueIdSchema,
   reason: reasonSchema,
 })
 
-export const joinRequestInputSchema = z.object({ requestId: z.string().min(1) })
+export const joinRequestInputSchema = z.object({ requestId: opaqueIdSchema })
 
 export const askToBeAddedInputSchema = z.object({
-  roles: z.array(z.enum(["admin", "team", "member"])).min(1),
+  roles: z
+    .array(z.enum(["admin", "team", "member"]))
+    .min(1)
+    .max(3),
   groupsOrTeam: z.string().trim().max(200),
   telegramUsername: telegramUsernameSchema,
 })
