@@ -19,6 +19,7 @@ import { Route as DashboardAccountRouteImport } from './routes/dashboard/account
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DashboardAuditLogIndexRouteImport } from './routes/dashboard/audit-log/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
@@ -94,6 +95,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardAuditLogIndexRoute = DashboardAuditLogIndexRouteImport.update({
+  id: '/audit-log/',
+  path: '/audit-log/',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
   id: '/whatsapp/groups',
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log/': typeof DashboardAuditLogIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log': typeof DashboardAuditLogIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log/': typeof DashboardAuditLogIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
@@ -407,6 +417,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/telegram/users/$userId'
@@ -536,6 +548,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/audit-log/': {
+      id: '/dashboard/audit-log/'
+      path: '/audit-log'
+      fullPath: '/dashboard/audit-log/'
+      preLoaderRoute: typeof DashboardAuditLogIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/whatsapp/groups': {
       id: '/dashboard/whatsapp/groups'
@@ -757,6 +776,7 @@ interface DashboardRouteChildren {
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
+  DashboardAuditLogIndexRoute: typeof DashboardAuditLogIndexRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
   DashboardEsignRequestsIndexRoute: typeof DashboardEsignRequestsIndexRoute
@@ -779,6 +799,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
+  DashboardAuditLogIndexRoute: DashboardAuditLogIndexRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
   DashboardEsignRequestsIndexRoute: DashboardEsignRequestsIndexRoute,

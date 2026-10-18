@@ -17,6 +17,7 @@ import {
   MessagesSquare,
   MonitorDown,
   PenLine,
+  ScrollText,
   Send,
   ShieldCheck,
   Tags,
@@ -35,7 +36,16 @@ import type { Permission } from "@/server/permissions"
 /** Every navigable dashboard route path, as TanStack `Link`'s `to` accepts it. */
 export type DashboardPath = Extract<keyof FileRoutesByTo, `/dashboard${string}`>
 
-export type ServiceId = "overview" | "telegram" | "whatsapp" | "m365" | "web" | "esign" | "reports" | "account"
+export type ServiceId =
+  | "overview"
+  | "telegram"
+  | "whatsapp"
+  | "m365"
+  | "web"
+  | "esign"
+  | "reports"
+  | "audit"
+  | "account"
 
 export type Section = {
   id: string
@@ -91,6 +101,7 @@ export type PageMatch =
   | { kind: "esign-setup" }
   | { kind: "reports-open" }
   | { kind: "reports-closed" }
+  | { kind: "audit-log" }
   | { kind: "not-found" }
 
 export type PageKind = PageMatch["kind"]
@@ -300,8 +311,25 @@ const reports: Service = {
   ],
 }
 
+const audit: Service = {
+  id: "audit",
+  title: "Audit log",
+  short: "Audit",
+  icon: ScrollText,
+  path: "/dashboard/audit-log",
+  sections: [
+    {
+      id: "audit-log",
+      title: "Audit Log",
+      icon: ScrollText,
+      path: "/dashboard/audit-log",
+      permission: "audit:read",
+    },
+  ],
+}
+
 /** Rail order: Overview (the logo), then the services with sections, then Account. */
-export const services: Service[] = [overview, telegram, whatsapp, m365, web, esign, reports, account]
+export const services: Service[] = [overview, telegram, whatsapp, m365, web, esign, reports, audit, account]
 
 /** The services that own a panel, in rail order. */
 export const panelServices: Service[] = services.filter((service) => service.sections.length > 0)
@@ -379,6 +407,8 @@ export function matchPath(pathname: string): PageMatch {
     if (second === "resolved") return { kind: "reports-closed" }
   }
 
+  if (head === "audit-log" && second === undefined) return { kind: "audit-log" }
+
   return { kind: "not-found" }
 }
 
@@ -419,6 +449,8 @@ export function serviceFor(match: PageMatch): Service {
     case "reports-open":
     case "reports-closed":
       return reports
+    case "audit-log":
+      return audit
   }
 }
 
@@ -471,6 +503,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(reports, "open")
     case "reports-closed":
       return section(reports, "closed")
+    case "audit-log":
+      return section(audit, "audit-log")
   }
 }
 
