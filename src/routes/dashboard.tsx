@@ -25,7 +25,11 @@ export const Route = createFileRoute("/dashboard")({
       : NO_PEOPLE_ROLES
     if (!canOpenPage(matchPath(location.pathname), access.permissions, peopleRoles)) {
       throw redirect({
-        to: hasPermission(access.permissions, "people:self") ? "/dashboard/account/me" : "/unauthorized",
+        to: hasPermission(access.permissions, "people:self")
+          ? "/dashboard/account/me"
+          : hasPermission(access.permissions, "admin:access")
+            ? "/dashboard"
+            : "/unauthorized",
       })
     }
     return { user: access.user, permissions: access.permissions, peopleRoles }

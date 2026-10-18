@@ -497,18 +497,18 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
               setPage(1)
             }}
             actions={
-              canAct
+              canAct || canRead
                 ? (row) => (
                     <RowActions>
-                      {/* Answered rows open the answers; the others can be reminded. */}
-                      {!row.entry?.answer ? (
+                      {/* Answered rows open the answers; the others can be reminded while the campaign is open. */}
+                      {!row.entry?.answer && canAct ? (
                         <IconButton
                           label="Send reminder"
                           ariaLabel={`Send reminder to ${personName(row)}`}
                           icon={Bell}
                           onClick={() => remindOne(row)}
                         />
-                      ) : canRead ? (
+                      ) : row.entry?.answer && canRead ? (
                         <IconButton
                           label="View answers"
                           ariaLabel={`View the answers of ${personName(row)}`}
@@ -576,7 +576,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
           tone="primary"
           icon={Bell}
           title="Send reminders?"
-          description={`${pluralize(unanswered, "person")} haven't answered. Each gets an email and a Telegram message with their personal link; people reminded in the last 3 days are skipped.`}
+          description={`${pluralize(unanswered, "person")} ${unanswered === 1 ? "hasn't" : "haven't"} answered. Each gets an email and a Telegram message with their personal link; people reminded in the last 3 days are skipped.`}
           confirmLabel="Send reminders"
           onConfirm={async () => {
             const result = await remind({ data: { campaignId: campaign.id, personId: null } })

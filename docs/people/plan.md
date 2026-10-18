@@ -2,35 +2,42 @@
 
 Work happens on branch `claude/eager-mayer-bsom7v` in one pull request. Tick a box in the same commit that finishes it,
 and add a line to the progress log at the bottom. Each phase ends green on `pnpm check`, `pnpm typecheck`, `pnpm test`
-and `pnpm build`, and is committed and pushed before the next one starts (Conventional Commits, see `CLAUDE.md`).
+and `pnpm build`, and is committed and pushed before the next one starts (Conventional Commits, see `AGENTS.md`).
 
-Read first: `CLAUDE.md`, `docs/design.md`, [`decisions.md`](decisions.md), [`contract.md`](contract.md). Look at the
+Read first: `AGENTS.md`, `docs/design.md`, [`decisions.md`](decisions.md), [`contract.md`](contract.md). Look at the
 prototype for structure and copy only (see decisions: it has visual errors; build from the primitives).
 
 ## Architecture
 
 ```
 src/features/people/
-  people.contract.ts          zod schemas + types from contract.md, TEAM_FIELDS, labels and tones
-  people.fixtures.server.ts   seeded in-memory data (port of buildData() in the prototype), mutated by agent-mode calls
-  people.source.server.ts     peopleSource(context): fixtures in agent mode, else context.backend.people (typed via contract)
+  people.contract.ts          zod schemas + types from contract.md, team fields, labels
+  people.fixtures.server.ts   seeded in-memory data (port of buildData() in the prototype)
+  people.api.server.ts        peopleApi(context): the agent-mode fake, else the backend's people.* procedures, parsed
+  people.fake.server.ts       agent-mode implementation of every procedure, with the backend's access rules
   people.functions.ts         read server functions (GET) per page
-  people-write.functions.ts   mutations (POST), each with its exact permission middleware
-  me.functions.ts             My area reads and self-service mutations (people:self)
-  capo.functions.ts           Capo Admin reads and approve/decline
-  format.ts                   display helpers (census parts, role names, initials, team field text)
-  overview-page.tsx, person-page.tsx, members-page.tsx, admins-page.tsx, teams-page.tsx, team-page.tsx,
-  census-page.tsx, campaign-page.tsx, import-dialog.tsx, linking-page.tsx, link-account-dialog.tsx,
-  resolve-dialog.tsx, capo-page.tsx, my-area-page.tsx, dialogs/*.tsx
+  people-write.functions.ts   person, admin, linking and account mutations (POST)
+  people-members.functions.ts member register mutations and export
+  people-teams.functions.ts   team reads and mutations (people:read/write or Team Lead)
+  people-census.functions.ts  campaigns, reminders and the census import
+  people-appoint.functions.ts Capo Admin appointments (people:appoint)
+  people-self.functions.ts    My area reads and self-service mutations (people:self)
+  people-capo.functions.ts    Capo Admin area and join-request approve/decline
+  census-import.server.ts     server-side checks on the uploaded Forms export
+  people-format.ts            display helpers (labels, years, roles)
+  people-ui.tsx, people-hooks.ts  shared People components and hooks
+  overview-page.tsx, person-page.tsx, members-page.tsx, admins-page.tsx, teams-page.tsx, census-page.tsx,
+  import-wizard.tsx, linking-page.tsx, capo-page.tsx, my-area-page.tsx
+  *-dialog.tsx, *-dialogs.tsx  person, notes, account, link, census answers, member, admin, team and My area dialogs
 src/routes/dashboard/people/  index (overview), $personId, members, admins, teams/index, teams/$teamId,
                               census/index, census/$campaignId, linking
 src/routes/dashboard/telegram/capo.tsx
-src/routes/dashboard/account/  me.tsx (My area), index.tsx (today's Account page moved here)
+src/routes/dashboard/account/  me.tsx (My area), index.tsx (Sign-in & security)
 ```
 
-- The backend client type has no `people` router, so `people.source.server.ts` declares the contract's router shape and
-  narrows `context.backend` to it in one place, with a safety comment (lint rule
-  `anti-slop/require-safety-comment-for-type-assertion`). Nothing else touches the cast.
+- The backend client type has no `people` router, so `people.api.server.ts` calls the procedures through an untyped
+  client (`createUntypedBackendClient`) and parses every response with the contract's schemas. Nothing else talks to
+  the backend's `people.*` procedures.
 - Agent mode: `loadAccess` keeps returning every permission. Add a development-only `AGENT_PERMISSIONS` env (comma
   list) and `AGENT_PERSON` (person ID for My area) so restricted views can be previewed; document both in README.
 - Access: `loadAccess` returns `authorized` when the user has `admin:access` **or** `people:self`. The route context

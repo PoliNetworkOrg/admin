@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start"
-import { useCallback } from "react"
+import { useMemo } from "react"
 
 import { FormDialog, InlineAlert, Spinner } from "@/components/primitives"
 
@@ -21,8 +21,9 @@ export function CensusAnswersDialog({
   year: string
 }) {
   const load = useServerFn(getCensusAnswers)
+  // Loads only while open; each reopen is a new loader, so "Close and try again" retries.
   const { data: answers, failed } = useLoaded(
-    useCallback(() => load({ data: { personId, year } }), [load, personId, year])
+    useMemo(() => (open ? () => load({ data: { personId, year } }) : null), [open, load, personId, year])
   )
 
   return (

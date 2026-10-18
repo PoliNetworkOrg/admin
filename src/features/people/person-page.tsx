@@ -244,7 +244,11 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   key={discrepancy.kind}
                   tone="warning"
                   action={
-                    discrepancy.kind === "telegram-mismatch" && discrepancy.suggestedTelegram && canWrite ? (
+                    // The update resends the whole profile: an unknown stored year would be replaced, so edit instead.
+                    discrepancy.kind === "telegram-mismatch" &&
+                    discrepancy.suggestedTelegram &&
+                    canWrite &&
+                    yearOf(profile.year) === profile.year ? (
                       <LoadingButton
                         size="sm"
                         variant="ghost"

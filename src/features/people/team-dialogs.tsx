@@ -146,7 +146,13 @@ export function AddToTeamDialog({
       title={title}
       description={fixedPerson ? fixedPerson.name : "Team history and census answers stay on the person’s record."}
       noun="team membership"
-      dirty={(!fixedTeam && team !== null) || (!fixedPerson && person !== null) || role !== "member"}
+      dirty={
+        (!fixedTeam && team !== null) ||
+        (!fixedPerson && person !== null) ||
+        role !== "member" ||
+        since !== todayIso() ||
+        Object.keys(cleanFields(fields)).length > 0
+      }
       submitLabel={title}
       onSubmit={submit}
     >

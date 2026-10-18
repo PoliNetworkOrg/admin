@@ -93,7 +93,7 @@ export function AddMemberDialog({
       title="Add member"
       description="Creates a Microsoft 365 account with the member number as its ID."
       noun="member"
-      dirty={person?.id !== initialPerson?.id || number !== nextNumber || fee !== "due"}
+      dirty={person?.id !== initialPerson?.id || number !== nextNumber || fee !== "due" || admittedOn !== todayIso()}
       submitLabel="Add member"
       onSubmit={submit}
     >

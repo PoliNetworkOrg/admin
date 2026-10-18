@@ -43,7 +43,8 @@ export function CapoPage({ area }: { area: CapoArea }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [pending, setPending] = useState<string | null>(null)
-  const titles = new Set(area.groups.map((group) => group.title))
+  // Telegram titles repeat across courses: match groups by chat ID.
+  const chatIds = new Set(area.groups.map((group) => group.chatId))
 
   const filtered = area.admins.filter(
     (person) =>
@@ -103,7 +104,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
       width: 200,
       mobile: "full",
       cell: (person) => {
-        const groups = person.admin?.groups.filter((group) => titles.has(group.title)) ?? []
+        const groups = person.admin?.groups.filter((group) => chatIds.has(group.chatId)) ?? []
         return groups.length ? (
           <ChipOverflow
             items={groups}
