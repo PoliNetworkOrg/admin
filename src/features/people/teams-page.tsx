@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { EllipsisVertical, Pencil, UserMinus, UserPlus, UserRound, Users } from "lucide-react"
+import { Pencil, UserMinus, UserPlus, Users } from "lucide-react"
 import { type ReactNode, useDeferredValue, useState } from "react"
 
 import {
@@ -9,12 +9,8 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
   NavCard,
   PlatformGlyph,
   RecordHeader,
@@ -24,12 +20,22 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan, usePeopleRoles } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan, useHasAdminAccess, usePeopleRoles } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
-import { CENSUS_ANSWER, censusEntry, CURRENT_YEAR, formatDay, NO_ANSWER, personName, teamName } from "./people-format"
-import { FilterMenu, PersonCell, StateBadge } from "./people-ui"
+import {
+  CENSUS_ANSWER,
+  censusEntry,
+  currentYear,
+  formatDay,
+  NO_ANSWER,
+  personName,
+  PHOTO_CONSENT,
+  teamName,
+} from "./people-format"
+import { useDialog, useDialogState } from "./people-hooks"
+import { ActionMenu, PersonCell, StateBadge } from "./people-ui"
 import { type PersonRow, type TeamId, type TeamMembership, type TeamSummary, teamFields } from "./people.contract"
 import { AddToTeamDialog, EditTeamFieldsDialog, EndTeamMembershipDialog, type TeamMemberTarget } from "./team-dialogs"
 
@@ -68,7 +74,7 @@ function matchesQuery(row: TeamRow, query: string) {
 }
 
 function CensusBadge({ person }: { person: PersonRow }) {
-  const entry = censusEntry(person, CURRENT_YEAR)
+  const entry = censusEntry(person, currentYear())
   if (!entry) return <Unset />
   return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
 }
@@ -76,15 +82,7 @@ function CensusBadge({ person }: { person: PersonRow }) {
 function PhotoBadge({ person }: { person: PersonRow }) {
   const photo = person.consents.photo
   if (!photo) return <Unset />
-  return (
-    <StateBadge
-      state={
-        photo.status === "granted"
-          ? { label: "Granted", tone: "success" }
-          : { label: photo.status === "denied" ? "Denied" : "Revoked", tone: "neutral" }
-      }
-    />
-  )
+  return <StateBadge state={PHOTO_CONSENT[photo.status]} />
 }
 
 function RoleChip({ role }: { role: Role }) {
@@ -94,12 +92,10 @@ function RoleChip({ role }: { role: Role }) {
 /** Edit fields as the row icon, the rest in ⋮. */
 function MemberActions({
   row,
-  canOpenRecord,
   canAppoint,
   onOpen,
 }: {
   row: TeamRow
-  canOpenRecord: boolean
   /** Ending a Team Lead's membership is an appointment change: `people:appoint` only. */
   canAppoint: boolean
   onOpen: (dialog: TeamDialog) => void
@@ -114,64 +110,44 @@ function MemberActions({
         icon={Pencil}
         onClick={() => onOpen({ kind: "fields", target: targetOf(row) })}
       />
-      <Menu>
-        <MenuTrigger
-          render={<IconButton label="More actions" ariaLabel={`More actions for ${name}`} icon={EllipsisVertical} />}
-        />
-        <MenuContent>
-          {canOpenRecord ? (
-            <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: row.person.id }} />}>
-              <UserRound />
-              Open record
-            </MenuItem>
-          ) : null}
-          {canOpenRecord && canEnd ? <MenuSeparator /> : null}
-          {canEnd ? (
-            <MenuItem variant="destructive" onClick={() => onOpen({ kind: "end", target: targetOf(row) })}>
-              <UserMinus />
-              End membership
-            </MenuItem>
-          ) : null}
-        </MenuContent>
-      </Menu>
+      <ActionMenu
+        keepSlot
+        label={`More actions for ${name}`}
+        actions={[
+          canEnd && {
+            label: "End membership",
+            ariaLabel: `End the team membership of ${name}`,
+            icon: UserMinus,
+            destructive: true,
+            onClick: () => onOpen({ kind: "end", target: targetOf(row) }),
+          },
+        ]}
+      />
     </RowActions>
   )
 }
 
 /** The Edit fields / End membership dialog of the row it was opened from. */
 function useTeamDialog() {
-  const [dialog, setDialog] = useState<TeamDialog | null>(null)
-  const [open, setOpen] = useState(false)
-  const [key, setKey] = useState(0)
-  const element: ReactNode = dialog ? (
-    dialog.kind === "fields" ? (
-      <EditTeamFieldsDialog key={`fields-${key}`} open={open} onOpenChange={setOpen} target={dialog.target} />
+  const dialog = useDialog<TeamDialog>()
+  const element: ReactNode = dialog.target ? (
+    dialog.target.kind === "fields" ? (
+      <EditTeamFieldsDialog
+        key={`fields-${dialog.key}`}
+        open={dialog.open}
+        onOpenChange={dialog.onOpenChange}
+        target={dialog.target.target}
+      />
     ) : (
-      <EndTeamMembershipDialog key={`end-${key}`} open={open} onOpenChange={setOpen} target={dialog.target} />
+      <EndTeamMembershipDialog
+        key={`end-${dialog.key}`}
+        open={dialog.open}
+        onOpenChange={dialog.onOpenChange}
+        target={dialog.target.target}
+      />
     )
   ) : null
-  return {
-    element,
-    show: (next: TeamDialog) => {
-      setDialog(next)
-      setKey((value) => value + 1)
-      setOpen(true)
-    },
-  }
-}
-
-function useAddDialog() {
-  const [open, setOpen] = useState(false)
-  const [key, setKey] = useState(0)
-  return {
-    open,
-    setOpen,
-    key,
-    show: () => {
-      setKey((value) => value + 1)
-      setOpen(true)
-    },
-  }
+  return { element, show: dialog.show }
 }
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
@@ -188,8 +164,10 @@ function sortRows(rows: TeamRow[], sort: TableSort) {
 
 /** People › Teams: one card per team, then every active team member in one table. */
 export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
-  const canWrite = useCan("people:write")
-  const canAppoint = useCan("people:appoint")
+  const hasAdminAccess = useHasAdminAccess()
+  const canRead = useCan("people:read") && hasAdminAccess
+  const canWrite = useCan("people:write") && hasAdminAccess
+  const canAppoint = useCan("people:appoint") && hasAdminAccess
   const all = teams.flatMap((team) => rowsOf(team, false))
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
@@ -198,7 +176,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const add = useAddDialog()
+  const add = useDialogState()
   const rowDialog = useTeamDialog()
 
   const filtered = all.filter(
@@ -256,7 +234,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
     },
     {
       id: "census",
-      label: `Census ${CURRENT_YEAR}`,
+      label: `Census ${currentYear()}`,
       width: 152,
       priority: 4,
       mobile: "hidden",
@@ -290,7 +268,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           <nav aria-label="Teams" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {teams.map((summary) => {
               const active = rowsOf(summary, false)
-              const missing = active.filter((row) => !censusEntry(row.person, CURRENT_YEAR)?.answer).length
+              const missing = active.filter((row) => !censusEntry(row.person, currentYear())?.answer).length
               return (
                 <NavCard
                   key={summary.id}
@@ -354,7 +332,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
               rows={rows}
               getRowId={rowId}
               rowLabel={(row) => personName(row.person)}
-              rowHref={(row) => `/dashboard/people/${row.person.id}`}
+              rowHref={canRead ? (row) => `/dashboard/people/${row.person.id}` : undefined}
               sort={sort}
               onSort={(next) => {
                 setSort(next)
@@ -362,7 +340,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
               }}
               actions={
                 canWrite
-                  ? (row) => <MemberActions row={row} canOpenRecord canAppoint={canAppoint} onOpen={rowDialog.show} />
+                  ? (row) => <MemberActions row={row} canAppoint={canAppoint} onOpen={rowDialog.show} />
                   : undefined
               }
               actionsWidth={96}
@@ -410,7 +388,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
         <AddToTeamDialog
           key={`add-${add.key}`}
           open={add.open}
-          onOpenChange={add.setOpen}
+          onOpenChange={add.onOpenChange}
           teams={teams.map((summary) => summary.id)}
           canAppoint={canAppoint}
         />
@@ -427,9 +405,10 @@ type Scope = "active" | "former"
  * (`asSection`), and they get their members' contacts and the team actions.
  */
 export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSection?: boolean }) {
-  const canRead = useCan("people:read")
-  const canWrite = useCan("people:write")
-  const canAppoint = useCan("people:appoint")
+  const hasAdminAccess = useHasAdminAccess()
+  const canRead = useCan("people:read") && hasAdminAccess
+  const canWrite = useCan("people:write") && hasAdminAccess
+  const canAppoint = useCan("people:appoint") && hasAdminAccess
   const { leads } = usePeopleRoles()
   const isLead = leads.includes(team.id)
   const canEdit = canWrite || isLead
@@ -444,7 +423,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [sort, setSort] = useState(DEFAULT_SORT)
-  const add = useAddDialog()
+  const add = useDialogState()
   const rowDialog = useTeamDialog()
 
   const inScope = scope === "active" ? active : former
@@ -557,7 +536,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
             : []),
           {
             id: "census",
-            label: `Census ${CURRENT_YEAR}`,
+            label: `Census ${currentYear()}`,
             width: 152,
             priority: 4,
             mobile: "hidden",
@@ -628,7 +607,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
       onSort={setSort}
       actions={
         canEdit && scope === "active"
-          ? (row) => <MemberActions row={row} canOpenRecord={canRead} canAppoint={canAppoint} onOpen={rowDialog.show} />
+          ? (row) => <MemberActions row={row} canAppoint={canAppoint} onOpen={rowDialog.show} />
           : undefined
       }
       actionsWidth={96}
@@ -697,7 +676,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
         <AddToTeamDialog
           key={`add-${add.key}`}
           open={add.open}
-          onOpenChange={add.setOpen}
+          onOpenChange={add.onOpenChange}
           team={team.id}
           canAppoint={canAppoint}
         />
@@ -709,8 +688,9 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
 
 /** People › Teams: the index for People readers; a Team Lead without `people:read` gets only their team back. */
 export function TeamsSection({ teams }: { teams: TeamSummary[] }) {
-  const canRead = useCan("people:read")
+  const hasAdminAccess = useHasAdminAccess()
+  const canRead = useCan("people:read") && hasAdminAccess
   const [led] = teams
-  if (!canRead && led) return <TeamPage team={led} asSection />
+  if (!canRead && teams.length === 1 && led) return <TeamPage team={led} asSection />
   return <TeamsPage teams={teams} />
 }

@@ -4,11 +4,11 @@ import { z } from "zod"
 import { TableSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { MembersPage } from "@/features/people/members-page"
-import { getPeople } from "@/features/people/people.functions"
+import { getMemberRegister } from "@/features/people/people-members.functions"
 
 export const Route = createFileRoute("/dashboard/people/members")({
   validateSearch: z.object({ add: z.string().optional() }),
-  loader: () => getPeople(),
+  loader: () => getMemberRegister(),
   pendingComponent: () => (
     <>
       <PageBar />

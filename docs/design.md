@@ -466,11 +466,14 @@ Rules that the templates above don't imply.
   badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
   use `FormDialog` with `submitTone="danger"`; plain confirmations stay `ConfirmDialog`.
 - **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
-  record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
+  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Register rows open full
+  records only with `people:read`; `people:members:read` alone reads the register projection. A single row action is
+  an icon button; menus never repeat a row's record link.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
 - **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
-  itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
+  itself. Team-field columns come from `TEAMS` in `people.contract.ts`. Leads of several teams can open each of their own
+  teams; only `people:appoint` with admin access can end a Lead role.
 - **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
   saves nothing before Confirm. Reminders report sent and skipped counts after sending.
 - **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has

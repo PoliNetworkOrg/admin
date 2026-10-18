@@ -12,7 +12,7 @@ Everything an agent needs to build, or continue building, the People area of the
 
 ## Continuing the work
 
-1. Read `CLAUDE.md` and `docs/design.md`, then `decisions.md`, `contract.md` and `plan.md` in that order.
+1. Read `AGENTS.md` and `docs/design.md`, then `decisions.md`, `contract.md` and `plan.md` in that order.
 2. Check out branch `claude/eager-mayer-bsom7v` and read the open pull request and its latest commits.
 3. Pick the first unchecked item in `plan.md`. Commit small and often; tick the box and add a progress-log line in the
    commit that finishes an item.
@@ -27,3 +27,5 @@ so spacing and behaviour match the rest of the dashboard, and fix anything that 
 reference" in `decisions.md` for the known defects.
 
 Prototype canvas (owner only, all pages in desktop/mobile × light/dark): <https://claude.ai/artifact/7rwGssnepqJ2nWuLvGLrjT>
+
+Permission matrix: [`permissions.md`](permissions.md).

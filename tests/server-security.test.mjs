@@ -288,12 +288,18 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/guides/guides-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
     "src/features/people/overview-page.tsx": "people:write",
-    "src/features/people/person-page.tsx": ["people:write", "people:read", "people:members:write", "people:appoint"],
+    "src/features/people/person-page.tsx": [
+      "people:write",
+      "people:read",
+      "people:members:read",
+      "people:members:write",
+      "people:appoint",
+    ],
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/census-page.tsx": ["people:write", "people:read"],
     "src/features/people/linking-page.tsx": "people:write",
-    "src/features/people/members-page.tsx": "people:members:write",
+    "src/features/people/members-page.tsx": ["people:read", "people:members:write"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()

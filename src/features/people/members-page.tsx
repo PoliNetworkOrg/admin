@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { Download, EllipsisVertical, IdCard, Pencil, Plus, UserRound } from "lucide-react"
+import { Download, IdCard, Pencil, Plus } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -7,11 +6,8 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   RowActions,
   SegmentedControl,
   type TableSort,
@@ -28,22 +24,22 @@ import {
   MemberStatusDialog,
   nextMemberNumber,
 } from "./member-dialogs"
-import { ACCOUNT_STATUS, CURRENT_YEAR, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
-import { FilterMenu, MonoChip, PersonCell, StateBadge } from "./people-ui"
+import { ACCOUNT_STATUS, currentYear, FEE_STATUS, formatDay, MEMBER_STATUS, personName } from "./people-format"
+import { MonoChip, PersonCell, StateBadge } from "./people-ui"
 import {
   FEE_STATUSES,
   type FeeStatus,
   type Membership,
   MEMBER_STATUSES,
   type MemberStatus,
-  type PersonRow,
+  type MemberRegisterRow,
 } from "./people.contract"
 
-type Member = PersonRow & { member: Membership }
+type Member = MemberRegisterRow & { member: Membership }
 type Scope = "all" | MemberStatus
 type MemberDialog = { kind: "status" | "number"; member: Member }
 
-function isRegistered(person: PersonRow): person is Member {
+function isRegistered(person: MemberRegisterRow): person is Member {
   return person.member !== null
 }
 
@@ -116,7 +112,7 @@ const columns: DataTableColumn<Member>[] = [
   },
   {
     id: "fee",
-    label: `Fee ${CURRENT_YEAR}`,
+    label: `Fee ${currentYear()}`,
     width: 152,
     mobile: "hidden",
     cell: (person) => (person.member.fee ? <StateBadge state={FEE_STATUS[person.member.fee]} /> : <Unset />),
@@ -147,11 +143,12 @@ export function MembersPage({
   addPersonId,
   onAddHandled,
 }: {
-  people: PersonRow[]
+  people: MemberRegisterRow[]
   /** Opens Add member for this person (from the record's "Add member"). */
   addPersonId?: string
   onAddHandled: () => void
 }) {
+  const canRead = useCan("people:read")
   const canWrite = useCan("people:members:write")
   const members = people.filter(isRegistered)
   const candidates = people
@@ -281,7 +278,7 @@ export function MembersPage({
                   />
                 </span>
                 <FilterMenu<FeeStatus>
-                  label={`Fee ${CURRENT_YEAR}`}
+                  label={`Fee ${currentYear()}`}
                   allLabel="Any fee status"
                   value={fee}
                   onChange={(value) => {
@@ -311,7 +308,7 @@ export function MembersPage({
           rows={rows}
           getRowId={(person) => person.id}
           rowLabel={personName}
-          rowHref={(person) => `/dashboard/people/${person.id}`}
+          rowHref={canRead ? (person) => `/dashboard/people/${person.id}` : undefined}
           rowProps={(person) => ({
             className: person.member.status === "former" ? "text-(--pn-fg-muted)" : undefined,
           })}
@@ -330,27 +327,12 @@ export function MembersPage({
                       icon={Pencil}
                       onClick={() => openDialog("status", person)}
                     />
-                    <Menu>
-                      <MenuTrigger
-                        render={
-                          <IconButton
-                            label="More actions"
-                            ariaLabel={`More actions for ${personName(person)}`}
-                            icon={EllipsisVertical}
-                          />
-                        }
-                      />
-                      <MenuContent>
-                        <MenuItem onClick={() => openDialog("number", person)}>
-                          <IdCard />
-                          Change member number
-                        </MenuItem>
-                        <MenuItem render={<Link to="/dashboard/people/$personId" params={{ personId: person.id }} />}>
-                          <UserRound />
-                          Open record
-                        </MenuItem>
-                      </MenuContent>
-                    </Menu>
+                    <IconButton
+                      label="Change member number"
+                      ariaLabel={`Change member number of ${personName(person)}`}
+                      icon={IdCard}
+                      onClick={() => openDialog("number", person)}
+                    />
                   </RowActions>
                 )
               : undefined

@@ -2,17 +2,28 @@ import { useServerFn } from "@tanstack/react-start"
 import { Download } from "lucide-react"
 import { useState } from "react"
 
-import { ConfirmDialog, fieldControl, fieldHintId, FormDialog, FormField, InlineAlert } from "@/components/primitives"
+import {
+  ConfirmDialog,
+  DateField,
+  fieldControl,
+  fieldHintId,
+  FormDialog,
+  FormField,
+  InlineAlert,
+  RadioCard,
+  RadioCardGroup,
+  SelectField,
+} from "@/components/primitives"
 import { appToast } from "@/components/shell"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { DateField } from "./date-field"
-import { CURRENT_YEAR, FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
+import { currentYear, FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { createMember, exportMembers, setMemberNumber, setMemberStatus } from "./people-members.functions"
-import { type PersonOption, PersonPicker, RadioCard, SelectField } from "./people-ui"
+import { type PersonOption, PersonPicker } from "./people-ui"
 import { MEMBER_STATUSES, type MemberStatus } from "./people.contract"
 
 type NewFee = "due" | "receipt" | "paid"
@@ -69,12 +80,7 @@ export function AddMemberDialog({
       await create({ data: { personId: person.id, number: trimmed, admittedOn, fee } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The member could not be added. Try again.")
-          : "The member could not be added. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't add the member. Try again."), { cause: caught })
     }
     await refresh(`${person.name} added as member ${trimmed}.`)
     onOpenChange(false)
@@ -85,17 +91,11 @@ export function AddMemberDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Add member"
-      description="Registers a person as a member and starts the new-member workflow."
+      description="Creates a Microsoft 365 account with the member number as its ID."
       noun="member"
       dirty={person?.id !== initialPerson?.id || number !== nextNumber || fee !== "due"}
       submitLabel="Add member"
       onSubmit={submit}
-      notice={
-        <InlineAlert tone="info">
-          The new-member workflow creates {person ? `${person.name}'s` : "the person's"} Microsoft 365 account with
-          member ID {NUMBER_PATTERN.test(trimmed) ? trimmed : "above"}.
-        </InlineAlert>
-      }
     >
       <div className="flex flex-col gap-4">
         <FormField
@@ -136,7 +136,7 @@ export function AddMemberDialog({
             />
           </FormField>
         </div>
-        <FormField label={`Fee ${CURRENT_YEAR}`} htmlFor="member-fee">
+        <FormField label={`Fee ${currentYear()}`} htmlFor="member-fee">
           <SelectField<NewFee>
             id="member-fee"
             value={fee}
@@ -175,12 +175,7 @@ export function MemberStatusDialog({
       await save({ data: { personId: member.personId, status, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The status could not be changed. Try again.")
-          : "The status could not be changed. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't change the status. Try again."), { cause: caught })
     }
     await refresh("Member status changed.")
     onOpenChange(false)
@@ -198,20 +193,16 @@ export function MemberStatusDialog({
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">
-        <fieldset className="flex flex-col gap-2">
-          <legend className="sr-only">Status</legend>
+        <RadioCardGroup label="Status" hideLabel value={status} onValueChange={setStatus}>
           {MEMBER_STATUSES.map((value) => (
             <RadioCard
               key={value}
-              name="member-status"
               value={value}
-              checked={status === value}
-              onSelect={() => setStatus(value)}
               label={MEMBER_STATUS[value].label}
               description={MEMBER_STATUS[value].description}
             />
           ))}
-        </fieldset>
+        </RadioCardGroup>
         <FormField label="Reason" htmlFor="member-status-reason" optional hint="Shown in the record's activity.">
           <Textarea
             id="member-status-reason"
@@ -264,12 +255,7 @@ export function MemberNumberDialog({
       await save({ data: { personId: member.personId, number: trimmed } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(
-        caught instanceof Error
-          ? errorMessage(caught, "The member number could not be changed. Try again.")
-          : "The member number could not be changed. Try again.",
-        { cause: caught }
-      )
+      throw new Error(errorMessage(caught, "Couldn't change the member number. Try again."), { cause: caught })
     }
     await refresh("Member number changed.")
     onOpenChange(false)
@@ -320,7 +306,7 @@ function download(filename: string, contents: string) {
   link.href = url
   link.download = filename
   link.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 /** Confirms first: the file holds personal data. */
@@ -341,7 +327,7 @@ export function ExportMembersDialog({
       tone="primary"
       icon={Download}
       title="Export member register?"
-      description={`The file holds personal data of ${count} ${count === 1 ? "member" : "members"}: names, numbers, emails and fee status. Keep it in the association's OneDrive and delete local copies.`}
+      description={`The file holds personal data of ${pluralize(count, "member")}: names, numbers, emails and fee status. Keep it in the association's OneDrive and delete local copies.`}
       confirmLabel="Export register"
       onConfirm={async () => {
         const file = await exportRegister()

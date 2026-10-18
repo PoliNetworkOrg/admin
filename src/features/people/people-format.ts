@@ -1,4 +1,5 @@
 import type { StatusTone } from "@/components/primitives"
+import { academicYear, dateOnlyValue } from "@/lib/date-only"
 import { formatDate } from "@/lib/format"
 
 import {
@@ -8,15 +9,18 @@ import {
   type FeeStatus,
   type MemberStatus,
   type PersonRow,
+  type PhotoConsent,
   TEAMS,
   type TeamId,
   YEARS,
 } from "./people.contract"
 
-/** The academic year whose census is current; the census campaign list names it too. */
-export const CURRENT_YEAR = "2026/27"
+/** The academic year whose census and fees are current. */
+export function currentYear() {
+  return academicYear(todayIso())
+}
 
-export function personName(person: Pick<PersonRow, "profile">) {
+export function personName(person: { profile: { firstName: string; lastName: string } }) {
   return `${person.profile.firstName} ${person.profile.lastName}`
 }
 
@@ -85,8 +89,9 @@ export function formatDay(value: string) {
   return formatDate(new Date(value.length === 10 ? `${value}T12:00:00Z` : value))
 }
 
+/** Today in the browser's timezone, as an ISO date: date inputs start from it. */
 export function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return dateOnlyValue(new Date())
 }
 
 export function isExpired(date: string) {
@@ -101,6 +106,12 @@ export const ACCOUNT_STATUS = {
   linked: { label: "Linked", tone: "success" },
   review: { label: "Needs review", tone: "warning" },
 } satisfies Record<AccountStatus, Tone>
+
+export const PHOTO_CONSENT = {
+  granted: { label: "Granted", tone: "success" },
+  denied: { label: "Denied", tone: "neutral" },
+  revoked: { label: "Revoked", tone: "neutral" },
+} satisfies Record<PhotoConsent, Tone>
 
 export const MEMBER_STATUS = {
   active: { label: "Active", tone: "success", description: "Full member for the current year." },

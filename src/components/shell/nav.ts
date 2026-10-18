@@ -427,8 +427,8 @@ export function isRailService(service: Service) {
  * for every section that isn't self-service.
  */
 export function sectionVisible(section: Section, permissions: readonly string[], roles: PeopleRoles) {
-  if (section.role === "capo" && roles.capoScope !== null) return true
-  if (section.role === "lead" && roles.leads.length > 0) return true
+  if (hasPermission(permissions, "people:self") && section.role === "capo" && roles.capoScope !== null) return true
+  if (hasPermission(permissions, "people:self") && section.role === "lead" && roles.leads.length > 0) return true
   if (section.role && !section.permission && !section.anyPermission) return false
   if (!section.selfService && !hasPermission(permissions, "admin:access")) return false
   return (
@@ -443,7 +443,12 @@ export function canOpenPage(match: PageMatch, permissions: readonly string[], ro
   const current = sectionFor(match)
   if (!current) return hasPermission(permissions, "admin:access")
   // Team pages: a Team Lead without people:read only reaches their own team, which People › Teams opens directly.
-  if (match.kind === "people-team" && !hasPermission(permissions, "people:read")) return false
+  if (
+    match.kind === "people-team" &&
+    !(hasPermission(permissions, "admin:access") && hasPermission(permissions, "people:read"))
+  ) {
+    return hasPermission(permissions, "people:self") && roles.leads.includes(match.teamId)
+  }
   return sectionVisible(current, permissions, roles)
 }
 
