@@ -63,6 +63,8 @@ function eventText(event: Detail["events"][number], names: Map<string, string>) 
       return `${who} cancelled the request`
     case "declined":
       return `${who} declined${data.reason ? `: “${data.reason}”` : ""}`
+    case "people_invalidated":
+      return `${who} voided the receipt`
     default:
       return event.type
   }
@@ -375,7 +377,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     <span className="sr-only">Signed PDF</span>
                     <input
                       type="file"
-                      accept="application/pdf,.pdf"
+                      // A receipt can also come back as a CAdES envelope from the CIE app.
+                      accept={systemOwned ? "application/pdf,.pdf,application/pkcs7-mime,.p7m" : "application/pdf,.pdf"}
                       disabled={uploadingSigned}
                       className="text-[13px] file:mr-3 file:h-9 file:rounded-(--pn-r-3) file:border file:border-(--pn-line-strong) file:bg-(--pn-surface) file:px-3 file:text-(--pn-fg)"
                       onChange={(event) => {
@@ -443,65 +446,68 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
               )}
             </SectionCard>
 
-            <SectionCard title="Delivery">
-              <ul className="flex flex-col gap-3 text-[14px]">
-                <li className="flex items-start gap-2.5">
-                  <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                  <span className="min-w-0">
-                    {request.output ? (
-                      request.delivery?.driveItem?.webUrl ? (
-                        <a
-                          className="break-words text-(--pn-accent) hover:underline"
-                          href={request.delivery.driveItem.webUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {request.output.folderPath ? `${request.output.folderPath}/` : ""}
-                          {request.delivery.driveItem.name}
-                        </a>
+            {/* People emails a receipt to its member; eSign doesn't deliver it. */}
+            {!systemOwned && (
+              <SectionCard title="Delivery">
+                <ul className="flex flex-col gap-3 text-[14px]">
+                  <li className="flex items-start gap-2.5">
+                    <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                    <span className="min-w-0">
+                      {request.output ? (
+                        request.delivery?.driveItem?.webUrl ? (
+                          <a
+                            className="break-words text-(--pn-accent) hover:underline"
+                            href={request.delivery.driveItem.webUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {request.output.folderPath ? `${request.output.folderPath}/` : ""}
+                            {request.delivery.driveItem.name}
+                          </a>
+                        ) : (
+                          <span className="break-words">
+                            {request.delivery?.driveItem ? "Saved to " : "Will be saved to "}
+                            {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
+                            {request.output.folderPath || "/"}
+                            {request.output.folderPath ? "/" : ""}
+                            {request.delivery?.driveItem?.name ?? request.output.fileName}
+                          </span>
+                        )
                       ) : (
-                        <span className="break-words">
-                          {request.delivery?.driveItem ? "Saved to " : "Will be saved to "}
-                          {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
-                          {request.output.folderPath || "/"}
-                          {request.output.folderPath ? "/" : ""}
-                          {request.delivery?.driveItem?.name ?? request.output.fileName}
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
-                    )}
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                  <span className="min-w-0 break-words">
-                    {request.email?.to.length ? (
-                      <>
-                        {request.delivery?.emailedTo.length ? "Emailed to " : "Will be emailed to "}
-                        {request.email.to.join(", ")}
-                      </>
-                    ) : (
-                      <span className="text-(--pn-fg-muted)">No email</span>
-                    )}
-                  </span>
-                </li>
-              </ul>
-              {request.delivery?.status === "failed" && (
-                <InlineAlert
-                  className="mt-3"
-                  action={
-                    canManage ? (
-                      <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={retry}>
-                        Retry
-                      </LoadingButton>
-                    ) : undefined
-                  }
-                >
-                  {request.delivery.error ?? "The document couldn't be delivered."}
-                </InlineAlert>
-              )}
-            </SectionCard>
+                        <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                      )}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                    <span className="min-w-0 break-words">
+                      {request.email?.to.length ? (
+                        <>
+                          {request.delivery?.emailedTo.length ? "Emailed to " : "Will be emailed to "}
+                          {request.email.to.join(", ")}
+                        </>
+                      ) : (
+                        <span className="text-(--pn-fg-muted)">No email</span>
+                      )}
+                    </span>
+                  </li>
+                </ul>
+                {request.delivery?.status === "failed" && (
+                  <InlineAlert
+                    className="mt-3"
+                    action={
+                      canManage ? (
+                        <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={retry}>
+                          Retry
+                        </LoadingButton>
+                      ) : undefined
+                    }
+                  >
+                    {request.delivery.error ?? "The document couldn't be delivered."}
+                  </InlineAlert>
+                )}
+              </SectionCard>
+            )}
 
             <SectionCard title="Activity">
               <ol className="flex flex-col gap-2.5">

@@ -46,6 +46,7 @@ export function AddMemberDialog({
   initialPerson = null,
   nextNumber,
   takenNumbers,
+  canMarkPaid,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -54,6 +55,8 @@ export function AddMemberDialog({
   initialPerson?: PersonOption | null
   nextNumber: string
   takenNumbers: ReadonlySet<string>
+  /** Admitting with the fee paid issues a receipt, which takes `people:fees:write`; otherwise the fee is due. */
+  canMarkPaid: boolean
 }) {
   const create = useServerFn(createMember)
   const refresh = useRefreshAfter()
@@ -132,14 +135,16 @@ export function AddMemberDialog({
             />
           </FormField>
         </div>
-        <FormField label={`Fee ${currentYear()}`} htmlFor="member-fee">
-          <SelectField<NewFee>
-            id="member-fee"
-            value={fee}
-            options={NEW_FEES.map((value) => ({ value, label: FEE_STATUS[value].label }))}
-            onChange={setFee}
-          />
-        </FormField>
+        {canMarkPaid ? (
+          <FormField label={`Fee ${currentYear()}`} htmlFor="member-fee">
+            <SelectField<NewFee>
+              id="member-fee"
+              value={fee}
+              options={NEW_FEES.map((value) => ({ value, label: FEE_STATUS[value].label }))}
+              onChange={setFee}
+            />
+          </FormField>
+        ) : null}
       </div>
     </FormDialog>
   )

@@ -16,6 +16,8 @@ import {
 } from "./people.contract"
 
 const SIGNED_MAX_SIZE = 10 * 1024 * 1024
+const SIGNED_MAX_TOTAL = 50 * 1024 * 1024
+const SIGNED_MAX_NAME = 200
 const SIGNED_EXTENSIONS = /\.(pdf|p7m)$/i
 
 /** People › Receipts: one fee year (the current one for `null`) and the viewer's signing office. */
@@ -46,6 +48,12 @@ export const previewSignedReceipts = createServerFn({ method: "POST" })
     if (wrongType) throw new Error(`${wrongType.name} isn't a PDF or .p7m file.`)
     const tooLarge = files.find((file) => file.size > SIGNED_MAX_SIZE)
     if (tooLarge) throw new Error(`${tooLarge.name} is larger than 10 MB.`)
+    if (files.reduce((total, file) => total + file.size, 0) > SIGNED_MAX_TOTAL) {
+      throw new Error("Upload at most 50 MB at a time.")
+    }
+    if (files.some((file) => file.name.length > SIGNED_MAX_NAME)) {
+      throw new Error(`File names can be at most ${SIGNED_MAX_NAME} characters.`)
+    }
     return files
   })
   .handler(async ({ data, context }) => (await peopleApi(context)).previewSignedReceipts(data))

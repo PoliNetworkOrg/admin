@@ -477,6 +477,7 @@ export function MembersPage({
               if (!open && addPersonId) onAddHandled()
             }}
             candidates={candidates}
+            canMarkPaid={canFees}
             initialPerson={add.key === 0 ? requested : null}
             nextNumber={nextNumber}
             takenNumbers={takenNumbers}

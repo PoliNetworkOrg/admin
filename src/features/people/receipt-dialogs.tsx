@@ -137,7 +137,7 @@ export function UploadSignedDialog({
     if (result.failed === 0) await refresh(`${pluralize(result.sent, "receipt")} sent.`)
     else
       await refresh(
-        `${pluralize(result.sent, "receipt")} sent, but ${pluralize(result.failed, "email")} failed. Check Send failed.`,
+        `${pluralize(result.sent, "receipt")} sent, ${result.failed} not sent. Check their status below.`,
         "warning"
       )
     onOpenChange(false)
@@ -174,7 +174,7 @@ export function UploadSignedDialog({
             onFiles={(files) => void read(files)}
           />
           <span id={`${inputId}-hint`} className="text-xs text-(--pn-fg-muted)">
-            PDF or .p7m, up to 10 MB each. Choosing files again replaces the list.
+            PDF or .p7m, up to 10 MB each and 50 MB in all. Choosing files again replaces the list.
           </span>
         </div>
 

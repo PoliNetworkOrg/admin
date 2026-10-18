@@ -604,6 +604,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:members:write")
       const person = find(input.personId)
       if (person.member) throw new Error("This person is already registered as a member.")
+      if (input.fee === "paid") require(viewer, "people:fees:write")
       if (data().people.some((other) => other.member?.number === input.number)) {
         throw new Error(`Member number ${input.number} is already taken.`)
       }
@@ -1480,6 +1481,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       if (!me) throw new Error("There is no record to upload for.")
       const { member, state } = currentMember(me.id)
       if (member.fee === "paid") throw new Error(`Your ${FEE_YEAR} fee is already paid.`)
+      if (member.fee === "receipt") throw new Error("Your transfer receipt is already awaiting review.")
       const bytes = new Uint8Array(await file.arrayBuffer())
       transferFiles.set(me.id, { name: file.name, type: file.type || "application/pdf", bytes })
       state.upload = {

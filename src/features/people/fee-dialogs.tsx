@@ -34,7 +34,7 @@ import {
   sendFeeReminders,
 } from "./people-fees.functions"
 import { fileBlob } from "./people-files"
-import { FEE_STATUS, formatDay, PAYMENT_METHOD, todayIso } from "./people-format"
+import { FEE_STATUS, formatDay, PAYMENT_METHOD, REMINDER_SKIPPED, todayIso } from "./people-format"
 import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
 import { MonoChip, StateBadge } from "./people-ui"
 import type { FilePayload, PaymentMethod } from "./people.contract"
@@ -503,14 +503,13 @@ export function SendFeeRemindersDialog({
       tone="primary"
       icon={Bell}
       title="Send reminders?"
-      description={`${pluralize(count, "member")} with a Due or Unpaid fee get an email with the bank details and a link to My area. Members reminded in the last 3 days are skipped.`}
+      description={`${pluralize(count, "member")} with a Due or Unpaid fee get an email with a link to My area. Members reminded in the last 3 days are skipped.`}
       confirmLabel="Send reminders"
       onConfirm={async () => {
         const result = await remind({ data: { personId: null } })
         await refresh(
-          result.skipped
-            ? `${pluralize(result.sent, "reminder")} sent, ${result.skipped} skipped (reminded in the last 3 days).`
-            : `${pluralize(result.sent, "reminder")} sent.`
+          `${pluralize(result.sent, "reminder")} sent${result.skipped ? `, ${result.skipped} not sent` : ""}.`,
+          result.skipped ? "warning" : "success"
         )
       }}
     />
@@ -522,13 +521,16 @@ export function useSendFeeReminder() {
   const remind = useServerFn(sendFeeReminders)
   const refresh = useRefreshAfter()
   return async (person: { id: string; name: string }) => {
+    let sent: boolean
     try {
-      await remind({ data: { personId: person.id } })
+      sent = (await remind({ data: { personId: person.id } })).sent > 0
     } catch (caught) {
       console.error(caught)
       appToast.error(errorMessage(caught, `Couldn't send the reminder to ${person.name}.`))
       return
     }
-    await refresh(`Reminder sent to ${person.name}.`)
+    await (sent
+      ? refresh(`Reminder sent to ${person.name}.`)
+      : refresh(`No reminder sent to ${person.name}: ${REMINDER_SKIPPED}.`, "warning"))
   }
 }

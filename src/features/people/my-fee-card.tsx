@@ -117,12 +117,6 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
                 </span>
               </div>
               <p className="text-[14px] text-(--pn-fg-muted)">Your transfer receipt is awaiting review.</p>
-              <div>
-                <Button variant="outline" className={cn(buttonMotion, "h-10 max-shell:w-full")} onClick={openUpload}>
-                  <Upload data-icon="inline-start" />
-                  Replace file
-                </Button>
-              </div>
             </>
           ) : null}
           {fee.status === "paid" ? (
@@ -190,7 +184,7 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
           />
         ))}
       </Rows>
-      {fee && (owing || fee.status === "receipt") ? (
+      {fee && owing ? (
         <UploadTransferDialog key={`upload-${uploadKey}`} open={uploadOpen} onOpenChange={setUploadOpen} fee={fee} />
       ) : null}
     </SectionCard>
@@ -245,11 +239,6 @@ function UploadTransferDialog({
       dirty={file !== null}
       submitLabel="Upload receipt"
       onSubmit={submit}
-      notice={
-        fee.status === "receipt" ? (
-          <InlineAlert tone="info">The new file replaces the one you uploaded before.</InlineAlert>
-        ) : undefined
-      }
     >
       <div className="flex flex-col gap-4">
         <FormField label="File" htmlFor="transfer-file" error={fileError}>

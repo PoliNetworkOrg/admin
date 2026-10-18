@@ -19,7 +19,7 @@ People prototype it fixes structure and copy, while spacing comes from the primi
 4. **The President signs** (`people:receipts:sign`, plus `esign:sign` for CIE): **People › Receipts › Sign with CIE**
    opens the existing [PoliNetwork eSign](https://github.com/PoliNetworkOrg/esign) flow, up to 10 receipts with one PIN.
    The backend prepares or reuses a durable eSign request for each receipt, fixing the PDF and its signing officer.
-   The PIN stays in the local eSign window. Completion saves the signed PDF and emails it to the member even if the
+   The PIN stays in the local eSign window. Completion saves the signed PDF (or the CIE app's `.p7m`) and emails it to the member even if the
    dashboard has closed. A receipt becomes **Signed**, then **Sent**, or **Send failed** with Retry sending on the row.
    **Download to sign** and **Upload signed** remain available in the signing options for signing externally with the
    CIE app. The backend matches uploaded files by number, verifies their signature and lets the officer correct matches.
@@ -51,7 +51,7 @@ Fee states (from the People contract, unchanged): **Due** (warning) before the d
 
 These names are provisional, in the style of the People permissions. Holding `people:receipts:sign` is not enough: the
 backend signs only for the person who holds the office (`viewerSigner`), so the queue and the ZIP follow the record,
-not the permission.
+not the permission. The signing actions live in People › Receipts, which also needs `people:members:read`.
 
 ## Screens
 
@@ -105,8 +105,8 @@ bridge. It needs both `people:receipts:sign` and `esign:sign`, plus `admin:acces
 `esign:requests:manage` permission. The backend must create the association and finish the receipt transaction;
 copying files back in a browser callback would lose completion when the page closes.
 
-**Backend implementation remains pending**, together with the rest of the People contract. The dashboard implements
-the validated adapter and shared CIE UI, not PDF signing or email delivery. Agent mode deliberately reports that CIE
+The backend implements it in the `people.*` router (PoliNetworkOrg/backend#83). The dashboard implements the
+validated adapter and shared CIE UI, not PDF signing or email delivery. Agent mode deliberately reports that CIE
 signing needs the backend; it does not invent eSign request IDs or mark sample receipts signed through the CIE action.
 The existing manual demo remains available.
 

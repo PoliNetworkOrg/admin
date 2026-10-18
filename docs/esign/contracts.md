@@ -68,7 +68,8 @@ Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expir
 ## Backend tRPC (`esign.*`)
 
 Permissions: `esign:sign` (see own inbox, sign when it is your turn), `esign:requests:manage` (create, cancel, see all,
-browse OneDrive). Requests are visible to their signers and creator.
+browse OneDrive). Requests are visible to their signers and creator. People receipt requests are visible to
+`admin:access` + `people:members:read`, or to the officer currently assigned to the receipt.
 
 - `esign.profile.sync({name, email})` → upserts the caller's signer profile (BFF passes ID-token claims).
 - `esign.signers.list()` → registered IdP users with `esign:sign`, including those who have not opened Signatures; each includes eligible drives (manage).
@@ -102,8 +103,8 @@ IDs), then passes the returned `requestId`s to `esign.jobs.create`. The bridge r
 permission, the actual President/Vice-president and `esign:sign`; it does not require general request management.
 The backend fixes the issued PDF, officer and placement, persists receipt/request ownership and completes/delivers
 receipts after eSign completion without a browser callback. Retrying preparation reuses the request. Manual
-ZIP/download/upload remains supported; both paths share completion and concurrency guards. This bridge is part of
-the **pending People backend contract**: see [`../people/contract.md`](../people/contract.md#fees-and-receipts).
+ZIP/download/upload remains supported; both paths share completion and concurrency guards. The backend implements it
+in the `people.*` router (PoliNetworkOrg/backend#83): see [`../people/contract.md`](../people/contract.md#fees-and-receipts).
 
 Receipt request provenance: `esign.requests.list` rows and `esign.requests.get().request` include
 `peopleReceipt: { receiptId: string, number: string, year: "YYYY/YY" }` for the bridge's requests. Other requests omit
@@ -113,7 +114,10 @@ the reference to `/dashboard/people/receipts?year={year}&q={number}` when the vi
 
 For these system-owned requests, jobs/create, signed-file uploads and completion additionally enforce
 `people:receipts:sign`, the confirmed officer and receipt assignment/version; `myTurn` reflects that eligibility.
-Reject custom placement changes, generic cancellation and deletion. People voiding owns request/job invalidation;
+Reject custom placement changes, generic cancellation, deletion and delivery retry: People emails the receipt, so
+eSign records no output or email for it. Voiding the receipt cancels its request and logs a `people_invalidated`
+event. The signed-file upload also accepts a CAdES `.p7m` around the issued PDF; eSign keeps the PDF inside it, so
+the signed copy is the one in People › Receipts. People voiding owns request/job invalidation;
 manual upload or CIE completion uses the same transaction and exactly-once delivery guard. Decline/failure leaves
 the receipt `toSign`, allowing preparation to reuse an active request or create its replacement. No browser callback
-completes a receipt. This extension is pending with the People backend; the agent protocol is unchanged.
+completes a receipt. The agent protocol is unchanged.
