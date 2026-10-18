@@ -8,6 +8,7 @@ import { ReceiptsPage } from "@/features/people/receipts-page"
 
 export const Route = createFileRoute("/dashboard/people/receipts")({
   validateSearch: z.object({
+    q: z.string().max(120).optional(),
     year: z
       .string()
       .regex(/^\d{4}\/\d{2}$/)
@@ -29,10 +30,12 @@ export const Route = createFileRoute("/dashboard/people/receipts")({
 function ReceiptsRoute() {
   const navigate = Route.useNavigate()
   const page = Route.useLoaderData()
+  const { q } = Route.useSearch()
   return (
     <ReceiptsPage
-      key={page.year}
+      key={`${page.year}-${q ?? ""}`}
       page={page}
+      initialQuery={q ?? ""}
       onYear={(year) => {
         navigate({ search: year === page.years[0] ? {} : { year } }).catch((error) => console.error(error))
       }}

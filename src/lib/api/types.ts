@@ -1,6 +1,8 @@
 import type { AppRouter } from "@polinetwork/backend"
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server"
 
+import type { ReceiptRequestSource } from "@/features/people/people.contract"
+
 export type ApiOutput = inferRouterOutputs<AppRouter>
 type ApiInput = inferRouterInputs<AppRouter>
 
@@ -24,7 +26,9 @@ export type GroupWithLabels = ApiOutput["groups"]["search"]["getAll"][number]
 
 export type GroupLinkReport = ApiOutput["web"]["reports"]["list"][number]
 
-export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number]
+export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number] & {
+  peopleReceipt?: ReceiptRequestSource | null
+}
 export type EsignRequestDetail = ApiOutput["esign"]["requests"]["get"]
 export type EsignSigner = EsignRequest["signers"][number]
 export type EsignProfile = ApiOutput["esign"]["signers"]["list"][number]

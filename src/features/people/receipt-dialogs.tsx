@@ -149,10 +149,10 @@ export function UploadSignedDialog({
       onOpenChange={onOpenChange}
       size="lg"
       title="Upload signed receipts"
-      description="Add the files you signed with the CIE app. Each is matched by the receipt number in its name; check the matches, then send."
+      description="Verified files are emailed to the members."
       noun="upload"
       dirty={upload !== null}
-      submitLabel={`Send ${pluralize(ready.length, "receipt")}`}
+      submitLabel={ready.length ? `Send ${pluralize(ready.length, "receipt")}` : "Send receipts"}
       canSubmit={ready.length > 0}
       onSubmit={submit}
       footerStart={
@@ -238,8 +238,8 @@ export function UploadSignedDialog({
           </>
         ) : (
           <InlineAlert tone="info">
-            Download the receipts to sign, sign each PDF with the CIE app, then add the signed files here. Keep the
-            receipt number in the file names, as in <span className="font-mono">Ricevuta_2026-042_firmata.pdf</span>.
+            Keep the receipt number in the filename, e.g.{" "}
+            <span className="font-mono">Ricevuta_2026-042_firmata.pdf</span>.
           </InlineAlert>
         )}
       </div>
@@ -281,7 +281,7 @@ export function VoidReceiptDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Void receipt ${receipt.number}?`}
-      description={`${receipt.person.name}'s receipt stays in the list with its number, marked Voided.${receipt.year === currentYear() ? " The fee goes back to Due, so it can be marked as paid again with the right details." : ""}`}
+      description={`${receipt.person.name}'s receipt stays in the list with its number, marked Voided.${receipt.year === currentYear() ? " If this is the current fee’s only receipt, the fee reopens for correction." : ""}`}
       noun="void"
       dirty={reason.trim() !== ""}
       submitLabel="Void receipt"

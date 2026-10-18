@@ -70,8 +70,7 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
               <p className="text-[14px] text-pretty">
                 {fee.status === "unpaid" ? `The deadline was ${formatDay(fee.dueOn)}. ` : ""}Pay{" "}
                 <span className="font-medium tabular-nums">{formatCents(fee.amountCents)}</span> by bank transfer
-                {fee.status === "due" ? ` by ${formatDay(fee.dueOn)}` : ""}, then upload the transfer receipt here. You
-                get the signed receipt by email.
+                {fee.status === "due" ? ` by ${formatDay(fee.dueOn)}` : ""}, then upload the bank’s transfer receipt.
               </p>
               <div className="rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-sunken) px-3.5 py-3">
                 <KeyValueList
@@ -117,10 +116,7 @@ export function MyFeeCard({ fees, instructions }: { fees: Fees; instructions: Fe
                   </span>
                 </span>
               </div>
-              <p className="text-[14px] text-(--pn-fg-muted)">
-                An admin checks your receipt, usually within a few days. Once it's approved the fee turns Paid and the
-                signed receipt reaches you by email.
-              </p>
+              <p className="text-[14px] text-(--pn-fg-muted)">Your transfer receipt is awaiting review.</p>
               <div>
                 <Button variant="outline" className={cn(buttonMotion, "h-10 max-shell:w-full")} onClick={openUpload}>
                   <Upload data-icon="inline-start" />

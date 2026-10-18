@@ -23,7 +23,7 @@ export function currentYear() {
   return academicYear(todayIso())
 }
 
-export function personName(person: Pick<PersonRow, "profile">) {
+export function personName(person: { profile: { firstName: string; lastName: string } }) {
   return `${person.profile.firstName} ${person.profile.lastName}`
 }
 

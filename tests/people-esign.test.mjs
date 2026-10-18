@@ -186,3 +186,18 @@ void test("merged navigation keeps People and eSign routes, permission gates and
   }
   assert.equal(exports.isRailService(exports.serviceById("account")), false)
 })
+
+void test("eSign receipt provenance is optional for old requests and validated when present", async () => {
+  const { withReceiptSource } = await import("../src/features/esign/receipt-source.ts")
+  assert.equal(withReceiptSource({ id: "old" }).peopleReceipt, null)
+  const source = { receiptId: "R-42", number: "2026/042", year: "2026/27" }
+  assert.deepEqual(withReceiptSource({ id: "new", peopleReceipt: source }).peopleReceipt, source)
+  assert.throws(() => withReceiptSource({ peopleReceipt: { ...source, year: "wrong" } }))
+  assert.throws(() => withReceiptSource({ peopleReceipt: { ...source, receiptId: "" } }))
+})
+
+void test("prepared receipts cannot share or duplicate signature requests", () => {
+  const item = { receiptId: "R1", requestId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8", title: "Receipt" }
+  assert.equal(receiptSignaturesSchema.safeParse([item, item]).success, false)
+  assert.equal(receiptSignaturesSchema.safeParse([item, { ...item, receiptId: "R2" }]).success, false)
+})

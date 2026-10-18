@@ -471,7 +471,8 @@ Rules that the templates above don't imply.
   badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
   use `FormDialog` with `submitTone="danger"`; plain confirmations stay `ConfirmDialog`.
 - **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
-  record opens the register's dialog via `?add=P-…`. Export confirms before downloading.
+  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Without `people:read`,
+  register/receipt rows have no full-record links; the register loads its own restricted projection.
 - **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
   Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
   icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
@@ -489,3 +490,5 @@ Rules that the templates above don't imply.
   its own resolutions and a required reason.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
+
+Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.

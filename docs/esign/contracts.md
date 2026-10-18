@@ -104,3 +104,16 @@ The backend fixes the issued PDF, officer and placement, persists receipt/reques
 receipts after eSign completion without a browser callback. Retrying preparation reuses the request. Manual
 ZIP/download/upload remains supported; both paths share completion and concurrency guards. This bridge is part of
 the **pending People backend contract**: see [`../people/contract.md`](../people/contract.md#fees-and-receipts).
+
+Receipt request provenance: `esign.requests.list` rows and `esign.requests.get().request` include
+`peopleReceipt: { receiptId: string, number: string, year: "YYYY/YY" }` for the bridge's requests. Other requests omit
+it or return null; absence remains supported for deployed eSign versions. The backend fixes the title to
+`Receipt {number} · {member name}` and owns this metadata; generic create inputs cannot set it. The dashboard links
+the reference to `/dashboard/people/receipts?year={year}&q={number}` when the viewer can read the register.
+
+For these system-owned requests, jobs/create, signed-file uploads and completion additionally enforce
+`people:receipts:sign`, the confirmed officer and receipt assignment/version; `myTurn` reflects that eligibility.
+Reject custom placement changes, generic cancellation and deletion. People voiding owns request/job invalidation;
+manual upload or CIE completion uses the same transaction and exactly-once delivery guard. Decline/failure leaves
+the receipt `toSign`, allowing preparation to reuse an active request or create its replacement. No browser callback
+completes a receipt. This extension is pending with the People backend; the agent protocol is unchanged.

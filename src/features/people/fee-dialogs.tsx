@@ -20,10 +20,10 @@ import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { PdfViewer, usePdfBytes } from "@/features/esign/pdf-viewer"
 import { formatDateTime, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { PdfPages } from "./pdf-pages"
 import { centsToInput, formatCents, parseEuros } from "./people-fees"
 import {
   approveFee,
@@ -74,6 +74,7 @@ const PREVIEW_LABEL = "The uploaded transfer receipt"
 
 /** The uploaded transfer receipt: a PDF's pages or the image itself, with a link to open it in a new tab. */
 function UploadPreview({ file, size }: { file: FilePayload | null; size: number }) {
+  const pdfBytes = usePdfBytes(file?.contentType === "application/pdf" ? file.base64 : null)
   const blob = useMemo(() => (file ? fileBlob(file) : null), [file])
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
@@ -111,7 +112,7 @@ function UploadPreview({ file, size }: { file: FilePayload | null; size: number 
       {blob && url && image ? (
         <img src={url} alt={PREVIEW_LABEL} className="max-h-80 w-full object-contain" />
       ) : blob && !image ? (
-        <PdfPages file={blob} label={PREVIEW_LABEL} />
+        <PdfViewer data={pdfBytes} compact />
       ) : (
         <div className="grid h-80 place-items-center">
           <Loading>Loading the file…</Loading>
@@ -184,8 +185,7 @@ export function ReviewReceiptDialog({
       title="Review receipt"
       description={
         <>
-          {person.name} uploaded a transfer receipt for the <span className="font-mono">{review?.fee.year ?? ""}</span>{" "}
-          fee.
+          {person.name} · <span className="font-mono">{review?.fee.year ?? ""}</span>
         </>
       }
       noun="review"
@@ -224,7 +224,7 @@ export function ReviewReceiptDialog({
         review && upload && mode === "review" ? (
           <InlineAlert tone="info">
             Approving marks the fee Paid and issues receipt <span className="font-mono">{review.nextReceipt}</span> for
-            the President to sign.
+            signing.
           </InlineAlert>
         ) : undefined
       }
@@ -503,7 +503,7 @@ export function SendFeeRemindersDialog({
       tone="primary"
       icon={Bell}
       title="Send reminders?"
-      description={`${pluralize(count, "member")} with a Due or Unpaid fee get an email with the bank details and a link to My area. Members reminded in the last 3 days are skipped; automatic reminders also go out 14 and 3 days before the deadline.`}
+      description={`${pluralize(count, "member")} with a Due or Unpaid fee get an email with the bank details and a link to My area. Members reminded in the last 3 days are skipped.`}
       confirmLabel="Send reminders"
       onConfirm={async () => {
         const result = await remind({ data: { personId: null } })

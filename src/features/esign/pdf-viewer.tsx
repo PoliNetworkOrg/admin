@@ -14,7 +14,9 @@ type PdfViewerProps = {
   /** The PDF bytes; while null the pages show as blank sheets of the right size. */
   data: Uint8Array | null
   /** Displayed page sizes in points (crop box after rotation), so the layout is right before rendering. */
-  pages: PageSize[]
+  pages?: PageSize[]
+  /** A bounded viewer inside a dialog instead of filling the dashboard. */
+  compact?: boolean
   /** Content over each page, positioned with percentages of the page (`absolute inset-0` layer). */
   overlay?: (page: number) => ReactNode
   /** A click on a page, at fractions of its width and height from the top-left corner. */
@@ -45,14 +47,25 @@ function loadPdfjs() {
  * The dashboard's own PDF viewer (pdf.js), so every browser shows documents the same way and signatures can be placed
  * on them. Pages render lazily as they near the viewport, at the device pixel ratio; signature appearances are drawn.
  */
-export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default", focus }: PdfViewerProps) {
+export function PdfViewer({
+  data,
+  pages: providedPages,
+  compact = false,
+  overlay,
+  onPageClick,
+  cursor = "default",
+  focus,
+}: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const fill = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
-  const [doc, setDoc] = useState<{ pdf: PDFDocumentProxy; pdfjs: Pdfjs } | null>(null)
+  const [doc, setDoc] = useState<{ pdf: PDFDocumentProxy; pdfjs: Pdfjs; pages: PageSize[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
+
+  const inferPages = !providedPages?.length
+  const pages = providedPages?.length ? providedPages : (doc?.pages ?? [])
 
   useEffect(() => {
     if (!data) return
@@ -66,7 +79,16 @@ export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default
         // pdf.js takes ownership of the buffer: give it a copy.
         task = pdfjs.getDocument({ data: data.slice() })
         const loaded = await task.promise
-        if (!cancelled) setDoc({ pdf: loaded, pdfjs })
+        const sizes: PageSize[] = []
+        if (inferPages) {
+          for (let number = 1; number <= loaded.numPages; number++) {
+            if (cancelled) return
+            const page = await loaded.getPage(number)
+            const { width, height } = page.getViewport({ scale: 1 })
+            sizes.push({ width, height })
+          }
+        }
+        if (!cancelled) setDoc({ pdf: loaded, pdfjs, pages: sizes })
       })
       .catch((cause) => {
         console.error(cause)
@@ -77,7 +99,7 @@ export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default
       setDoc(null)
       void task?.destroy()
     }
-  }, [data])
+  }, [data, inferPages])
 
   useEffect(() => {
     const element = scrollRef.current
@@ -114,13 +136,16 @@ export function PdfViewer({ data, pages, overlay, onPageClick, cursor = "default
 
   return (
     <div
-      ref={fill.ref}
-      style={fill.style}
-      className="flex h-[calc(100dvh-210px)] min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)"
+      ref={compact ? undefined : fill.ref}
+      style={compact ? undefined : fill.style}
+      className={cn(
+        "flex flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
+        compact ? "h-80" : "h-[calc(100dvh-210px)] min-h-[480px]"
+      )}
     >
       <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
         <span className="px-2 text-[13px] text-(--pn-fg-muted) tabular-nums" aria-live="polite">
-          Page {Math.min(currentPage + 1, pages.length)} of {pages.length}
+          {pages.length ? `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}` : "Loading PDF…"}
         </span>
         <div className="flex items-center gap-0.5">
           <IconButton label="Zoom out" icon={Minus} onClick={() => step(-1)} disabled={scale <= ZOOMS[0] + 0.01} />

@@ -15,7 +15,7 @@ import {
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import type { EsignDrive, EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import type { EsignDrive, EsignPdfInfo, EsignRequestDetail, EsignRequest } from "@/lib/api/types"
 import { errorHasCode } from "@/lib/errors"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
+import { ReceiptRequestLink } from "./receipt-request-link"
 import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "./request-status"
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
@@ -30,7 +31,8 @@ import { SignatureBox } from "./signature-box"
 
 type EventData = { sub?: string; name?: string; path?: string; to?: string[]; error?: string; reason?: string | null }
 
-type Detail = Omit<EsignRequestDetail, "events"> & {
+type Detail = Omit<EsignRequestDetail, "events" | "request"> & {
+  request: EsignRequest
   events: (Omit<EsignRequestDetail["events"][number], "data"> & { data: EventData })[]
   pdf: EsignPdfInfo | null
   me: string
@@ -79,6 +81,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const router = useRouter()
   const navigate = useNavigate()
   const canManage = useCan("esign:requests:manage")
+  const canSignReceipts = useCan("people:receipts:sign")
   const contentFn = useServerFn(getEsignDocumentContent)
   const declineFn = useServerFn(declineEsignRequest)
   const cancelFn = useServerFn(cancelEsignRequest)
@@ -111,7 +114,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   }, [currentDocumentId, contentFn])
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
-  const myTurn = request.myTurn && mySigner !== undefined
+  const myTurn = request.myTurn && (!request.peopleReceipt || canSignReceipts) && mySigner !== undefined
   // The viewer's boxes as they drag them; fixed once some of them are signed.
   const [myPlaces, setMyPlaces] = useState<Place[]>(mySigner?.places ?? [])
   useEffect(() => setMyPlaces(mySigner?.places ?? []), [mySigner?.places])
@@ -150,9 +153,11 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     return map
   }, [request])
 
-  const canCancel = request.status === "in_progress" && canManage
+  const systemOwned = !!request.peopleReceipt
+  const canCancel = request.status === "in_progress" && canManage && !systemOwned
   // A request in progress is cancelled first; a pending delivery still needs the request.
-  const canDelete = request.status !== "in_progress" && request.delivery?.status !== "pending" && canManage
+  const canDelete =
+    request.status !== "in_progress" && request.delivery?.status !== "pending" && canManage && !systemOwned
   const pages = pdf?.pages ?? []
 
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -227,7 +232,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       </Button>
       {myTurn && (
         <SignWithCie
-          items={[{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }]}
+          items={[
+            {
+              requestId: request.id,
+              title: request.title,
+              places: myDone === 0 && !systemOwned ? myPlaces : undefined,
+            },
+          ]}
           disabled={!!signingNow && signingNow.sub !== me}
         />
       )}
@@ -273,7 +284,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                           number={request.signers.length > 1 ? index + 1 : undefined}
                           kind={place.kind}
                           state={mine ? "active" : "pending"}
-                          editable={mine && myDone === 0}
+                          editable={mine && myDone === 0 && !systemOwned}
                           onChange={(moved) =>
                             setMyPlaces((current) =>
                               current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
@@ -290,6 +301,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
           <div className="flex min-w-0 flex-col gap-4">
             <SectionCard>
               <div className="flex flex-col gap-2">
+                {request.peopleReceipt ? <ReceiptRequestLink source={request.peopleReceipt} /> : null}
                 <div className="flex items-start justify-between gap-3">
                   <h1 className="text-[22px] leading-7 font-semibold tracking-[-0.01em] text-balance">
                     {request.title}
@@ -308,11 +320,13 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             {myTurn && (
               <SectionCard title="Your signature">
                 <p className="text-[14px] text-pretty text-(--pn-fg-muted)">
-                  {myDone > 0
-                    ? `${myDone} of ${kindsLabel(myPlaces.filter((p) => p.kind === "signature"))} done. Choose Sign with CIE at the top to finish.`
-                    : myPlaces.length > 1
-                      ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
-                      : "Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top."}{" "}
+                  {systemOwned
+                    ? "Sign with CIE using the card, its PIN and the NFC reader. The receipt’s signature position is fixed."
+                    : myDone > 0
+                      ? `${myDone} of ${kindsLabel(myPlaces.filter((p) => p.kind === "signature"))} done. Choose Sign with CIE at the top to finish.`
+                      : myPlaces.length > 1
+                        ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
+                        : "Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top."}{" "}
                   You need the card, its PIN and the NFC reader.
                 </p>
                 {detail.alsoWaiting > 0 && (

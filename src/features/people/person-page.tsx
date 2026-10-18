@@ -92,7 +92,8 @@ const BACK = { label: "people", link: { to: "/dashboard/people" } } as const
 export function PersonPage({ person }: { person: PersonRecord }) {
   const canWrite = useCan("people:write")
   const canRead = useCan("people:read")
-  const canWriteMembers = useCan("people:members:write")
+  const canReadMembers = useCan("people:members:read")
+  const canWriteMembers = useCan("people:members:write") && canReadMembers
   const canAppoint = useCan("people:appoint")
   const canFees = useCan("people:fees:write")
   const sendReminder = useSendFeeReminder()
@@ -713,14 +714,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                           ]),
                       {
                         key: "Microsoft 365",
-                        value: (
-                          <Link
-                            to="/dashboard/azure/members"
-                            className="font-mono [overflow-wrap:anywhere] text-(--pn-accent) hover:underline"
-                          >
-                            {member.m365Email}
-                          </Link>
-                        ),
+                        value: <span className="font-mono [overflow-wrap:anywhere]">{member.m365Email}</span>,
                       },
                     ]}
                   />
@@ -743,14 +737,6 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                     )
                   }
                 />
-              ) : null}
-
-              {member ? null : person.isMember ? (
-                <SectionCard title="Member">
-                  <p className="text-sm text-(--pn-fg-muted)">
-                    Current member. The number, fee and Microsoft 365 account are in the member register.
-                  </p>
-                </SectionCard>
               ) : null}
 
               <SectionCard title="Consents" padding="flush">

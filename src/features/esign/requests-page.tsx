@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import type { EsignRequest } from "@/lib/api/types"
 import { formatDate, pluralize } from "@/lib/format"
 
+import { ReceiptRequestLink } from "./receipt-request-link"
 import { RequestStatusBadge, signedProgress } from "./request-status"
 
 type StatusFilter = "all" | "in_progress" | "completed" | "closed"
@@ -54,7 +55,11 @@ const columns: DataTableColumn<EsignRequest>[] = [
     cell: (r) => (
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-medium">{r.title}</span>
-        <span className="truncate text-xs text-(--pn-fg-muted)">Requested by {r.createdByName}</span>
+        {r.peopleReceipt ? (
+          <ReceiptRequestLink source={r.peopleReceipt} />
+        ) : (
+          <span className="truncate text-xs text-(--pn-fg-muted)">Requested by {r.createdByName}</span>
+        )}
       </span>
     ),
   },
@@ -87,6 +92,7 @@ const columns: DataTableColumn<EsignRequest>[] = [
 /** The signatures inbox ("To sign") and the requests list share this page. */
 export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[]; scope: "inbox" | "mine" | "all" }) {
   const canManage = useCan("esign:requests:manage")
+  const canSignReceipts = useCan("people:receipts:sign")
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<StatusFilter>("all")
@@ -106,7 +112,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
     [requests, filter, deferred, inbox]
   )
   const narrowed = visible.length !== requests.length
-  const waiting = inbox ? requests.filter((r) => r.myTurn).length : 0
+  const waiting = inbox ? requests.filter((r) => r.myTurn && (!r.peopleReceipt || canSignReceipts)).length : 0
 
   const description = inbox
     ? requests.length

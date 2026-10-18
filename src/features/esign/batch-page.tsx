@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { EmptyState, IconButton, InlineAlert, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import type { EsignPdfInfo, EsignRequestDetail, EsignRequest } from "@/lib/api/types"
 import { formatDateTime, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -16,7 +16,10 @@ import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
 
-type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
+type Item = Pick<EsignRequestDetail, "currentDocumentId" | "signingNow"> & {
+  request: EsignRequest
+  pdf: EsignPdfInfo | null
+}
 
 const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" } } as const
 
@@ -85,7 +88,7 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
           return {
             requestId: item.request.id,
             title: item.request.title,
-            places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
+            places: mine?.signaturesDone === 0 && !item.request.peopleReceipt ? moved.get(item.request.id) : undefined,
           }
         })}
         onSigned={() => void navigate({ to: "/dashboard/esign/inbox" })}
@@ -284,7 +287,7 @@ function DocumentViewer({
                 number={request.signers.length > 1 ? index + 1 : undefined}
                 kind={place.kind}
                 state={isMine ? "active" : "pending"}
-                editable={isMine && signer.signaturesDone === 0}
+                editable={isMine && signer.signaturesDone === 0 && !request.peopleReceipt}
                 onChange={(next) => onMove(places.map((p, at) => (at === place.at ? { ...next, kind: p.kind } : p)))}
               />
             ))

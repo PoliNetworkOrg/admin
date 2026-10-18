@@ -40,15 +40,15 @@ import {
   type Membership,
   MEMBER_STATUSES,
   type MemberStatus,
-  type PersonRow,
+  type MemberRegisterRow,
 } from "./people.contract"
 
-type Member = PersonRow & { member: Membership }
+type Member = MemberRegisterRow & { member: Membership }
 type Scope = "all" | MemberStatus
 type MemberDialog = { kind: "status" | "number"; member: Member }
 type FeeDialog = { kind: "review" | "paid"; person: FeeTarget }
 
-function isRegistered(person: PersonRow): person is Member {
+function isRegistered(person: MemberRegisterRow): person is Member {
   return person.member !== null
 }
 
@@ -155,11 +155,12 @@ export function MembersPage({
   addPersonId,
   onAddHandled,
 }: {
-  people: PersonRow[]
+  people: MemberRegisterRow[]
   /** Opens Add member for this person (from the record's "Add member"). */
   addPersonId?: string
   onAddHandled: () => void
 }) {
+  const canRead = useCan("people:read")
   const canWrite = useCan("people:members:write")
   const canFees = useCan("people:fees:write")
   const year = currentYear()
@@ -333,7 +334,7 @@ export function MembersPage({
           rows={rows}
           getRowId={(person) => person.id}
           rowLabel={personName}
-          rowHref={(person) => `/dashboard/people/${person.id}`}
+          rowHref={canRead ? (person) => `/dashboard/people/${person.id}` : undefined}
           rowProps={(person) => ({
             className: person.member.status === "former" ? "text-(--pn-fg-muted)" : undefined,
           })}
@@ -381,8 +382,7 @@ export function MembersPage({
                       actions={[
                         canFees &&
                           person.member.status !== "former" &&
-                          person.member.fee !== null &&
-                          person.member.fee !== "paid" && {
+                          (person.member.fee === "due" || person.member.fee === "unpaid") && {
                             label: "Mark as paid",
                             ariaLabel: `Mark the fee of ${personName(person)} as paid`,
                             icon: Banknote,

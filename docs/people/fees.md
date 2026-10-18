@@ -60,7 +60,7 @@ not the permission.
   paid joins the row's other actions. The page's outline action is Send reminders; Export register is a boxed icon
   button after Add member, in the same place for everyone who can export (one primary and at most one outline per
   header).
-- **Review receipt** (lg dialog, bottom sheet on phones): the uploaded file (a PDF's pages drawn with pdf.js, an image shown, Open in a new
+- **Review receipt** (lg dialog, bottom sheet on phones): the uploaded file (the shared eSign PDF viewer, an image shown, Open in a new
   tab), the member and fee year, the declared transfer, earlier rejections, and the receipt number approving would
   issue. Reject switches the dialog to a required reason with three one-click starts; Back returns.
 - **People › Receipts** (new section, `Receipt` icon, after Member register): fee-year menu, search, a segmented filter
@@ -94,7 +94,7 @@ A4, Italian, light only. In agent mode `receipt-files.server.ts` renders it; the
 
 The sample data adds fee years and receipts from their own seed: a sent 2025/26 receipt for older members, this year's
 receipts in payment order with the newest to sign, one Send failed and one Voided. `AGENT_PERSON=P-0007` (default) is
-the President, `P-0098` the Vice-president, `P-0045` has a receipt to review and `P-0021` a rejected one. A file counts
+the President, `P-0098` the Vice-president, `P-0045` has a receipt to review and `P-0021` a rejected one. For this manual demo only, a file counts
 as signed when it is a `.p7m`, holds a PDF signature dictionary (`/ByteRange`) or has "signed"/"firmata" in its name.
 
 ## Integration with eSign
@@ -109,3 +109,5 @@ copying files back in a browser callback would lose completion when the page clo
 the validated adapter and shared CIE UI, not PDF signing or email delivery. Agent mode deliberately reports that CIE
 signing needs the backend; it does not invent eSign request IDs or mark sample receipts signed through the CIE action.
 The existing manual demo remains available.
+
+Receipt requests in Signatures carry `peopleReceipt` metadata and a link back to the filtered receipt queue. The backend owns both completion paths; see the matching rules in the two contract documents.

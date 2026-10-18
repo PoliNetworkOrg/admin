@@ -56,7 +56,16 @@ function othersNote(others: readonly Receipt[]) {
 }
 
 /** People › Receipts: the fee year's receipts as a queue, To sign → Signed → Sent, with Send failed and Voided. */
-export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (year: string) => void }) {
+export function ReceiptsPage({
+  page,
+  onYear,
+  initialQuery = "",
+}: {
+  page: ReceiptsData
+  onYear: (year: string) => void
+  initialQuery?: string
+}) {
+  const canRead = useCan("people:read")
   const canSign = useCan("people:receipts:sign") && page.viewerSigner !== null
   const canEsign = useCan("esign:sign")
   const canWebSign = canSign && canEsign
@@ -75,8 +84,8 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
   const failed = page.receipts.filter((receipt) => receipt.status === "failed")
   const byStatus = (status: ReceiptStatus) => page.receipts.filter((receipt) => receipt.status === status).length
 
-  const [scope, setScope] = useState<Scope>(canSign && mine.length > 0 ? "toSign" : "all")
-  const [query, setQuery] = useState("")
+  const [scope, setScope] = useState<Scope>(!initialQuery && canSign && mine.length > 0 ? "toSign" : "all")
+  const [query, setQuery] = useState(initialQuery)
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [pageNumber, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -113,8 +122,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
 
   async function saveToSign() {
     const saved = await downloadFile("toSign", downloadToSign, "Couldn't download the receipts to sign.")
-    if (saved)
-      appToast.success(`${pluralize(mine.length, "receipt")} downloaded. Sign them, then upload the signed files.`)
+    if (saved) appToast.success("Receipts downloaded.")
   }
 
   async function resend(receipt: Receipt) {
@@ -164,7 +172,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
             <span className="tabular-nums">{formatCents(receipt.amountCents)}</span>
             {receipt.status === "toSign" && receipt.signer !== page.viewerSigner ? (
               <span>
-                Signed by {signerName(receipt)} <Chip>{SIGNER_LABEL[receipt.signer]}</Chip>
+                To be signed by {signerName(receipt)} <Chip>{SIGNER_LABEL[receipt.signer]}</Chip>
               </span>
             ) : null}
           </span>
@@ -230,16 +238,18 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
     <>
       <PageBar
         description={
-          <>
-            Fee receipts for <span className="font-mono">{page.year}</span>, numbered in issue order
-          </>
+          page.years.length === 1 ? (
+            <>
+              Fee year <span className="font-mono">{page.year}</span>
+            </>
+          ) : undefined
         }
         right={
           canSign ? (
             <div className="flex min-w-0 items-start gap-2 [&>button]:h-10">
               {canWebSign && batch.length > 0 ? (
                 <div className="flex min-w-0 flex-1 flex-col shell:max-w-sm [&>button]:w-full">
-                  <SignWithCie prepare={prepareSigning}>Sign {pluralize(batch.length, "receipt")} with CIE</SignWithCie>
+                  <SignWithCie prepare={prepareSigning} />
                 </div>
               ) : null}
               {!canWebSign && mine.length > 0 ? (
@@ -324,7 +334,9 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
                 {pluralize(mine.length, "receipt")} {mine.length === 1 ? "is" : "are"} waiting for your signature.
               </span>{" "}
               {canWebSign
-                ? `Sign here with CIE and PoliNetwork eSign, up to ${RECEIPT_SIGN_BATCH} receipts at a time. You can also download them and upload the signed files from the signing options.`
+                ? mine.length > RECEIPT_SIGN_BATCH
+                  ? `The next signature covers ${pluralize(batch.length, "receipt")}.`
+                  : null
                 : "Download them, sign each PDF with the CIE app, then upload the signed files."}
               {othersNote(others)}
             </InlineAlert>
@@ -355,7 +367,7 @@ export function ReceiptsPage({ page, onYear }: { page: ReceiptsData; onYear: (ye
             rows={rows}
             getRowId={(receipt) => receipt.id}
             rowLabel={(receipt) => `${receipt.number}, ${receipt.person.name}`}
-            rowHref={(receipt) => `/dashboard/people/${receipt.person.id}`}
+            rowHref={canRead ? (receipt) => `/dashboard/people/${receipt.person.id}` : undefined}
             rowProps={(receipt) => ({
               className: receipt.status === "voided" ? "text-(--pn-fg-muted)" : undefined,
             })}

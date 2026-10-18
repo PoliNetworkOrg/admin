@@ -60,4 +60,13 @@ export const sendSignedReceipts = createServerFn({ method: "POST" })
 export const prepareReceiptSignatures = createServerFn({ method: "POST" })
   .middleware([peopleReceiptsSignMiddleware, esignSignWriteMiddleware])
   .validator(prepareReceiptSignaturesInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).prepareReceiptSignatures(data))
+  .handler(async ({ data, context }) => {
+    const signatures = await (await peopleApi(context)).prepareReceiptSignatures(data)
+    if (
+      signatures.length !== data.receiptIds.length ||
+      signatures.some((item) => !data.receiptIds.includes(item.receiptId))
+    ) {
+      throw new Error("The signing requests do not match the selected receipts.")
+    }
+    return signatures
+  })

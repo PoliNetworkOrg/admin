@@ -368,10 +368,21 @@ Backend rules for fees and receipts:
   receipts whose `signer` is the caller's office.
 - **CIE preparation**: `prepareSignatures` requires `admin:access`, both signing permissions and the actual officer
   on the linked, confirmed People record. Validate the whole batch before creating anything: 1–10 distinct receipts,
-  all `toSign`, all assigned to that officer. Resolve officer IdP subjects on the backend; the browser never chooses
+  all `toSign`, all assigned to that officer. Return exactly those receipt IDs with distinct request IDs; an incomplete, duplicate or unrelated response is rejected. Resolve officer IdP subjects on the backend; the browser never chooses
   a signer, PDF, placement, recipient or output drive. Create or reuse one active eSign request per receipt/version
   under a uniqueness constraint; retries return the same requests. Use the issued PDF with its hash and fixed signature
   placement, the caller's office, and no separate eSign delivery (the receipt pipeline owns the email).
+- **eSign provenance**: for requests created by this bridge, `esign.requests.list/get` return
+  `request.peopleReceipt: { receiptId, number, year }` (list: each request has the field). Other requests omit it or
+  return null; the dashboard accepts older responses without it. The title is `Receipt {number} · {member name}`.
+  The association is backend-owned and cannot be supplied through generic eSign request creation. Signatures shows
+  the receipt reference and links to `/dashboard/people/receipts?year={year}&q={number}` only for register readers.
+- **Signing later from eSign**: jobs, manual signature uploads and completion recheck `people:receipts:sign`, the
+  confirmed officer and current assignment/version, as well as `esign:sign`. Generic eSign permissions alone never
+  authorize a receipt signature. `myTurn` reflects this eligibility. Reject placement changes for receipt requests:
+  their issued signature box is fixed, including batch signing. Receipt requests cannot be generically deleted or
+  cancelled; voiding through People owns invalidation and audit retention. eSign decline/failure leaves the receipt
+  `toSign`; preparation reuses an active request or creates a replacement for the same receipt/version.
 - **CIE completion**: bind the receipt to its eSign request persistently. The eSign completion transaction verifies
   the signature, officer, current receipt/version and `toSign` status, stores the signed PDF, writes Activity and queues
   the receipt email exactly once. Cancellation or failure leaves the receipt `toSign` for retry or manual upload;

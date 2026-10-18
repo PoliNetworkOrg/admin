@@ -92,17 +92,11 @@ export function AddMemberDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Add member"
-      description="Registers a person as a member and starts the new-member workflow."
+      description="Creates a Microsoft 365 account with the member number as its ID."
       noun="member"
       dirty={person?.id !== initialPerson?.id || number !== nextNumber || fee !== "due" || admittedOn !== todayIso()}
       submitLabel="Add member"
       onSubmit={submit}
-      notice={
-        <InlineAlert tone="info">
-          The new-member workflow creates {person ? `${person.name}'s` : "the person's"} Microsoft 365 account with
-          member ID {NUMBER_PATTERN.test(trimmed) ? trimmed : "above"}.
-        </InlineAlert>
-      }
     >
       <div className="flex flex-col gap-4">
         <FormField label="Person" htmlFor="member-person" hint="Ask HR to add missing people." error={personError}>

@@ -709,6 +709,7 @@ export function documentTitle(match: PageMatch): string {
 export type PendingCounts = {
   reports: Promise<number | null>
   signatures: Promise<number | null>
+  receipts: Promise<number | null>
   linking: Promise<number | null>
 }
 
@@ -733,5 +734,6 @@ export function sectionPending(
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
   if (serviceId === "people" && sectionId === "linking") return pending.linking
+  if (serviceId === "people" && sectionId === "receipts") return pending.receipts
   return NO_COUNT
 }

@@ -281,8 +281,9 @@ test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
     "src/features/azure/groups-page.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": "azure:members:create",
-    "src/features/esign/requests-page.tsx": "esign:requests:manage",
-    "src/features/esign/request-page.tsx": "esign:requests:manage",
+    "src/features/esign/receipt-request-link.tsx": "people:members:read",
+    "src/features/esign/requests-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
+    "src/features/esign/request-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
     "src/features/esign/drives-page.tsx": "esign:drives:manage",
     "src/features/telegram/grants-page.tsx": "tg:grants:manage",
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
@@ -302,6 +303,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/projects/projects-page.tsx": "web:content:write",
     "src/features/people/overview-page.tsx": "people:write",
     "src/features/people/person-page.tsx": [
+      "people:members:read",
       "people:write",
       "people:read",
       "people:members:write",
@@ -312,8 +314,8 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/census-page.tsx": ["people:write", "people:read"],
     "src/features/people/linking-page.tsx": "people:write",
-    "src/features/people/members-page.tsx": ["people:members:write", "people:fees:write"],
-    "src/features/people/receipts-page.tsx": ["people:receipts:sign", "people:fees:write", "esign:sign"],
+    "src/features/people/members-page.tsx": ["people:read", "people:members:write", "people:fees:write"],
+    "src/features/people/receipts-page.tsx": ["people:read", "people:receipts:sign", "people:fees:write", "esign:sign"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()

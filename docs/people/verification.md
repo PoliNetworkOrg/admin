@@ -29,4 +29,36 @@ receipt/eSign concurrency and durable completion need backend integration tests.
 message and every loading skeleton have not been exercised visually. Full normal OIDC sign-in needs a configured
 IdP; the existing local OIDC integration tests remain the automated coverage.
 
-PR #100 adds fee/receipt-specific browser evidence here when its audit is complete.
+## Receipt layer PR #100
+
+The same 320/1440 widths were used with these administrative permission sets (all also include `admin:access`):
+
+- `people:members:read`, no `people:read`: register and Receipts are populated; no full-record links, fee mutations
+  or signing controls. Unsigned receipt cards say “To be signed by”.
+- Add `people:fees:write`: review/mark-paid/reminder controls in the register, retry/void on receipts, no signing.
+  A loaded transfer receipt offers Review; Mark as paid is reserved for Due/Unpaid, matching the record card.
+- `people:members:read,people:receipts:sign,esign:sign`, P-0007 and P-0098: CIE signing and manual options appear.
+  President queue: five assigned receipts; Vice-president queue: one, the President's own receipt. The other officer
+  is named as the expected signer. Neither profile gets fee mutation controls.
+- The same permissions on P-0034: read-only receipts, no CIE/manual signing controls, because there is no office.
+- Remove `esign:sign` on P-0098: Download to sign and Upload signed are direct actions; there is no CIE action or
+  one-item signing menu. The Vice-president's ZIP download and the empty upload dialog were exercised.
+- Master Admin (all explicit permissions), P-0007: Overview, Member register, Receipts, Admins, Teams, Census and
+  Linking at both widths, with no page overflow. The person record's transfer PDF rendered in the shared eSign viewer
+  on mobile and desktop. Reject/Back were inspected. Exactly one fee (P-0045) was approved in the fake: the dialog
+  closed after reload, the fee became Paid and receipt 2026/025 appeared as To sign. No bulk destructive action ran.
+
+Additional `people:self` checks at both widths: `match:P-0034` has only confirmation/rejection actions and no Lead
+navigation; `none` offers Ask to be added; P-0021 shows the rejected transfer, bank details, upload replacement and
+own signed-receipt download. A volunteer's forbidden receipt URL and a Lead's other-team URL return to My area.
+
+The CIE click was exercised as an officer: the shared component reported the pending People backend and retained
+unsigned receipts. A completed real CIE session was not possible. The receipt reference shown in Signatures is
+covered by provenance parsing tests, but was not rendered against a real eSign backend; there is no fabricated eSign
+request in agent mode. Full signature/job states, email and concurrency remain integration work.
+
+With `AGENT_MODE=false` and temporary development OIDC values, opening `/dashboard/people` entered the normal
+IdP redirect, which stopped at `invalid_client`. No configured development client or real signed-in session was available. Browser checks were primarily in the light theme, not a full dark-mode audit. Existing optional Redis/
+compiled-HTTP integrations were not enabled. See test output for the exact pass/skip counts.
+
+Admission validation also rejects an initial `receipt` state without a file and attempts to overwrite an existing membership; both have regression tests.

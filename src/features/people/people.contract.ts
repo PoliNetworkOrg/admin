@@ -32,9 +32,6 @@ export const MEMBER_STATUSES = ["active", "suspended", "expired", "former"] as c
 export const FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
 export const ACCOUNT_STATUSES = ["none", "invite", "linked", "review"] as const
 export const CENSUS_ANSWERS = ["continues", "leaving"] as const
-export const PHOTO_CONSENTS = ["granted", "denied", "revoked"] as const
-export type PhotoConsent = (typeof PHOTO_CONSENTS)[number]
-
 export const REVIEW_KINDS = ["telegram-conflict", "ask-to-be-added", "two-records", "not-me", "name-only"] as const
 /** A receipt's pipeline: issued unsigned, signed by an officer, emailed to the member; or the email failed, or voided. */
 export const RECEIPT_STATUSES = ["toSign", "signed", "sent", "failed", "voided"] as const
@@ -199,6 +196,14 @@ export const feeDetailSchema = z.object({
   /** The last reminder email, automatic or sent by hand. */
   lastReminder: z.string().nullable(),
 })
+
+/** Returned as `request.peopleReceipt` by eSign list/get for a system-owned fee receipt. */
+export const receiptRequestSourceSchema = z.object({
+  receiptId: z.string().min(1).max(128),
+  number: z.string().min(1).max(40),
+  year: z.string().regex(/^\d{4}\/\d{2}$/),
+})
+export type ReceiptRequestSource = z.infer<typeof receiptRequestSourceSchema>
 
 export const receiptSchema = z.object({
   id: z.string(),
@@ -729,6 +734,12 @@ export const receiptSignaturesSchema = z
   )
   .min(1)
   .max(RECEIPT_SIGN_BATCH)
+  .refine(
+    (items) =>
+      new Set(items.map((item) => item.receiptId)).size === items.length &&
+      new Set(items.map((item) => item.requestId)).size === items.length,
+    "Each receipt must have its own signature request."
+  )
 export type PrepareReceiptSignaturesInput = z.infer<typeof prepareReceiptSignaturesInputSchema>
 export type ReceiptSignature = z.infer<typeof receiptSignaturesSchema>[number]
 
