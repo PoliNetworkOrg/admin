@@ -451,7 +451,8 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
                         onClick: () => open("endCapo", person),
                       },
                     canWrite &&
-                      activeAdmin && {
+                      activeAdmin &&
+                      (canAppoint || person.admin.capoScope === null) && {
                         label: "End admin role",
                         ariaLabel: `End the admin role of ${personName(person)}`,
                         icon: UserMinus,

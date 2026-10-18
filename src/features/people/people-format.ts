@@ -143,3 +143,6 @@ export function telegramUrl(username: string) {
 export function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`
 }
+
+/** Why the backend didn't send a reminder (`skipped`). */
+export const REMINDER_SKIPPED = "reminded in the last 3 days, no email address, or the email failed"

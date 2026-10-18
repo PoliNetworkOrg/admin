@@ -205,18 +205,21 @@ export function PersonPicker({
 }
 
 /** Multi-select options as pressable pills, for team fields such as Areas or Languages. */
-export function ChoiceChips({
+export function ChoiceChips<T extends string>({
   id,
   label,
   options,
   value,
   onChange,
+  labelOf = (option) => option,
 }: {
   id: string
   label: string
-  options: readonly string[]
-  value: readonly string[]
-  onChange: (value: string[]) => void
+  options: readonly T[]
+  value: readonly T[]
+  onChange: (value: T[]) => void
+  /** The text shown for an option, when the value is an identifier. */
+  labelOf?: (option: T) => string
 }) {
   return (
     <div id={id} role="group" aria-label={label} className="flex flex-wrap gap-1.5">
@@ -235,7 +238,7 @@ export function ChoiceChips({
             )}
           >
             {pressed ? <Check aria-hidden strokeWidth={2} className="size-3.5" /> : null}
-            {option}
+            {labelOf(option)}
           </button>
         )
       })}

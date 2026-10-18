@@ -507,6 +507,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:write")
       const person = find(input.personId)
       if (!person.admin || person.admin.status !== "active") throw new Error("This person isn't an active admin.")
+      if (person.admin.capoScope) require(viewer, "people:appoint")
       Object.assign(person.admin, {
         status: "former",
         endedOn: today(),
@@ -1008,6 +1009,21 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       self.matchRejected = true
       self.askedOn = today()
     },
+    acceptInvite: async () => {
+      require(viewer, "people:self")
+      const me = viewerRecord(viewer)
+      if (!me || linkedRecord(viewer) || self.matchRejected || me.account.status !== "invite") {
+        throw new Error("Invitation expired or not addressed to this account.")
+      }
+      self.matchConfirmed = true
+      me.account = {
+        status: "linked",
+        email: me.account.email,
+        via: "Email",
+        linkedOn: today(),
+        how: "Accepted the email invitation",
+      }
+    },
     askToBeAdded: async () => {
       require(viewer, "people:self")
       self.askedOn = today()
@@ -1016,6 +1032,8 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:self")
       const me = linkedRecord(viewer)
       if (!me) throw new Error("There is no record to answer for.")
+      if (me.census.some((entry) => entry.year === "2026/27" && entry.answer))
+        throw new Error("Census already answered.")
       me.census = me.census.filter((entry) => entry.year !== "2026/27")
       me.census.unshift({
         year: "2026/27",

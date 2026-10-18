@@ -160,12 +160,18 @@ export function MemberStatusDialog({
   const refresh = useRefreshAfter()
   const [status, setStatus] = useState(member.status)
   const [reason, setReason] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  // Suspending or ending a membership needs a reason; reactivating doesn't.
+  const reasonRequired = status !== "active"
+  const reasonError = submitted && reasonRequired && !reason.trim() ? "Enter a reason." : undefined
 
   async function submit() {
     if (status === member.status) {
       onOpenChange(false)
       return
     }
+    setSubmitted(true)
+    if (reasonRequired && !reason.trim()) return
     try {
       await save({ data: { personId: member.personId, status, reason: reason.trim() } })
     } catch (caught) {
@@ -198,7 +204,13 @@ export function MemberStatusDialog({
             />
           ))}
         </RadioCardGroup>
-        <FormField label="Reason" htmlFor="member-status-reason" optional hint="Shown in the record's activity.">
+        <FormField
+          label="Reason"
+          htmlFor="member-status-reason"
+          optional={!reasonRequired}
+          hint="Shown in the record's activity."
+          error={reasonError}
+        >
           <Textarea
             id="member-status-reason"
             value={reason}

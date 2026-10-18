@@ -3,6 +3,7 @@ import type { z } from "zod"
 import { createUntypedBackendClient } from "@/server/backend.server"
 
 import {
+  type AcceptInviteInput,
   type AddTeamMemberInput,
   type AnswerCensusInput,
   type AnswersInput,
@@ -106,6 +107,7 @@ export type PeopleApi = {
   getMyArea: () => Promise<MyArea>
   confirmMatch: () => Promise<void>
   rejectMatch: () => Promise<void>
+  acceptInvite: (input: AcceptInviteInput) => Promise<void>
   askToBeAdded: (input: AskToBeAddedInput) => Promise<void>
   answerCensus: (input: AnswerCensusInput) => Promise<void>
   requestCorrection: (input: CorrectionInput) => Promise<void>
@@ -173,6 +175,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     getMyArea: () => query("me.get", undefined, myAreaSchema),
     confirmMatch: () => mutate("me.confirmMatch"),
     rejectMatch: () => mutate("me.rejectMatch"),
+    acceptInvite: (input) => mutate("me.acceptInvite", input),
     askToBeAdded: (input) => mutate("me.askToBeAdded", input),
     answerCensus: (input) => mutate("me.answerCensus", input),
     requestCorrection: (input) => mutate("me.requestCorrection", input),

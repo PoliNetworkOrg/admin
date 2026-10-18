@@ -454,11 +454,16 @@ export const createMemberInputSchema = z.object({
   admittedOn: dateSchema,
   fee: z.enum(["due", "paid"]),
 })
-export const memberStatusInputSchema = z.object({
-  personId: personIdSchema,
-  status: memberStatusSchema,
-  reason: z.string().trim().max(500),
-})
+export const memberStatusInputSchema = z
+  .object({
+    personId: personIdSchema,
+    status: memberStatusSchema,
+    reason: z.string().trim().max(500),
+  })
+  .refine((input) => input.status === "active" || input.reason !== "", {
+    path: ["reason"],
+    message: "A reason is required.",
+  })
 export const memberNumberInputSchema = z.object({ personId: personIdSchema, number: z.string().regex(/^\d{4}$/) })
 
 export const endAdminInputSchema = z.object({ personId: personIdSchema, reason: reasonSchema })
@@ -525,6 +530,10 @@ export const askToBeAddedInputSchema = z.object({
   groupsOrTeam: z.string().trim().max(200),
   telegramUsername: telegramUsernameSchema,
 })
+/** The token from an invite link, `/dashboard/account/me?peopleInvite=<token>`. */
+export const inviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/)
+export const acceptInviteInputSchema = z.object({ token: inviteTokenSchema })
+export type AcceptInviteInput = z.infer<typeof acceptInviteInputSchema>
 export const answerCensusInputSchema = z.object({
   answer: censusAnswerSchema,
   course: z.string().trim().min(1).max(120),

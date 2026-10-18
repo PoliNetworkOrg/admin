@@ -67,7 +67,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
       setPending(null)
       return
     }
-    await refresh(approved ? `${request.person.name} added as admin of ${request.group.title}.` : "Request declined.")
+    await refresh(approved ? `Approved ${request.person.name} for ${request.group.title}.` : "Request declined.")
     setPending(null)
   }
 

@@ -239,9 +239,9 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   in team or admin lists.
                 </InlineAlert>
               ) : null}
-              {person.discrepancies.map((discrepancy) => (
+              {person.discrepancies.map((discrepancy, index) => (
                 <InlineAlert
-                  key={discrepancy.kind}
+                  key={`${discrepancy.kind}-${index}`}
                   tone="warning"
                   action={
                     // The update resends the whole profile: an unknown stored year would be replaced, so edit instead.
@@ -329,12 +329,14 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                               destructive: true,
                               onClick: () => adminDialog.show("endCapo"),
                             },
-                          canWrite && {
-                            label: "End admin role",
-                            icon: UserMinus,
-                            destructive: true,
-                            onClick: () => adminDialog.show("end"),
-                          },
+                          // Ending a Capo Admin's admin role also ends the scope, which takes people:appoint.
+                          canWrite &&
+                            (canAppoint || !admin.capoScope) && {
+                              label: "End admin role",
+                              icon: UserMinus,
+                              destructive: true,
+                              onClick: () => adminDialog.show("end"),
+                            },
                         ]}
                       />
                     ) : undefined

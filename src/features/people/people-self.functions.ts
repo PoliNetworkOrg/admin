@@ -3,7 +3,12 @@ import { createServerFn } from "@tanstack/react-start"
 import { peopleSelfMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
-import { answerCensusInputSchema, askToBeAddedInputSchema, correctionInputSchema } from "./people.contract"
+import {
+  acceptInviteInputSchema,
+  answerCensusInputSchema,
+  askToBeAddedInputSchema,
+  correctionInputSchema,
+} from "./people.contract"
 
 /** Account › My area: the signed-in person's record, a first-sign-in match, or nothing yet. */
 export const getMyArea = createServerFn({ method: "GET" })
@@ -19,6 +24,12 @@ export const confirmMyMatch = createServerFn({ method: "POST" })
 export const rejectMyMatch = createServerFn({ method: "POST" })
   .middleware([peopleSelfMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).rejectMatch())
+
+/** The invite link HR emails: links the signed-in account to the invited record. */
+export const acceptMyInvite = createServerFn({ method: "POST" })
+  .middleware([peopleSelfMiddleware])
+  .validator(acceptInviteInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).acceptInvite(data))
 
 export const askToBeAdded = createServerFn({ method: "POST" })
   .middleware([peopleSelfMiddleware])

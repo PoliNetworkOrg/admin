@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
   Camera,
@@ -58,10 +58,15 @@ import {
   PHOTO_CONSENT,
   teamName,
   telegramUrl,
-  yearOf,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { answerMyCensus, confirmMyMatch, rejectMyMatch, revokePhotoConsent } from "./people-self.functions"
+import {
+  acceptMyInvite,
+  answerMyCensus,
+  confirmMyMatch,
+  rejectMyMatch,
+  revokePhotoConsent,
+} from "./people-self.functions"
 import { ChoiceChips, MonoChip, PersonAvatar, PersonCell, Row, RowIcon, Rows, StateBadge } from "./people-ui"
 import { CAMPUSES, type Campus, COURSES, type MyArea, type TeamId, YEARS } from "./people.contract"
 
@@ -70,7 +75,8 @@ type Match = Extract<MyArea, { state: "match" }>
 type Year = (typeof YEARS)[number]
 
 /** Account › My area: what the signed-in person's record says, and the yearly census. */
-export function MyAreaPage({ area }: { area: MyArea }) {
+export function MyAreaPage({ area, invite }: { area: MyArea; invite: string | null }) {
+  if (invite && area.state !== "linked") return <InviteView token={invite} />
   if (area.state === "match") return <MatchView area={area} />
   if (area.state === "none") return <NoRecordView sentOn={area.request?.sentOn ?? null} />
   return <LinkedView area={area} />
@@ -149,6 +155,55 @@ function MatchView({ area }: { area: Match }) {
   )
 }
 
+/** Opened from the invite link HR emails. */
+function InviteView({ token }: { token: string }) {
+  const accept = useServerFn(acceptMyInvite)
+  const navigate = useNavigate()
+  const refresh = useRefreshAfter()
+  const [pending, setPending] = useState(false)
+  const dropInvite = () => navigate({ to: "/dashboard/account/me", search: {}, replace: true })
+
+  async function link() {
+    setPending(true)
+    try {
+      await accept({ data: { token } })
+    } catch (caught) {
+      console.error(caught)
+      appToast.error(errorMessage(caught, "Couldn't link your account. Try again."))
+      setPending(false)
+      return
+    }
+    await refresh("Account linked.")
+    await dropInvite()
+  }
+
+  return (
+    <>
+      <PageBar title="Welcome" width="settings" />
+      <PageContent width="settings">
+        <SectionCard
+          title="Link your account"
+          footer={
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" className={buttonMotion} disabled={pending} onClick={() => void dropInvite()}>
+                Not now
+              </Button>
+              <Button className={buttonMotion} disabled={pending} onClick={link}>
+                Link my account
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-[14px] text-(--pn-fg-muted)">
+            HR invited you to link this sign-in to your PoliNetwork record, so you can see your roles and answer the
+            census. Use the account with the email address the invite was sent to.
+          </p>
+        </SectionCard>
+      </PageContent>
+    </>
+  )
+}
+
 function NoRecordView({ sentOn }: { sentOn: string | null }) {
   const [askOpen, setAskOpen] = useState(false)
   const askKey = useOpenGeneration(askOpen)
@@ -193,13 +248,12 @@ function CensusCard({ area }: { area: Linked }) {
   const save = useServerFn(answerMyCensus)
   const refresh = useRefreshAfter()
   const entry = campaign ? person.census.find((candidate) => candidate.year === campaign.year) : undefined
-  const [editing, setEditing] = useState(false)
-  const groups = isActiveAdmin(person) ? (person.admin?.groups.map((group) => group.title) ?? []) : []
+  // Groups are kept by chat ID: titles aren't unique.
+  const adminGroups = isActiveAdmin(person) ? (person.admin?.groups ?? []) : []
+  const groups = adminGroups.map((group) => group.chatId)
   const teams = activeTeams(person).map((membership) => membership.team)
   const [course, setCourse] = useState(person.profile.course)
-  // A first answer advances last year's year; changing an answer starts from the one already given.
-  const answered = !!entry?.answer
-  const [year, setYear] = useState<Year>(answered ? yearOf(person.profile.year) : nextYear(person.profile.year))
+  const [year, setYear] = useState<Year>(nextYear(person.profile.year))
   const [campus, setCampus] = useState<Campus>(person.profile.campus)
   const [keepGroups, setKeepGroups] = useState(groups)
   const [keepTeams, setKeepTeams] = useState<TeamId[]>(teams)
@@ -210,7 +264,8 @@ function CensusCard({ area }: { area: Linked }) {
   if (!campaign) return null
   const answer = { course, year, campus, keepGroups, keepTeams }
 
-  if (entry?.answer && !editing) {
+  // An answer is final: the backend applies it at once, ending the roles not kept.
+  if (entry?.answer) {
     return (
       <SectionCard padding="flush">
         <Rows>
@@ -225,11 +280,6 @@ function CensusCard({ area }: { area: Linked }) {
               </>
             }
             meta={`Answered ${entry.answeredOn ? formatDay(entry.answeredOn) : ""}${entry.source ? ` · ${CENSUS_SOURCE[entry.source]}` : ""}`}
-            end={
-              <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setEditing(true)}>
-                Change answer
-              </Button>
-            }
           />
         </Rows>
       </SectionCard>
@@ -248,7 +298,6 @@ function CensusCard({ area }: { area: Linked }) {
     }
     await refresh(`Confirmed for ${campaign?.year ?? "this year"}.`)
     setSaving(false)
-    setEditing(false)
   }
 
   const courses = COURSES.some((option) => option === person.profile.course)
@@ -262,11 +311,6 @@ function CensusCard({ area }: { area: Linked }) {
       footer={
         // Phones stack the buttons full width with Confirm on top, like dialog footers.
         <div className="flex flex-col-reverse gap-2 shell:flex-row shell:flex-wrap shell:justify-end">
-          {editing ? (
-            <Button variant="ghost" className={buttonMotion} onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          ) : null}
           <Button
             variant="outline"
             className={buttonMotion}
@@ -297,7 +341,7 @@ function CensusCard({ area }: { area: Linked }) {
           <FormField
             label={`Year in ${campaign.year}`}
             htmlFor="census-year"
-            hint={answered ? undefined : `You were in ${person.profile.year} last year.`}
+            hint={`You were in ${person.profile.year} last year.`}
           >
             <SelectField<Year>
               id="census-year"
@@ -316,28 +360,26 @@ function CensusCard({ area }: { area: Linked }) {
           </FormField>
         </div>
         {groups.length ? (
-          <FormField
-            label="Groups you'll keep administering"
-            htmlFor="census-groups"
-            hint="Groups you deselect are handed to your Capo Admin."
-          >
+          <FormField label="Groups you'll keep administering" htmlFor="census-groups">
             <ChoiceChips
               id="census-groups"
               label="Groups you'll keep administering"
               options={groups}
               value={keepGroups}
               onChange={setKeepGroups}
+              labelOf={(chatId) => adminGroups.find((group) => group.chatId === chatId)?.title ?? chatId}
             />
           </FormField>
         ) : null}
         {teams.length ? (
-          <FormField label="Teams you're continuing with" htmlFor="census-teams">
+          <FormField label="Teams you're continuing with" htmlFor="census-teams" hint="Teams you deselect end today.">
             <ChoiceChips
               id="census-teams"
               label="Teams you're continuing with"
-              options={teams.map(teamName)}
-              value={keepTeams.map(teamName)}
-              onChange={(names) => setKeepTeams(teams.filter((team) => names.includes(teamName(team))))}
+              options={teams}
+              value={keepTeams}
+              onChange={setKeepTeams}
+              labelOf={teamName}
             />
           </FormField>
         ) : null}
@@ -345,10 +387,7 @@ function CensusCard({ area }: { area: Linked }) {
       <LeavingDialog
         key={`leaving-${leavingKey}`}
         open={leavingOpen}
-        onOpenChange={(open) => {
-          setLeavingOpen(open)
-          if (!open) setEditing(false)
-        }}
+        onOpenChange={setLeavingOpen}
         year={campaign.year}
         answer={answer}
       />

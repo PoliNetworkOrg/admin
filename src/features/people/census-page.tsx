@@ -36,6 +36,7 @@ import {
   isMember,
   NO_ANSWER,
   personName,
+  REMINDER_SKIPPED,
   roleLabels,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
@@ -170,7 +171,7 @@ export function CensusPage({ campaigns }: { campaigns: Campaign[] }) {
           rows={campaigns}
           getRowId={(campaign) => campaign.id}
           rowLabel={(campaign) => `${campaign.year} census`}
-          rowHref={(campaign) => `/dashboard/people/census/${campaign.id}`}
+          rowHref={(campaign) => `/dashboard/people/census/${encodeURIComponent(campaign.id)}`}
           empty={
             <EmptyState
               icon={ClipboardList}
@@ -262,7 +263,9 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
   async function remindOne(row: CampaignRow) {
     try {
       const result = await remind({ data: { campaignId: campaign.id, personId: row.id } })
-      await refresh(result.sent ? `Reminder sent to ${personName(row)}.` : `${personName(row)} was reminded recently.`)
+      await (result.sent
+        ? refresh(`Reminder sent to ${personName(row)}.`)
+        : refresh(`No reminder sent to ${personName(row)}: ${REMINDER_SKIPPED}.`, "warning"))
     } catch (caught) {
       console.error(caught)
       appToast.error(errorMessage(caught, "Couldn't send the reminder."))
@@ -576,12 +579,13 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
           tone="primary"
           icon={Bell}
           title="Send reminders?"
-          description={`${pluralize(unanswered, "person")} ${unanswered === 1 ? "hasn't" : "haven't"} answered. Each gets an email and a Telegram message with their personal link; people reminded in the last 3 days are skipped.`}
+          description={`${pluralize(unanswered, "person")} ${unanswered === 1 ? "hasn't" : "haven't"} answered. Each gets an email; people reminded in the last 3 days are skipped.`}
           confirmLabel="Send reminders"
           onConfirm={async () => {
             const result = await remind({ data: { campaignId: campaign.id, personId: null } })
             await refresh(
-              `${pluralize(result.sent, "reminder")} sent${result.skipped ? `, ${result.skipped} skipped (reminded in the last 3 days)` : ""}.`
+              `${pluralize(result.sent, "reminder")} sent${result.skipped ? `, ${result.skipped} not sent` : ""}.`,
+              result.skipped ? "warning" : "success"
             )
           }}
         />
