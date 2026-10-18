@@ -167,3 +167,13 @@ void test("the member register works without people:read and exposes only regist
   await assert.rejects(reader.listPeople(), unauthorized)
   await assert.rejects(reader.getPerson(rows[0].id), unauthorized)
 })
+
+void test("admission cannot overwrite an existing membership or its history", async () => {
+  const member = records.find((person) => person.member)
+  const before = await hr.getPerson(member.id)
+  await assert.rejects(
+    hr.createMember({ personId: member.id, number: "9999", admittedOn: "2026-10-18", fee: "paid" }),
+    { message: "This person is already registered as a member." }
+  )
+  assert.deepEqual(await hr.getPerson(member.id), before)
+})

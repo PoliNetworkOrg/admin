@@ -5,6 +5,7 @@ import { validateCensusImport } from "../src/features/people/census-import.serve
 import {
   askToBeAddedInputSchema,
   campaignInputSchema,
+  createMemberInputSchema,
   personInputSchema,
   resolveReviewInputSchema,
 } from "../src/features/people/people.contract.ts"
@@ -38,4 +39,12 @@ void test("census imports reject binary CSV, renamed files, oversized inputs and
     [new Uint8Array(10 * 1024 * 1024 + 1), "responses.csv"],
   ])
     await assert.rejects(validateCensusImport(new File([bytes], name)))
+})
+
+void test("admission cannot claim a transfer upload that does not exist", () => {
+  assert.equal(
+    createMemberInputSchema.safeParse({ personId: "P-0115", number: "0999", admittedOn: "2026-10-18", fee: "receipt" })
+      .success,
+    false
+  )
 })

@@ -452,7 +452,7 @@ export const createMemberInputSchema = z.object({
   personId: personIdSchema,
   number: z.string().regex(/^\d{4}$/),
   admittedOn: dateSchema,
-  fee: z.enum(["due", "receipt", "paid"]),
+  fee: z.enum(["due", "paid"]),
 })
 export const memberStatusInputSchema = z.object({
   personId: personIdSchema,

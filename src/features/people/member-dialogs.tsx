@@ -26,10 +26,10 @@ import { createMember, exportMembers, setMemberNumber, setMemberStatus } from ".
 import { type PersonOption, PersonPicker } from "./people-ui"
 import { MEMBER_STATUSES, type MemberStatus } from "./people.contract"
 
-type NewFee = "due" | "receipt" | "paid"
+type NewFee = "due" | "paid"
 
 const NUMBER_PATTERN = /^\d{4}$/
-const NEW_FEES = ["due", "receipt", "paid"] satisfies NewFee[]
+const NEW_FEES = ["due", "paid"] satisfies NewFee[]
 
 /** The lowest unused four-digit number after the highest one: numbers are never reused. */
 export function nextMemberNumber(numbers: readonly string[]) {
@@ -98,12 +98,7 @@ export function AddMemberDialog({
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">
-        <FormField
-          label="Person"
-          htmlFor="member-person"
-          hint="Not in the list? Add the person first from Overview."
-          error={personError}
-        >
+        <FormField label="Person" htmlFor="member-person" hint="Ask HR to add missing people." error={personError}>
           <PersonPicker
             id="member-person"
             people={candidates}

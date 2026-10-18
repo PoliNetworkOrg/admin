@@ -458,6 +458,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     createMember: async (input) => {
       require(viewer, "people:members:write")
       const person = find(input.personId)
+      if (person.member) throw new Error("This person is already registered as a member.")
       if (data().people.some((other) => other.member?.number === input.number)) {
         throw new Error(`Member number ${input.number} is already taken.`)
       }
