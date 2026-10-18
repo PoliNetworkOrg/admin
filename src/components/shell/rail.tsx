@@ -170,7 +170,6 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
 
   const activeId = serviceFor(match).id
   const overview = serviceById("overview")
-  // The visible Account service: without people:self its first section is Sign-in & security, not My area.
   const account = visibleServices.find((service) => service.id === "account") ?? serviceById("account")
 
   // Item order: logo (Overview), search, services…, theme, account.
