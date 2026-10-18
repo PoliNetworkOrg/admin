@@ -284,6 +284,8 @@ The dashboard checks these too, but the backend owns them (from the security rev
 - **`people.teams.endMembership`**: ending a lead's membership needs `people:appoint`, like appointing one. A team has at most one Lead:
   `people.teams.addMember` with `role: "lead"` fails `CONFLICT` while another Lead's appointment is open.
 - **`people.admins.end`**: ending a Capo Admin's admin role also ends the scope, so it needs `people:appoint` too.
+- **`people.me.acceptInvite`**: the token alone identifies the invited record (store it hashed); it fails while the
+  invite is revoked, expired or already used, or when the caller already has a linked record.
 - **`people.members.export`**: every CSV cell is quoted, and a cell starting with `=`, `+`, `-`, `@`, tab or carriage
   return gets a leading `'`, so spreadsheets don't run it as a formula.
 - **`people.census.importPreview`**: check the content, not the extension: a real .xlsx (ZIP) or UTF-8 CSV, at most

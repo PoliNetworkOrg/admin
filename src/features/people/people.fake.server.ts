@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import type { PeopleApi, PeopleViewer } from "./people.api.server"
 import {
   type AccountMatch,
@@ -33,8 +35,14 @@ import {
 
 let store: PeopleStore | null = null
 /** The agent user's own state when `AGENT_PERSON` is `none` or `match:P-…`. */
-type SelfState = { matchConfirmed: boolean; matchRejected: boolean; askedOn: string | null }
-const self: SelfState = { matchConfirmed: false, matchRejected: false, askedOn: null }
+type SelfState = {
+  matchConfirmed: boolean
+  matchRejected: boolean
+  askedOn: string | null
+  /** The record linked through an invite link, which replaces `AGENT_PERSON`. */
+  invitedId: string | null
+}
+const self: SelfState = { matchConfirmed: false, matchRejected: false, askedOn: null, invitedId: null }
 const importedFiles = new Set<string>()
 const previews = new Map<string, ImportPreview>()
 const closedCampaigns = new Set<string>()
@@ -139,6 +147,7 @@ function viewerName(viewer: PeopleViewer) {
 
 /** The person the agent user is in My area: `AGENT_PERSON` without its `match:` prefix. */
 function viewerRecord(viewer: PeopleViewer) {
+  if (self.invitedId) return data().byId.get(self.invitedId) ?? null
   if (!viewer.personId || viewer.personId === "none") return null
   const id = viewer.personId.replace(/^match:/, "")
   return data().byId.get(id) ?? null
@@ -152,6 +161,14 @@ function linkedRecord(viewer: PeopleViewer) {
   if (self.matchRejected) return null
   if (viewer.personId?.startsWith("match:") && !self.matchConfirmed) return null
   return viewerRecord(viewer)
+}
+
+/**
+ * An invite link's token. Agent mode derives it from the record and the send date, so links survive a dev server
+ * restart (to switch `AGENT_PERSON`); the backend issues random tokens and stores them hashed.
+ */
+function inviteToken(personId: string, sentOn: string) {
+  return createHash("sha256").update(`people-invite:${personId}:${sentOn}`).digest("base64url")
 }
 
 /**
@@ -769,6 +786,10 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         sentBy: actor,
       }
       log(person, actor, `sent an invite to ${person.profile.personalEmail}`)
+      // Agent mode sends no email: the link goes to the dev server's console instead.
+      console.info(
+        `[agent mode] Invite link for ${person.id}: /dashboard/account/me?peopleInvite=${inviteToken(person.id, today())}`
+      )
     },
     revokeInvite: async (input) => {
       require(viewer, "people:write")
@@ -1009,13 +1030,18 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       self.matchRejected = true
       self.askedOn = today()
     },
-    acceptInvite: async () => {
+    acceptInvite: async (input) => {
       require(viewer, "people:self")
-      const me = viewerRecord(viewer)
-      if (!me || linkedRecord(viewer) || self.matchRejected || me.account.status !== "invite") {
-        throw new Error("Invitation expired or not addressed to this account.")
-      }
-      self.matchConfirmed = true
+      if (linkedRecord(viewer)) throw new Error("Your account is already linked to a record.")
+      // The token alone identifies the invited record: never the caller's own match.
+      const me = data().people.find(
+        (person) =>
+          person.account.status === "invite" &&
+          person.account.expiresOn >= today() &&
+          inviteToken(person.id, person.account.sentOn) === input.token
+      )
+      if (me?.account.status !== "invite") throw new Error("This invitation has expired or was revoked.")
+      Object.assign(self, { invitedId: me.id, matchConfirmed: true, matchRejected: false })
       me.account = {
         status: "linked",
         email: me.account.email,

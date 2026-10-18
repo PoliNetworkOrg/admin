@@ -257,6 +257,16 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       >
                         Use @{discrepancy.suggestedTelegram}
                       </LoadingButton>
+                    ) : discrepancy.kind === "declared-member" && canWriteMembers && member ? (
+                      // A former member is reactivated, not admitted again.
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={buttonMotion}
+                        onClick={() => memberDialog.show("status")}
+                      >
+                        Change status
+                      </Button>
                     ) : discrepancy.kind === "declared-member" && canWriteMembers ? (
                       <Button
                         size="sm"
