@@ -160,7 +160,8 @@ export function ServiceDot({
 
 /** The 64px service rail. One tab stop; ↑/↓, Home and End move between items. */
 export function Rail({ match, serviceHref, onOpenPalette, user, pending, className }: RailProps) {
-  const panelServices = useVisibleServices().filter(isRailService)
+  const visibleServices = useVisibleServices()
+  const panelServices = visibleServices.filter(isRailService)
   const hasAdminAccess = useHasAdminAccess()
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
@@ -169,7 +170,7 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
 
   const activeId = serviceFor(match).id
   const overview = serviceById("overview")
-  const account = serviceById("account")
+  const account = visibleServices.find((service) => service.id === "account") ?? serviceById("account")
 
   // Item order: logo (Overview), search, services…, theme, account.
   const serviceStart = 2
