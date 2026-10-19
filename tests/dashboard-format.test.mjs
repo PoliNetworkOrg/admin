@@ -3,7 +3,7 @@ import test from "node:test"
 
 import { formatDate, formatDateTime, formatRange } from "../src/lib/format.ts"
 
-test("dashboard timestamps remain identical across server and browser timezones", () => {
+void test("dashboard timestamps remain identical across server and browser timezones", () => {
   const originalTimezone = process.env.TZ
   try {
     for (const timezone of ["UTC", "America/Los_Angeles", "Asia/Tokyo"]) {
@@ -22,7 +22,7 @@ test("dashboard timestamps remain identical across server and browser timezones"
   }
 })
 
-test("calendar inputs display the selected local day across timezones", () => {
+void test("calendar inputs display the selected local day across timezones", () => {
   const originalTimezone = process.env.TZ
   try {
     for (const timezone of ["UTC", "Europe/Rome", "America/Los_Angeles", "Asia/Tokyo", "Pacific/Auckland"]) {
