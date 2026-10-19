@@ -44,26 +44,27 @@ signed ID tokens, checks private-key assertions, PKCE, nonce, signature failure,
 refresh and revocation. It requires no production credentials. The optional compiled HTTP tests are documented in
 [`docs/idp-phase4c-handoff.md`](docs/idp-phase4c-handoff.md).
 
-## Freshman content preview
+## Freshman content
 
-Web › Freshman contains Resources, Telegram Hub, FAQs and Guide tabs. The Guide tab reuses the existing backend-backed
-PDF edition management; it loads editions only when selected. The former `/dashboard/web/guides` URL redirects to
-`/dashboard/web/freshman?tab=guide`. The selected tab is kept in the URL, including across reloads and browser history.
+Web › Freshman contains Resources, Telegram Hub, FAQs and Guide tabs. Resources and Telegram Hub read the
+fixed website slots through `web.freshman.getContent`; FAQs select five questions from the existing FAQ catalog.
+Edits and adjacent moves use authenticated server functions with `web:content:write`, forwarding the signed-in
+user's token through the existing BFF. After mutations the dashboard reloads its loaders before closing dialogs.
+A reload failure after a successful write reports that the change was saved, without offering to repeat it.
+There is no browser storage, demo catalog or local restore action.
 
-Web › Freshman manages the fixed slots on `/matricole`: 10 resources, 8 Telegram links and 5 featured FAQs.
-The Resources, Telegram Hub and FAQs tabs use a browser-only mock API and save demo edits in local storage; they
-do not update the public site or call backend mutation endpoints. Edit controls require `web:content:write`. Page titles and introductory text stay
-fixed. Cards can be reordered within their section without changing slot counts. FAQs are selected from a demo catalog; choosing an already featured question swaps its position.
+The Guide tab keeps the existing PDF edition management and loads editions only when selected. The former
+`/dashboard/web/guides` URL redirects to `/dashboard/web/freshman?tab=guide`. The selected tab stays in the URL;
+the full FAQ catalog loads only on the FAQs tab. Page titles, introductory text and slot counts remain fixed.
 
-The demo catalog has eight questions for the five fixed FAQ positions. The picker supports text search; icon selection
-uses the same keyboard radio-grid interaction as FAQ categories. Invalid saved demo data offers an explicit,
-confirmed restore of Freshman content only; unrelated browser data is preserved. Unavailable browser storage is
-reported separately, and failed saves/restores stay visible as errors.
+### Pending backend package release
 
-The adapter is in `src/features/freshman/freshman.api.ts`, with initial site content in `freshman.data.ts`, validation in
-`freshman.validation.ts`, and separate card/FAQ dialogs. Replace
-it with authenticated server functions and the existing FAQ catalog when backend support is available. Real
-mutations must enforce `web:content:write` on the server and follow the loader invalidation/security test conventions.
+The source integration targets the backend Freshman contract on `bia/freshmans` (migration
+`0022_freshman_content`). The currently pinned `@polinetwork/backend@1.4.0` does not yet export `web.freshman`.
+Once a version containing these procedures is published, update this dependency and `pnpm-lock.yaml`, then
+rerun `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Until that update, the normal typecheck is
+expected to report the missing Freshman contract. No declaration patches or type-error suppression directives are used.
+The running backend must also include the Freshman router and its migration before using this page.
 
 ## Production and cutover
 

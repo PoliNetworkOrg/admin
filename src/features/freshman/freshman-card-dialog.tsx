@@ -1,3 +1,4 @@
+import { useServerFn } from "@tanstack/react-start"
 import { useId, useState } from "react"
 
 import { fieldControl, fieldHintId, FormDialog, FormField } from "@/components/primitives"
@@ -5,21 +6,24 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 import { FreshmanIconPicker } from "./freshman-icon"
-import { freshmanApi } from "./freshman.api"
-import { freshmanCardInput } from "./freshman.validation"
-import type { FreshmanCard, FreshmanCardInput, FreshmanCardErrors, FreshmanContent } from "./types"
+import { updateFreshmanCard } from "./freshman.functions"
+import { updateFreshmanCardInput } from "./freshman.validation"
+import type { FreshmanCard, FreshmanCardInput, FreshmanCardErrors } from "./types"
 
 export function FreshmanCardDialog({
   card,
   section,
+  open,
   onClose,
   onSaved,
 }: {
   card: FreshmanCard
+  open: boolean
   section: "resources" | "telegram"
   onClose: () => void
-  onSaved: (content: FreshmanContent) => void
+  onSaved: () => Promise<void>
 }) {
+  const updateFreshmanCardFn = useServerFn(updateFreshmanCard)
   const fieldPrefix = useId()
   const initial: FreshmanCardInput = {
     title: card.title,
@@ -36,7 +40,7 @@ export function FreshmanCardDialog({
     values.icon !== initial.icon
 
   async function submit() {
-    const parsed = freshmanCardInput.safeParse(values)
+    const parsed = updateFreshmanCardInput.safeParse({ id: card.id, ...values })
     const nextErrors: FreshmanCardErrors = {}
     if (!parsed.success)
       for (const issue of parsed.error.issues) {
@@ -44,27 +48,27 @@ export function FreshmanCardDialog({
         if (field === "title" || field === "description" || field === "href" || field === "icon")
           nextErrors[field] = issue.message
       }
-    if (section === "telegram" && !values.href.trim()) nextErrors.href = "Enter a group link."
     setErrors(nextErrors)
-    if (!parsed.success || Object.keys(nextErrors).length) {
+    if (!parsed.success) {
       const firstInvalid = Object.keys(nextErrors)[0]
       if (firstInvalid) document.getElementById(`${fieldPrefix}-${firstInvalid}`)?.focus()
       return
     }
-    onSaved(await freshmanApi.updateCard(section, card.id, parsed.data))
+    await updateFreshmanCardFn({ data: parsed.data })
+    await onSaved()
   }
 
   return (
     <FormDialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open) onClose()
       }}
       title={`Edit ${card.title}`}
-      description="Update this fixed position in the demo page."
+      description="Update this fixed position on the freshman page."
       noun="card"
       dirty={dirty}
-      submitLabel="Save demo changes"
+      submitLabel="Save changes"
       canSubmit={dirty}
       onSubmit={submit}
     >

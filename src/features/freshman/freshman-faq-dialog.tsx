@@ -1,3 +1,4 @@
+import { useServerFn } from "@tanstack/react-start"
 import { useId, useState } from "react"
 
 import {
@@ -11,62 +12,68 @@ import {
   FormField,
 } from "@/components/primitives"
 
-import { freshmanApi } from "./freshman.api"
-import { freshmanFaqCatalog } from "./freshman.data"
-import type { FreshmanContent } from "./types"
+import { selectFreshmanFaq } from "./freshman.functions"
+import type { FreshmanFaq } from "./types"
 
 export function FreshmanFaqDialog({
   index,
+  open,
+  catalog,
   initialId,
   onClose,
   onSaved,
 }: {
   index: number
-  initialId: string
+  open: boolean
+  catalog: FreshmanFaq[]
+  initialId: number
   onClose: () => void
-  onSaved: (content: FreshmanContent) => void
+  onSaved: () => Promise<void>
 }) {
+  const selectFreshmanFaqFn = useServerFn(selectFreshmanFaq)
   const inputId = useId()
-  const [selected, setSelected] = useState(() => freshmanFaqCatalog.find((faq) => faq.id === initialId) ?? null)
+  const [selected, setSelected] = useState(() => catalog.find((faq) => faq.faqId === initialId) ?? null)
   return (
     <FormDialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open) onClose()
       }}
       title={`FAQ position ${index + 1}`}
-      description="Choose a question from the demo catalog. Selecting a featured question swaps its position."
+      description="Choose a question from the FAQ catalog. Selecting a featured question swaps its position."
       noun="FAQ selection"
-      dirty={selected?.id !== initialId}
-      submitLabel="Save demo changes"
-      canSubmit={selected !== null && selected.id !== initialId}
+      dirty={selected !== null && selected.faqId !== initialId}
+      submitLabel="Save selection"
+      canSubmit={selected !== null && selected.faqId !== initialId}
       submitOnEnter={false}
       onSubmit={async () => {
-        if (selected) onSaved(await freshmanApi.selectFaq(index, selected.id))
+        if (!selected) return
+        await selectFreshmanFaqFn({ data: { position: index, faqId: selected.faqId } })
+        await onSaved()
       }}
     >
       <FormField label="Question" htmlFor={inputId}>
         <Combobox
-          items={freshmanFaqCatalog}
+          items={catalog}
           value={selected}
           onValueChange={setSelected}
-          itemToStringLabel={(faq) => faq.question}
-          itemToStringValue={(faq) => faq.id}
+          itemToStringLabel={(faq) => faq.titleIt}
+          itemToStringValue={(faq) => String(faq.faqId)}
         >
           <ComboboxInput id={inputId} listLabel="questions" placeholder="Search questions…" />
           <ComboboxContent>
             <ComboboxEmpty>No questions match.</ComboboxEmpty>
             <ComboboxList>
-              {(faq: (typeof freshmanFaqCatalog)[number]) => (
-                <ComboboxItem key={faq.id} value={faq}>
-                  {faq.question}
+              {(faq: FreshmanFaq) => (
+                <ComboboxItem key={faq.faqId} value={faq}>
+                  {faq.titleIt}
                 </ComboboxItem>
               )}
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
       </FormField>
-      {selected && <p className="text-[13px] text-(--pn-fg-muted)">{selected.answer}</p>}
+      {selected && <p className="text-[13px] text-(--pn-fg-muted)">{selected.descriptionIt}</p>}
     </FormDialog>
   )
 }

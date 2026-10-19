@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 import { FRESHMAN_ICON_NAMES } from "./freshman.constants.ts"
-import { freshmanFaqCatalog, initialFreshman } from "./freshman.data.ts"
 
 const destination = z
   .string()
@@ -24,27 +23,28 @@ export const freshmanCardInput = z.object({
   href: destination,
 })
 
-export const freshmanCard = freshmanCardInput.extend({ id: z.string(), group: z.string() })
+const freshmanSlotId = z
+  .string()
+  .regex(/^(?:featured-[12]|guides-[1-5]|materials-1|tools-[12]|telegram-[1-8])$/, "Unknown website slot.")
 
-export const freshmanContentInput = z
+export const updateFreshmanCardInput = freshmanCardInput
+  .extend({ id: freshmanSlotId })
+  .strict()
+  .superRefine((input, ctx) => {
+    if (input.id.startsWith("telegram-") && !input.href)
+      ctx.addIssue({ code: "custom", path: ["href"], message: "Enter a group link." })
+  })
+
+export const moveFreshmanCardInput = z
   .object({
-    resources: z.array(freshmanCard).length(10),
-    telegram: z.array(freshmanCard).length(8),
-    faqIds: z.array(z.string()).length(5),
+    id: freshmanSlotId,
+    direction: z.union([z.literal(-1), z.literal(1)]),
   })
-  .superRefine((content, ctx) => {
-    for (const section of ["resources", "telegram"] as const) {
-      content[section].forEach((item, index) => {
-        const slot = initialFreshman[section][index]
-        if (!slot || item.id !== slot.id || item.group !== slot.group) {
-          ctx.addIssue({ code: "custom", path: [section, index], message: "The website slots are fixed." })
-        }
-      })
-    }
-    if (
-      new Set(content.faqIds).size !== 5 ||
-      content.faqIds.some((id) => !freshmanFaqCatalog.some((faq) => faq.id === id))
-    ) {
-      ctx.addIssue({ code: "custom", path: ["faqIds"], message: "Choose five different FAQs from the catalog." })
-    }
+  .strict()
+
+export const selectFreshmanFaqInput = z
+  .object({
+    position: z.number().int().min(0).max(4),
+    faqId: z.number().int().positive(),
   })
+  .strict()
