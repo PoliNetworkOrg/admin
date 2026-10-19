@@ -1,98 +1,27 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  Bell,
-  BookOpen,
-  ChartNoAxesColumn,
-  Folder,
-  Home,
-  Map,
-  Monitor,
-  Pencil,
-  Radio,
-  RefreshCw,
-  Repeat,
-  ShoppingCart,
-  DollarSign,
-  UserCheck,
-  Users,
-} from "lucide-react"
-import { useEffect, useState } from "react"
+import { Pencil } from "lucide-react"
+import { type ReactNode, useEffect, useState } from "react"
 
-import {
-  fieldControl,
-  fieldHintId,
-  FormDialog,
-  FormField,
-  IconButton,
-  InlineAlert,
-  SectionCard,
-  SegmentedControl,
-  TableSkeleton,
-} from "@/components/primitives"
-import { appToast, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { ConfirmDialog, IconButton, InlineAlert, SectionCard, TableSkeleton } from "@/components/primitives"
+import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { GuidesPage } from "@/features/guides/guides-page"
-import type { Guide } from "@/features/guides/types"
 
-import {
-  freshmanApi,
-  freshmanCardInput,
-  freshmanIconInput,
-  type FreshmanCard,
-  type FreshmanCardInput,
-  type FreshmanContent,
-} from "./freshman.api"
+import { FreshmanCardRow } from "./freshman-card"
+import { FreshmanCardDialog } from "./freshman-card-dialog"
+import { FreshmanFaqDialog } from "./freshman-faq-dialog"
+import { freshmanApi, FreshmanDemoDataError } from "./freshman.api"
+import { FRESHMAN_RESOURCE_GROUPS, type FreshmanTab } from "./freshman.constants"
 import { freshmanFaqCatalog } from "./freshman.data"
+import type { FreshmanCard, FreshmanContent, FreshmanCardSection } from "./types"
 
-const icons = {
-  chart: ChartNoAxesColumn,
-  monitor: Monitor,
-  book: BookOpen,
-  map: Map,
-  news: Radio,
-  money: DollarSign,
-  folder: Folder,
-  repeat: Repeat,
-  refresh: RefreshCw,
-  bell: Bell,
-  user: UserCheck,
-  users: Users,
-  cart: ShoppingCart,
-  home: Home,
-}
-const groups = [
-  { id: "featured", title: "In evidenza" },
-  { id: "guides", title: "Guide e Utility" },
-  { id: "materials", title: "Materiali" },
-  { id: "tools", title: "Tech Tools" },
-]
-const tabs = [
-  { value: "resources", label: "Resources" },
-  { value: "telegram", label: "Telegram Hub" },
-  { value: "faqs", label: "FAQs" },
-  { value: "guide", label: "Guide" },
-] as const
-
-export type FreshmanTab = (typeof tabs)[number]["value"]
 type Editing =
   | { section: "resources" | "telegram"; card: FreshmanCard }
   | { section: "faqs"; index: number; faqId: string }
 
-export function FreshmanPage({
-  tab,
-  onTabChange,
-  guides,
-}: {
-  tab: FreshmanTab
-  onTabChange: (tab: FreshmanTab) => void
-  guides: Guide[] | null
-}) {
+export function FreshmanPage({ tab, navigation }: { tab: Exclude<FreshmanTab, "guide">; navigation: ReactNode }) {
   const canWrite = useCan("web:content:write")
   const [content, setContent] = useState<FreshmanContent | null>(null)
-  const [loadError, setLoadError] = useState(false)
+  const [loadError, setLoadError] = useState<"corrupt" | "unavailable" | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [moving, setMoving] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -104,12 +33,12 @@ export function FreshmanPage({
       .then((result) => {
         if (!ignore) {
           setContent(result)
-          setLoadError(false)
+          setLoadError(null)
         }
       })
       .catch((error) => {
         console.error(error)
-        if (!ignore) setLoadError(true)
+        if (!ignore) setLoadError(error instanceof FreshmanDemoDataError ? "corrupt" : "unavailable")
       })
     return () => {
       ignore = true
@@ -122,7 +51,7 @@ export function FreshmanPage({
     appToast.success("Demo changes saved in this browser.")
   }
 
-  async function move(section: "resources" | "telegram", id: string, direction: -1 | 1) {
+  async function move(section: FreshmanCardSection, id: string, direction: -1 | 1) {
     setMoving(true)
     try {
       setContent(await freshmanApi.moveCard(section, id, direction))
@@ -135,53 +64,20 @@ export function FreshmanPage({
     }
   }
 
-  function cardRows(section: "resources" | "telegram", cards: FreshmanCard[]) {
-    return cards.map((card, index) => {
-      const Icon = icons[card.icon]
-      return (
-        <div key={card.id} className="flex items-start gap-3 border-b border-(--pn-line) p-4 last:border-0">
-          <Icon aria-hidden className="mt-1 size-5 shrink-0 text-(--pn-fg-muted)" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-medium break-words text-(--pn-fg)">{card.title}</h3>
-            {card.description && <p className="mt-1 text-[13px] text-(--pn-fg-muted)">{card.description}</p>}
-            <p className="mt-1 break-all text-xs text-(--pn-fg-muted)">{card.href || "No destination set"}</p>
-          </div>
-          {canWrite && (
-            <div className="flex shrink-0 flex-wrap justify-end gap-0.5 max-shell:max-w-18">
-              <IconButton
-                label="Move up"
-                ariaLabel={`Move ${card.title} up`}
-                icon={ArrowUp}
-                disabled={moving || index === 0}
-                onClick={() => void move(section, card.id, -1)}
-              />
-              <IconButton
-                label="Move down"
-                ariaLabel={`Move ${card.title} down`}
-                icon={ArrowDown}
-                disabled={moving || index === cards.length - 1}
-                onClick={() => void move(section, card.id, 1)}
-              />
-              <IconButton
-                label="Edit"
-                ariaLabel={`Edit ${card.title}`}
-                icon={Pencil}
-                disabled={moving}
-                onClick={() => setEditing({ section, card })}
-              />
-            </div>
-          )}
-        </div>
-      )
-    })
+  function cardRows(section: FreshmanCardSection, cards: FreshmanCard[]) {
+    return cards.map((card, index) => (
+      <FreshmanCardRow
+        key={card.id}
+        card={card}
+        canWrite={canWrite}
+        pending={moving}
+        first={index === 0}
+        last={index === cards.length - 1}
+        onMove={(direction) => void move(section, card.id, direction)}
+        onEdit={() => setEditing({ section, card })}
+      />
+    ))
   }
-
-  const navigation = (
-    <Toolbar
-      lead={<SegmentedControl label="Freshman content" items={tabs} value={tab} onValueChange={onTabChange} />}
-    />
-  )
-  if (tab === "guide") return <GuidesPage guides={guides ?? []} navigation={navigation} />
 
   return (
     <>
@@ -193,21 +89,27 @@ export function FreshmanPage({
             items is fixed.
           </InlineAlert>
           {loadError ? (
-            <InlineAlert
-              action={
+            <InlineAlert>
+              {loadError === "corrupt"
+                ? "Saved demo content is invalid. Restore the initial demo content to start again."
+                : "Browser storage is unavailable. Allow site storage, then retry."}
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
                   Retry
                 </Button>
-              }
-            >
-              Demo content could not be loaded. Browser storage may be unavailable or contain invalid data.
+                {loadError === "corrupt" && canWrite && (
+                  <Button variant="outline" onClick={() => setResetOpen(true)}>
+                    Restore demo content
+                  </Button>
+                )}
+              </div>
             </InlineAlert>
           ) : !content ? (
             <TableSkeleton columns={3} rows={5} label="Loading freshman content…" />
           ) : (
             <>
               {tab === "resources" &&
-                groups.map((group) => (
+                FRESHMAN_RESOURCE_GROUPS.map((group) => (
                   <SectionCard key={group.id} title={group.title} padding="flush">
                     {cardRows(
                       "resources",
@@ -252,177 +154,39 @@ export function FreshmanPage({
           )}
         </div>
       </PageContent>
+      {canWrite && (
+        <ConfirmDialog
+          open={resetOpen}
+          onOpenChange={setResetOpen}
+          title="Restore demo content?"
+          description="Replace your locally saved Freshman demo edits with the initial content. Other browser data and the public website are unaffected."
+          confirmLabel="Restore demo content"
+          onConfirm={async () => {
+            const restored = await freshmanApi.resetContent()
+            setContent(restored)
+            setLoadError(null)
+            setEditing(null)
+            appToast.success("Demo content restored in this browser.")
+          }}
+        />
+      )}
       {editing &&
         canWrite &&
         (editing.section === "faqs" ? (
-          <FaqDialog index={editing.index} initialId={editing.faqId} onClose={() => setEditing(null)} onSaved={saved} />
+          <FreshmanFaqDialog
+            index={editing.index}
+            initialId={editing.faqId}
+            onClose={() => setEditing(null)}
+            onSaved={saved}
+          />
         ) : (
-          <CardDialog card={editing.card} section={editing.section} onClose={() => setEditing(null)} onSaved={saved} />
+          <FreshmanCardDialog
+            card={editing.card}
+            section={editing.section}
+            onClose={() => setEditing(null)}
+            onSaved={saved}
+          />
         ))}
     </>
-  )
-}
-
-function CardDialog({
-  card,
-  section,
-  onClose,
-  onSaved,
-}: {
-  card: FreshmanCard
-  section: "resources" | "telegram"
-  onClose: () => void
-  onSaved: (content: FreshmanContent) => void
-}) {
-  const initial: FreshmanCardInput = {
-    title: card.title,
-    description: card.description,
-    href: card.href,
-    icon: card.icon,
-  }
-  const [values, setValues] = useState(initial)
-  const [errors, setErrors] = useState<Partial<Record<keyof FreshmanCardInput, string>>>({})
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial)
-
-  async function submit() {
-    const parsed = freshmanCardInput.safeParse(values)
-    const nextErrors: Partial<Record<keyof FreshmanCardInput, string>> = {}
-    if (!parsed.success)
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0]
-        if (field === "title" || field === "description" || field === "href" || field === "icon")
-          nextErrors[field] = issue.message
-      }
-    if (section === "telegram" && !values.href.trim()) nextErrors.href = "Enter a group link."
-    setErrors(nextErrors)
-    if (!parsed.success || Object.keys(nextErrors).length) {
-      const firstInvalid = Object.keys(nextErrors)[0]
-      if (firstInvalid) document.getElementById(`freshman-${firstInvalid}`)?.focus()
-      return
-    }
-    onSaved(await freshmanApi.updateCard(section, card.id, parsed.data))
-  }
-
-  return (
-    <FormDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-      title={`Edit ${card.title}`}
-      description="Update this fixed position in the demo page."
-      noun="card"
-      dirty={dirty}
-      submitLabel="Save demo changes"
-      canSubmit={dirty}
-      onSubmit={submit}
-    >
-      <FormField label="Title" htmlFor="freshman-title" error={errors.title}>
-        <Input
-          id="freshman-title"
-          value={values.title}
-          maxLength={120}
-          aria-invalid={!!errors.title}
-          aria-describedby={fieldHintId("freshman-title")}
-          className={fieldControl}
-          onChange={(event) => setValues({ ...values, title: event.target.value })}
-        />
-      </FormField>
-      {section === "resources" && (
-        <FormField label="Description" htmlFor="freshman-description" optional error={errors.description}>
-          <Textarea
-            id="freshman-description"
-            value={values.description}
-            maxLength={1000}
-            aria-invalid={!!errors.description}
-            aria-describedby={fieldHintId("freshman-description")}
-            className={fieldControl}
-            onChange={(event) => setValues({ ...values, description: event.target.value })}
-          />
-        </FormField>
-      )}
-      <FormField
-        label="Destination"
-        htmlFor="freshman-href"
-        optional={section === "resources"}
-        error={errors.href}
-        hint="A site path such as /materials, or a full https:// URL. An empty resource has no link."
-      >
-        <Input
-          id="freshman-href"
-          value={values.href}
-          maxLength={2048}
-          aria-invalid={!!errors.href}
-          aria-describedby={fieldHintId("freshman-href")}
-          className={fieldControl}
-          onChange={(event) => setValues({ ...values, href: event.target.value })}
-        />
-      </FormField>
-      <fieldset>
-        <legend className="mb-2 text-[13px] font-medium">Icon</legend>
-        <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
-          {Object.entries(icons).map(([name, Icon]) => (
-            <IconButton
-              key={name}
-              label={name}
-              icon={Icon}
-              appearance="boxed"
-              aria-pressed={values.icon === name}
-              tone={values.icon === name ? "info" : "default"}
-              onClick={() => {
-                const selected = freshmanIconInput.parse(name)
-                setValues({ ...values, icon: selected })
-              }}
-            />
-          ))}
-        </div>
-      </fieldset>
-    </FormDialog>
-  )
-}
-
-function FaqDialog({
-  index,
-  initialId,
-  onClose,
-  onSaved,
-}: {
-  index: number
-  initialId: string
-  onClose: () => void
-  onSaved: (content: FreshmanContent) => void
-}) {
-  const [id, setId] = useState(initialId)
-  const selected = freshmanFaqCatalog.find((faq) => faq.id === id)!
-  return (
-    <FormDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-      title={`FAQ position ${index + 1}`}
-      description="Choose a question from the demo catalog. Questions and answers will come from the existing FAQ management when the API is connected."
-      noun="FAQ selection"
-      dirty={id !== initialId}
-      submitLabel="Save demo changes"
-      canSubmit={id !== initialId}
-      onSubmit={async () => onSaved(await freshmanApi.selectFaq(index, id))}
-    >
-      <FormField label="Question" htmlFor="freshman-faq">
-        <select
-          id="freshman-faq"
-          value={id}
-          onChange={(event) => setId(event.target.value)}
-          className={`${fieldControl} h-10 w-full rounded-md border px-3`}
-        >
-          {freshmanFaqCatalog.map((faq) => (
-            <option key={faq.id} value={faq.id}>
-              {faq.question}
-            </option>
-          ))}
-        </select>
-      </FormField>
-      <p className="text-[13px] text-(--pn-fg-muted)">{selected.answer}</p>
-    </FormDialog>
   )
 }

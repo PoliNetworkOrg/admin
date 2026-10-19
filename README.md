@@ -55,7 +55,13 @@ The Resources, Telegram Hub and FAQs tabs use a browser-only mock API and save d
 do not update the public site or call backend mutation endpoints. Edit controls require `web:content:write`. Page titles and introductory text stay
 fixed. Cards can be reordered within their section without changing slot counts. FAQs are selected from a demo catalog; choosing an already featured question swaps its position.
 
-The adapter is in `src/features/freshman/freshman.api.ts`, with initial site content in `freshman.data.ts`. Replace
+The demo catalog has eight questions for the five fixed FAQ positions. The picker supports text search; icon selection
+uses the same keyboard radio-grid interaction as FAQ categories. Invalid saved demo data offers an explicit,
+confirmed restore of Freshman content only; unrelated browser data is preserved. Unavailable browser storage is
+reported separately, and failed saves/restores stay visible as errors.
+
+The adapter is in `src/features/freshman/freshman.api.ts`, with initial site content in `freshman.data.ts`, validation in
+`freshman.validation.ts`, and separate card/FAQ dialogs. Replace
 it with authenticated server functions and the existing FAQ catalog when backend support is available. Real
 mutations must enforce `web:content:write` on the server and follow the loader invalidation/security test conventions.
 

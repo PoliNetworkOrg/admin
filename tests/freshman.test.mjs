@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { createFreshmanMockApi, freshmanContentInput } from "../src/features/freshman/freshman.api.ts"
+import { createFreshmanMockApi, FreshmanDemoDataError } from "../src/features/freshman/freshman.api.ts"
+import { freshmanContentInput } from "../src/features/freshman/freshman.validation.ts"
 
 function mockStorage() {
   const values = new Map()
@@ -102,4 +103,52 @@ void test("card reordering preserves fixed slots and cannot cross section bounda
   const telegram = await api.moveCard("telegram", before.telegram[0].id, 1)
   assert.equal(telegram.telegram[0].title, before.telegram[1].title)
   assert.equal(telegram.telegram.length, 8)
+})
+
+void test("a new catalog question replaces one slot while preserving five unique featured FAQs", async () => {
+  const api = createFreshmanMockApi(mockStorage())
+  const before = await api.getContent()
+  const after = await api.selectFaq(1, "faq-6")
+  assert.deepEqual(after.faqIds, [before.faqIds[0], "faq-6", ...before.faqIds.slice(2)])
+  assert.equal(new Set(after.faqIds).size, 5)
+  assert.deepEqual(after.resources, before.resources)
+  assert.deepEqual(after.telegram, before.telegram)
+  const reselected = await api.selectFaq(1, before.faqIds[1])
+  assert.deepEqual(reselected, before)
+})
+
+void test("invalid saved data can be explicitly restored without touching other browser storage", async () => {
+  for (const corrupt of ["not JSON", JSON.stringify({ resources: [] })]) {
+    let saved = corrupt
+    const otherData = new Map([["unrelated", "keep"]])
+    const storage = {
+      getItem: (key) => (otherData.has(key) ? otherData.get(key) : saved),
+      setItem: (key, value) => {
+        if (otherData.has(key)) otherData.set(key, value)
+        else saved = value
+      },
+    }
+    const api = createFreshmanMockApi(storage)
+    await assert.rejects(api.getContent(), FreshmanDemoDataError)
+    assert.equal(saved, corrupt, "reading invalid data must not silently erase edits")
+    const restored = await api.resetContent()
+    const initial = await createFreshmanMockApi(mockStorage()).getContent()
+    assert.deepEqual(restored, initial)
+    assert.deepEqual(await api.getContent(), initial)
+    assert.equal(storage.getItem("unrelated"), "keep")
+  }
+})
+
+void test("unavailable storage remains distinct from corrupt data and a failed restore rejects", async () => {
+  const error = new Error("Storage unavailable")
+  const api = createFreshmanMockApi({
+    getItem: () => {
+      throw error
+    },
+    setItem: () => {
+      throw error
+    },
+  })
+  await assert.rejects(api.getContent(), (caught) => caught === error && !(caught instanceof FreshmanDemoDataError))
+  await assert.rejects(api.resetContent(), /Storage unavailable/)
 })

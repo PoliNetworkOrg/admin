@@ -4,6 +4,8 @@ import { z } from "zod"
 import { TableSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { FreshmanPage } from "@/features/freshman/freshman-page"
+import { FreshmanTabs } from "@/features/freshman/freshman-tabs"
+import { GuidesPage } from "@/features/guides/guides-page"
 import { getGuides } from "@/features/guides/guides.functions"
 
 export const Route = createFileRoute("/dashboard/web/freshman")({
@@ -25,11 +27,12 @@ function FreshmanRoute() {
   const { tab } = Route.useSearch()
   const { guides } = Route.useLoaderData()
   const navigate = Route.useNavigate()
-  return (
-    <FreshmanPage
+  const navigation = (
+    <FreshmanTabs
       tab={tab ?? "resources"}
-      guides={guides}
       onTabChange={(next) => void navigate({ search: { tab: next === "resources" ? undefined : next } })}
     />
   )
+  if (tab === "guide") return <GuidesPage guides={guides ?? []} navigation={navigation} />
+  return <FreshmanPage tab={tab ?? "resources"} navigation={navigation} />
 }

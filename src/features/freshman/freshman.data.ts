@@ -183,4 +183,23 @@ export const freshmanFaqCatalog = [
     answer:
       "Puoi contattare PoliNetwork tramite i nostri canali Telegram o attraverso il sito ufficiale. Siamo un'associazione studentesca e offriamo supporto, risorse e una community per tutti gli studenti del Politecnico.",
   },
+  // Extra demo questions exercise selection outside the five featured positions.
+  {
+    id: "faq-6",
+    question: "Dove posso trovare i gruppi del mio corso?",
+    answer:
+      "Nella sezione Gruppi del sito puoi cercare i gruppi della community dedicati ai corsi. Questa risposta è un esempio del catalogo demo.",
+  },
+  {
+    id: "faq-7",
+    question: "Dove trovo la guida della matricola aggiornata?",
+    answer:
+      "La pagina Guida della Matricola permette di consultare e scaricare il PDF. Questa risposta è un esempio del catalogo demo.",
+  },
+  {
+    id: "faq-8",
+    question: "Come posso contribuire a PoliNetwork?",
+    answer:
+      "Puoi partire dalla pagina Unisciti a noi e scoprire le attività dell’associazione. Questa risposta è un esempio del catalogo demo.",
+  },
 ]
