@@ -71,7 +71,7 @@ export type PageMatch =
   | { kind: "m365-members" }
   | { kind: "web-projects" }
   | { kind: "web-associations" }
-  | { kind: "web-guides" }
+  | { kind: "web-freshman" }
   | { kind: "web-faqs" }
   | { kind: "web-labels" }
   | { kind: "web-categories" }
@@ -197,13 +197,7 @@ const web: Service = {
       path: "/dashboard/web/associations",
       searchPlaceholder: "Search associations…",
     },
-    {
-      id: "guides",
-      title: "Freshman guide",
-      icon: BookOpen,
-      path: "/dashboard/web/guides",
-      searchPlaceholder: "Search by version…",
-    },
+    { id: "freshman", title: "Freshman", icon: BookOpen, path: "/dashboard/web/freshman" },
     {
       id: "faqs",
       title: "FAQs",
@@ -306,7 +300,8 @@ export function matchPath(pathname: string): PageMatch {
     if (third === undefined) {
       if (second === "projects") return { kind: "web-projects" }
       if (second === "associations") return { kind: "web-associations" }
-      if (second === "guides") return { kind: "web-guides" }
+      if (second === "freshman") return { kind: "web-freshman" }
+      if (second === "guides") return { kind: "web-freshman" }
       if (second === "faqs") return { kind: "web-faqs" }
       if (second === "group-labels") return { kind: "web-labels" }
       if (second === "groups-by-label") return { kind: "web-categories" }
@@ -341,7 +336,7 @@ export function serviceFor(match: PageMatch): Service {
       return m365
     case "web-projects":
     case "web-associations":
-    case "web-guides":
+    case "web-freshman":
     case "web-faqs":
     case "web-labels":
     case "web-categories":
@@ -378,8 +373,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(web, "projects")
     case "web-associations":
       return section(web, "associations")
-    case "web-guides":
-      return section(web, "guides")
+    case "web-freshman":
+      return section(web, "freshman")
     case "web-faqs":
       return section(web, "faqs")
     case "web-labels":

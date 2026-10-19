@@ -245,6 +245,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/groups-by-label/add-group-to-label-dialog.tsx": "wa:groups:manage",
     "src/features/group-link-reports/reports-page.tsx": "web:reports:manage",
     "src/features/guides/guides-page.tsx": "web:content:write",
+    "src/features/freshman/freshman-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
   }
   const directory = new URL("../src", import.meta.url).pathname

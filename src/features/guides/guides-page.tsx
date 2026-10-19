@@ -2,7 +2,7 @@ import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { parseISO } from "date-fns"
 import { BookOpen, Download, FileText, Plus, Trash2 } from "lucide-react"
-import { useDeferredValue, useState } from "react"
+import { type ReactNode, useDeferredValue, useState } from "react"
 
 import {
   buttonMotion,
@@ -31,7 +31,7 @@ function nextVersion(version: string | undefined) {
 }
 
 /** Freshman guide: the PDF editions, newest first. */
-export function GuidesPage({ guides }: { guides: Guide[] }) {
+export function GuidesPage({ guides, navigation }: { guides: Guide[]; navigation?: ReactNode }) {
   const router = useRouter()
   const deleteGuideFn = useServerFn(deleteGuide)
   const canWrite = useCan("web:content:write")
@@ -112,6 +112,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
       <PageBar
         width="tree"
         description="PDF editions of the Guida della Matricola"
+        left={navigation}
         right={canWrite ? publishButton("default") : undefined}
       />
       <PageContent width="tree">
@@ -154,7 +155,7 @@ export function GuidesPage({ guides }: { guides: Guide[] }) {
               <span className="font-mono text-xs font-normal text-(--pn-fg-muted) tabular-nums">{guides.length}</span>
             </h2>
             <div className="flex flex-[0_1_300px] items-center gap-3 max-shell:basis-full">
-              <SearchField value={query} onChange={setQuery} className="flex-1" />
+              <SearchField value={query} onChange={setQuery} placeholder="Search by version…" className="flex-1" />
               {deferredQuery ? <Count value={rows.length} total={guides.length} noun="edition" /> : null}
             </div>
           </div>

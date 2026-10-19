@@ -44,6 +44,21 @@ signed ID tokens, checks private-key assertions, PKCE, nonce, signature failure,
 refresh and revocation. It requires no production credentials. The optional compiled HTTP tests are documented in
 [`docs/idp-phase4c-handoff.md`](docs/idp-phase4c-handoff.md).
 
+## Freshman content preview
+
+Web › Freshman contains Resources, Telegram Hub, FAQs and Guide tabs. The Guide tab reuses the existing backend-backed
+PDF edition management; it loads editions only when selected. The former `/dashboard/web/guides` URL redirects to
+`/dashboard/web/freshman?tab=guide`. The selected tab is kept in the URL, including across reloads and browser history.
+
+Web › Freshman manages the fixed slots on `/matricole`: 10 resources, 8 Telegram links and 5 featured FAQs.
+The Resources, Telegram Hub and FAQs tabs use a browser-only mock API and save demo edits in local storage; they
+do not update the public site or call backend mutation endpoints. Edit controls require `web:content:write`. Page titles and introductory text stay
+fixed. Cards can be reordered within their section without changing slot counts. FAQs are selected from a demo catalog; choosing an already featured question swaps its position.
+
+The adapter is in `src/features/freshman/freshman.api.ts`, with initial site content in `freshman.data.ts`. Replace
+it with authenticated server functions and the existing FAQ catalog when backend support is available. Real
+mutations must enforce `web:content:write` on the server and follow the loader invalidation/security test conventions.
+
 ## Production and cutover
 
 `pnpm build` writes `.output/`; `pnpm start` runs it. Main-branch CI publishes `ghcr.io/polinetworkorg/admin:latest`.
