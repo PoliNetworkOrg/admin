@@ -84,16 +84,16 @@ drawn with `ServiceGlyph`: its `logo` when it has one, else its monochrome `icon
 | Page    | Overview and Account pass their own `title` to `PageBar`                                         |
 
 **Rail** (64px, from 760px). One tab stop with roving focus (`↑/↓`, `Home/End`). The PoliNetwork logo is the link to
-Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the five
+Overview and uses the same active fill and 3px left indicator as every service; then Search (opens the palette), a divider and the six
 services (logos for Telegram, WhatsApp and Microsoft 365). The active service has a muted fill and a 3px accent bar on the rail's edge. Reports shows
-an accent dot while there are open reports. A service opens the last section visited in that service this session,
+an accent dot while there are open reports, Signatures while documents wait for the user's signature. A service opens the last section visited in that service this session,
 else its first. Theme toggle and the account avatar (the same active fill and indicator while Account is open) sit at the bottom; sign out lives on
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
 Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
-and accent icon without the bar (`data-ancestor`). The only count is the open reports next to Reports › Open, as a
+and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
 small accent pill.
 
 From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
@@ -101,7 +101,8 @@ content in place. Between 760px and 1439px, the content follows the panel as it 
 
 **Page header.** Scrolls with the page (the page, not the document, scrolls: the column below the top bar is the
 scroll container). `h1` 24px (22px on mobile) with the context line in 14px muted, actions on the right at 40px; below
-760px the actions take the full width under the title. The toolbar row follows 20px below. `/` focuses the page
+760px the actions take the full width under the title. The toolbar row follows 20px below. Below 760px the search takes its own row and a segmented filter fills the rest of the row it shares (scrolling
+sideways when its options don't fit) and the `Count` takes its own row under them; the `/` hint is hidden. `/` focuses the page
 search from anywhere; `Esc` clears it. A service with a single section (WhatsApp) shows its icon in a 44px tile next to
 the `h1`.
 
@@ -113,7 +114,8 @@ the `h1`.
 
 **Small screens** (below 760px). Rail and panel leave the layout. A 56px top bar holds the logo (Overview), the
 service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and the avatar; the service's sections follow
-as horizontally scrolling pills that scroll away with the page; a 64px bottom nav lists the five services (current one
+as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
+font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the six services (current one
 accent with a top bar, Reports with the open-reports dot). Section pills and bottom nav are the only navigation; there
 is no sheet.
 
@@ -142,7 +144,9 @@ does not move when data arrives.
 **List.** A `DataTable` with search and filters in the toolbar. One row height (52px), no dense mode. Columns declare a
 priority; from 760px the lowest hide first when the table surface narrows, never the first or the actions column.
 Below 760px every row is a stacked card: the first column on its own line, the others inline as 12px meta
-(`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. Give columns
+(`mobile: "full"` gives a column its own line, `"hidden"` drops it), the actions on their own line. An unset value
+(`Unset`) is left out of the card rather than shown as a lone dash (an unset `text` line collapses but still ends the line above it, so the meta never climbs up beside the name), and copyable values keep a 36px touch target
+without making their line taller. Give columns
 whose content length varies a `width` (the table switches to fixed layout and the title column takes the rest), so
 nothing jumps across search, filters and paging. Pagination shows in the table footer once rows exceed the smallest page
 size (20; options 20/50/100). The page resets to page 1 itself when search, filters or sort change (`DataTable`
@@ -174,8 +178,9 @@ further apart, without a red border.
 **Overview.** A 52px search that opens the command palette; a hero card with the Telegram users total, its growth over
 the selected range and a TanStack Charts line (3M per day, 1Y per week, All per month; one 2px accent line, a light
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
-reports and Active grants as links on its right (a row under it on mobile); then "Areas": one card per service whose
-whole surface leads where the rail icon does, with each section as a 44px button.
+reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline, labelled "Groups" rather than "Telegram groups", and without the "To
+review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
+as a 44px button (two per row on mobile).
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
@@ -291,7 +296,7 @@ warning sign unless the action has its own icon). Footer right-aligned, buttons 
 full width, rounded top, sliding up above the navigation, with a scrolling body and a visible footer. Microsoft 365
 member pickers use the same 18px title, then radio, avatar and name with a monospace email below; names and emails
 wrap independently. Grant dialogs put Change user in the selected-user card, full-width filled date controls on mobile,
-duration shortcuts on their own row, and an always-visible "Optional · n/500" hint under the reason. `Enter` submits single-line fields,
+duration shortcuts on their own row, and an always-visible "Optional, n/500" hint under the reason. `Enter` submits single-line fields,
 `⌘/Ctrl+Enter` textareas. On error an `InlineAlert` appears above the footer and the dialog stays open. On success a
 toast fires and the dialog closes: `ConfirmDialog` closes itself, `FormDialog` doesn't, so call `onOpenChange(false)`
 after the mutation, and keep the dialog's record in state after closing so its content survives the exit animation. A
@@ -301,7 +306,7 @@ only.
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
 and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
-include/exclude tree open at a time, and a "Clear label filters · n groups" footer. On mobile the filter uses a
+include/exclude tree open at a time, and a "Clear label filters" button. On mobile the filter uses a
 bottom-sheet dialog with focus trapping and a reachable footer.
 
 **Inline editing** (`InlineEditCard`, `InlineEditRow`, `useEditSlot`), used by Projects, Associations, FAQs and Labels:
@@ -376,7 +381,7 @@ the theme reveal and the skeleton pulse switch off.
   view is a subset ("No open reports", "Nothing needs attention"); one sentence on what will appear and how, or how to
   widen the filter. Action: the page's create action as `outline` (the header primary stays), or a `ghost` "Clear
   search"/"Clear filters".
-- **Counts** (`Count`, `Intl.PluralRules`): "{n} {noun}" or "{n} of {total} {noun}", joined with " · ", never "results".
+- **Counts** (`Count`, `Intl.PluralRules`): "{n} {noun}" or "{n} of {total} {noun}", joined with ", ", never "results".
   The page header's context line carries the list's total, so the toolbar `Count` appears only while search or a
   filter narrows the list ("12 of 680 groups"). Segmented filters show a bare total per option over the whole list. Next to such a filter the toolbar `Count` appears
   only while search or another filter narrows the list further.
@@ -413,12 +418,12 @@ Rules that the templates above don't imply.
 - **Projects**: one column at every width, because card order is the order on the website; the whole card drags to
   reorder (pointer after 5px, so its buttons and links still click; touch after a 250ms press; keyboard with
   Space/Enter on the focused card). A grip marks the card's left edge from 760px and its border takes the hover line.
-  A failed reorder reverts. Mobile project links wrap. Segments replace `Count`.
+  A failed reorder reverts. Project links truncate at every width (the hint shows the full URL). Segments replace `Count`.
 - **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
   with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
   own dialog, not inline.
-- **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px) ending in a
-  dashed "Add category"; the selected category's header holds its edit and delete actions and the question search.
+- **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px, running to
+  the screen edges on phones) ending in a dashed "Add category"; on phones questions wrap up to three lines; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All
   editions" table. Mobile editions remain compact single rows: version, date, PDF and delete.
 - **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their
@@ -433,5 +438,20 @@ Rules that the templates above don't imply.
   oldest-first, Closed newest-first. Closed columns are Reference, Status, Issue, Details, Date; mobile status and issue sit at the
   top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
+- **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
+  signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
+  Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. A person appears once
+  however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
+  menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
+  With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
+  is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
+  document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
+  to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
+  line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
+  not sign the documents of the chosen drives are left out of the list, with a line saying why. The signer picker
+  lists people only once a search is typed, each with the email under the name; the viewer carries a blue "You" chip
+  here and in signer lists.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.

@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { RouteNotFound } from "@/components/route-error"
 import { DashboardShell, documentTitle, matchPath } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
+import { getEsignPendingCount } from "@/features/esign/esign.functions"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
@@ -20,18 +21,30 @@ export const Route = createFileRoute("/dashboard")({
   // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same
   // permission as managing them.
   loader: ({ context }) => ({
-    pendingReports: hasPermission(context.permissions, "web:reports:manage")
-      ? getPendingGroupLinkReports().then(
-          (reports) => reports.length,
-          (error) => {
-            console.error(error)
-            return null
-          }
-        )
-      : Promise.resolve(null),
+    pending: {
+      reports: hasPermission(context.permissions, "web:reports:manage")
+        ? getPendingGroupLinkReports().then(
+            (reports) => reports.length,
+            (error) => {
+              console.error(error)
+              return null
+            }
+          )
+        : Promise.resolve(null),
+      // Documents waiting for the user's signature: a dot on Signatures and a count on To sign.
+      signatures: hasPermission(context.permissions, "esign:sign")
+        ? getEsignPendingCount().then(
+            (count) => count,
+            (error) => {
+              console.error(error)
+              return null
+            }
+          )
+        : Promise.resolve(null),
+    },
   }),
   staleTime: 60_000,
-  // One title for every dashboard page, from the deepest match: "{Section} · {Service} · PoliNetwork Admin".
+  // One title for every dashboard page, from the deepest match: "{Section} - {Service} - PoliNetwork Admin".
   head: ({ matches }) => ({ meta: [{ title: documentTitle(matchPath(matches.at(-1)?.pathname ?? "/dashboard")) }] }),
   // Unknown `/dashboard/…` URLs render in the shell's content column; a failure in this route's own `beforeLoad` or
   // loader has no shell yet, so the same component centres itself on the page.
@@ -41,6 +54,6 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   const { user } = Route.useRouteContext()
-  const { pendingReports } = Route.useLoaderData()
-  return <DashboardShell user={user} pendingReports={pendingReports} />
+  const { pending } = Route.useLoaderData()
+  return <DashboardShell user={user} pending={pending} />
 }

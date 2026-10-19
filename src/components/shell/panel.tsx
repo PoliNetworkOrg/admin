@@ -1,9 +1,18 @@
 import { Link } from "@tanstack/react-router"
-import { type KeyboardEvent, Suspense, use, useDeferredValue } from "react"
+import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, useRef } from "react"
 
 import { cn } from "@/lib/utils"
 
-import { type PageMatch, type Section, type Service, isDeepPage, sectionFor } from "./nav"
+import {
+  type PageMatch,
+  type PendingCounts,
+  type Section,
+  type Service,
+  isDeepPage,
+  sectionFor,
+  sectionPending,
+} from "./nav"
+import { observeSectionScroll } from "./section-scroll"
 import { ServiceGlyph } from "./service-glyph"
 
 const itemClass =
@@ -45,7 +54,7 @@ export type SectionItemsProps = {
   service: Service
   match: PageMatch
   /** Streams in from the `/dashboard` loader; resolves to null when the reports couldn't be loaded. */
-  pendingReports: Promise<number | null>
+  pending: PendingCounts
   /** `panel` for the desktop list, `pills` for the horizontally scrolling row under the mobile top bar. */
   variant?: "panel" | "pills"
 }
@@ -56,7 +65,7 @@ const pillActiveClass =
   "border-[color-mix(in_oklab,var(--pn-accent)_45%,transparent)] bg-(--pn-accent-soft) text-(--pn-accent) hover:text-(--pn-accent)"
 
 /** The section links of one service; shared by the panel and the mobile section pills. */
-export function SectionItems({ service, match, pendingReports, variant = "panel" }: SectionItemsProps) {
+export function SectionItems({ service, match, pending, variant = "panel" }: SectionItemsProps) {
   const current = sectionFor(match)
   const deep = isDeepPage(match)
   const pills = variant === "pills"
@@ -86,11 +95,9 @@ export function SectionItems({ service, match, pendingReports, variant = "panel"
           )}
         />
         <span className="truncate">{section.title}</span>
-        {service.id === "reports" && section.id === "open" ? (
-          <Suspense fallback={null}>
-            <PendingReportsCount count={pendingReports} />
-          </Suspense>
-        ) : null}
+        <Suspense fallback={null}>
+          <PendingReportsCount count={sectionPending(service.id, section.id, pending)} />
+        </Suspense>
       </Link>
     )
   })
@@ -99,12 +106,12 @@ export function SectionItems({ service, match, pendingReports, variant = "panel"
 export type PanelProps = {
   service: Service
   match: PageMatch
-  pendingReports: Promise<number | null>
+  pending: PendingCounts
   className?: string
 }
 
 /** The 240px section panel (200px below 1100px). States the service name once, in its header. */
-export function Panel({ service, match, pendingReports, className }: PanelProps) {
+export function Panel({ service, match, pending, className }: PanelProps) {
   return (
     <aside
       data-shell-panel=""
@@ -122,24 +129,32 @@ export function Panel({ service, match, pendingReports, className }: PanelProps)
         onKeyDown={onSectionListKeyDown}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
       >
-        <SectionItems service={service} match={match} pendingReports={pendingReports} />
+        <SectionItems service={service} match={match} pending={pending} />
       </nav>
     </aside>
   )
 }
 
 /** Below 760px: the service's sections as a horizontally scrolling row of pills under the top bar. */
-export function SectionPills({ service, match, pendingReports, className }: PanelProps) {
+export function SectionPills({ service, match, pending, className }: PanelProps) {
+  const ref = useRef<HTMLElement>(null)
+  const currentPath = sectionFor(match)?.path
+  useLayoutEffect(() => {
+    const nav = ref.current
+    if (!nav) return
+    return observeSectionScroll(nav)
+  }, [currentPath])
   return (
     <nav
+      ref={ref}
       aria-label={`${service.title} sections`}
       onKeyDown={onSectionListKeyDown}
       className={cn(
-        "flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
+        "relative flex gap-1.5 overflow-x-auto border-b border-(--pn-line) bg-(--pn-panel) px-4 py-2.5 [scrollbar-width:none]",
         className
       )}
     >
-      <SectionItems service={service} match={match} pendingReports={pendingReports} variant="pills" />
+      <SectionItems service={service} match={match} pending={pending} variant="pills" />
     </nav>
   )
 }

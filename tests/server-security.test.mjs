@@ -13,6 +13,7 @@ import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
 import { isValidWhatsappInviteLink } from "../src/features/whatsapp/whatsapp.validation.ts"
+import { isCsrfExemptPath, isTrustedRequest } from "../src/server/csrf.ts"
 import { isAgentModeEnabled } from "../src/server/permissions.ts"
 import { resolveBackendUrl } from "../src/server/runtime-env.ts"
 
@@ -123,14 +124,26 @@ function exportedServerFunctions(source, file) {
   return serverFunctions
 }
 
-void test("agent mode is limited to development", () => {
+test("agent mode is limited to development", () => {
   assert.equal(isAgentModeEnabled("development", true), true)
   assert.equal(isAgentModeEnabled("test", true), false)
   assert.equal(isAgentModeEnabled("production", true), false)
   assert.equal(isAgentModeEnabled("development", false), false)
 })
 
-void test("the backend URL only falls back during development or compilation", () => {
+test("only the sign agent's ticket proxy skips the Origin check", async () => {
+  assert.equal(isCsrfExemptPath("/api/esign/agent/jobs/abc/prepare"), true)
+  assert.equal(isCsrfExemptPath("/api/esign/agentx"), false)
+  assert.equal(isCsrfExemptPath("/_serverFn/abc"), false)
+  assert.equal(isCsrfExemptPath("/auth/logout"), false)
+  assert.equal(isTrustedRequest("POST", null, "https://admin.polinetwork.org"), false)
+  const proxy = await readFile(new URL("../src/routes/api/esign/agent/$.ts", import.meta.url), "utf8")
+  // The proxy forwards only ticket paths, and nothing from the browser session.
+  assert.match(proxy, /const AGENT_PATH = \/\^jobs\\\/\[A-Za-z0-9_-\]\{43\}/)
+  assert.doesNotMatch(proxy, /cookie|authorization|readRequestSession|sessionMiddleware/i)
+})
+
+test("the backend URL only falls back during development or compilation", () => {
   assert.equal(resolveBackendUrl("https://backend.example", "production", "start"), "https://backend.example")
   assert.equal(resolveBackendUrl(undefined, "development", "dev"), "http://localhost:3000")
   assert.equal(resolveBackendUrl(undefined, "production", "build"), "http://build.invalid")
@@ -138,7 +151,7 @@ void test("the backend URL only falls back during development or compilation", (
   assert.equal(resolveBackendUrl(undefined, undefined, undefined), undefined)
 })
 
-void test("group label paths reject URL separators", async () => {
+test("group label paths reject URL separators", async () => {
   assert.equal(isValidLabelSegment("machine/learning"), false)
   assert.equal(isValidLabelSegment("machine?learning"), false)
   assert.equal(isValidLabelSegment("machine-learning"), true)
@@ -149,7 +162,7 @@ void test("group label paths reject URL separators", async () => {
   assert.match(validationSource, /segments\.some\(\(segment\) => !isValidLabelSegment\(segment\)\)/)
 })
 
-void test("WhatsApp group links require a real HTTPS invite code", () => {
+test("WhatsApp group links require a real HTTPS invite code", () => {
   assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456"), true)
   assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/AbCdEf123456?mode=ems_copy_t"), true)
   assert.equal(isValidWhatsappInviteLink("https://chat.whatsapp.com/"), false)
@@ -159,12 +172,15 @@ void test("WhatsApp group links require a real HTTPS invite code", () => {
   assert.equal(isValidWhatsappInviteLink("not a URL"), false)
 })
 
-void test("dashboard server functions attach their scoped authorization middleware", async () => {
+test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
     "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/azure/groups.functions.ts",
+    "src/features/esign/esign.functions.ts",
+    "src/features/esign/requests.functions.ts",
+    "src/features/esign/drives.functions.ts",
     "src/features/guides/guides.functions.ts",
     "src/features/freshman/freshman.functions.ts",
     "src/features/projects/projects.functions.ts",
@@ -191,10 +207,13 @@ void test("dashboard server functions attach their scoped authorization middlewa
   }
 })
 
-void test("dashboard mutations enforce their exact write scope", async () => {
+test("dashboard mutations enforce their exact write scope", async () => {
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts"]],
     ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
+    ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
+    ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
+    ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
     ["grantsWriteMiddleware", ["src/features/telegram/grants.functions.ts"]],
     ["telegramGroupsWriteMiddleware", ["src/features/telegram/groups.functions.ts"]],
     ["whatsappGroupsWriteMiddleware", ["src/features/whatsapp/groups.functions.ts"]],
@@ -228,10 +247,13 @@ void test("dashboard mutations enforce their exact write scope", async () => {
   }
 })
 
-void test("dashboard mutation controls use their server's write scope", async () => {
+test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
     "src/features/azure/groups-page.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": "azure:members:create",
+    "src/features/esign/requests-page.tsx": "esign:requests:manage",
+    "src/features/esign/request-page.tsx": "esign:requests:manage",
+    "src/features/esign/drives-page.tsx": "esign:drives:manage",
     "src/features/telegram/grants-page.tsx": "tg:grants:manage",
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
     "src/features/telegram/groups-page.tsx": ["tg:groups:manage", "groups:labels:write"],
@@ -274,7 +296,7 @@ void test("dashboard mutation controls use their server's write scope", async ()
   assert.deepEqual([...checked].sort(compare), Object.keys(scopes).sort(compare))
 })
 
-void test("session middleware marks identity-dependent responses private", async () => {
+test("session middleware marks identity-dependent responses private", async () => {
   const source = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
   assert.match(source, /setResponseHeader\("Cache-Control", "private, no-store"\)/)
   assert.match(source, /setResponseHeader\("Vary", "Cookie"\)/)
@@ -282,13 +304,27 @@ void test("session middleware marks identity-dependent responses private", async
   assert.doesNotMatch(source, /new Error\("TELEGRAM_NOT_LINKED"\)/)
 })
 
-void test("event handlers integrate protected server-function redirects with the router", async () => {
+test("event handlers integrate protected server-function redirects with the router", async () => {
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
+    "src/features/esign/new-request-page.tsx": [
+      "uploadEsignDocument",
+      "importEsignDriveDocument",
+      "createEsignRequest",
+    ],
+    "src/features/esign/request-page.tsx": [
+      "declineEsignRequest",
+      "cancelEsignRequest",
+      "deleteEsignRequest",
+      "retryEsignDelivery",
+      "uploadSignedEsignDocument",
+    ],
+    "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
+    "src/features/esign/drives-page.tsx": ["setEsignDriveAccess"],
     "src/features/faqs/faqs-page.tsx": ["addFAQ", "editFAQ", "deleteFAQ", "deleteFAQCategory"],
     "src/features/faqs/faq-category-dialog.tsx": ["addFAQCategory", "editFAQCategory"],
     "src/features/group-labels/add-category-dialog.tsx": ["createGroupLabel"],
@@ -341,14 +377,14 @@ void test("event handlers integrate protected server-function redirects with the
   }
 })
 
-void test("the backend adapter cannot cache request headers at module scope", async () => {
+test("the backend adapter cannot cache request headers at module scope", async () => {
   const source = await readFile(new URL("../src/server/backend.server.ts", import.meta.url), "utf8")
   assert.match(source, /createBackendClient\(accessToken: string \| null\)/)
   assert.doesNotMatch(source, /getRequestHeaders|getRequestHeader/)
   assert.doesNotMatch(source, /const\s+\w*backend\w*\s*=\s*createBackendClient/i)
 })
 
-void test("guide validation accepts only strict dated PDF uploads", () => {
+test("guide validation accepts only strict dated PDF uploads", () => {
   const valid = new FormData()
   valid.set("version", " 2.0 ")
   valid.set("date", "2026-08-18T00:00:00.000Z")
@@ -368,7 +404,7 @@ void test("guide validation accepts only strict dated PDF uploads", () => {
   assert.throws(() => parseGuideForm(wrongType), /INVALID_FILE_TYPE/)
 })
 
-void test("project validation accepts safe fields and supported logos", () => {
+test("project validation accepts safe fields and supported logos", () => {
   function validProjectForm() {
     const data = new FormData()
     data.set("title", " Project Atlas ")
@@ -396,7 +432,7 @@ void test("project validation accepts safe fields and supported logos", () => {
   assert.throws(() => parseProjectForm(oversized), /LOGO_TOO_LARGE/)
 })
 
-void test("association validation accepts bounded image uploads and strict public links", () => {
+test("association validation accepts bounded image uploads and strict public links", () => {
   const valid = new FormData()
   valid.set("name", " Test association ")
   valid.set("descriptionIt", "Descrizione")
@@ -440,7 +476,7 @@ void test("association validation accepts bounded image uploads and strict publi
   )
 })
 
-void test("web content save errors explain actionable validation failures", () => {
+test("web content save errors explain actionable validation failures", () => {
   assert.equal(projectSaveErrorMessage(new Error("INVALID_LINK")), "Enter a valid HTTP or HTTPS project URL.")
   assert.equal(projectSaveErrorMessage("INVALID_LINK"), "Enter a valid HTTP or HTTPS project URL.")
   assert.equal(
@@ -473,7 +509,7 @@ void test("web content save errors explain actionable validation failures", () =
   )
 })
 
-void test("project and association mutations forward FormData to the backend", async () => {
+test("project and association mutations forward FormData to the backend", async () => {
   const [projectsSource, associationsSource] = await Promise.all([
     readFile(new URL("../src/features/projects/projects.functions.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/features/associations/associations.functions.ts", import.meta.url), "utf8"),
@@ -489,7 +525,7 @@ void test("project and association mutations forward FormData to the backend", a
   assert.match(associationsSource, /editAssociation\.mutate\(formData/)
 })
 
-void test("every caught runtime error is written to the console", async () => {
+test("every caught runtime error is written to the console", async () => {
   const srcDirectory = new URL("../src", import.meta.url).pathname
   const failures = []
   const files = await sourceFiles(srcDirectory)

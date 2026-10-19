@@ -64,7 +64,7 @@ const gutter = "px-4 shell:px-6 min-[1200px]:px-9"
 /** Centers the page content at the template width with the shell's side padding, below the page header. */
 export function PageContent({ width = "wide", children }: { width?: ContentWidth; children: ReactNode }) {
   return (
-    <div className={cn("flex-1 pb-7 shell:pb-12", gutter)}>
+    <div data-page-content className={cn("flex-1 pb-7 shell:pb-12", gutter)}>
       <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
     </div>
   )
@@ -247,10 +247,10 @@ function formatCountPart({ value, total, noun, plural }: CountPart) {
 
 /**
  * "{n} {noun}" or "{n} of {total} {noun}", pluralized with Intl.PluralRules; `parts` append
- * " · {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
+ * ", {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
  */
 export function Count({ parts = [], className, ...first }: CountProps) {
-  const text = [first, ...parts].map(formatCountPart).join(" · ")
+  const text = [first, ...parts].map(formatCountPart).join(", ")
   return (
     <span
       aria-live="polite"
@@ -306,7 +306,7 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
         autoComplete="off"
         spellCheck={false}
         data-page-search=""
-        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 placeholder:text-(--pn-fg-subtle) hover:border-(--pn-hover-line) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-10 w-full rounded-[9px] border border-(--pn-line-strong) bg-(--pn-surface) pr-10 pl-10 text-[14px] text-(--pn-fg) transition-[border-color] duration-120 text-ellipsis placeholder:text-(--pn-fg-subtle) hover:border-(--pn-hover-line) max-shell:text-base [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value !== "" ? (
         <button
@@ -320,7 +320,7 @@ export function SearchField({ value, onChange, placeholder, label, inputRef, cla
       ) : (
         <kbd
           aria-hidden
-          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) group-focus-within/search:hidden pointer-coarse:hidden"
+          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) group-focus-within/search:hidden pointer-coarse:hidden max-shell:hidden"
         >
           /
         </kbd>
@@ -345,16 +345,25 @@ export type ToolbarProps = {
  */
 export function Toolbar({ lead, search, filters, count }: ToolbarProps) {
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 max-shell:[&_[role=group]]:max-w-full max-shell:[&_[role=group]]:overflow-x-auto">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-wrap items-center gap-2.5 max-shell:gap-2",
+        // Below 760px a segmented control takes the rest of its row (basis 0, so it never wraps alone), its segments
+        // share that width, and it scrolls sideways rather than overflow.
+        "max-shell:[&_[role=group]]:max-w-full max-shell:[&_[role=group]]:min-w-0 max-shell:[&_[role=group]]:flex-1 max-shell:[&_[role=group]]:basis-0 max-shell:[&_[role=group]]:overflow-x-auto max-shell:[&_[role=group]]:[scrollbar-width:none] max-shell:[&_[role=group]>*]:flex-[1_0_auto] max-shell:[&_[role=group]>*]:gap-1 max-shell:[&_[role=group]>*]:px-2"
+      )}
+    >
       {lead}
       {search ? (
         <SearchField
           {...search}
-          className={cn("max-w-115 flex-[1_1_320px] max-shell:max-w-none max-shell:basis-full", search.className)}
+          className={cn("max-w-115 flex-[1_1_300px] max-shell:max-w-none max-shell:basis-full", search.className)}
         />
       ) : null}
       {filters}
-      {count ? <div className="ml-auto flex shrink-0 pl-1">{count}</div> : null}
+      {count ? (
+        <div className="ml-auto flex shrink-0 pl-1 max-shell:ml-0 max-shell:basis-full max-shell:pl-0">{count}</div>
+      ) : null}
     </div>
   )
 }
