@@ -60,7 +60,7 @@ the full FAQ catalog loads only on the FAQs tab. Page titles, introductory text 
 ### Pending backend package release
 
 The source integration targets the backend Freshman contract on `bia/freshmans` (migration
-`0022_freshman_content`). The currently pinned `@polinetwork/backend@1.4.0` does not yet export `web.freshman`.
+`0026_freshman_content`). The currently pinned `@polinetwork/backend@1.4.0` does not yet export `web.freshman`.
 Once a version containing these procedures is published, update this dependency and `pnpm-lock.yaml`, then
 rerun `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Until that update, the normal typecheck is
 expected to report the missing Freshman contract. No declaration patches or type-error suppression directives are used.

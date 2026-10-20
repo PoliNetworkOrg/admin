@@ -14,7 +14,7 @@ const days = [
 ]
 const total = days.reduce((sum, day) => sum + day.count, 0)
 
-void test("3M plots one cumulative point per day and counts exactly the last 3 months", () => {
+test("3M plots one cumulative point per day and counts exactly the last 3 months", () => {
   const series = growthSeries(days, "2026-10-11", "3m")
   assert.equal(series.points[0].time, parseDay("2026-07-12"))
   assert.equal(series.points.at(-1).time, parseDay("2026-10-11"))
@@ -31,7 +31,7 @@ void test("3M plots one cumulative point per day and counts exactly the last 3 m
   assert.deepEqual(series.ticks.map(series.tickLabel), ["Aug", "Sep", "Oct"])
 })
 
-void test("1Y plots weekly points ending today and counts exactly the last 12 months", () => {
+test("1Y plots weekly points ending today and counts exactly the last 12 months", () => {
   const series = growthSeries(days, "2026-10-11", "1y")
   assert.equal(series.points.at(-1).time, parseDay("2026-10-11"))
   assert.ok(
@@ -51,7 +51,7 @@ void test("1Y plots weekly points ending today and counts exactly the last 12 mo
   assert.ok(series.ticks.map(series.tickLabel).includes("Jan 2026"))
 })
 
-void test("All plots one point per month from the first user and names the year on January", () => {
+test("All plots one point per month from the first user and names the year on January", () => {
   const series = growthSeries(days, "2026-10-11", "all")
   assert.equal(series.points[0].label, "January 2025")
   assert.equal(series.points[0].total, 10)
@@ -64,23 +64,23 @@ void test("All plots one point per month from the first user and names the year 
   assert.ok(!labels.includes("Jan"))
 })
 
-void test("spans over two years label years", () => {
+test("spans over two years label years", () => {
   const series = growthSeries([{ date: "2022-03-01", count: 1 }], "2026-10-11", "all")
   assert.deepEqual(series.ticks.map(series.tickLabel), ["2023", "2024", "2025", "2026"])
 })
 
-void test("month arithmetic clamps to the target month's last day", () => {
+test("month arithmetic clamps to the target month's last day", () => {
   const series = growthSeries([], "2026-12-31", "3m")
   assert.equal(series.points[0].time, parseDay("2026-10-01"))
 })
 
-void test("no users yet gives an empty all-time series", () => {
+test("no users yet gives an empty all-time series", () => {
   const series = growthSeries([], "2026-10-11", "all")
   assert.equal(series.added, 0)
   assert.ok(series.points.every((point) => point.total === 0))
 })
 
-void test("y axis labels stay distinct on narrow ranges", () => {
+test("y axis labels stay distinct on narrow ranges", () => {
   const cases = [
     [{ total: 13_300 }, { total: 13_380 }],
     [{ total: 1_180 }, { total: 1_420 }],
