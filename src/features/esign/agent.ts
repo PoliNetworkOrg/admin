@@ -36,12 +36,15 @@ export function isAgentOrigin(origin: string) {
   return AGENT_ORIGINS.includes(origin)
 }
 
-/** PoliNetwork eSign's User-Agent: `PoliNetwork-eSign/<version>` (0.2.0 and later). */
-const AGENT_USER_AGENT = /^PoliNetwork-eSign\/[0-9A-Za-z.+-]{1,32}$/
+/**
+ * PoliNetwork eSign's User-Agent: `PoliNetwork-eSign/<version>` from 0.2.0, `PoliNetwork-Sign-Agent/<version>` for
+ * the agents released before the rename (0.1.x).
+ */
+const AGENT_USER_AGENT = /^PoliNetwork-(?:eSign|Sign-Agent)\/[0-9A-Za-z.+-]{1,32}$/
 
 /**
- * The User-Agent the agent proxy forwards to the backend, which turns away versions too old to sign. Anything that
- * isn't the agent's own is dropped.
+ * The User-Agent the agent proxy forwards to the backend, which turns away versions too old to sign before the PIN.
+ * Anything that isn't the agent's own is dropped.
  */
 export function agentUserAgent(header: string | null) {
   return header !== null && AGENT_USER_AGENT.test(header) ? header : null

@@ -146,7 +146,13 @@ test("only the sign agent's ticket proxy skips the Origin check", async () => {
 })
 
 void test("the sign agent's proxy forwards only the agent's own User-Agent", () => {
-  for (const userAgent of ["PoliNetwork-eSign/0.3.1", "PoliNetwork-eSign/0.4.0-rc.1+darwin", "PoliNetwork-eSign/dev"])
+  for (const userAgent of [
+    "PoliNetwork-eSign/0.3.1",
+    "PoliNetwork-eSign/0.4.0-rc.1+darwin",
+    "PoliNetwork-eSign/dev",
+    // Released before the rename, and too old to sign: the backend tells them to update before the PIN.
+    "PoliNetwork-Sign-Agent/v0.1.1",
+  ])
     assert.equal(agentUserAgent(userAgent), userAgent)
   for (const userAgent of [
     null,
@@ -158,6 +164,7 @@ void test("the sign agent's proxy forwards only the agent's own User-Agent", () 
     `PoliNetwork-eSign/${"1".repeat(33)}`,
     "poliNetwork-esign/0.4.0",
     "PoliNetwork Sign Agent/0.1.1",
+    "PoliNetwork-Sign-Agent/",
   ])
     assert.equal(agentUserAgent(userAgent), null, String(userAgent))
 })
