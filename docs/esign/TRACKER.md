@@ -180,13 +180,21 @@ Legend: ☐ todo · ◐ in progress · ☑ done
     drop the Run anyway sentence from AGENT_STEPS.windows.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 - ☐ Before deploying Setup's "Download for macOS" / "Download for Windows" and the signing dialog's "Update
-  PoliNetwork eSign" state (agents too old to sign): publish an agent release that ships
-  `PoliNetwork-eSign-macos.dmg` and `PoliNetwork-eSign-windows-amd64.zip` (esign "publish the macOS and Windows
-  downloads under fixed names"), tagged `vX.Y.Z` with no suffix, so it is not a pre-release and becomes
-  `releases/latest`. Then check that both names answer 200:
+  PoliNetwork eSign" state (agents too old to sign): make `releases/latest` carry `PoliNetwork-eSign-macos.dmg`,
+  `PoliNetwork-eSign-macos.zip` and `PoliNetwork-eSign-windows-amd64.zip`. Either publish the agent release built from
+  `feat/sign-page-decisions` (esign "publish the macOS and Windows downloads under fixed names"), tagged `vX.Y.Z` with
+  no suffix so it is not a pre-release, or, to deploy the dashboard first, upload copies of v0.3.0's
+  `PoliNetwork-eSign-v0.3.0-macos.dmg`, `-macos.zip` and `-windows-amd64.zip` under those names to the v0.3.0 release
+  and regenerate its SHA256SUMS. Then check that each name answers 200:
   `curl -sL -o /dev/null -w '%{http_code}\n' https://github.com/PoliNetworkOrg/esign/releases/latest/download/<name>`.
   Until then they answer 404, and these links, which open in the same tab (a real download leaves the page in place),
   replace the dashboard, and the signing dialog with it, with GitHub's 404 page.
+- ☐ Deploy order of the decisions round (admin `feat/esign-ux-decisions`, backend `feat/esign-ux-decisions`, agent
+  `feat/sign-page-decisions`): release and deploy the backend before the dashboard. The dashboard's decline dialog
+  says "{creator} gets an email with your reason", which only the new backend sends ("Request update" emails); the
+  version gate works in any order (the backend lets an unknown User-Agent through, the old dashboard doesn't forward
+  it). The agent release (above) goes out before or with the dashboard; its `ready` and fatal messages need no
+  dashboard change to be safe, and older agents keep working through `seen`.
 
 ## Local end-to-end
 
@@ -200,6 +208,28 @@ cd ~/dev/polinetwork/sign-agent && go run ./cmd/esign --dev --soft    # PIN 1234
 Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
 
 ## Log
+
+- 2026-10-22: decisions round integrated (admin `feat/esign-ux-decisions`, backend `feat/esign-ux-decisions`, agent
+  `feat/sign-page-decisions`; not pushed). The 17 product decisions of the UX pass are decided and built:
+  - Admin: the signing chain below, plus New request rebuilt as a viewer and one column with the PDF's signature spots
+    as rows to fill (boxes beside a stack of labels too close for one between them), signing your own PDF inside New
+    request (`?self` and To sign's "Sign a document" gone), Send again (`?from=`), Setup per system with a direct
+    download and CIE ID pairing as the check, phones and tablets review only (no flash for an iPad, whose User-Agent is
+    a Mac's). The New request and batch hand-offs keep their dialog above the routes (`EsignSigningHost`), so the page
+    they land on loads under it: New request closes it once the new request's page has drawn the signed spot. The
+    proxy forwards the agent's User-Agent, also the pre-rename `PoliNetwork-Sign-Agent/…`.
+  - Backend: the version gate (426 `agent_outdated` when the job loads, below 0.2.0, the job failed and seen),
+    "Request update" emails to the creator (declined, completed by someone else, delivery failed, also to who can
+    retry), the signed document emailed to externals in Italian with Reply-To set to the requester.
+  - Agent: fixed asset names for the macOS and Windows downloads, CIE ID named everywhere, the version in the pages'
+    footer, `ready` and fatal messages to the dashboard, the update screen instead of the PIN form, the card before the
+    PIN (held while no card is detected, never when presence is unknown), the wrong-PIN count with a warning before the
+    last attempt and "show PIN", no text on where the PIN comes from.
+  - Kept on purpose, against the option's wording: the action card's batch link reads "Sign N together", N counting
+    this document and the others the batch opens with (at most ten, as To sign's button), because that is what one PIN
+    signs; "Sign the other N together" would undercount it.
+  - Release order: see the maintainer steps (backend before the dashboard; agent release or renamed v0.3.0 copies
+    before Setup's downloads).
 
 - 2026-10-21: decisions round, request and batch pages (admin `feat/esign-dec-signing`; not pushed): one action card
   holds the title, the status, one sentence and the request's actions, and on desktop the right column stays put while
@@ -221,7 +251,9 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on
   errors a retry can't fix, plus composer, request, batch, setup and Overview polish. Admin follow-ups after the backend
   release: the lock alert's "by HH:MM" from `signingNow.until`; `lostAccess` on the signer card and the drive-access
-  impact confirmation before saving a sign rule. Open product decisions: `~/dev/polinetwork/esign-ux-decisions-2026-10-21.html` (outside the repo).
+  impact confirmation before saving a sign rule. The open product decisions it listed
+  (`~/dev/polinetwork/esign-ux-decisions-2026-10-21.html`, outside the repo) were decided on 2026-10-21 and built in
+  the decisions round above.
 
 - 2026-10-17: merged backend#75 (released @polinetwork/backend 1.9.0), sign-agent#6 (released PoliNetwork eSign
   v0.2.0) and admin#105; the upload fallback warns signers with several places. Flux rolls out the new images.
