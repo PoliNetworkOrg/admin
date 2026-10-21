@@ -341,8 +341,9 @@ three, never infinite, no "Undo".
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
-never the only signal. Hit areas are at least 36px, including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF
-links, label chips that remove a selection and tree expanders. Enlarge the clickable area independently of the icon.
+never the only signal: a link inside a sentence is underlined at rest (`inlineLink`). Hit areas are at least 36px,
+including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF links, label chips that remove a
+selection and tree expanders. Enlarge the clickable area independently of the icon.
 DOM order matches visual order, with one exception: in their two-column layout the signature request and batch pages
 keep the action card first in the DOM though it sits right of the viewer, so its primary is the first stop after the
 page bar, as it is in the single column.

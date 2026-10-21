@@ -12,6 +12,7 @@ import {
   fieldControl,
   Hint,
   InlineAlert,
+  inlineLink,
   LoadingButton,
   SectionCard,
   Spinner,
@@ -739,7 +740,7 @@ function ReadyLine({ muted }: { muted: NonNullable<RequestCard["muted"]> }) {
   return (
     <>
       First time on this computer? {/* A new tab, because the boxes moved here aren't saved yet. */}
-      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className="text-(--pn-accent) hover:underline">
+      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className={inlineLink}>
         Set it up first
       </Link>
       .
@@ -819,7 +820,7 @@ function CardOutcome({ card, retrying, onRetry }: { card: RequestCard; retrying:
             {line.text}
             {line.kind === "folder" &&
               (line.href ? (
-                <a className="text-(--pn-accent) hover:underline" href={line.href} target="_blank" rel="noreferrer">
+                <a className={inlineLink} href={line.href} target="_blank" rel="noreferrer">
                   {line.file}
                 </a>
               ) : (

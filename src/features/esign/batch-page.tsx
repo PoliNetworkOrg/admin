@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
 
-import { buttonMotion, EmptyState, IconButton, InlineAlert } from "@/components/primitives"
+import { buttonMotion, EmptyState, IconButton, InlineAlert, inlineLink } from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
@@ -340,7 +340,7 @@ function ReadyLine({ known }: { known: boolean }) {
     <>
       First time on this computer?{" "}
       {/* A new tab, because the review progress and moved boxes live only in this page. */}
-      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className="text-(--pn-accent) hover:underline">
+      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className={inlineLink}>
         Set it up first
       </Link>
       .
