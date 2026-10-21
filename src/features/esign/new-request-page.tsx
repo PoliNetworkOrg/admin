@@ -1194,6 +1194,15 @@ export function NewEsignRequestPage({
                           aria-keyshortcuts="Meta+Enter Control+Enter"
                           prepare={createAndSign}
                           disabled={submitting || createdRequest !== null || loading}
+                          // The request page loads behind the dialog, so it is there, on the spot just signed and
+                          // saying so, when the dialog lets go; navigating any earlier would unmount the dialog and lose
+                          // the agent window.
+                          handOff={async ([requestId]) => {
+                            await router.preloadRoute({
+                              to: "/dashboard/esign/requests/$requestId",
+                              params: { requestId },
+                            })
+                          }}
                           onSigned={() => created.current && void openRequest(created.current.id)}
                           onStopped={signingStopped}
                         >

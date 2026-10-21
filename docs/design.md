@@ -498,9 +498,11 @@ Rules that the templates above don't imply.
   only what ends the attempt. Once everything is signed the page updates behind the dialog: the card turns into the
   outcome, the viewer stays on the signed spot and draws the new version, then the agent window and the dialog close
   together (1 to 4 s after the signature) and the blue box dissolves into the stamp. A batch that signed only some
-  documents stays open until Close. Signing from the batch lands on To sign with a toast. A person appears once
-  however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
-  menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
+  documents stays open until Close. Signing from the batch lands on To sign with a toast. Signing from New request
+  lands, without a toast, on the new request's page, which opens on the signed spot and says the outcome in its card.
+  A person appears once however many places they sign: their places are buttons under their name
+  ("Signature · p. 2", "Mark · p. 1") whose menu switches the kind, moves or removes the place and rings its box on
+  the page; marks have a dashed border.
   With several documents waiting, "Sign N together" opens a strip of up to ten documents in the page bar's toolbar row,
   led by the one it came from, already checked and with the boxes moved there. Each is checked by opening it (a check
   replaces its number) and can be left out; the card's primary stays "Next document" until all are checked, then
