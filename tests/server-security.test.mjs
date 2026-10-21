@@ -337,7 +337,6 @@ test("event handlers integrate protected server-function redirects with the rout
       "cancelEsignRequest",
       "deleteEsignRequest",
       "retryEsignDelivery",
-      "uploadSignedEsignDocument",
     ],
     "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
     "src/features/esign/drives-page.tsx": ["setEsignDriveAccess"],

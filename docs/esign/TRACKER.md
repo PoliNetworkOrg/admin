@@ -113,6 +113,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☑ Review round 1 (Sol 6.1): 15 findings (4 high), all fixed with regression tests; Postgres smoke script
   (`backend/scripts/esign-store-smoke.ts`) caught a jsonb double-encoding issue in the new queries.
 - ☑ Fallback: upload a PDF signed with the official app (verified as current version + one CIE signature).
+  Removed from the dashboard on 2026-10-21: CIE ID rewrites a PDF that has no signature yet, so it never worked for
+  the first signer. The backend's `esign.requests.uploadSigned` is no longer called and can be removed.
 - ☑ Smart placement (box under "Il Presidente"/role label), navigation badge for documents to sign.
 - ☑ Review round 2 (Sol 6.1, Personal account; its safety filter cut the final report, partial notes in
   `/tmp/esign-review-r2b/`): round-1 fixes confirmed; new findings fixed — ByteRange gap must be exactly /Contents,
