@@ -14,6 +14,7 @@ import {
   TriangleAlert,
 } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import { z } from "zod"
 
 import { buttonMotion, dialogMotion, InlineAlert, LoadingButton, scrimClasses } from "@/components/primitives"
 import {
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils"
 import { AGENT_LAUNCH_URL, agentSignUrl, isAgentOrigin } from "./agent"
 import { cancelEsignSignature, getEsignJobStatus, startEsignSignature } from "./esign.functions"
 import type { BoxPlacement } from "./signature-box"
+import { writeAgentFlag } from "./signing-device"
 
 /** A document to sign; `places` are the signer's boxes as they dragged them, one per place, in order. */
 export type SignItem = { requestId: string; title: string; places?: BoxPlacement[] }
@@ -47,6 +49,9 @@ type Phase =
   | { kind: "signing"; jobs: Job[]; url: string }
   | Ending
 type Shown = Exclude<Phase, { kind: "starting" }>
+
+/** PoliNetwork eSign's first message, with its version (0.4.0 and later). */
+const agentReady = z.object({ status: z.literal("ready"), detail: z.string().min(1).max(64) })
 
 const POLL_MS = 1200
 /** After this long without the agent fetching the job, it is probably not running. */
@@ -206,6 +211,8 @@ export function SignWithCie({
   const [closing, setClosing] = useState(false)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
+  /** PoliNetwork eSign answered this attempt: with its version (`ready`), or by fetching a job (older agents). */
+  const answered = useRef(false)
 
   const reload = useCallback(async () => {
     try {
@@ -265,8 +272,13 @@ export function SignWithCie({
         // Closed before and after the request, so a window opened again meanwhile counts as open. The agent closes
         // its window on cancel or success only after the backend recorded it, so those end above.
         setWindowClosed(closedBefore && popupRef.current?.closed === true)
-        if (statuses.some((s) => s.seen))
+        if (statuses.some((s) => s.seen)) {
+          if (!answered.current) {
+            answered.current = true
+            writeAgentFlag(null)
+          }
           setPhase((current) => (current?.kind === "waiting" ? { kind: "signing", jobs, url: current.url } : current))
+        }
       } catch (cause) {
         console.error(cause)
       }
@@ -276,6 +288,11 @@ export function SignWithCie({
     function onMessage(event: MessageEvent) {
       // Agents up to v0.1.x, named PoliNetwork Sign Agent, post "pn-sign-agent".
       if (!isAgentOrigin(event.origin) || !["pn-esign", "pn-sign-agent"].includes(event.data?.type)) return
+      const ready = agentReady.safeParse(event.data)
+      if (ready.success) {
+        answered.current = true
+        writeAgentFlag(ready.data.detail)
+      }
       // The page lost the agent behind it: the one outcome the backend can't know about.
       setAgentLost(event.data?.status === "error" && event.data?.detail === "agent_unreachable")
       void poll()
@@ -300,6 +317,7 @@ export function SignWithCie({
     setAgentLost(false)
     setClosing(false)
     finishing.current = false
+    answered.current = false
     popupRef.current?.close()
     let popup: Window | null = null
     try {

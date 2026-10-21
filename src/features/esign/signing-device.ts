@@ -1,4 +1,7 @@
 import { useSyncExternalStore } from "react"
+import { z } from "zod"
+
+import { AGENT_FLAG_KEY } from "./agent.ts"
 
 /**
  * PoliNetwork eSign runs only on macOS, Windows and Linux computers: phones and tablets can review a document but not
@@ -25,6 +28,46 @@ export function useCanSignHere() {
   return useSyncExternalStore(
     subscribe,
     () => !isPhoneOrTablet(navigator.userAgent, navigator.maxTouchPoints),
+    () => true
+  )
+}
+
+function subscribeStorage(onChange: () => void) {
+  window.addEventListener("storage", onChange)
+  return () => window.removeEventListener("storage", onChange)
+}
+
+const agentFlag = z.object({ version: z.string().nullable(), at: z.string() })
+export type AgentFlag = z.infer<typeof agentFlag>
+
+/** What the signing dialog last stored about PoliNetwork eSign in this browser; null when nothing readable is. */
+export function readAgentFlag(): AgentFlag | null {
+  try {
+    const parsed = agentFlag.safeParse(JSON.parse(localStorage.getItem(AGENT_FLAG_KEY) ?? "null"))
+    return parsed.success ? parsed.data : null
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
+
+/** Remembers that PoliNetwork eSign answered in this browser; `version` is null for agents that don't announce it. */
+export function writeAgentFlag(version: string | null) {
+  try {
+    localStorage.setItem(AGENT_FLAG_KEY, JSON.stringify({ version, at: new Date().toISOString() }))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+/**
+ * Whether PoliNetwork eSign has answered in this browser before, so it needs no setup. True on the server: both
+ * answers are one line, so the swap after hydration doesn't move anything.
+ */
+export function useKnownBrowser() {
+  return useSyncExternalStore(
+    subscribeStorage,
+    () => readAgentFlag() !== null,
     () => true
   )
 }

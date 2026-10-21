@@ -2,6 +2,12 @@
 export const AGENT_PORT = 47321
 export const AGENT_ORIGINS = [`http://127.0.0.1:${AGENT_PORT}`, `http://localhost:${AGENT_PORT}`]
 
+/**
+ * Set in localStorage once PoliNetwork eSign has answered in this browser: `{"version": string | null, "at": ISO}`,
+ * a null version for agents that don't announce themselves.
+ */
+export const AGENT_FLAG_KEY = "pn-esign-agent"
+
 /** Starts an installed agent that isn't running. */
 export const AGENT_LAUNCH_URL = "polinetwork-esign://open"
 
