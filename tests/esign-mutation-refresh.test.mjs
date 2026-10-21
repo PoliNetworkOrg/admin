@@ -259,6 +259,53 @@ for (const refreshFails of [false, true]) {
   })
 }
 
+async function agentWindow(popup) {
+  const events = []
+  const dependencies = {
+    Date,
+    popupRef: { current: popup },
+    popupFeatures: () => "popup=yes",
+    window: {
+      open: (url, name) => {
+        events.push(["open", url, name])
+        return { closed: false }
+      },
+    },
+    setWindowClosed: (closed) => events.push(["closed", closed]),
+  }
+  const path = "src/features/esign/sign-with-cie.tsx"
+  dependencies.showWindow = await handler(path, "showWindow", dependencies)
+  dependencies.openWindowAgain = await handler(path, "openWindowAgain", dependencies)
+  return { events, ...dependencies }
+}
+
+void test("showing the open agent window focuses it without reloading or duplicating it", async () => {
+  const popup = { closed: false, location: { href: "pin-form" }, focus: () => (popup.focused = true) }
+  const { events, showWindow } = await agentWindow(popup)
+  showWindow("sign-url")
+  assert.equal(popup.focused, true)
+  assert.equal(popup.location.href, "pin-form")
+  assert.deepEqual(events, [["closed", false]])
+})
+
+void test("a closed agent window opens again under a new name", async () => {
+  const { events, popupRef, showWindow } = await agentWindow({ closed: true })
+  showWindow("sign-url")
+  assert.equal(events[0][0], "open")
+  assert.equal(events[0][1], "sign-url")
+  assert.match(events[0][2], /^pn-esign-\d+$/)
+  assert.equal(popupRef.current.closed, false)
+})
+
+void test("opening the window again reloads the signing page in the open agent window", async () => {
+  const popup = { closed: false, location: { href: "error-page" }, focus: () => (popup.focused = true) }
+  const { events, openWindowAgain } = await agentWindow(popup)
+  openWindowAgain("sign-url")
+  assert.equal(popup.location.href, "sign-url")
+  assert.equal(popup.focused, true)
+  assert.ok(!events.some((event) => event[0] === "open"))
+})
+
 for (const outcome of ["delivered", "failed", "throws"]) {
   void test(`delivery retry waits for refresh before reporting ${outcome}`, async () => {
     const env = environment()

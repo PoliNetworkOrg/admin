@@ -76,14 +76,18 @@ function errorText(state: JobState | undefined) {
   return AGENT_ERRORS.get(state.errorCode) ?? state.errorMessage ?? "The signature failed. Try again."
 }
 
-function openPopup(): Window | null {
+/** The agent window's size, centered horizontally over the dashboard window. */
+function popupFeatures() {
   const width = 460
   const height = 680
   const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2)
   const top = Math.max(0, window.screenY + (window.outerHeight - height) / 3)
+  return `popup=yes,width=${width},height=${height},left=${left},top=${top}`
+}
+
+function openPopup(): Window | null {
   // A new name each time: a window still showing the agent's page is cross-origin, and writing to it would throw.
-  const name = `pn-esign-${Date.now()}`
-  const popup = window.open("", name, `popup=yes,width=${width},height=${height},left=${left},top=${top}`)
+  const popup = window.open("", `pn-esign-${Date.now()}`, popupFeatures())
   if (popup) {
     popup.document.title = "PoliNetwork eSign"
     popup.document.body.style.cssText =
@@ -133,6 +137,7 @@ export function SignWithCie({
   const [states, setStates] = useState<Map<string, JobState>>(new Map())
   const [now, setNow] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
+  const [windowClosed, setWindowClosed] = useState(false)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
 
@@ -164,6 +169,9 @@ export function SignWithCie({
     if (!jobs) return
     let stopped = false
     const poll = async () => {
+      // Readable only while the dashboard keeps its opener relationship with the window: the agent sends no COOP
+      // header, and the dashboard must not send `Cross-Origin-Opener-Policy: same-origin`.
+      const closedBefore = popupRef.current?.closed === true
       try {
         const statuses = await statusFn({ data: { jobIds: jobs.map((j) => j.jobId) } })
         if (stopped) return
@@ -185,6 +193,9 @@ export function SignWithCie({
           })
           return
         }
+        // Closed before and after the request, so a window opened again meanwhile counts as open. The agent closes
+        // its window on cancel or success only after the backend recorded it, so those end above.
+        setWindowClosed(closedBefore && popupRef.current?.closed === true)
         if (statuses.some((s) => s.seen))
           setPhase((current) => (current?.kind === "waiting" ? { kind: "signing", jobs, url: current.url } : current))
       } catch (cause) {
@@ -212,6 +223,7 @@ export function SignWithCie({
     if (!prepared) return
     setError(null)
     setStates(new Map())
+    setWindowClosed(false)
     finishing.current = false
     popupRef.current?.close()
     let popup: Window | null = null
@@ -272,8 +284,19 @@ export function SignWithCie({
     onStopped?.(null)
   }
 
-  function reopen(url: string) {
-    popupRef.current = window.open(url, "pn-esign", "popup=yes,width=460,height=680")
+  /** Brings the agent window to the front without reloading it (the PIN may be half typed), or opens it again. */
+  function showWindow(url: string) {
+    const popup = popupRef.current
+    if (popup && !popup.closed) popup.focus()
+    else popupRef.current = window.open(url, `pn-esign-${Date.now()}`, popupFeatures())
+    setWindowClosed(false)
+  }
+
+  /** Loads the signing page again in the agent window, opening a new one if it was closed. */
+  function openWindowAgain(url: string) {
+    const popup = popupRef.current
+    if (popup && !popup.closed) popup.location.href = url
+    showWindow(url)
   }
 
   if (phase && phase.kind !== "starting" && phase !== shown) setShown(phase)
@@ -378,11 +401,38 @@ export function SignWithCie({
                   >
                     <Play aria-hidden /> Start PoliNetwork eSign
                   </Button>
-                  <Button variant="outline" size="sm" className={buttonMotion} onClick={() => reopen(active.url)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={buttonMotion}
+                    onClick={() => openWindowAgain(active.url)}
+                  >
                     <ExternalLink aria-hidden /> Open the window again
                   </Button>
                   <SetupGuideButton />
                 </div>
+              </Status>
+            ) : active && windowClosed ? (
+              <Status
+                icon={<TriangleAlert className="size-5" />}
+                tone="warning"
+                title="The PoliNetwork eSign window was closed"
+              >
+                <p>
+                  {signed === 0
+                    ? "Nothing was signed. Open the window again to type your PIN, or cancel."
+                    : `${signed} of ${pluralize(total, "document")} are signed. Open the window again to sign the others, or stop here.`}
+                </p>
+                {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
+                {batch && jobList}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(buttonMotion, "mt-3")}
+                  onClick={() => showWindow(active.url)}
+                >
+                  <ExternalLink aria-hidden /> Open the window again
+                </Button>
               </Status>
             ) : active?.kind === "waiting" ? (
               <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
@@ -400,7 +450,7 @@ export function SignWithCie({
                   variant="ghost"
                   size="sm"
                   className={cn(buttonMotion, "mt-2 -ml-2")}
-                  onClick={() => reopen(active.url)}
+                  onClick={() => showWindow(active.url)}
                 >
                   <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
                 </Button>
