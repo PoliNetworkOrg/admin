@@ -138,6 +138,7 @@ does not move when data arrives.
 | Browser         | `wide`     | Categories root and nodes, tag page                            |
 | Tree            | `tree`     | Labels, Freshman guide                                         |
 | Record          | `record`   | Telegram user                                                  |
+| Workspace       | `record`   | New signature request (`PageContent fill`)                     |
 | Settings        | `settings` | Account                                                        |
 | Overview        | `overview` | Overview                                                       |
 
@@ -171,6 +172,14 @@ in session storage; search force-expands.
 **Record.** `RecordHeader` (64px avatar or label dot, 28px `h1` with an optional status badge, meta, description),
 then `SectionCard`s. The Telegram user puts recent messages and grants side by side from 1000px (1.55 : 1), with the
 audit log full width below; no summary tiles.
+
+**Workspace.** A page that fills the window instead of scrolling. `PageContent fill` makes its bottom padding the side
+gutter (24px), and `useFillHeight` sizes the workspace from its top down to it, at least 480px. From 900px of container
+width a document pane sits beside a 380px column (400px from 1040px); narrower, they stack and the page scrolls. The
+column is as tall as its content, up to the pane's height, with its primary action in a footer right under the last
+row: the one page whose primary isn't in the page header, because the primary belongs under the last thing checked
+before it. A longer column scrolls inside under the pinned footer. Stacked, the footer is sticky at the bottom of the
+window and every control in the column has an 80px bottom scroll margin, so what takes the focus stops above it.
 
 **Settings.** `SectionCard`s in one column, each with a title and an action slot. The destructive card goes last,
 further apart, without a red border.
@@ -229,7 +238,9 @@ Headings `text-wrap: balance`, body `pretty`. Truncate with an ellipsis plus a `
 are 16px on coarse pointers (no iOS zoom).
 
 **Focus.** One global ring (`:focus-visible`, `--pn-focus`) in `styles.css`; inputs swap it for a border plus soft ring;
-invalid fields show the danger border. Opt out only with `data-focus-ring="none"` when the element draws its own.
+invalid fields show the danger border. Opt out only with `data-focus-ring="none"` when the element draws its own. When
+a blocked submit moves the focus to a control that isn't a field (a list row), it sets `data-problem-focus` until the
+control blurs, which rings it on `:focus`: a click or ⌘↵ doesn't count as keyboard focus.
 
 ## 5. Components
 
@@ -332,7 +343,10 @@ the language name over a field-like box that holds the `bare` input. Single-line
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
 keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` + `aria-describedby`. Read-only values
 are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
-limit.
+limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as text,
+shows the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an
+`aria-label` in place of the visible label. Use it only for a value edited in place inside a working surface, where a
+box around every value would be clutter; forms keep boxed fields.
 
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
@@ -367,6 +381,7 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Copy feedback (invite link)                                                            | icon swap with a short bounce-free spring                                                                                                                                                                                |
 | Chart tooltip and hover guide                                                          | none: they follow the pointer or keyboard focus                                                                                                                                                                          |
 | Skeleton                                                                               | opacity pulse 1.4s; the only loop besides spinners                                                                                                                                                                       |
+| Empty signature spot filled (composer)                                                 | the same box changes border, fill and text colour, 150ms ease-out; the dashed border snaps to solid                                                                                                                      |
 | Theme toggle                                                                           | light-bulb reveal: a View Transition `clip-path` circle from the toggle (700ms to light, 520ms to dark), reversible mid-way; element transitions are off while it runs (`data-theme-switching`). Go through `useTheme()` |
 | Signature box after signing                                                            | opacity 1→0, 200ms `--pn-ease-move`, once the signing dialog's exit ends; the stamp is already drawn underneath. A new PDF version replaces each page without a fade                                                     |
 | Navigation, sort, filter, paging, inline-edit swap, command palette, active indicators | none                                                                                                                                                                                                                     |
@@ -501,8 +516,44 @@ Rules that the templates above don't imply.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
-  not sign the documents of the chosen drives are left out of the list, with a line saying why. The signer picker
-  lists people only once a search is typed, each with the email under the name; the viewer carries a blue "You" chip
-  here and in signer lists.
+  not sign the documents of the chosen drives are left out of the list, which says why when that leaves nobody. The
+  signer picker lists people only once a search is typed, each with the email under the name; the viewer is the
+  exception, listed as soon as the list opens, and carries a blue "You" chip here and in signer lists.
+  New request is a workspace (§3). Before there is a document it offers only ways to choose one: the drive browser
+  where the viewer will be and a dropzone where the column will be. Then the PDF fills the left ("Change PDF" in its
+  toolbar opens the same choice in a dialog) and the column holds the title as a quiet field, the signers and the
+  delivery, with no headings or hints. Signers are always open: one 40px row each (the order number while ordered
+  with two or more people, the role, the name, and a "More actions" menu for moving, adding a place and removing);
+  place buttons show only with several places. Hovering a row rings its boxes and hovering a box tints its row. The
+  signature labels in the PDF's text ("Il Segretario", "Il Presidente") become spots: a row with the label as its role
+  and a "Choose signer…" picker, and a dashed box on the label's signature line, under the label or above it, that
+  covers no text, no other label and no signature already on the page; clicking the box opens the picker, and picking
+  a person turns it into their box. Labels match whole and keep their qualifiers, also when a narrow cell wraps them
+  ("Il Vice" over "Presidente"): "Vicepresidente" and "Vice Presidente" are never the Presidente spot. A label with no
+  room to sign, a field filled in on its line ("Presidente: Mario Rossi"), a sentence ending on a line of its own and
+  a label already signed are not spots. The focus starts in the first spot and moves on to the next one. "Add signer"
+  under the spots, and the free picker when there are none, add someone without a spot; a free row's role that names
+  an empty spot moves the person into it, and one that names a label elsewhere moves their box under it, only where it
+  covers nothing. Boxes of people without a spot share the foot of the last page in signing order, laid out again as
+  people are added. The picker highlights its first person, so Enter picks the viewer before anything is typed. "Me"
+  at the end of the first empty spot ("Add me as Segretario"), else of the free picker, adds the viewer in one click.
+  An empty spot blocks sending until it is filled or removed. Delivery is two summary rows in the request page's words
+  ("Will be saved to OneDrive: Verbali/… - firmato.pdf", always in full, and "No email" or the recipients): each opens
+  its fields under it, and opens by itself when its check fails. After an upload the save row starts open on the
+  folder browser at the drive root ("Choose where to save the signed PDF", with "Save here" demoted to outline and
+  "Don't save to OneDrive"). A blocked submit shows each problem at its control, never in a banner, and focuses the
+  first one (the folder browser's first row for a missing folder). The primary reads "Sign with CIE" when the viewer is
+  the only signer and "Sign and send" when the viewer signs first, creating the request and opening PoliNetwork eSign
+  in one click; otherwise, and on phones and tablets, "Send request". It carries a `Kbd` hint: ⌘/Ctrl+Enter runs it
+  from anywhere on the page, after an open field has finished what its blur does, and plain Enter never submits.
+  `?from=<request id>` starts New request from an earlier request in any status ("Send again"): title, signers in
+  order with their roles, the order, folder, file name and email come filled in, and leaving asks to discard only after
+  an edit. The PDF is the same OneDrive file read again, so a corrected file saved over the original is the one sent;
+  an upload, or a file OneDrive no longer gives, is the request's first version. While it opens the viewer shows blank
+  pages with "Opening the PDF…", the signers group keeps its final height and the primary waits. Under the title a
+  declined request says who declined and why, then "Same PDF as before." when nothing changed ("Check again" re-reads
+  a OneDrive file); a cancelled one says nothing. A signer who may no longer sign reads "Can't sign anymore." and
+  blocks sending until removed. A request that can't be read opens the empty composer with "Couldn't load that
+  request.".
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.

@@ -129,9 +129,27 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   sign its documents; default unchanged (auth#62 roles + catalog in the snapshot, auth-kit#2, backend, admin).
 - ☑ Signer picker lists every registered IdP user with `esign:sign` (filtered by the drives' sign rules), not only
   people who opened Signatures; their profile is created with the request (auth#63, backend#79, admin#113).
-- ☑ Sign it yourself: when the creator signs first (or is the only signer), the composer's "Create and sign" / "Sign
-  with CIE" creates the request and opens the agent in the same click; To sign has "Sign a document", which starts
-  with the creator as first signer (admin only).
+- ☑ Sign it yourself, inside New request: "Me" adds the creator in one click, and when the creator signs first (or is
+  the only signer) the primary, "Sign and send" / "Sign with CIE", creates the request and opens the agent in the same
+  click ("Send request" on a phone or tablet). The backend doesn't email the creator about a turn that starts as the
+  request is created. To sign's "Sign a document" and the composer's `?self=true` are gone (admin only).
+- ☑ Signature spots in New request: the labels in the PDF's text become rows to fill, each with a box near its label
+  in clear space (on the signature line when there is one, else under the label or above it), covering no text, no
+  label and no signature already on the page. Labels match whole and keep qualifiers apart, also wrapped over two
+  lines ("Vice Presidente" is never "Presidente"); several labels on a line, rotated pages, the first 40 and last 10
+  pages, and labels at the page bottom are handled. Field captions ("Presidente: Mario Rossi"), sentences ending on a
+  line of their own, labels without room to sign and labels already signed are not spots. Contracts without labels
+  keep the free picker, whose boxes share the foot of the last page in signing order (admin only, `places.ts`
+  tested).
+- ☑ Send again: New request takes `?from=<request id>` (any status, so "Duplicate" is one link) and fills in the
+  title, the signers in order with their roles, the order, the folder, the file name and the email. The PDF is the same
+  OneDrive item read again, so a corrected file saved over the original is picked up, and its spots are found again
+  (people keep the spot their role names, the others their places). An uploaded PDF, or a OneDrive file that can no
+  longer be opened (the composer says so), is the request's first version, before anyone signed, fetched and uploaded
+  again as a new document. A declined request whose PDF has the same sha256 as that version says "Same PDF as before.",
+  with "Check again" for a OneDrive file (admin only).
+- ☐ After a backend release, optional: reuse a version as a new request's document, so Send again of an uploaded PDF
+  doesn't take the bytes through the browser and opening it leaves no staged document behind.
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).

@@ -8,13 +8,24 @@ function Block({ className }: { className?: string }) {
 }
 
 /** One region-wide pulse (1 → .6 → 1 over 1.4s); static under reduced motion. */
-function Pulse({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+function Pulse({
+  label,
+  className,
+  bodyClassName,
+  children,
+}: {
+  label: string
+  className?: string
+  bodyClassName?: string
+  children: ReactNode
+}) {
   const reduceMotion = useReducedMotion()
   return (
     <div role="status" aria-busy="true" className={className}>
       <span className="sr-only">{label}</span>
       <motion.div
         aria-hidden
+        className={bodyClassName}
         animate={reduceMotion ? undefined : { opacity: [1, 0.6, 1] }}
         transition={{ duration: 1.4, ease: "easeInOut", repeat: Infinity }}
       >
@@ -149,6 +160,52 @@ export function SettingsListSkeleton({ rows = 2, label = "Loading…", className
           </div>
           <Block className="size-9 rounded-(--pn-r-3)" />
         </div>
+      ))}
+    </Pulse>
+  )
+}
+
+/**
+ * A workspace that fills the window, as the signature request composer does: a document surface and, from 900px of
+ * width, a column beside it.
+ */
+export function WorkspaceSkeleton({ label = "Loading…", className }: { label?: string; className?: string }) {
+  return (
+    <Pulse
+      label={label}
+      className={cn("@container/skeleton", className)}
+      bodyClassName="flex flex-col gap-4 @min-[900px]/skeleton:grid @min-[900px]/skeleton:h-[max(480px,calc(100dvh-112px))] @min-[900px]/skeleton:grid-cols-[minmax(0,1fr)_380px] @min-[1040px]/skeleton:grid-cols-[minmax(0,1fr)_400px]"
+    >
+      <div className="flex h-[60dvh] flex-col rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) @min-[900px]/skeleton:h-auto">
+        <div className="flex h-11 items-center border-b border-(--pn-line) px-3">
+          <Block className="h-3 w-40" />
+        </div>
+        {["w-1/3", "w-1/4", "w-2/5"].map((width) => (
+          <div key={width} className="flex h-11 items-center gap-3 px-3">
+            <Block className="size-4" />
+            <Block className={cn("h-3", width)} />
+          </div>
+        ))}
+      </div>
+      <div className="min-h-40 rounded-(--pn-r-5) border border-dashed border-(--pn-line-strong)" />
+    </Pulse>
+  )
+}
+
+/** Bars in place of lines still being worked out, e.g. a list read from a document; they share the height, 4px apart. */
+export function BarSkeleton({
+  label = "Loading…",
+  bars = 1,
+  className,
+}: {
+  label?: string
+  bars?: number
+  className?: string
+}) {
+  return (
+    <Pulse label={label} className={className} bodyClassName="flex h-full flex-col gap-1">
+      {Array.from({ length: bars }, (_, bar) => (
+        <Block key={bar} className="min-h-0 flex-1" />
       ))}
     </Pulse>
   )

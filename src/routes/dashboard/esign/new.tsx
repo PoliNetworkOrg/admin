@@ -1,25 +1,30 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 
-import { RecordSkeleton } from "@/components/primitives"
+import { WorkspaceSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { NewEsignRequestPage } from "@/features/esign/new-request-page"
 import { getEsignComposer } from "@/features/esign/requests.functions"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/esign/new")({
-  // `self`: "Sign a document", which starts with the viewer as the first signer. `from`: "Send again" on a declined
-  // or cancelled request, which the composer will start from.
-  validateSearch: z.object({ self: z.boolean().optional(), from: z.uuid().optional() }),
+  // `?from=<request id>` starts from an earlier request ("Send again"). Any value reaches the loader as text, which says
+  // when it isn't a request that can be read: the router reads `?from=123` as a number.
+  validateSearch: z.object({ from: z.coerce.string().optional() }),
   beforeLoad: ({ context }) => {
     if (!hasPermission(context.permissions, "esign:requests:manage")) throw redirect({ to: "/unauthorized" })
   },
-  loader: () => getEsignComposer(),
+  loaderDeps: ({ search }) => ({ from: search.from }),
+  loader: ({ deps }) => getEsignComposer({ data: { from: deps.from } }),
   pendingComponent: () => (
     <>
-      <PageBar width="record" back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }} />
-      <PageContent width="record">
-        <RecordSkeleton label="Loading…" />
+      <PageBar
+        width="record"
+        back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
+        context="New request"
+      />
+      <PageContent width="record" fill>
+        <WorkspaceSkeleton label="Loading…" />
       </PageContent>
     </>
   ),
@@ -27,7 +32,17 @@ export const Route = createFileRoute("/dashboard/esign/new")({
 })
 
 function NewRequestRoute() {
-  const { config, signers, me } = Route.useLoaderData()
-  const { self } = Route.useSearch()
-  return <NewEsignRequestPage config={config} signers={signers} me={me} withMe={self === true} />
+  const { config, signers, me, source, sourceError } = Route.useLoaderData()
+  const { from } = Route.useSearch()
+  // Another request to start from is another composer.
+  return (
+    <NewEsignRequestPage
+      key={from ?? ""}
+      config={config}
+      signers={signers}
+      me={me}
+      source={source}
+      sourceError={sourceError}
+    />
+  )
 }

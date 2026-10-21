@@ -6,6 +6,7 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
 
+import type { TextAnchor } from "./places"
 import { useFillHeight } from "./use-fill-height"
 
 export type PageSize = { width: number; height: number }
@@ -36,10 +37,15 @@ type PdfViewerProps = {
   status?: string | null
   /** A control after the status, e.g. Cancel while placing a box. */
   statusAction?: ReactNode
-  /** Controls after "Page n of total", e.g. Move box; hidden while `status` is set. */
+  /** Controls after "Page n of total", e.g. Move box or Change PDF; hidden while `status` is set. */
   toolbarStart?: ReactNode
   /** A page of the current `data` has been drawn (0-based). */
   onPainted?: (page: number) => void
+  /**
+   * Fills the page's scroll container down to its bottom padding (default). Off, the viewer takes the full height of
+   * its parent, which sizes it.
+   */
+  fill?: boolean
 }
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -76,9 +82,10 @@ export function PdfViewer({
   statusAction,
   toolbarStart,
   onPainted,
+  fill = true,
 }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const fill = useFillHeight<HTMLDivElement>()
+  const fillHeight = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
   const [doc, setDoc] = useState<Doc | null>(null)
@@ -182,9 +189,12 @@ export function PdfViewer({
 
   return (
     <div
-      ref={fill.ref}
-      style={fill.style}
-      className="flex h-[calc(100dvh-210px)] min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)"
+      ref={fill ? fillHeight.ref : undefined}
+      style={fill ? fillHeight.style : undefined}
+      className={cn(
+        "flex min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
+        fill ? "h-[calc(100dvh-210px)]" : "h-full"
+      )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -441,36 +451,70 @@ export function usePdfBytes(base64: string | null) {
   }, [base64])
 }
 
-/** A run of text on a page, in fractions of the displayed page (origin top-left). */
-export type TextAnchor = { page: number; text: string; x: number; y: number; width: number; height: number }
-
-/** The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". */
-export async function extractTextAnchors(data: Uint8Array, maxPages = 50): Promise<TextAnchor[]> {
+/**
+ * The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario", and the
+ * signatures already on it, which boxes keep off. Long documents are read on their first 40 and last 10 pages, where
+ * signature labels are. Text that doesn't run left to right on screen, such as a note printed up the margin, only
+ * counts as something to keep off.
+ */
+export async function extractTextAnchors(data: Uint8Array): Promise<TextAnchor[]> {
   const pdfjs = await loadPdfjs()
   const task = pdfjs.getDocument({ data: data.slice() })
   try {
     const pdf = await task.promise
     const anchors: TextAnchor[] = []
-    for (let index = 0; index < Math.min(pdf.numPages, maxPages); index++) {
+    const pages = [...Array(pdf.numPages).keys()].filter((i) => i < 40 || i >= pdf.numPages - 10)
+    for (const index of pages) {
       const page = await pdf.getPage(index + 1)
       const viewport = page.getViewport({ scale: 1 })
+      /** The rectangle around points of the page's user space, in fractions of the displayed page. */
+      const around = (points: [number, number][]) => {
+        const xs: number[] = []
+        const ys: number[] = []
+        for (const [x, y] of points) {
+          const [screenX, screenY] = viewport.convertToViewportPoint(x, y)
+          xs.push(screenX)
+          ys.push(screenY)
+        }
+        const left = Math.min(...xs)
+        const top = Math.min(...ys)
+        return {
+          page: index,
+          x: left / viewport.width,
+          y: top / viewport.height,
+          width: (Math.max(...xs) - left) / viewport.width,
+          height: (Math.max(...ys) - top) / viewport.height,
+        }
+      }
       const content = await page.getTextContent()
       for (const item of content.items) {
         if (!("str" in item) || item.str.trim() === "") continue
-        const [, , , , x, y] = item.transform
-        const corners = [
-          viewport.convertToViewportPoint(x, y),
-          viewport.convertToViewportPoint(x + item.width, y + item.height),
+        // The run goes `width` along its baseline and `height` up from it, whichever way the page and text turn.
+        const [a, b, c, d, e, f]: number[] = item.transform
+        const along = Math.hypot(a, b) || 1
+        const up = Math.hypot(c, d) || 1
+        const at = (length: number, rise: number): [number, number] => [
+          e + (a / along) * length + (c / up) * rise,
+          f + (b / along) * length + (d / up) * rise,
         ]
-        const left = Math.min(corners[0][0], corners[1][0])
-        const top = Math.min(corners[0][1], corners[1][1])
+        const [startX, startY] = viewport.convertToViewportPoint(e, f)
+        const [stepX, stepY] = viewport.convertToViewportPoint(...at(1, 0))
+        const leftToRight = stepX - startX > 0 && Math.abs(stepY - startY) < 0.05 * (stepX - startX)
+        const rect = around([at(0, 0), at(item.width, 0), at(0, item.height), at(item.width, item.height)])
+        anchors.push(leftToRight ? { ...rect, text: item.str } : { ...rect, text: "", kind: "sideways" })
+      }
+      for (const annotation of await page.getAnnotations()) {
+        if (annotation.fieldType !== "Sig" || !Array.isArray(annotation.rect)) continue
+        const [x1, y1, x2, y2]: number[] = annotation.rect
+        // An invisible signature has no rectangle on the page.
+        if (Math.abs(x2 - x1) < 1 || Math.abs(y2 - y1) < 1) continue
         anchors.push({
-          page: index,
-          text: item.str,
-          x: left / viewport.width,
-          y: top / viewport.height,
-          width: Math.abs(corners[1][0] - corners[0][0]) / viewport.width,
-          height: Math.abs(corners[1][1] - corners[0][1]) / viewport.height,
+          ...around([
+            [x1, y1],
+            [x2, y2],
+          ]),
+          text: "",
+          kind: "signature",
         })
       }
     }

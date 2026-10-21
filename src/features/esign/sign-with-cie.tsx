@@ -603,6 +603,7 @@ export function SignWithCie({
   children,
   className,
   describedBy,
+  "aria-keyshortcuts": keyShortcuts,
   ...options
 }: SignOptions & {
   disabled?: boolean
@@ -611,12 +612,20 @@ export function SignWithCie({
   className?: string
   /** The id of the text explaining why the trigger is disabled. */
   describedBy?: string
+  /** The shortcut that clicks the trigger, e.g. ⌘↵ in New request. */
+  "aria-keyshortcuts"?: string
 }) {
   const signing = useSignWithCie(options)
   const count = options.items?.length
   return (
     <>
-      <SignTrigger signing={signing} disabled={disabled || count === 0} className={className} describedBy={describedBy}>
+      <SignTrigger
+        signing={signing}
+        disabled={disabled || count === 0}
+        className={className}
+        describedBy={describedBy}
+        aria-keyshortcuts={keyShortcuts}
+      >
         {children ?? (count && count > 1 ? `Sign ${count} documents` : "Sign with CIE")}
       </SignTrigger>
       {signing.dialog}
@@ -630,12 +639,14 @@ export function SignTrigger({
   disabled,
   className,
   describedBy,
+  "aria-keyshortcuts": keyShortcuts,
   children = "Sign with CIE",
 }: {
   signing: ReturnType<typeof useSignWithCie>
   disabled?: boolean
   className?: string
   describedBy?: string
+  "aria-keyshortcuts"?: string
   children?: ReactNode
 }) {
   return (
@@ -647,6 +658,7 @@ export function SignTrigger({
         disabled={disabled}
         onClick={signing.start}
         aria-describedby={describedBy}
+        aria-keyshortcuts={keyShortcuts}
         className={cn("h-10", className)}
       >
         {children}

@@ -28,6 +28,10 @@ type SignatureBoxProps = {
   leaving?: "waiting" | "fading"
   afterDialog?: boolean
   onLeft?: () => void
+  /** The pointer entered (true) or left (false) the box, e.g. to point out its signer elsewhere on the page. */
+  onHover?: (hovering: boolean) => void
+  /** A click on a box that isn't editable, e.g. an empty spot opening its signer picker. */
+  onActivate?: () => void
 }
 
 const MIN = 0.04
@@ -68,6 +72,8 @@ export function SignatureBox({
   leaving,
   afterDialog,
   onLeft,
+  onHover,
+  onActivate,
 }: SignatureBoxProps) {
   const ref = useRef<HTMLDivElement>(null)
   const detail = kind === "mark" ? (role ? `Mark · ${role}` : "Mark") : role
@@ -142,10 +148,15 @@ export function SignatureBox({
       onPointerMove={move}
       onPointerUp={end}
       onPointerCancel={end}
+      onPointerEnter={onHover && (() => onHover(true))}
+      onPointerLeave={onHover && (() => onHover(false))}
+      onClick={editable ? undefined : onActivate}
       data-focus-ring="none"
       className={cn(
         "group/box absolute flex flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
         "outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
+        // An empty spot turning into its signer's box changes colour; the dashed border snaps.
+        "transition-[box-shadow,border-color,background-color,color] duration-[120ms,150ms,150ms,150ms] ease-(--pn-ease-out)",
         state === "active" &&
           "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
         state === "pending" &&
@@ -155,6 +166,7 @@ export function SignatureBox({
         highlighted && "ring-4 ring-(--pn-accent)/35",
         // Only a box that moves takes the finger; on the others it scrolls the page.
         editable && "cursor-move touch-none",
+        !editable && onActivate && "cursor-pointer hover:border-(--pn-brand-600)",
         leaving && "pointer-events-none",
         leaving === "fading" &&
           (afterDialog
