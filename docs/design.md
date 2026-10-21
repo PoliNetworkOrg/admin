@@ -341,10 +341,10 @@ the language name over a field-like box that holds the `bare` input. Single-line
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
 keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` + `aria-describedby`. Read-only values
 are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
-limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as text, shows
-the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an `aria-label` in
-place of the visible label. Use it only for a value edited in place inside a working surface, where a box around every
-value would be clutter; forms keep boxed fields.
+limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as text,
+shows the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an
+`aria-label` in place of the visible label. Use it only for a value edited in place inside a working surface, where a
+box around every value would be clutter; forms keep boxed fields.
 
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
@@ -485,20 +485,26 @@ Rules that the templates above don't imply.
   with two or more people, the role, the name, and a "More actions" menu for moving, adding a place and removing);
   place buttons show only with several places. Hovering a row rings its boxes and hovering a box tints its row. The
   signature labels in the PDF's text ("Il Segretario", "Il Presidente") become spots: a row with the label as its role
-  and a "Choose signer…" picker, and a dashed box under the label, covering no text; clicking the box opens the
-  picker, and picking a person turns it into their box. The focus starts in the first spot and moves on to the next
-  one. "Add signer" under the spots, and the free picker when there are none, add someone without a spot; a free
-  row's role that names an empty spot moves the person into it. Labels match whole: "Vicepresidente" and "Vice
-  Presidente" are never the Presidente spot. "Me" at the end of the first empty spot ("Add me as Segretario"), else
-  of the free picker, adds the viewer in one click. An empty spot blocks sending until it is filled or removed. Delivery is two summary rows in the request page's words ("Will be
-  saved to OneDrive: Verbali/… - firmato.pdf", always in full, and "No email" or the recipients): each opens its fields
-  under it, and opens by itself when its check fails. After an upload the save row starts open on the folder browser
-  at the drive root ("Choose where to save the signed PDF", with "Save here" demoted to outline and "Don't save to
-  OneDrive"). A blocked submit shows each problem at its control, never in a banner, and focuses the first one (the
-  folder browser's first row for a missing folder). The primary reads "Sign with CIE" when the viewer is the only
-  signer and "Sign and send" when the viewer signs first, creating the request and opening PoliNetwork eSign in one
-  click; otherwise, and on phones and tablets, "Send request". It carries a `Kbd` hint: ⌘/Ctrl+Enter runs it from
-  anywhere on the page, and plain Enter never submits.
+  and a "Choose signer…" picker, and a dashed box on the label's signature line, under the label or above it, that
+  covers no text, no other label and no signature already on the page; clicking the box opens the picker, and picking
+  a person turns it into their box. Labels match whole and keep their qualifiers, also when a narrow cell wraps them
+  ("Il Vice" over "Presidente"): "Vicepresidente" and "Vice Presidente" are never the Presidente spot. A label with no
+  room to sign, a field filled in on its line ("Presidente: Mario Rossi"), a sentence ending on a line of its own and
+  a label already signed are not spots. The focus starts in the first spot and moves on to the next one. "Add signer"
+  under the spots, and the free picker when there are none, add someone without a spot; a free row's role that names
+  an empty spot moves the person into it, and one that names a label elsewhere moves their box under it, only where it
+  covers nothing. Boxes of people without a spot share the foot of the last page in signing order, laid out again as
+  people are added. The picker highlights its first person, so Enter picks the viewer before anything is typed. "Me"
+  at the end of the first empty spot ("Add me as Segretario"), else of the free picker, adds the viewer in one click.
+  An empty spot blocks sending until it is filled or removed. Delivery is two summary rows in the request page's words
+  ("Will be saved to OneDrive: Verbali/… - firmato.pdf", always in full, and "No email" or the recipients): each opens
+  its fields under it, and opens by itself when its check fails. After an upload the save row starts open on the
+  folder browser at the drive root ("Choose where to save the signed PDF", with "Save here" demoted to outline and
+  "Don't save to OneDrive"). A blocked submit shows each problem at its control, never in a banner, and focuses the
+  first one (the folder browser's first row for a missing folder). The primary reads "Sign with CIE" when the viewer is
+  the only signer and "Sign and send" when the viewer signs first, creating the request and opening PoliNetwork eSign
+  in one click; otherwise, and on phones and tablets, "Send request". It carries a `Kbd` hint: ⌘/Ctrl+Enter runs it
+  from anywhere on the page, after an open field has finished what its blur does, and plain Enter never submits.
   `?from=<request id>` starts New request from an earlier request in any status ("Send again"): title, signers in
   order with their roles, the order, folder, file name and email come filled in, and leaving asks to discard only after
   an edit. The PDF is the same OneDrive file read again, so a corrected file saved over the original is the one sent;
