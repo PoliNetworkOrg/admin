@@ -64,6 +64,33 @@ void test("join requests are approved or declined only by the Capo Admin of the 
   })
 })
 
+void test("a Team Lead sees contacts only for active members of their team", async () => {
+  const asLead = fakePeopleApi({ permissions: SELF, personId: lead.id })
+  const team = (await asLead.listTeams()).find((entry) => entry.id === teamId)
+  assert.ok(team)
+
+  const formerTeammate = records.find(
+    (person) =>
+      person.teams.some((membership) => membership.team === teamId && membership.endedOn) &&
+      (person.profile.personalEmail || person.profile.phone)
+  )
+  assert.ok(formerTeammate, "the fixtures hold a former teammate with contact details")
+  const formerRow = team.members.find((person) => person.id === formerTeammate.id)
+  assert.ok(formerRow)
+  assert.equal(formerRow.profile.personalEmail, null)
+  assert.equal(formerRow.profile.phone, null)
+
+  const activeTeammate = records.find(
+    (person) =>
+      person.id !== lead.id && person.teams.some((membership) => membership.team === teamId && !membership.endedOn)
+  )
+  assert.ok(activeTeammate)
+  const activeRow = team.members.find((person) => person.id === activeTeammate.id)
+  assert.ok(activeRow)
+  assert.equal(activeRow.profile.personalEmail, activeTeammate.profile.personalEmail)
+  assert.equal(activeRow.profile.phone, activeTeammate.profile.phone)
+})
+
 void test("an unconfirmed first-sign-in match gets none of the record's powers", async () => {
   const leadMatch = fakePeopleApi({ permissions: SELF, personId: `match:${lead.id}` })
   assert.deepEqual(await leadMatch.getMyRoles(), { capoScope: null, leads: [] })

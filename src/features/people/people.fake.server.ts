@@ -575,7 +575,9 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           id,
           name: TEAMS[id].name,
           lead: lead ? { id: lead.id, name: fullName(lead) } : null,
-          members: members.map((person) => row(person, viewer, true)),
+          members: members.map((person) =>
+            row(person, viewer, canRead || person.teams.some((team) => team.team === id && !team.endedOn))
+          ),
         })
       }
       return teams
