@@ -31,6 +31,7 @@ import {
   FormField,
   fieldControl,
   fieldHintId,
+  Hint,
   IconButton,
   InlineAlert,
   LoadingButton,
@@ -81,6 +82,8 @@ const ROLES = ["Presidente", "Vicepresidente", "Segretario", "Tesoriere", "Consi
 /** A signature box of 190 × 62 pt, the size of a typical handwritten-signature space. */
 const BOX_PT = { width: 190, height: 62 }
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/** The folder the last PDF was picked from, `{ driveId, id }`, where the drive browser opens next time. */
+const LAST_FOLDER_KEY = "pn-admin:esign-last-folder"
 
 /** Default places: the last page's bottom, two per row, from the bottom-right corner. */
 function defaultPlacement(index: number, pages: PageSize[]): BoxPlacement {
@@ -111,6 +114,17 @@ function placementForRole(role: string, anchors: TextAnchor[], pages: PageSize[]
   const below = anchor.y + anchor.height + 0.008
   const y = below + size.height <= 0.98 ? below : Math.max(0.02, anchor.y - size.height - 0.008)
   return { page: anchor.page, x, y, ...size }
+}
+
+/** A folder's name and where it is: "2026" in "OneDrive / Segreteria / Verbali"; a drive's top folder by its drive. */
+function folderLines(folder: DriveFolder, drive: string) {
+  const segments = folder.path.split("/").filter(Boolean)
+  const name = segments.pop()
+  return {
+    name: name ?? drive,
+    place: name === undefined ? "Top folder" : [drive, ...segments].join(" / "),
+    full: `${drive}: /${folder.path}`,
+  }
 }
 
 function baseName(fileName: string) {
@@ -204,6 +218,17 @@ export function NewEsignRequestPage({
   const [saveToDrive, setSaveToDrive] = useState(config.drives.length > 0)
   const [folder, setFolder] = useState<DriveFolder | null>(null)
   const [choosingFolder, setChoosingFolder] = useState(false)
+  /** Undefined until local storage is read after mount, so the server and the first client render agree. */
+  const [lastFolder, setLastFolder] = useState<Pick<DriveFolder, "driveId" | "id"> | null>()
+  useEffect(() => {
+    let stored: Pick<DriveFolder, "driveId" | "id"> | null = null
+    try {
+      stored = JSON.parse(window.localStorage.getItem(LAST_FOLDER_KEY) ?? "null")
+    } catch (error) {
+      console.error(error)
+    }
+    setLastFolder(stored)
+  }, [])
   const [fileName, setFileName] = useState("")
   const [fileNameTouched, setFileNameTouched] = useState(false)
   const [folderTouched, setFolderTouched] = useState(false)
@@ -231,6 +256,7 @@ export function NewEsignRequestPage({
   // One drive goes by its own name; several are browsed together under "OneDrive".
   const drivesName = config.drives.length === 1 ? config.drives[0].label : "OneDrive"
   const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
+  const output = folder && folderLines(folder, driveLabel(folder.driveId))
 
   // The labels of the document on screen place the role boxes, including roles typed before they were read.
   useEffect(() => {
@@ -290,6 +316,9 @@ export function NewEsignRequestPage({
         { id: result.document.id, fileName: result.document.fileName, pdf: result.pdf, folder: from },
         content.base64
       )
+      const last = { driveId: from.driveId, id: from.id }
+      window.localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify(last))
+      setLastFolder(last)
     } catch (error) {
       console.error(error)
       setDocError(error instanceof Error ? error.message : "Couldn't open the PDF.")
@@ -639,14 +668,18 @@ export function NewEsignRequestPage({
                 </div>
                 {(docError || attempted) && <InlineAlert>{docError ?? errors.document}</InlineAlert>}
                 {source === "drive" && config.drives.length > 0 ? (
-                  <DriveBrowser
-                    mode="file"
-                    label="Files"
-                    drives={config.drives}
-                    busyId={busyItem}
-                    onPickFile={(item, from) => void importFromDrive(item.id, from)}
-                    className="flex-1"
-                  />
+                  lastFolder !== undefined && (
+                    <DriveBrowser
+                      mode="file"
+                      label="Files"
+                      drives={config.drives}
+                      initialDriveId={lastFolder?.driveId}
+                      initialFolderId={lastFolder?.id}
+                      busyId={busyItem}
+                      onPickFile={(item, from) => void importFromDrive(item.id, from)}
+                      className="flex-1"
+                    />
+                  )
                 ) : (
                   <label
                     htmlFor={ids.file}
@@ -933,11 +966,16 @@ export function NewEsignRequestPage({
                     {saveToDrive && (
                       <>
                         <div className="flex items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2">
-                          <span className="min-w-0 truncate font-mono text-[12px]">
-                            {folder
-                              ? `${config.drives.length > 1 ? `${driveLabel(folder.driveId)}: ` : ""}/${folder.path}`
-                              : "No folder chosen"}
-                          </span>
+                          {output ? (
+                            <Hint overflowOnly label={output.full}>
+                              <span className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate text-[14px] font-medium">{output.name}</span>
+                                <span className="truncate text-[13px] text-(--pn-fg-muted)">{output.place}</span>
+                              </span>
+                            </Hint>
+                          ) : (
+                            <span className="text-[14px] text-(--pn-fg-muted)">No folder chosen</span>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -954,7 +992,8 @@ export function NewEsignRequestPage({
                             mode="folder"
                             label="Folders"
                             drives={config.drives}
-                            initialDriveId={folder?.driveId}
+                            initialDriveId={(folder ?? lastFolder)?.driveId}
+                            initialFolderId={(folder ?? lastFolder)?.id}
                             className="h-72"
                             onPickFolder={(picked) => {
                               setFolder(picked)
