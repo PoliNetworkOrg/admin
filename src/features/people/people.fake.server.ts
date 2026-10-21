@@ -575,6 +575,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           id,
           name: TEAMS[id].name,
           lead: lead ? { id: lead.id, name: fullName(lead) } : null,
+          // A Lead sees contacts of current members only, not of people who left the team.
           members: members.map((person) =>
             row(person, viewer, canRead || person.teams.some((team) => team.team === id && !team.endedOn))
           ),
