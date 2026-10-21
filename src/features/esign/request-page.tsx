@@ -11,6 +11,7 @@ import {
   InlineAlert,
   LoadingButton,
   SectionCard,
+  Spinner,
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -150,6 +151,14 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     return map
   }, [request])
 
+  const stopped = request.status === "cancelled" || request.status === "declined"
+  const savedItem = request.delivery?.driveItem ?? null
+  // Recorded right after the upload, before the delivery itself is saved: Activity may say "Saved" first.
+  const uploaded = events.findLast((e) => e.type === "uploaded")
+  const saving = delivering && request.output !== null && !savedItem && !uploaded
+  const emailed = (request.delivery?.emailedTo.length ?? 0) > 0
+  const sending = delivering && (request.email?.to.length ?? 0) > 0 && !emailed
+
   const canCancel = request.status === "in_progress" && canManage
   // A request in progress is cancelled first; a pending delivery still needs the request.
   const canDelete = request.status !== "in_progress" && request.delivery?.status !== "pending" && canManage
@@ -254,7 +263,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 focus={focus}
                 overlay={(page) =>
                   request.signers.flatMap((signer, index) => {
-                    if (signer.status !== "pending") return []
+                    if (request.status !== "in_progress" || signer.status !== "pending") return []
                     const mine = myTurn && signer.id === mySigner?.id
                     const left = mine
                       ? myLeft
@@ -414,7 +423,11 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                           <span className="truncate text-[14px] font-medium">{signer.name}</span>
                           {signer.sub === me && <YouChip />}
                         </span>
-                        <SignerStatusBadge signer={signer} turn={request.turn.includes(signer.sub)} />
+                        <SignerStatusBadge
+                          signer={signer}
+                          turn={request.turn.includes(signer.sub)}
+                          requestStatus={request.status}
+                        />
                       </div>
                       {(signer.role || signer.places.length > 1 || signer.signedAt) && (
                         <div className="text-[13px] text-(--pn-fg-muted)">
@@ -446,49 +459,61 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             </SectionCard>
 
             <SectionCard title="Delivery">
-              <ul className="flex flex-col gap-3 text-[14px]">
-                <li className="flex items-start gap-2.5">
-                  <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                  <span className="min-w-0">
-                    {request.output ? (
-                      request.delivery?.driveItem?.webUrl ? (
-                        <a
-                          className="break-words text-(--pn-accent) hover:underline"
-                          href={request.delivery.driveItem.webUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {request.output.folderPath ? `${request.output.folderPath}/` : ""}
-                          {request.delivery.driveItem.name}
-                        </a>
+              {stopped ? (
+                <p className="text-[14px] text-(--pn-fg-muted)">Not delivered: the request was {request.status}.</p>
+              ) : (
+                <ul className="flex flex-col gap-3 text-[14px]">
+                  <li className="flex items-start gap-2.5">
+                    {saving ? (
+                      <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
+                    ) : (
+                      <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                    )}
+                    <span className="min-w-0">
+                      {request.output ? (
+                        savedItem?.webUrl ? (
+                          <a
+                            className="break-words text-(--pn-accent) hover:underline"
+                            href={savedItem.webUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {request.output.folderPath ? `${request.output.folderPath}/` : ""}
+                            {savedItem.name}
+                          </a>
+                        ) : (
+                          <span className="break-words">
+                            {savedItem || uploaded ? "Saved to " : saving ? "Saving to " : "Will be saved to "}
+                            {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
+                            {request.output.folderPath || "/"}
+                            {request.output.folderPath ? "/" : ""}
+                            {savedItem?.name ?? uploaded?.data.name ?? request.output.fileName}
+                          </span>
+                        )
                       ) : (
-                        <span className="break-words">
-                          {request.delivery?.driveItem ? "Saved to " : "Will be saved to "}
-                          {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
-                          {request.output.folderPath || "/"}
-                          {request.output.folderPath ? "/" : ""}
-                          {request.delivery?.driveItem?.name ?? request.output.fileName}
-                        </span>
-                      )
+                        <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                      )}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    {sending ? (
+                      <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
                     ) : (
-                      <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                      <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
                     )}
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                  <span className="min-w-0 break-words">
-                    {request.email?.to.length ? (
-                      <>
-                        {request.delivery?.emailedTo.length ? "Emailed to " : "Will be emailed to "}
-                        {request.email.to.join(", ")}
-                      </>
-                    ) : (
-                      <span className="text-(--pn-fg-muted)">No email</span>
-                    )}
-                  </span>
-                </li>
-              </ul>
+                    <span className="min-w-0 break-words">
+                      {request.email?.to.length ? (
+                        <>
+                          {emailed ? "Emailed to " : sending ? "Sending to " : "Will be emailed to "}
+                          {request.email.to.join(", ")}
+                        </>
+                      ) : (
+                        <span className="text-(--pn-fg-muted)">No email</span>
+                      )}
+                    </span>
+                  </li>
+                </ul>
+              )}
               {request.delivery?.status === "failed" && (
                 <InlineAlert
                   className="mt-3"

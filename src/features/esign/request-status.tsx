@@ -19,9 +19,18 @@ export function RequestStatusBadge({ request }: { request: Pick<EsignRequest, "s
   return <StatusBadge tone="neutral">Cancelled</StatusBadge>
 }
 
-export function SignerStatusBadge({ signer, turn }: { signer: EsignSigner; turn: boolean }) {
+export function SignerStatusBadge({
+  signer,
+  turn,
+  requestStatus,
+}: {
+  signer: EsignSigner
+  turn: boolean
+  requestStatus: EsignRequest["status"]
+}) {
   if (signer.status === "signed") return <StatusBadge tone="success">Signed</StatusBadge>
   if (signer.status === "declined") return <StatusBadge tone="danger">Declined</StatusBadge>
+  if (requestStatus !== "in_progress") return <StatusBadge tone="neutral">Not signed</StatusBadge>
   return turn ? <StatusBadge tone="brand">To sign</StatusBadge> : <StatusBadge tone="neutral">Waiting</StatusBadge>
 }
 
