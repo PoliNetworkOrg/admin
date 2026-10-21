@@ -642,6 +642,11 @@ void test("an outdated agent's window closes only when it couldn't explain the u
   const silent = await signingMachine({ kind: "signing" })
   silent.track(outdated(silent), false, Date.now())
   assert.deepEqual(silent.events, ["popup closed", "ended"])
+  // A poll can see the job end before the agent's fatal message arrives: after `ready` the window is the agent's.
+  const ready = await signingMachine(OPENING)
+  ready.onMessage({ type: "pn-esign", status: "ready", detail: "0.5.0" })
+  ready.track(outdated(ready), false, Date.now())
+  assert.deepEqual(ready.events, ["signing", "ended"])
 })
 
 void test("someone else ending the request closes the agent window", async () => {
@@ -682,6 +687,11 @@ void test("the agent stopping after it answered is the one outcome the dialog le
   const silent = await signingMachine(OPENING)
   silent.onMessage(lost)
   assert.deepEqual(silent.events, [])
+  // The page loaded but can't reach the agent for its job: stopped too, not "can't continue".
+  const loaded = await signingMachine(OPENING)
+  loaded.onMessage({ ...lost, message: "PoliNetwork eSign stopped answering.", fatal: true })
+  assert.deepEqual(loaded.events, ["stopped"])
+  assert.equal(loaded.dependencies.answered.current, true)
 })
 
 void test("every document signed hands off, or reloads when nothing hands off", async () => {

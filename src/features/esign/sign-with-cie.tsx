@@ -227,6 +227,8 @@ export function useSigning(read: () => SignOptions) {
   /** The documents of this attempt are created in its click (New request), so they are signed from their page later. */
   const [preparing, setPreparing] = useState(false)
   const preparingRef = useRef(false)
+  /** PoliNetwork eSign said `ready`: from then on the dashboard never closes its window by itself. */
+  const readySeen = useRef(false)
 
   function show(next: Session | null) {
     sessionRef.current = next
@@ -356,8 +358,9 @@ export function useSigning(read: () => SignOptions) {
       case "ended": {
         const { reason } = outcome.ending
         // Someone else ended the request: the agent window would keep asking for a PIN that can sign nothing. An
-        // agent too old to explain itself shows only plain text.
-        if (reason === "cancelled" || reason === "declined" || (reason === "outdated" && !fatalShown.current))
+        // agent too old to explain itself shows only plain text; one that said `ready` is about to show the update.
+        const silent = !readySeen.current && !fatalShown.current
+        if (reason === "cancelled" || reason === "declined" || (reason === "outdated" && silent))
           popupRef.current?.close()
         return go({ kind: "ended", ending: outcome.ending })
       }
@@ -380,8 +383,18 @@ export function useSigning(read: () => SignOptions) {
 
   function onMessage(data: AgentMessage) {
     if (!modeRef.current || finishing.current) return
-    if (data.status === "ready") return answer(data.detail || "unknown")
+    if (data.status === "ready") {
+      readySeen.current = true
+      return answer(data.detail || "unknown")
+    }
     if (data.status !== "error") return
+    // The page lost the agent behind it, the one outcome the backend can't know about: it stopped, fatal or not (the
+    // page served by it can't load its job either).
+    if (data.detail === "agent_unreachable") {
+      if (!data.fatal && !answered.current) return
+      answered.current = true
+      return go({ kind: "stopped" })
+    }
     if (data.fatal) {
       answered.current = true
       fatalShown.current = true
@@ -390,10 +403,7 @@ export function useSigning(read: () => SignOptions) {
       // Other errors wait for the poll this message starts: the job may have ended with words of its own.
       if (state === "continue") fatal.current = { message, at: Date.now() }
       else go({ kind: "fatal", state, message })
-      return
     }
-    // The page lost the agent behind it: the one outcome the backend can't know about.
-    if (data.detail === "agent_unreachable" && answered.current) go({ kind: "stopped" })
   }
 
   async function start() {
@@ -407,6 +417,7 @@ export function useSigning(read: () => SignOptions) {
     finishing.current = false
     fatal.current = null
     fatalShown.current = false
+    readySeen.current = false
     startFailed.current = false
     focusAfter.current = null
     statesRef.current = new Map()
