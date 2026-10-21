@@ -605,7 +605,7 @@ export function NewEsignRequestPage({
 
   // The drives the request uses decide who may sign it: where the PDF came from, and where it is saved.
   const usedDrives = [
-    ...new Set([staged?.folder?.driveId, saveToDrive ? folder?.driveId : undefined].filter((d) => d !== undefined)),
+    ...new Set([staged?.drive ?? undefined, saveToDrive ? folder?.driveId : undefined].filter((d) => d !== undefined)),
   ]
   const blockedDrive = (sub: string) => {
     const person = people.find((p) => p.sub === sub)
