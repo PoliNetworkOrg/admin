@@ -10,7 +10,7 @@ import type { SigningDevice } from "./signing-device"
  * touch-only screens, the phone note everywhere else.
  */
 export const computerOnly = "[@media(hover:none)_and_(pointer:coarse)]:hidden"
-const phoneOnly = "hidden [@media(hover:none)_and_(pointer:coarse)]:block"
+export const phoneOnly = "hidden [@media(hover:none)_and_(pointer:coarse)]:block"
 
 type EsignActionCardProps = {
   title: string

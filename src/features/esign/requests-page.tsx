@@ -8,9 +8,11 @@ import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell
 import { Button } from "@/components/ui/button"
 import type { EsignRequest } from "@/lib/api/types"
 import { formatDate, pluralize } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
+import { computerOnly, phoneOnly } from "./action-card"
 import { RequestStatusBadge, type StatusFilter, signedProgress } from "./request-status"
-import { useCanSignHere } from "./signing-device"
+import { useSigningDevice } from "./signing-device"
 
 const SCOPE_ITEMS: { value: "mine" | "all"; label: string }[] = [
   { value: "mine", label: "Mine" },
@@ -107,7 +109,8 @@ export function EsignRequestsPage({
   onStatusChange?: (status: StatusFilter) => void
 }) {
   const canManage = useCan("esign:requests:manage")
-  const canSignHere = useCanSignHere()
+  // Until hydration a Mac may be an iPad: both the button and the note render, and CSS shows one.
+  const device = useSigningDevice()
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
   const deferred = useDeferredValue(query.trim().toLocaleLowerCase())
@@ -141,8 +144,12 @@ export function EsignRequestsPage({
         right={
           inbox
             ? waiting > 1 &&
-              canSignHere && (
-                <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/sign" />}>
+              device !== "phone" && (
+                <Button
+                  className={cn("h-10", device === "unknown" && computerOnly)}
+                  nativeButton={false}
+                  render={<Link to="/dashboard/esign/sign" />}
+                >
                   <Files aria-hidden /> Sign {waiting} together
                 </Button>
               )
@@ -184,11 +191,13 @@ export function EsignRequestsPage({
         }
       />
       <PageContent>
-        {waiting > 1 && !canSignHere && (
-          <InlineAlert tone="info" className="mb-4">
-            Signing needs your computer with the card reader and PoliNetwork eSign. These documents will be waiting
-            here.
-          </InlineAlert>
+        {waiting > 1 && device !== "computer" && (
+          <div className={cn("mb-4", device === "unknown" && phoneOnly)}>
+            <InlineAlert tone="info">
+              Signing needs your computer with the card reader and PoliNetwork eSign. These documents will be waiting
+              here.
+            </InlineAlert>
+          </div>
         )}
         <DataTable
           label={inbox ? "Documents to sign" : "Signature requests"}
