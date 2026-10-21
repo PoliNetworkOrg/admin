@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
+import { azureEmailSchema } from "@/features/azure/email"
 import {
   azureMembersCreateMiddleware,
   azureMembersReadMiddleware,
@@ -23,7 +24,7 @@ export const createAzureMember = createServerFn({ method: "POST" })
       firstName: z.string().trim().min(1),
       lastName: z.string().trim().min(1),
       assocNumber: z.number().int().positive(),
-      sendEmailTo: z.email(),
+      sendEmailTo: azureEmailSchema,
       mailbox: z.discriminatedUnion("kind", [
         z.object({ kind: z.literal("standard") }),
         z.object({ kind: z.literal("custom"), localPart: z.string().trim().min(1) }),
@@ -43,7 +44,7 @@ export const setAzureMemberNumber = createServerFn({ method: "POST" })
     z.object({
       userId: z.string().min(1),
       assocNumber: z.number().int().positive(),
-      notifyEmail: z.email().optional(),
+      notifyEmail: azureEmailSchema.optional(),
     })
   )
   .handler(async ({ data, context }) => {

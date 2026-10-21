@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
+import { azureEmailSchema } from "../src/features/azure/email.ts"
 import { isMemberNumber, reconcileMemberNumbers } from "../src/features/azure/member-number.ts"
 
 void test("a stale directory refresh keeps the saved member number", () => {
@@ -33,4 +34,11 @@ void test("member numbers must be positive integers the API can represent exactl
   for (const valid of ["1", "2042", "9007199254740991"]) assert.equal(isMemberNumber(valid), true)
   for (const invalid of ["", "0", "01", "-1", "1.2", "9007199254740992", "999999999999999999999"])
     assert.equal(isMemberNumber(invalid), false)
+})
+
+void test("member notification email validation matches the endpoint Zod schema", () => {
+  for (const valid of ["a@x.com", "first.last@example.org", "user+tag@sub.domain.net"])
+    assert.equal(azureEmailSchema.safeParse(valid).success, true, valid)
+  for (const invalid of ["a..b@x.com", "a@x..com"])
+    assert.equal(azureEmailSchema.safeParse(invalid).success, false, invalid)
 })

@@ -16,6 +16,7 @@ import { setAzureMemberNumber } from "@/features/azure/azure.functions"
 import type { AzureMember } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
+import { azureEmailSchema } from "./email"
 import { isMemberNumber } from "./member-number"
 
 type MemberNumberDialogProps = {
@@ -33,7 +34,7 @@ const EMAIL_ERROR = "Enter a valid email address."
 const SAVE_ERROR = "The member ID could not be changed. Check the value and your permissions."
 
 function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  return azureEmailSchema.safeParse(value).success
 }
 
 /** The backend's own messages ("Member number 12 is already assigned to …") are kept; anything else is generic. */
