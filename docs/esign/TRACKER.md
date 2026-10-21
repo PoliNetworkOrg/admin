@@ -174,8 +174,8 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
 - 2026-10-21: UX pass (admin `feat/esign-ux-pass`, backend `fix/esign-ux`, agent `fix/sign-page-ux`; not pushed): the
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on
   errors a retry can't fix, plus composer, request, batch, setup and Overview polish. Admin follow-ups after the backend
-  release: "by HH:MM" from `signingNow.until` (C6); `lostAccess` on the signer card and the drive-access impact
-  confirmation (C9). Open product decisions: `~/dev/polinetwork/esign-ux-decisions-2026-10-21.html` (outside the repo).
+  release: the lock alert's "by HH:MM" from `signingNow.until`; `lostAccess` on the signer card and the drive-access
+  impact confirmation before saving a sign rule. Open product decisions: `~/dev/polinetwork/esign-ux-decisions-2026-10-21.html` (outside the repo).
 
 - 2026-10-17: merged backend#75 (released @polinetwork/backend 1.9.0), sign-agent#6 (released PoliNetwork eSign
   v0.2.0) and admin#105; the upload fallback warns signers with several places. Flux rolls out the new images.
