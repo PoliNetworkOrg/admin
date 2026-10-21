@@ -42,14 +42,40 @@ Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:4732
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
-The signing page tells its opener what happened with `postMessage({type: "pn-esign", status, detail?}, origin)`, to the
-dashboard's origin only: `status` is `completed`, `error` or `cancelled`, `detail` the agent error code, or
-`agent_unreachable` when the page can no longer reach the agent behind it. The dashboard polls `esign.jobs.statuses`
-again on every message and acts on a message itself only for `agent_unreachable`, because the agent can't report its own
-death to the backend. Only the next agent release (after v0.3.0) posts `agent_unreachable`: with v0.3.0 and older the
-dashboard doesn't learn that the agent stopped. Agents up to v0.1.x post type `pn-sign-agent`.
+The signing page tells its opener what happened with `postMessage({type: "pn-esign", status, detail?, …}, origin)`,
+to the dashboard's origin only (agents up to v0.1.x post type `pn-sign-agent`):
 
-The dashboard notices a closed agent window by reading `popup.closed` on every poll. That works only while the two
+| `status`    | Other fields                                        | When                                                                                                                                                   |
+| ----------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ready`     | `detail`: the agent's version                       | First thing the page's script does, before any request. From the release after v0.3.0.                                                                 |
+| `error`     | `detail`: code, `message`: its words, `fatal: true` | The page can't go on (job load failed, backend unreachable, link expired, `agent_outdated`) and shows the error instead of the PIN form. Same release. |
+| `error`     | `detail`: code                                      | A signature failed and the page went back to the PIN form; `agent_unreachable` when the page can no longer reach the agent behind it.                  |
+| `completed` |                                                     | Every document of the window is signed.                                                                                                                |
+| `cancelled` |                                                     | The signer cancelled in the agent window.                                                                                                              |
+
+The dashboard polls `esign.jobs.statuses` every 1.2 s and at once on every message. A job's terminal status from the
+poll wins over a message. Messages the dashboard acts on by themselves:
+
+- **`ready`.** The agent is running: the dialog asks for the PIN and never closes the window by itself from then on,
+  except to hand off after success, when someone else cancels or declines the request, or on the signer's cancel.
+  The browser remembers it in `localStorage["pn-esign-agent"] = {"version": "<detail>", "at": ISO}`.
+- **Older agents** never say `ready`: the job's `seen` (the agent fetched it) stands in for it, and the flag is stored
+  with `"version": null`.
+- **No answer.** Without `ready` or `seen` 2.5 s after the window is sent to the agent (6 s when the flag's version is
+  null), the dashboard polls once more, then closes the window and says PoliNetwork eSign isn't running: "Start
+  PoliNetwork eSign" (`polinetwork-esign://open`, then the window opens again) when the flag exists, otherwise "Install
+  PoliNetwork eSign" (the setup page). A window closed before any answer means the same, at once.
+- **Fatal errors.** `agent_outdated` shows the update (a direct download of the newest version, the release page on
+  Linux), `backend_unreachable` "can't connect" and `job_expired` the timed-out state at once; any other code waits
+  for the poll the message starts, in case the job ended with words of its own, then shows the message. The window
+  stays open: it shows the same error with its own buttons. A job that failed with `agent_outdated` without a fatal
+  message (an agent too old to post one) closes the window, which shows only plain text.
+- **`agent_unreachable`** after the agent answered: it stopped, and only the page can tell. Older agents (v0.3.0 and
+  before) don't post it.
+
+The dashboard notices a closed agent window by reading `popup.closed` on every poll, and acts once two polls in a row
+read it closed: it keeps waiting while a job is `prepared` (the card is signing), shows which documents were signed when
+some were, and otherwise cancels the open jobs and closes the dialog without a message. That works only while the two
 windows keep their opener relationship, so neither the dashboard nor the agent page may send a
 `Cross-Origin-Opener-Policy` header: `same-origin` on either side cuts the link, the dashboard then reads the window as
 closed at once, and the page's `window.opener` is gone, so its messages stop too.
@@ -83,7 +109,8 @@ The agent, the backend and the dashboard agree on which errors are terminal. A t
 moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it itself, and
 the agent shows it without a PIN form. Any other code, an unknown one included, leaves the job open in the backend. A
 retryable error returns to the PIN form in the same agent window. Any other per-document error ends the agent window
-while the backend keeps the job open; once the signer closes that window, the dashboard offers to open it again.
+while the backend keeps the job open; once the signer closes that window, the dashboard cancels the open jobs and
+closes its dialog, so signing again is one click away.
 
 - Terminal, reported by the agent: `pin_locked`, `card_untrusted`, `middleware_missing`, `not_paired`,
   `certificate_not_found`.

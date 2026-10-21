@@ -527,6 +527,13 @@ tr:focus-visible {
   animation: spin 1s linear infinite;
 }
 
+/* A signature box dissolving into the stamp drawn under it (signature-box.tsx). */
+@keyframes pn-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
 /* Touch focus keeps the chart tooltip; only keyboard focus draws the app ring. */
 .user-growth-chart :focus:not(:focus-visible) {
   outline: none;

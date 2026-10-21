@@ -9,6 +9,7 @@ import {
   associationSaveErrorMessage,
   parseCreateAssociationForm,
 } from "../src/features/associations/associations.validation.ts"
+import { agentUserAgent } from "../src/features/esign/agent.ts"
 import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
 import { parseProjectForm, projectSaveErrorMessage } from "../src/features/projects/projects.validation.ts"
@@ -141,6 +142,24 @@ test("only the sign agent's ticket proxy skips the Origin check", async () => {
   // The proxy forwards only ticket paths, and nothing from the browser session.
   assert.match(proxy, /const AGENT_PATH = \/\^jobs\\\/\[A-Za-z0-9_-\]\{43\}/)
   assert.doesNotMatch(proxy, /cookie|authorization|readRequestSession|sessionMiddleware/i)
+  assert.match(proxy, /agentUserAgent\(request\.headers\.get\("user-agent"\)\)/)
+})
+
+void test("the sign agent's proxy forwards only the agent's own User-Agent", () => {
+  for (const userAgent of ["PoliNetwork-eSign/0.3.1", "PoliNetwork-eSign/0.4.0-rc.1+darwin", "PoliNetwork-eSign/dev"])
+    assert.equal(agentUserAgent(userAgent), userAgent)
+  for (const userAgent of [
+    null,
+    "",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    "PoliNetwork-eSign/",
+    "PoliNetwork-eSign/0.4.0 extra",
+    "PoliNetwork-eSign/0.4.0\r\nx-forwarded-for: 1.2.3.4",
+    `PoliNetwork-eSign/${"1".repeat(33)}`,
+    "poliNetwork-esign/0.4.0",
+    "PoliNetwork Sign Agent/0.1.1",
+  ])
+    assert.equal(agentUserAgent(userAgent), null, String(userAgent))
 })
 
 test("the backend URL only falls back during development or compilation", () => {
@@ -318,7 +337,6 @@ test("event handlers integrate protected server-function redirects with the rout
       "cancelEsignRequest",
       "deleteEsignRequest",
       "retryEsignDelivery",
-      "uploadSignedEsignDocument",
     ],
     "src/features/esign/sign-with-cie.tsx": ["startEsignSignature", "cancelEsignSignature"],
     "src/features/esign/drives-page.tsx": ["setEsignDriveAccess"],

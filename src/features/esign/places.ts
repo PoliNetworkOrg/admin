@@ -4,10 +4,24 @@ import type { BoxPlacement } from "./signature-box"
 /** One of a signer's boxes: a full signature of its own, or a mark repeating their first signature. */
 export type Place = BoxPlacement & { kind: "signature" | "mark" }
 
-export function pagesLabel(places: Pick<Place, "page">[]) {
+/** "1", "1 and 3", "1, 2 and 4": the pages the places are on. */
+function pageList(places: Pick<Place, "page">[]) {
   const pages = [...new Set(places.map((p) => p.page + 1))].sort((a, b) => a - b)
-  if (pages.length === 1) return `page ${pages[0]}`
-  return `pages ${pages.slice(0, -1).join(", ")} and ${pages.at(-1)}`
+  return {
+    count: pages.length,
+    text: pages.length === 1 ? `${pages[0]}` : `${pages.slice(0, -1).join(", ")} and ${pages.at(-1)}`,
+  }
+}
+
+/** "page 1", "pages 1 and 3". */
+export function pagesLabel(places: Pick<Place, "page">[]) {
+  const { count, text } = pageList(places)
+  return `${count === 1 ? "page" : "pages"} ${text}`
+}
+
+/** "p. 1", "p. 1 and 3", "p. 1, 2 and 4". */
+export function pagesShort(places: Pick<Place, "page">[]) {
+  return `p. ${pageList(places).text}`
 }
 
 /** "2 signatures and 1 mark", or "1 signature". */

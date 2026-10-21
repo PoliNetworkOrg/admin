@@ -113,6 +113,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☑ Review round 1 (Sol 6.1): 15 findings (4 high), all fixed with regression tests; Postgres smoke script
   (`backend/scripts/esign-store-smoke.ts`) caught a jsonb double-encoding issue in the new queries.
 - ☑ Fallback: upload a PDF signed with the official app (verified as current version + one CIE signature).
+  Removed from the dashboard on 2026-10-21: CIE ID rewrites a PDF that has no signature yet, so it never worked for
+  the first signer. The backend's `esign.requests.uploadSigned` is no longer called and can be removed.
 - ☑ Smart placement (box under "Il Presidente"/role label), navigation badge for documents to sign.
 - ☑ Review round 2 (Sol 6.1, Personal account; its safety filter cut the final report, partial notes in
   `/tmp/esign-review-r2b/`): round-1 fixes confirmed; new findings fixed — ByteRange gap must be exactly /Contents,
@@ -137,6 +139,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   running and ready to sign", which fits both v0.3.0 ("The agent is running") and the readiness status page of the next
   agent release ("Ready to sign" once reader, card and software check out). Once that release is out, the step can
   quote "Ready to sign".
+- ☐ Setup page: its inline links (the ArchWiki guide, opencie) still differ from the text by color only; give them
+  `inlineLink`, like the request and batch pages (`feat/esign-dec-setup` rewrites that page, so at integration).
 
 ## Manual steps for the maintainer (cannot be automated here)
 
@@ -157,12 +161,14 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token, then
     drop the Run anyway sentence from AGENT_STEPS.windows.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
-- ☐ Before deploying the Setup buttons "Download for macOS" / "Download for Windows": publish an agent release that
-  ships `PoliNetwork-eSign-macos.dmg` and `PoliNetwork-eSign-windows-amd64.zip` (esign "publish the macOS and Windows
+- ☐ Before deploying Setup's "Download for macOS" / "Download for Windows" and the signing dialog's "Update
+  PoliNetwork eSign" state (agents too old to sign): publish an agent release that ships
+  `PoliNetwork-eSign-macos.dmg` and `PoliNetwork-eSign-windows-amd64.zip` (esign "publish the macOS and Windows
   downloads under fixed names"), tagged `vX.Y.Z` with no suffix, so it is not a pre-release and becomes
   `releases/latest`. Then check that both names answer 200:
   `curl -sL -o /dev/null -w '%{http_code}\n' https://github.com/PoliNetworkOrg/esign/releases/latest/download/<name>`.
-  Until then they answer 404, and the buttons, which open in the same tab, take the user to GitHub's 404 page.
+  Until then they answer 404, and these links, which open in the same tab (a real download leaves the page in place),
+  replace the dashboard, and the signing dialog with it, with GitHub's 404 page.
 
 ## Local end-to-end
 
@@ -176,6 +182,22 @@ cd ~/dev/polinetwork/sign-agent && go run ./cmd/esign --dev --soft    # PIN 1234
 Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `127.0.0.1`: the dev CSRF origin).
 
 ## Log
+
+- 2026-10-21: decisions round, request and batch pages (admin `feat/esign-dec-signing`; not pushed): one action card
+  holds the title, the status, one sentence and the request's actions, and on desktop the right column stays put while
+  the cards under it scroll; "Move box" moved into the viewer's toolbar; phones and tablets only review; declined and
+  cancelled requests offer "Send again" (`/dashboard/esign/new?from=`, which the composer branch fills in); the upload
+  fallback is gone; the agent proxy forwards PoliNetwork eSign's User-Agent, so the backend can refuse versions too old
+  to sign. The signing dialog listens for the agent's `ready` and fatal errors (older agents through the job's `seen`),
+  says within 2.5 s when PoliNetwork eSign isn't running (Start for a browser that has run it, Install otherwise), asks
+  for an update with a direct download when the agent is too old, and hands off after signing: the page updates
+  behind it, then the agent window and the dialog close and the box dissolves into the stamp. The `ready` and fatal
+  messages need the next agent release; until then the dashboard follows `seen`. Copy kept on purpose: a missing
+  CIE ID module reads "CIE ID isn't set up on this computer" / "Follow the setup guide, then sign again.", as the
+  agent window says it, not "isn't installed" (CIE ID can be installed with its module out of reach, e.g. without
+  Rosetta); the lock line is one line ("Mario Rossi is signing right now."), so the card keeps its height; the To sign
+  and requests lists keep "Requested by {name}", the only place a row says who asks (removed from the request and
+  batch pages only).
 
 - 2026-10-21: UX pass (admin `feat/esign-ux-pass`, backend `fix/esign-ux`, agent `fix/sign-page-ux`; not pushed): the
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on

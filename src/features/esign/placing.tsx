@@ -1,7 +1,7 @@
-import { MapPin } from "lucide-react"
-import { useEffect } from "react"
+import { ChevronDown, MapPin } from "lucide-react"
+import { type ComponentProps, type Ref, useEffect } from "react"
 
-import { buttonMotion } from "@/components/primitives"
+import { buttonMotion, Hint, Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -41,35 +41,55 @@ export function PlacingCancel({ onCancel }: { onCancel: () => void }) {
 }
 
 /**
- * The signer's "Move to another spot", one button per place when there are several: the next click on any page puts
- * the box there. Choosing the place being moved again cancels.
+ * "Move box" in the viewer's toolbar: the next click on any page puts the box there; with several places it first asks
+ * which one. Below 420px of toolbar only the icon shows, and the label becomes its tooltip.
  */
-export function MovePlaceButtons({
+export function MoveBoxButton({
   places,
-  placing,
   onPlacing,
+  ref,
 }: {
   places: Place[]
-  placing: number | null
-  onPlacing: (at: number | null) => void
+  onPlacing: (at: number) => void
+  ref?: Ref<HTMLButtonElement>
 }) {
-  return places.map((p, at) => {
-    const what = p.kind === "mark" ? "mark" : "signature"
+  if (places.length === 1)
     return (
-      <Button
-        // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
-        key={at}
-        variant={placing === at ? "secondary" : "outline"}
-        className="h-10 tabular-nums"
-        aria-pressed={placing === at}
-        aria-label={places.length > 1 ? `Move the ${what} on page ${p.page + 1} to another spot` : undefined}
-        onClick={() => onPlacing(placing === at ? null : at)}
-      >
-        <MapPin aria-hidden />
-        {places.length > 1 ? `${p.kind === "mark" ? "Mark" : "Signature"} · p. ${p.page + 1}` : "Move to another spot"}
-      </Button>
+      <Hint label="Move box" overflowOnly>
+        <MoveBoxTrigger ref={ref} onClick={() => onPlacing(0)} />
+      </Hint>
     )
-  })
+  return (
+    <Menu>
+      {/* The tooltip's trigger outside the menu's, so both get the button's pointer and focus events. */}
+      <Hint label="Move box" overflowOnly>
+        <MenuTrigger render={<MoveBoxTrigger ref={ref} menu />} />
+      </Hint>
+      <MenuContent align="start">
+        {places.map((p, at) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
+          <MenuItem key={at} className="tabular-nums" onClick={() => onPlacing(at)}>
+            {p.kind === "mark" ? "Mark" : "Signature"} · p. {p.page + 1}
+          </MenuItem>
+        ))}
+      </MenuContent>
+    </Menu>
+  )
+}
+
+function MoveBoxTrigger({ menu = false, className, ...props }: ComponentProps<typeof Button> & { menu?: boolean }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(buttonMotion, "text-(--pn-fg) @max-[420px]:w-9 @max-[420px]:px-0", className)}
+      {...props}
+    >
+      <MapPin aria-hidden className="text-(--pn-fg-muted)" />
+      <span className="@max-[420px]:sr-only">Move box</span>
+      {menu && <ChevronDown aria-hidden className="text-(--pn-fg-muted) @max-[420px]:hidden" />}
+    </Button>
+  )
 }
 
 /** The viewer's status while one of the signer's places waits for its new spot. */

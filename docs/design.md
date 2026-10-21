@@ -303,7 +303,9 @@ toast fires and the dialog closes: `ConfirmDialog` closes itself, `FormDialog` d
 after the mutation, and keep the dialog's record in state after closing so its content survives the exit animation. A
 dirty form intercepts every close with the discard confirmation (`FormDialog` does it when the dialog passes `dirty`).
 Key a dialog body with `useOpenGeneration` so every opening starts clean. Autofocus the first field on fine pointers
-only.
+only. The one exception to the success toast is a page that states the outcome in place: on a signature request,
+signing, Decline, Cancel request and Retry delivery change the action card's sentence, so they show no toast and return
+focus to that sentence (`finalFocus`, on `ConfirmDialog`, `FormDialog` and the signing dialog).
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
 and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
@@ -339,9 +341,12 @@ three, never infinite, no "Undo".
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
-never the only signal. Hit areas are at least 36px, including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF
-links, label chips that remove a selection and tree expanders. Enlarge the clickable area independently of the icon.
-DOM order matches visual order.
+never the only signal: a link inside a sentence is underlined at rest (`inlineLink`). Hit areas are at least 36px,
+including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF links, label chips that remove a
+selection and tree expanders. Enlarge the clickable area independently of the icon.
+DOM order matches visual order, with one exception: in their two-column layout the signature request and batch pages
+keep the action card first in the DOM though it sits right of the viewer, so its primary is the first stop after the
+page bar, as it is in the single column.
 
 ## 6. Motion
 
@@ -363,10 +368,11 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Chart tooltip and hover guide                                                          | none: they follow the pointer or keyboard focus                                                                                                                                                                          |
 | Skeleton                                                                               | opacity pulse 1.4s; the only loop besides spinners                                                                                                                                                                       |
 | Theme toggle                                                                           | light-bulb reveal: a View Transition `clip-path` circle from the toggle (700ms to light, 520ms to dark), reversible mid-way; element transitions are off while it runs (`data-theme-switching`). Go through `useTheme()` |
+| Signature box after signing                                                            | opacity 1→0, 200ms `--pn-ease-move`, once the signing dialog's exit ends; the stamp is already drawn underneath. A new PDF version replaces each page without a fade                                                     |
 | Navigation, sort, filter, paging, inline-edit swap, command palette, active indicators | none                                                                                                                                                                                                                     |
 
 Reduced motion: the global rule in `styles.css` zeroes CSS durations; `motion/react` code checks `useReducedMotion()`;
-the theme reveal and the skeleton pulse switch off.
+the theme reveal and the skeleton pulse switch off; the signed box is removed at once.
 
 ## 7. Copy
 
@@ -377,7 +383,7 @@ the theme reveal and the skeleton pulse switch off.
   (danger for destructive, primary for publish). Discard prompts use `Keep editing` / `Discard`.
 - **Toasts:** success "{Object} {past participle}." ("Group deleted.", "Grant created for {name}."); error "Couldn't
   {verb} {object}." plus at most one next step; partial "{What happened}, but {what didn't}." Server messages that carry
-  information are shown verbatim.
+  information are shown verbatim. No success toast where the page already says the outcome in place (§5 Dialogs).
 - **Empty states:** title "No {things} yet" (nothing exists), "No {things} match" (filtered), or a scoped title when the
   view is a subset ("No open reports", "Nothing needs attention"); one sentence on what will appear and how, or how to
   widen the filter. Action: the page's create action as `outline` (the header primary stays), or a `ghost` "Clear
@@ -439,29 +445,59 @@ Rules that the templates above don't imply.
   oldest-first, Closed newest-first. Closed columns are Reference, Status, Issue, Details, Date; mobile status and issue sit at the
   top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
-- **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
-  signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
-  Until their first signature, the signer's card (and "Before you sign" in a batch) offers "Move to another spot", one
-  button per place when there are several ("Signature · p. 2"). It works like the composer's: the next click on any
-  page puts the box there, the viewer's toolbar says so in place of the page counter, and Esc or Cancel stops it.
-  The viewer jumps to a box without scrolling smoothly, and zooming keeps the middle of the view in place.
+- **Signatures**: the request and batch pages put the PDF viewer (pdf.js, so every browser renders the same) left of
+  a 360px column once the page content is 896px wide (a container query, so the viewer keeps about 520px; windows
+  from about 1270px with the panel). There the page doesn't scroll: the viewer fills the window, the action card sits
+  at the top of the column and the cards under it scroll by themselves in a "Request details" region, a tab stop only
+  while it has something to scroll; narrower, the page stacks card, viewer, rest and scrolls.
+  The action card (`EsignActionCard`; every state comes from `requestCardState` in `request-card.ts`, unit-tested) holds
+  the page's `h1` and its primary, so the page bar has neither the title nor "Sign with CIE": the title, a status line
+  (badge, then "Segretario · p. 1" or "1 of 2 signed", never "0 of 1"), one sentence on where things stand ("Check the
+  blue box, then sign with CIE.", "Waiting for Mario Rossi.", "You signed at 10:25. Mario Rossi signs next; we emailed
+  them."; a completed request's "Saving to…" lines become "Saved to…" in place), at most one full-width primary (Sign
+  with CIE, Next to sign, Send again) and a footer row: one ghost on the left ("Sign N together"), the one red outline
+  button on the right (Decline for a pending signer, Cancel request for its creator, Delete request once declined or
+  cancelled). A completed request keeps Delete at the end of the column, where red doesn't read as an alarm.
+  Signers is left out when the viewer signs alone; others whose turn is open read "Their turn", and whether they were
+  emailed is said once: in the card when one person's turn is open, otherwise on their row. Delivery shows only while
+  the request is in progress, and Activity leaves out what the card and the rows already say. A PDF signed elsewhere
+  can't be uploaded: PoliNetwork eSign is the only way to sign.
+  Phones and tablets review only: every way to sign gives way to "Signing needs your computer with the card reader and
+  PoliNetwork eSign. This document will be waiting in To sign.", the box doesn't drag and no signature starts. The
+  server render goes by the User-Agent; a Mac's may be an iPad's, so there both variants render until hydration, behind
+  `(hover: none) and (pointer: coarse)`.
+  The signer's box is blue and draggable, other pending signers' boxes are dashed. Until their first signature, "Move
+  box" in the viewer's toolbar (a menu of "Signature · p. 2" with several places; only the icon below a 420px toolbar)
+  works like the composer's: the next click on any page puts the box there, the toolbar says so in place of the page
+  counter, and Esc or Cancel stops it and returns focus to Move box. The viewer opens on the spot that matters (the
+  viewer's box, the spot they just signed, else the box of whoever's turn it is), jumps without scrolling smoothly, and
+  zooming keeps the middle of the view in place.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
-  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. When that window was closed
-  or PoliNetwork eSign doesn't answer, the dialog's footer primary is "Open the window again" beside "Cancel
-  signature" ("Stop here" once part of a batch is signed), and "Start PoliNetwork eSign" (outline) and "Setup guide" (ghost) sit in the body. A person appears once
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. The dialog behind it
+  (`useSignWithCie`, rules in `signing-state.ts`) has one 40px tile, one title, at most one line or a batch's list, and
+  a footer of "Cancel signature" ("Stop here" once part of a batch is signed) or "Close" and one primary; states swap
+  without motion inside one live region. It waits for the agent's `ready` (or an older agent fetching its job): without
+  it after 2.5 s it closes the window and says PoliNetwork eSign isn't running, offering "Start PoliNetwork eSign" to a
+  browser that has run it and "Install PoliNetwork eSign" otherwise. An agent too old to sign gets "Update PoliNetwork
+  eSign" with the download for the computer's system. Errors the agent window can retry stay there; the dialog shows
+  only what ends the attempt. Once everything is signed the page updates behind the dialog: the card turns into the
+  outcome, the viewer stays on the signed spot and draws the new version, then the agent window and the dialog close
+  together (1 to 4 s after the signature) and the blue box dissolves into the stamp. A batch that signed only some
+  documents stays open until Close. Signing from the batch lands on To sign with a toast. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
   menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
-  With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
-  is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
-  document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  With several documents waiting, "Sign N together" opens a strip of up to ten documents in the page bar's toolbar row,
+  led by the one it came from, already checked and with the boxes moved there. Each is checked by opening it (a check
+  replaces its number) and can be left out; the card's primary stays "Next document" until all are checked, then
+  becomes "Sign N documents" (one agent window, one PIN). The icon beside the title opens the request in a new tab,
+  because the review lives only in this page.
   The requests list names whom an in-progress request waits on ("Waiting for X"); To sign has no Status column (every
   row is the viewer's turn) and no way to start a request: "New request" lives in Requests. `?status=` keeps the
-  status segment across Back. The request page shows when each signer whose turn it is was emailed, or why they weren't.
-  Phones and tablets can't sign (`useCanSignHere`): on them an info note takes the place of "Sign N together". Setup
-  preselects the computer's system. Its install step opens with the primary, which downloads that system's installer at
-  once ("Download for macOS", release page for Linux), and a quiet "Other systems and versions" link on the same row;
-  what to do with the file follows. On a phone its context line asks to open the page on the computer and no system is
-  preselected.
+  status segment across Back. Phones and tablets can't sign (`useCanSignHere`): on them an info note takes the place of
+  "Sign N together". Setup preselects the computer's system. Its install step opens with the primary, which downloads
+  that system's installer at once ("Download for macOS", release page for Linux), and a quiet "Other systems and
+  versions" link on the same row; what to do with the file follows. On a phone its context line asks to open the page
+  on the computer and no system is preselected.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may

@@ -4,6 +4,8 @@ import { z } from "zod"
 import { esignReadMiddleware, esignSignWriteMiddleware } from "@/server/auth.middleware"
 import type { BackendClient } from "@/server/backend.server"
 
+import { MAX_BATCH } from "./agent"
+
 /** The audit payloads the backend writes; anything else is dropped. */
 const eventData = z
   .object({
@@ -67,20 +69,23 @@ export const getEsignRequest = createServerFn()
       requestDetail(context.backend, data.id),
       context.backend.esign.requests.list.query({ scope: "inbox" }),
     ])
-    /** Other documents waiting for the caller, which can be signed together with this one. */
-    const alsoWaiting = inbox.filter((r) => r.myTurn && r.id !== data.id).length
-    return { config, ...detail, me: context.user.sub, alsoWaiting }
+    // Other documents waiting for the caller: signed together with this one, or the next to open after it.
+    const others = inbox.filter((r) => r.myTurn && r.id !== data.id)
+    const next = others[0] ? { id: others[0].id, title: others[0].title } : null
+    return { config, ...detail, me: context.user.sub, waiting: { count: others.length, next } }
   })
 
-/** Documents signed together with one PIN, at most this many. */
-export const MAX_BATCH = 10
-
-/** The documents waiting for the caller's signature, in inbox order, for signing them together. */
+/**
+ * The documents waiting for the caller's signature, in inbox order, for signing them together; `first` (the request
+ * the caller came from) leads, so it is always among them.
+ */
 export const getEsignBatch = createServerFn()
   .middleware([esignReadMiddleware])
-  .handler(async ({ context }) => {
+  .validator(z.object({ first: z.uuid().optional() }))
+  .handler(async ({ data, context }) => {
     const inbox = await context.backend.esign.requests.list.query({ scope: "inbox" })
-    const waiting = inbox.filter((r) => r.myTurn)
+    const mine = inbox.filter((r) => r.myTurn)
+    const waiting = [...mine.filter((r) => r.id === data.first), ...mine.filter((r) => r.id !== data.first)]
     const items = await Promise.all(waiting.slice(0, MAX_BATCH).map((r) => requestDetail(context.backend, r.id)))
     return { items, more: Math.max(waiting.length - MAX_BATCH, 0), me: context.user.sub }
   })
@@ -123,22 +128,3 @@ export const declineEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
   .validator(z.object({ id: z.uuid(), reason: z.string().trim().max(500).nullable() }))
   .handler(({ data, context }) => context.backend.esign.requests.decline.mutate(data))
-
-function parseSignedUpload(data: FormData) {
-  const requestId = z.uuid().safeParse(data.get("requestId"))
-  const file = data.get("file")
-  if (!requestId.success) throw new Error("Unknown request")
-  if (!(file instanceof File) || file.size > 30 * 1024 * 1024) throw new Error("Choose a PDF up to 30 MB")
-  return { requestId: requestId.data, file }
-}
-
-/** The fallback when the agent can't run: a PDF the signer signed with the official CIE app. */
-export const uploadSignedEsignDocument = createServerFn({ method: "POST" })
-  .middleware([esignSignWriteMiddleware])
-  .validator(parseSignedUpload)
-  .handler(async ({ data, context }) => {
-    const form = new FormData()
-    form.set("requestId", data.requestId)
-    form.set("file", data.file)
-    return context.backend.esign.requests.uploadSigned.mutate(form)
-  })
