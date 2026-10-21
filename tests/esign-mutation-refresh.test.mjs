@@ -402,6 +402,23 @@ void test("an attempt ends quietly only when the signer cancelled every job", as
   assert.equal(failed.reason, "failed")
   assert.equal(failed.code, "pin_locked")
   assert.match(failed.message, /^The PIN is blocked\./)
+  // A code reserved for cancels and declines counts only on a cancelled job, as in the backend.
+  const reserved = ending([jobStatus("a", "failed", "request_cancelled", "Cancelled.")], jobs, false)
+  assert.equal(reserved.reason, "failed")
+})
+
+void test("an attempt the backend ended is worded for the dashboard, not the agent window", async () => {
+  const ending = await endingOf()
+  const jobs = [{ jobId: "a", requestId: "r", title: "Verbale" }]
+  for (const [code, message] of [
+    ["document_changed", "Someone else signed in the meantime. Start again from the dashboard."],
+    ["job_done", "This request no longer needs your signature"],
+  ]) {
+    const failed = ending([jobStatus("a", "failed", code, message)], jobs, false)
+    assert.equal(failed.reason, "failed")
+    assert.notEqual(failed.message, message)
+    assert.doesNotMatch(failed.message, /dashboard/)
+  }
 })
 
 void test("an ended batch names the document, and an expired link points where to sign again", async () => {

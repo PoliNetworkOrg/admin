@@ -60,7 +60,10 @@ const ENDED_TITLES = {
   failed: "Signature failed",
 }
 
-/** What the agent reported, by its error code (esign `internal/token`, backend `agent_outdated`). */
+/**
+ * What the agent or the backend reported, by its error code (esign `internal/token`; the backend's `agent_outdated`,
+ * `document_changed` and `job_done`, whose own messages are written for the agent window).
+ */
 const AGENT_ERRORS = new Map([
   ["pin_incorrect", "Wrong PIN. Type it again in the PoliNetwork eSign window."],
   [
@@ -81,6 +84,8 @@ const AGENT_ERRORS = new Map([
     "agent_outdated",
     "This version of the signing app is too old. Install the latest PoliNetwork eSign from the setup guide.",
   ],
+  ["document_changed", "Someone else signed in the meantime, so the document changed. Sign it again."],
+  ["job_done", "This request changed while you were signing and no longer needs your signature."],
 ])
 
 /** Errors the setup guide resolves; the dialog links it next to them. */
