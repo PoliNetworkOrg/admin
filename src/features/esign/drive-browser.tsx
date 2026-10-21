@@ -68,6 +68,29 @@ export function DriveBrowser({
   const [listing, setListing] = useState<EsignDriveListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const root = useRef<HTMLDivElement>(null)
+  /** A folder was opened from the browser: once it lists, the focus its row or "Up" held comes back in. */
+  const navigated = useRef(false)
+
+  function openFolder(id: string | undefined) {
+    navigated.current = true
+    setFolderId(id)
+  }
+
+  // The rows of the folder just left are gone, and "Up" is disabled at the top: whatever had the focus no longer
+  // exists or can't hold it. The first row takes it, else "Up", else the list, unless it moved on meanwhile.
+  useEffect(() => {
+    if (!listing || !navigated.current) return
+    navigated.current = false
+    const active = document.activeElement
+    const kept = active instanceof HTMLElement && active !== document.body && !active.matches(":disabled")
+    if (kept) return
+    const target =
+      root.current?.querySelector<HTMLElement>("li button:not(:disabled)") ??
+      root.current?.querySelector<HTMLElement>("[data-up]:not(:disabled)") ??
+      root.current?.querySelector<HTMLElement>("ul")
+    target?.focus()
+  }, [listing])
 
   useEffect(() => {
     if (!driveId) return
@@ -101,6 +124,7 @@ export function DriveBrowser({
 
   return (
     <div
+      ref={root}
       className={cn("flex min-h-0 flex-col overflow-hidden rounded-(--pn-r-4) border border-(--pn-line)", className)}
     >
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-(--pn-line) bg-(--pn-surface) pr-2 pl-1">
@@ -131,10 +155,11 @@ export function DriveBrowser({
           </Select>
         )}
         <IconButton
+          data-up
           label="Up one folder"
           icon={ArrowUp}
           disabled={!listing || listing.folder.isRoot}
-          onClick={() => setFolderId(listing?.folder.parentId ?? undefined)}
+          onClick={() => openFolder(listing?.folder.parentId ?? undefined)}
         />
         {/* Cut at the start, so the open folder stays in view. */}
         <span className="min-w-0 flex-1 truncate text-left font-mono text-[12px] text-(--pn-fg-muted) [direction:rtl]">
@@ -149,7 +174,8 @@ export function DriveBrowser({
       ) : (
         <ul
           aria-label={`${label} in ${drive?.label ?? "the drive"}`}
-          className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1 outline-none"
         >
           {listing && items.length === 0 && (
             <li className="px-4 py-6 text-center text-[13px] text-(--pn-fg-muted)">
@@ -161,7 +187,7 @@ export function DriveBrowser({
               <button
                 type="button"
                 disabled={Boolean(busyId)}
-                onClick={() => (item.kind === "folder" ? setFolderId(item.id) : here && onPickFile?.(item, here))}
+                onClick={() => (item.kind === "folder" ? openFolder(item.id) : here && onPickFile?.(item, here))}
                 className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) focus-visible:outline-offset-[-2px] disabled:opacity-60"
               >
                 {item.kind === "folder" ? (
