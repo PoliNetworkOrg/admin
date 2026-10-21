@@ -1,3 +1,5 @@
+import { createIsomorphicFn } from "@tanstack/react-start"
+import { getRequestHeader } from "@tanstack/react-start/server"
 import { useSyncExternalStore } from "react"
 
 /**
@@ -18,13 +20,34 @@ export function detectOs(userAgent: string): Os {
   return "macos"
 }
 
+/**
+ * The browser's user agent. On the server it comes from the request, so the server render already fits the device
+ * and hydration agrees with it; only an iPad, which needs the touch screen to tell, changes after hydration.
+ */
+const userAgent = createIsomorphicFn()
+  .server(() => getRequestHeader("user-agent") ?? "")
+  .client(() => navigator.userAgent)
+
 const subscribe = () => () => {}
 
-/** False on phones and tablets, where signing buttons give way to a note. True while rendering on the server. */
+/** False on phones and tablets, where signing buttons give way to a note. */
 export function useCanSignHere() {
   return useSyncExternalStore(
     subscribe,
     () => !isPhoneOrTablet(navigator.userAgent, navigator.maxTouchPoints),
-    () => true
+    () => !isPhoneOrTablet(userAgent(), 0)
+  )
+}
+
+function computerOs(agent: string, maxTouchPoints: number) {
+  return isPhoneOrTablet(agent, maxTouchPoints) ? null : detectOs(agent)
+}
+
+/** This computer's system, for setup steps and downloads; `null` on phones and tablets. */
+export function useComputerOs() {
+  return useSyncExternalStore(
+    subscribe,
+    () => computerOs(navigator.userAgent, navigator.maxTouchPoints),
+    () => computerOs(userAgent(), 0)
   )
 }
