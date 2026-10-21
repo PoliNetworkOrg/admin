@@ -447,6 +447,9 @@ Rules that the templates above don't imply.
   With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
   is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
   document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  The requests list names whom an in-progress request waits on ("Waiting for X"); To sign has no Status column (every
+  row is the viewer's turn); `?status=` keeps the status segment across Back. The request page shows when each signer
+  whose turn it is was emailed, or why they weren't.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may

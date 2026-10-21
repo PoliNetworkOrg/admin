@@ -2,16 +2,14 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { FileSignature, Files, PenLine, Plus } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
-import { AvatarGroup, DataTable, type DataTableColumn, EmptyState } from "@/components/primitives"
+import { AvatarGroup, DataTable, type DataTableColumn, EmptyState, Hint } from "@/components/primitives"
 import { SegmentedControl } from "@/components/primitives/segmented-control"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { EsignRequest } from "@/lib/api/types"
 import { formatDate, pluralize } from "@/lib/format"
 
-import { RequestStatusBadge, signedProgress } from "./request-status"
-
-type StatusFilter = "all" | "in_progress" | "completed" | "closed"
+import { RequestStatusBadge, type StatusFilter, signedProgress } from "./request-status"
 
 const SCOPE_ITEMS: { value: "mine" | "all"; label: string }[] = [
   { value: "mine", label: "Mine" },
@@ -45,6 +43,13 @@ function NewRequestButton({ variant = "default", self }: { variant?: "default" |
   )
 }
 
+/** Whom a request in progress waits on; the viewer's own turn shows as a badge, so it keeps the progress. */
+function waitingText(request: EsignRequest) {
+  const name = request.signers.find((s) => s.sub === request.turn[0])?.name
+  if (request.myTurn || !name) return signedProgress(request)
+  return request.turn.length > 1 ? `Waiting for ${name} and ${request.turn.length - 1} more` : `Waiting for ${name}`
+}
+
 const columns: DataTableColumn<EsignRequest>[] = [
   {
     id: "title",
@@ -62,16 +67,20 @@ const columns: DataTableColumn<EsignRequest>[] = [
   {
     id: "signers",
     label: "Signers",
-    width: 220,
+    width: 260,
     priority: 1,
     cell: (r) => (
-      <span className="flex items-center gap-2">
+      <span className="flex min-w-0 items-center gap-2">
         <AvatarGroup
           people={r.signers.map((s) => ({ id: s.id, name: s.name }))}
           max={4}
           listLabel={`Signers of ${r.title}`}
         />
-        <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">{signedProgress(r)}</span>
+        {r.status === "in_progress" && (
+          <Hint overflowOnly label={waitingText(r)}>
+            <span className="min-w-0 truncate text-[13px] text-(--pn-fg-muted) tabular-nums">{waitingText(r)}</span>
+          </Hint>
+        )}
       </span>
     ),
   },
@@ -84,12 +93,24 @@ const columns: DataTableColumn<EsignRequest>[] = [
   },
 ]
 
-/** The signatures inbox ("To sign") and the requests list share this page. */
-export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[]; scope: "inbox" | "mine" | "all" }) {
+// Every document in To sign is the viewer's turn.
+const inboxColumns = columns.filter((column) => column.id !== "status")
+
+/** The signatures inbox ("To sign") and the requests list share this page; the list's status lives in the URL. */
+export function EsignRequestsPage({
+  requests,
+  scope,
+  status = "all",
+  onStatusChange,
+}: {
+  requests: EsignRequest[]
+  scope: "inbox" | "mine" | "all"
+  status?: StatusFilter
+  onStatusChange?: (status: StatusFilter) => void
+}) {
   const canManage = useCan("esign:requests:manage")
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<StatusFilter>("all")
   const deferred = useDeferredValue(query.trim().toLocaleLowerCase())
   const inbox = scope === "inbox"
 
@@ -97,13 +118,13 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
     () =>
       requests.filter(
         (r) =>
-          inFilter(r, inbox ? "all" : filter) &&
+          inFilter(r, status) &&
           (deferred === "" ||
             `${r.title} ${r.createdByName} ${r.signers.map((s) => s.name).join(" ")}`
               .toLocaleLowerCase()
               .includes(deferred))
       ),
-    [requests, filter, deferred, inbox]
+    [requests, status, deferred]
   )
   const narrowed = visible.length !== requests.length
   const waiting = inbox ? requests.filter((r) => r.myTurn).length : 0
@@ -141,7 +162,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     items={SCOPE_ITEMS}
                     value={scope}
                     onValueChange={(value) =>
-                      void navigate({ to: "/dashboard/esign/requests", search: { scope: value } })
+                      void navigate({ to: "/dashboard/esign/requests", search: (prev) => ({ ...prev, scope: value }) })
                     }
                   />
                 ) : undefined
@@ -155,8 +176,8 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                       ...item,
                       count: requests.filter((r) => inFilter(r, item.value)).length,
                     }))}
-                    value={filter}
-                    onValueChange={setFilter}
+                    value={status}
+                    onValueChange={(next) => onStatusChange?.(next)}
                   />
                 )
               }
@@ -168,7 +189,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
       <PageContent>
         <DataTable
           label={inbox ? "Documents to sign" : "Signature requests"}
-          columns={columns}
+          columns={inbox ? inboxColumns : columns}
           rows={visible}
           getRowId={(r) => r.id}
           rowHref={(r) => `/dashboard/esign/requests/${r.id}`}
@@ -196,7 +217,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     variant="ghost"
                     onClick={() => {
                       setQuery("")
-                      setFilter("all")
+                      onStatusChange?.("all")
                     }}
                   >
                     Clear filters

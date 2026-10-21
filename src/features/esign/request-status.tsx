@@ -34,6 +34,16 @@ export function SignerStatusBadge({
   return turn ? <StatusBadge tone="brand">To sign</StatusBadge> : <StatusBadge tone="neutral">Waiting</StatusBadge>
 }
 
+const STATUS_FILTERS = ["all", "in_progress", "completed", "closed"] as const
+
+/** The requests list's status segment; "closed" is cancelled or declined. */
+export type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+/** The `?status=` search param; an unknown value falls back to the default instead of failing the route. */
+export function parseStatusFilter(value: string | undefined): StatusFilter | undefined {
+  return STATUS_FILTERS.find((filter) => filter === value)
+}
+
 /** "1 of 2 signed". */
 export function signedProgress(request: Pick<EsignRequest, "signers" | "signedCount">) {
   return `${request.signedCount} of ${request.signers.length} signed`

@@ -48,6 +48,12 @@ function eventText(event: Detail["events"][number], names: Map<string, string>) 
       return `${who} created the request`
     case "notified":
       return `Emailed ${(data.sub && names.get(data.sub)) ?? "a signer"} that it's their turn`
+    case "notify_failed": {
+      const name = (data.sub && names.get(data.sub)) ?? "a signer"
+      return data.reason === "no_email"
+        ? `Couldn't email ${name} that it's their turn: no email address`
+        : `Couldn't email ${name} that it's their turn`
+    }
     case "signed":
       return `${data.name ?? who} signed with CIE`
     case "completed":
@@ -150,6 +156,32 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     map.set(request.createdBySub, request.createdByName)
     return map
   }, [request])
+
+  // For each signer whose turn it is, other than the viewer: when they were emailed, why they couldn't be, or else
+  // since when it has been their turn.
+  const turnNotes = useMemo(() => {
+    const emailed = new Map<string, Date>()
+    const failed = new Map<string, string | null | undefined>()
+    for (const event of events) {
+      if (!event.data.sub) continue
+      if (event.type === "notified") emailed.set(event.data.sub, new Date(event.at))
+      if (event.type === "notify_failed") failed.set(event.data.sub, event.data.reason)
+    }
+    const signedTimes = request.signers.flatMap((s) => (s.signedAt ? [new Date(s.signedAt).getTime()] : []))
+    const since = new Date(request.ordered && signedTimes.length > 0 ? Math.max(...signedTimes) : request.createdAt)
+    const notes = new Map<string, { note?: string; warning?: string }>()
+    for (const sub of request.turn) {
+      if (sub === me) continue
+      const at = emailed.get(sub)
+      if (at) notes.set(sub, { note: `Emailed ${formatDateTime(at)}` })
+      else if (failed.has(sub))
+        notes.set(sub, {
+          warning: failed.get(sub) === "no_email" ? "Couldn't email them: no email address" : "Couldn't email them",
+        })
+      else notes.set(sub, { note: `Their turn since ${formatDateTime(since)}` })
+    }
+    return notes
+  }, [events, request, me])
 
   const stopped = request.status === "cancelled" || request.status === "declined"
   const savedItem = request.delivery?.driveItem ?? null
@@ -403,55 +435,59 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
             <SectionCard title="Signers" count={request.signers.length}>
               <ol className="flex flex-col gap-3">
-                {request.signers.map((signer, index) => (
-                  <li key={signer.id} className="flex items-start gap-3">
-                    <span
-                      className={cn(
-                        "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
-                        signer.status === "signed"
-                          ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
-                          : request.turn.includes(signer.sub)
-                            ? "bg-(--pn-accent-soft) text-(--pn-accent)"
-                            : "bg-(--pn-muted) text-(--pn-fg-muted)"
-                      )}
-                    >
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-[14px] font-medium">{signer.name}</span>
-                          {signer.sub === me && <YouChip />}
-                        </span>
-                        <SignerStatusBadge
-                          signer={signer}
-                          turn={request.turn.includes(signer.sub)}
-                          requestStatus={request.status}
-                        />
+                {request.signers.map((signer, index) => {
+                  const turnNote = turnNotes.get(signer.sub)
+                  const meta = [
+                    signer.role,
+                    signer.places.length > 1 && kindsLabel(signer.places),
+                    signer.signedAt && formatDateTime(new Date(signer.signedAt)),
+                    turnNote?.note,
+                  ].filter(Boolean)
+                  return (
+                    <li key={signer.id} className="flex items-start gap-3">
+                      <span
+                        className={cn(
+                          "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
+                          signer.status === "signed"
+                            ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
+                            : request.turn.includes(signer.sub)
+                              ? "bg-(--pn-accent-soft) text-(--pn-accent)"
+                              : "bg-(--pn-muted) text-(--pn-fg-muted)"
+                        )}
+                      >
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-[14px] font-medium">{signer.name}</span>
+                            {signer.sub === me && <YouChip />}
+                          </span>
+                          <SignerStatusBadge
+                            signer={signer}
+                            turn={request.turn.includes(signer.sub)}
+                            requestStatus={request.status}
+                          />
+                        </div>
+                        {meta.length > 0 && <div className="text-[13px] text-(--pn-fg-muted)">{meta.join(" · ")}</div>}
+                        {turnNote?.warning && (
+                          <div className="text-[12px] text-(--pn-warning-fg)">{turnNote.warning}</div>
+                        )}
+                        {signer.status === "signed" && signer.certificateIssuer && (
+                          <div
+                            className="truncate text-[12px] text-(--pn-fg-muted)"
+                            title={signer.certificateSubject ?? undefined}
+                          >
+                            CIE · {signer.fiscalCode ?? signer.certificateIssuer}
+                          </div>
+                        )}
+                        {signer.declineReason && (
+                          <div className="text-[13px] text-pretty">“{signer.declineReason}”</div>
+                        )}
                       </div>
-                      {(signer.role || signer.places.length > 1 || signer.signedAt) && (
-                        <div className="text-[13px] text-(--pn-fg-muted)">
-                          {[
-                            signer.role,
-                            signer.places.length > 1 && kindsLabel(signer.places),
-                            signer.signedAt && formatDateTime(new Date(signer.signedAt)),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </div>
-                      )}
-                      {signer.status === "signed" && signer.certificateIssuer && (
-                        <div
-                          className="truncate text-[12px] text-(--pn-fg-muted)"
-                          title={signer.certificateSubject ?? undefined}
-                        >
-                          CIE · {signer.fiscalCode ?? signer.certificateIssuer}
-                        </div>
-                      )}
-                      {signer.declineReason && <div className="text-[13px] text-pretty">“{signer.declineReason}”</div>}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ol>
               {!request.ordered && request.signers.length > 1 && (
                 <p className="mt-3 text-[12px] text-(--pn-fg-muted)">Signers can sign in any order.</p>
