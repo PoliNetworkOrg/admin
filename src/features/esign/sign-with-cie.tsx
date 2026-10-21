@@ -101,7 +101,9 @@ function endingOf(statuses: (JobState & { jobId: string })[], jobs: Job[], prepa
     const title = jobs.length > 1 && jobs.find((j) => j.jobId === status.jobId)?.title
     return title ? `${title}: ${message}` : message
   }
-  const foreign = statuses.find((s) => s.errorCode === "request_cancelled" || s.errorCode === "request_declined")
+  const foreign = statuses.find(
+    (s) => s.status === "cancelled" && (s.errorCode === "request_cancelled" || s.errorCode === "request_declined")
+  )
   if (foreign)
     return {
       kind: "ended",
