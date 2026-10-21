@@ -11,6 +11,7 @@ import { formatDate, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { computerOnly, phoneOnly } from "./action-card"
+import { MAX_BATCH } from "./agent"
 import { RequestStatusBadge, type StatusFilter, signedProgress } from "./request-status"
 import { useSigningDevice } from "./signing-device"
 
@@ -40,10 +41,13 @@ function NewRequestButton({ variant = "default" }: { variant?: "default" | "outl
   )
 }
 
-/** Whom a request in progress waits on; the viewer's own turn shows as a badge, so it keeps the progress. */
+/**
+ * Whom a request in progress waits on; the viewer's own turn shows as a badge, so it keeps the progress. A lone signer
+ * has no progress to show: the avatar stands alone.
+ */
 function turnText(request: EsignRequest) {
   const name = request.signers.find((s) => s.sub === request.turn[0])?.name
-  if (request.myTurn || !name) return signedProgress(request)
+  if (request.myTurn || !name) return request.signers.length > 1 ? signedProgress(request) : null
   return request.turn.length > 1 ? `Waiting for ${name} and ${request.turn.length - 1} more` : `Waiting for ${name}`
 }
 
@@ -150,7 +154,8 @@ export function EsignRequestsPage({
                   nativeButton={false}
                   render={<Link to="/dashboard/esign/sign" />}
                 >
-                  <Files aria-hidden /> Sign {waiting} together
+                  {/* What the batch it opens holds: the first ten, which it says. */}
+                  <Files aria-hidden /> Sign {Math.min(waiting, MAX_BATCH)} together
                 </Button>
               )
             : canManage && <NewRequestButton />
