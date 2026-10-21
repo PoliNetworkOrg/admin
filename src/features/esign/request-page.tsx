@@ -185,6 +185,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   }, [events, request, me])
 
   const stopped = request.status === "cancelled" || request.status === "declined"
+  // A stopped request without an output folder or an email had nothing to deliver: it has no Delivery card.
+  const deliveryPlanned = request.output !== null || (request.email?.to.length ?? 0) > 0
   const savedItem = request.delivery?.driveItem ?? null
   // Recorded right after the upload, before the delivery itself is saved: Activity may say "Saved" first.
   const uploaded = events.findLast((e) => e.type === "uploaded")
@@ -506,77 +508,79 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
               )}
             </SectionCard>
 
-            <SectionCard title="Delivery">
-              {stopped ? (
-                <p className="text-[14px] text-(--pn-fg-muted)">Not delivered: the request was {request.status}.</p>
-              ) : (
-                <ul className="flex flex-col gap-3 text-[14px]">
-                  <li className="flex items-start gap-2.5">
-                    {saving ? (
-                      <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
-                    ) : (
-                      <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                    )}
-                    <span className="min-w-0">
-                      {request.output ? (
-                        savedItem?.webUrl ? (
-                          <a
-                            className="break-words text-(--pn-accent) hover:underline"
-                            href={savedItem.webUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {request.output.folderPath ? `${request.output.folderPath}/` : ""}
-                            {savedItem.name}
-                          </a>
+            {(!stopped || deliveryPlanned) && (
+              <SectionCard title="Delivery">
+                {stopped ? (
+                  <p className="text-[14px] text-(--pn-fg-muted)">Not delivered: the request was {request.status}.</p>
+                ) : (
+                  <ul className="flex flex-col gap-3 text-[14px]">
+                    <li className="flex items-start gap-2.5">
+                      {saving ? (
+                        <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
+                      ) : (
+                        <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                      )}
+                      <span className="min-w-0">
+                        {request.output ? (
+                          savedItem?.webUrl ? (
+                            <a
+                              className="break-words text-(--pn-accent) hover:underline"
+                              href={savedItem.webUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {request.output.folderPath ? `${request.output.folderPath}/` : ""}
+                              {savedItem.name}
+                            </a>
+                          ) : (
+                            <span className="break-words">
+                              {savedItem || uploaded ? "Saved to " : saving ? "Saving to " : "Will be saved to "}
+                              {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
+                              {request.output.folderPath || "/"}
+                              {request.output.folderPath ? "/" : ""}
+                              {savedItem?.name ?? uploaded?.data.name ?? request.output.fileName}
+                            </span>
+                          )
                         ) : (
-                          <span className="break-words">
-                            {savedItem || uploaded ? "Saved to " : saving ? "Saving to " : "Will be saved to "}
-                            {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
-                            {request.output.folderPath || "/"}
-                            {request.output.folderPath ? "/" : ""}
-                            {savedItem?.name ?? uploaded?.data.name ?? request.output.fileName}
-                          </span>
-                        )
+                          <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                        )}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      {sending ? (
+                        <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
                       ) : (
-                        <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                        <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
                       )}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    {sending ? (
-                      <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
-                    ) : (
-                      <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                    )}
-                    <span className="min-w-0 break-words">
-                      {request.email?.to.length ? (
-                        <>
-                          {emailed ? "Emailed to " : sending ? "Sending to " : "Will be emailed to "}
-                          {request.email.to.join(", ")}
-                        </>
-                      ) : (
-                        <span className="text-(--pn-fg-muted)">No email</span>
-                      )}
-                    </span>
-                  </li>
-                </ul>
-              )}
-              {request.delivery?.status === "failed" && (
-                <InlineAlert
-                  className="mt-3"
-                  action={
-                    canManage ? (
-                      <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={retry}>
-                        Retry
-                      </LoadingButton>
-                    ) : undefined
-                  }
-                >
-                  {request.delivery.error ?? "The document couldn't be delivered."}
-                </InlineAlert>
-              )}
-            </SectionCard>
+                      <span className="min-w-0 break-words">
+                        {request.email?.to.length ? (
+                          <>
+                            {emailed ? "Emailed to " : sending ? "Sending to " : "Will be emailed to "}
+                            {request.email.to.join(", ")}
+                          </>
+                        ) : (
+                          <span className="text-(--pn-fg-muted)">No email</span>
+                        )}
+                      </span>
+                    </li>
+                  </ul>
+                )}
+                {request.delivery?.status === "failed" && (
+                  <InlineAlert
+                    className="mt-3"
+                    action={
+                      canManage ? (
+                        <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={retry}>
+                          Retry
+                        </LoadingButton>
+                      ) : undefined
+                    }
+                  >
+                    {request.delivery.error ?? "The document couldn't be delivered."}
+                  </InlineAlert>
+                )}
+              </SectionCard>
+            )}
 
             <SectionCard title="Activity">
               <ol className="flex flex-col gap-2.5">
