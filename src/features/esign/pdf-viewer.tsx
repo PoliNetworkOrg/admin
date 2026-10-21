@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
 
+import type { TextAnchor } from "./places"
 import { useFillHeight } from "./use-fill-height"
 
 export type PageSize = { width: number; height: number }
@@ -387,17 +388,18 @@ export function usePdfBytes(base64: string | null) {
   }, [base64])
 }
 
-/** A run of text on a page, in fractions of the displayed page (origin top-left). */
-export type TextAnchor = { page: number; text: string; x: number; y: number; width: number; height: number }
-
-/** The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". */
-export async function extractTextAnchors(data: Uint8Array, maxPages = 50): Promise<TextAnchor[]> {
+/**
+ * The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". Long
+ * documents are read on their first 40 and last 10 pages, where signature labels are.
+ */
+export async function extractTextAnchors(data: Uint8Array): Promise<TextAnchor[]> {
   const pdfjs = await loadPdfjs()
   const task = pdfjs.getDocument({ data: data.slice() })
   try {
     const pdf = await task.promise
     const anchors: TextAnchor[] = []
-    for (let index = 0; index < Math.min(pdf.numPages, maxPages); index++) {
+    const pages = [...Array(pdf.numPages).keys()].filter((i) => i < 40 || i >= pdf.numPages - 10)
+    for (const index of pages) {
       const page = await pdf.getPage(index + 1)
       const viewport = page.getViewport({ scale: 1 })
       const content = await page.getTextContent()
