@@ -343,9 +343,9 @@ three, never infinite, no "Undo".
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
 never the only signal. Hit areas are at least 36px, including mobile pagination, segment and chart-range options, copyable IDs/tags, PDF
 links, label chips that remove a selection and tree expanders. Enlarge the clickable area independently of the icon.
-DOM order matches visual order, with one exception: from 1100px the signature request and batch pages keep the action
-card first in the DOM though it sits right of the viewer, so its primary is the first stop after the page bar, as it
-is in the single column below 1100px.
+DOM order matches visual order, with one exception: in their two-column layout the signature request and batch pages
+keep the action card first in the DOM though it sits right of the viewer, so its primary is the first stop after the
+page bar, as it is in the single column.
 
 ## 6. Motion
 
@@ -445,9 +445,10 @@ Rules that the templates above don't imply.
   top right of the reference, and absent details render nothing. Report links are monospace; missing groups have
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
 - **Signatures**: the request and batch pages put the PDF viewer (pdf.js, so every browser renders the same) left of
-  a 360px column. From 1100px the page doesn't scroll: the viewer fills the window, the action card sits at the top of
-  the column and the cards under it scroll by themselves in a focusable "Request details" region; narrower, the page
-  stacks card, viewer, rest and scrolls.
+  a 360px column once the page content is 896px wide (a container query, so the viewer keeps about 520px; windows
+  from about 1270px with the panel). There the page doesn't scroll: the viewer fills the window, the action card sits
+  at the top of the column and the cards under it scroll by themselves in a "Request details" region, a tab stop only
+  while it has something to scroll; narrower, the page stacks card, viewer, rest and scrolls.
   The action card (`EsignActionCard`; every state comes from `requestCardState` in `request-card.ts`, unit-tested) holds
   the page's `h1` and its primary, so the page bar has neither the title nor "Sign with CIE": the title, a status line
   (badge, then "Segretario · p. 1" or "1 of 2 signed", never "0 of 1"), one sentence on where things stand ("Check the

@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Ban, Download, Files, FolderUp, Mail, RotateCw, Send, Trash2, X } from "lucide-react"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import {
   buttonMotion,
@@ -292,6 +292,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const pages = pdf?.pages ?? []
   const soleSigner = request.signers.length === 1 && request.signers[0].sub === me
   const pendingCount = request.signers.filter((s) => s.status === "pending").length
+  const details = useScrolls()
 
   const [declineOpen, setDeclineOpen] = useState(false)
   // Cancel and Delete live outside the card: confirming changes the card's red button, and the dialog has to keep its
@@ -377,253 +378,264 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
         }
       />
       <PageContent width="record">
-        {/* From 1100px the viewer sets the height and the rest scrolls by itself under the card, which stays put. */}
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_360px] min-[1100px]:grid-rows-[auto_minmax(160px,1fr)]">
-          <div className="min-w-0 min-[1100px]:col-start-2 min-[1100px]:row-start-1">
-            <EsignActionCard
-              title={request.title}
-              badge={<StatusBadge tone={card.badge.tone}>{card.badge.label}</StatusBadge>}
-              meta={card.meta}
-              body={card.body}
-              bodyId={bodyId}
-              bodyRef={bodyRef}
-              note={card.note}
-              muted={card.muted && <ReadyLine muted={card.muted} />}
-              lock={card.lock}
-              lockId={lockId}
-              primary={
-                card.primary && (
-                  <CardPrimary
-                    card={card}
-                    requestId={request.id}
-                    signing={signing}
-                    describedBy={card.lock ? lockId : undefined}
-                  />
-                )
-              }
-              primarySigns={card.primary?.kind !== "sendAgain"}
-              footerStart={
-                card.signTogether !== null && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(buttonMotion, "-ml-2.5")}
-                    nativeButton={false}
-                    render={
-                      <Link
-                        to="/dashboard/esign/sign"
-                        search={{ first: request.id }}
-                        // Boxes moved here would otherwise snap back in a document the batch counts as checked.
-                        state={
-                          editable && savedKey !== JSON.stringify(myPlaces)
-                            ? { esignMoved: { [request.id]: myPlaces } }
-                            : {}
-                        }
-                      />
-                    }
-                  >
-                    <Files aria-hidden /> Sign {card.signTogether} together
-                  </Button>
-                )
-              }
-              footerEnd={danger}
-              device={device}
-            >
-              <CardOutcome card={card} retrying={retrying} onRetry={retry} />
-            </EsignActionCard>
-          </div>
-
-          <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-span-2 min-[1100px]:row-start-1">
-            {loadError ? (
-              <InlineAlert>{loadError}</InlineAlert>
-            ) : (
-              <PdfViewer
-                data={bytes}
-                pages={pages}
-                focus={focus}
-                onPainted={onPainted}
-                cursor={placingAt !== null ? "crosshair" : "default"}
-                onPageClick={(page, x, y) => {
-                  if (placingAt === null) return
-                  setMyPlaces((current) =>
-                    current.map((p, at) => (at === placingAt ? placeAt(p, pages, page, x, y) : p))
-                  )
-                  setPlacing(null)
-                }}
-                status={placingAt !== null ? placingStatus(myPlaces, placingAt) : null}
-                statusAction={placingAt !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
-                toolbarStart={
-                  editable &&
-                  myPlaces.length > 0 && (
-                    <div className={device === "unknown" ? computerOnly : undefined}>
-                      <MoveBoxButton ref={moveRef} places={myPlaces} onPlacing={setPlacing} />
-                    </div>
+        {/* Two columns once the content is 896px wide, leaving the viewer about 520px beside the 360px column: the
+            viewer sets the height, and the rest scrolls by itself under the card, which stays put. */}
+        <div className="@container">
+          <div className="grid gap-4 @min-[896px]:grid-cols-[minmax(0,1fr)_360px] @min-[896px]:grid-rows-[auto_minmax(160px,1fr)]">
+            <div className="min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-1">
+              <EsignActionCard
+                title={request.title}
+                badge={<StatusBadge tone={card.badge.tone}>{card.badge.label}</StatusBadge>}
+                meta={card.meta}
+                body={card.body}
+                bodyId={bodyId}
+                bodyRef={bodyRef}
+                note={card.note}
+                muted={card.muted && <ReadyLine muted={card.muted} />}
+                lock={card.lock}
+                lockId={lockId}
+                primary={
+                  card.primary && (
+                    <CardPrimary
+                      card={card}
+                      requestId={request.id}
+                      signing={signing}
+                      describedBy={card.lock ? lockId : undefined}
+                    />
                   )
                 }
-                overlay={(page) => (
-                  <>
-                    {request.signers.flatMap((signer, index) => {
-                      if (!inProgress || signer.status !== "pending") return []
-                      const mine = myTurn && signer.id === mySigner?.id
-                      const left = mine
-                        ? myLeft
-                        : placesLeft(
-                            signer.places.map((place, at) => ({ ...place, at })),
-                            signer.signaturesDone
-                          )
-                      return left
+                primarySigns={card.primary?.kind !== "sendAgain"}
+                footerStart={
+                  card.signTogether !== null && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(buttonMotion, "-ml-2.5")}
+                      nativeButton={false}
+                      render={
+                        <Link
+                          to="/dashboard/esign/sign"
+                          search={{ first: request.id }}
+                          // Boxes moved here would otherwise snap back in a document the batch counts as checked.
+                          state={
+                            editable && savedKey !== JSON.stringify(myPlaces)
+                              ? { esignMoved: { [request.id]: myPlaces } }
+                              : {}
+                          }
+                        />
+                      }
+                    >
+                      <Files aria-hidden /> Sign {card.signTogether} together
+                    </Button>
+                  )
+                }
+                footerEnd={danger}
+                device={device}
+              >
+                <CardOutcome card={card} retrying={retrying} onRetry={retry} />
+              </EsignActionCard>
+            </div>
+
+            <div className="min-w-0 @min-[896px]:col-start-1 @min-[896px]:row-span-2 @min-[896px]:row-start-1">
+              {loadError ? (
+                <InlineAlert>{loadError}</InlineAlert>
+              ) : (
+                <PdfViewer
+                  data={bytes}
+                  pages={pages}
+                  focus={focus}
+                  onPainted={onPainted}
+                  cursor={placingAt !== null ? "crosshair" : "default"}
+                  onPageClick={(page, x, y) => {
+                    if (placingAt === null) return
+                    setMyPlaces((current) =>
+                      current.map((p, at) => (at === placingAt ? placeAt(p, pages, page, x, y) : p))
+                    )
+                    setPlacing(null)
+                  }}
+                  status={placingAt !== null ? placingStatus(myPlaces, placingAt) : null}
+                  statusAction={placingAt !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
+                  toolbarStart={
+                    editable &&
+                    myPlaces.length > 0 && (
+                      <div className={device === "unknown" ? computerOnly : undefined}>
+                        <MoveBoxButton ref={moveRef} places={myPlaces} onPlacing={setPlacing} />
+                      </div>
+                    )
+                  }
+                  overlay={(page) => (
+                    <>
+                      {request.signers.flatMap((signer, index) => {
+                        if (!inProgress || signer.status !== "pending") return []
+                        const mine = myTurn && signer.id === mySigner?.id
+                        const left = mine
+                          ? myLeft
+                          : placesLeft(
+                              signer.places.map((place, at) => ({ ...place, at })),
+                              signer.signaturesDone
+                            )
+                        return left
+                          .filter((place) => place.page === page)
+                          .map((place) => (
+                            <SignatureBox
+                              key={`${signer.id}-${place.at}`}
+                              placement={place}
+                              label={signer.name}
+                              role={signer.role}
+                              number={request.signers.length > 1 ? index + 1 : undefined}
+                              kind={place.kind}
+                              state={mine ? "active" : "pending"}
+                              editable={mine && editable}
+                              onChange={(moved) =>
+                                setMyPlaces((current) =>
+                                  current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
+                                )
+                              }
+                            />
+                          ))
+                      })}
+                      {ghosts?.places
                         .filter((place) => place.page === page)
                         .map((place) => (
                           <SignatureBox
-                            key={`${signer.id}-${place.at}`}
+                            key={`signed-${place.at}`}
                             placement={place}
-                            label={signer.name}
-                            role={signer.role}
-                            number={request.signers.length > 1 ? index + 1 : undefined}
+                            label={ghosts.label}
+                            role={ghosts.role}
+                            number={ghosts.number}
                             kind={place.kind}
-                            state={mine ? "active" : "pending"}
-                            editable={mine && editable}
-                            onChange={(moved) =>
-                              setMyPlaces((current) =>
-                                current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
-                              )
-                            }
+                            state="active"
+                            leaving={ghosts.released && ghosts.painted ? "fading" : "waiting"}
+                            afterDialog={ghosts.afterDialog}
+                            onLeft={() => setGhosts(null)}
                           />
-                        ))
-                    })}
-                    {ghosts?.places
-                      .filter((place) => place.page === page)
-                      .map((place) => (
-                        <SignatureBox
-                          key={`signed-${place.at}`}
-                          placement={place}
-                          label={ghosts.label}
-                          role={ghosts.role}
-                          number={ghosts.number}
-                          kind={place.kind}
-                          state="active"
-                          leaving={ghosts.released && ghosts.painted ? "fading" : "waiting"}
-                          afterDialog={ghosts.afterDialog}
-                          onLeft={() => setGhosts(null)}
-                        />
-                      ))}
-                  </>
-                )}
-              />
-            )}
-          </div>
-
-          <div className="relative min-w-0 min-[1100px]:col-start-2 min-[1100px]:row-start-2 min-[1100px]:min-h-40">
-            {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area of its own, which Safari doesn't focus */}
-            <div
-              tabIndex={0}
-              role="region"
-              aria-label="Request details"
-              className="flex flex-col gap-4 *:shrink-0 min-[1100px]:absolute min-[1100px]:inset-0 min-[1100px]:overflow-y-auto"
-            >
-              {!soleSigner && (
-                <SectionCard title="Signers" count={request.signers.length}>
-                  <ol className="flex flex-col gap-3">
-                    {request.signers.map((signer, index) => {
-                      const turn = request.turn.includes(signer.sub)
-                      const turnNote = signer.sub === card.notedSub ? undefined : turnNotes.get(signer.sub)
-                      const meta = [
-                        signer.role,
-                        signer.places.length > 1 && kindsLabel(signer.places),
-                        signer.signedAt && formatDateTime(new Date(signer.signedAt)),
-                        turnNote?.note,
-                      ].filter(Boolean)
-                      return (
-                        <li key={signer.id} className="flex items-start gap-3">
-                          <span
-                            className={cn(
-                              "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
-                              signer.status === "signed"
-                                ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
-                                : turn
-                                  ? "bg-(--pn-accent-soft) text-(--pn-accent)"
-                                  : "bg-(--pn-muted) text-(--pn-fg-muted)"
-                            )}
-                          >
-                            {index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <span className="truncate text-[14px] font-medium">{signer.name}</span>
-                                {signer.sub === me && <YouChip />}
-                              </span>
-                              <SignerStatusBadge
-                                signer={signer}
-                                turn={turn}
-                                mine={signer.sub === me}
-                                requestStatus={request.status}
-                              />
-                            </div>
-                            {meta.length > 0 && (
-                              <div className="text-[13px] text-(--pn-fg-muted) tabular-nums">{meta.join(" · ")}</div>
-                            )}
-                            {turnNote?.warning && (
-                              <div className="text-[12px] text-(--pn-warning-fg)">{turnNote.warning}</div>
-                            )}
-                            {signer.status === "signed" && signer.certificateIssuer && (
-                              <div
-                                className="truncate text-[12px] text-(--pn-fg-muted)"
-                                title={signer.certificateSubject ?? undefined}
-                              >
-                                CIE · {signer.fiscalCode ?? signer.certificateIssuer}
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ol>
-                  {inProgress && !request.ordered && pendingCount > 1 && (
-                    <p className="mt-3 text-[12px] text-(--pn-fg-muted)">Signers can sign in any order.</p>
+                        ))}
+                    </>
                   )}
-                </SectionCard>
+                />
               )}
+            </div>
 
-              {inProgress && deliveryPlanned && (
-                <SectionCard title="Delivery">
-                  <ul className="flex flex-col gap-3 text-[14px]">
-                    {request.output && (
-                      <li className="flex items-start gap-2.5">
-                        <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                        <span className="min-w-0 break-words">
-                          Will be saved to {drive}: {outputPath(request.output, request.output.fileName)}
-                        </span>
-                      </li>
-                    )}
-                    {request.email?.to.length ? (
-                      <li className="flex items-start gap-2.5">
-                        <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                        <span className="min-w-0 break-words">Will be emailed to {request.email.to.join(", ")}</span>
-                      </li>
-                    ) : null}
-                  </ul>
-                </SectionCard>
-              )}
+            <div className="relative min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-2 @min-[896px]:min-h-40">
+              {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area of its own, which Safari doesn't focus */}
+              <div
+                ref={details.ref}
+                // A tab stop only while it scrolls: in one column, or with little to show, it would do nothing.
+                tabIndex={details.scrolls ? 0 : undefined}
+                role="region"
+                aria-label="Request details"
+                className="@min-[896px]:absolute @min-[896px]:inset-0 @min-[896px]:overflow-y-auto"
+              >
+                <div className="flex flex-col gap-4">
+                  {!soleSigner && (
+                    <SectionCard title="Signers" count={request.signers.length}>
+                      <ol className="flex flex-col gap-3">
+                        {request.signers.map((signer, index) => {
+                          const turn = request.turn.includes(signer.sub)
+                          const turnNote = signer.sub === card.notedSub ? undefined : turnNotes.get(signer.sub)
+                          const meta = [
+                            signer.role,
+                            signer.places.length > 1 && kindsLabel(signer.places),
+                            signer.signedAt && formatDateTime(new Date(signer.signedAt)),
+                            turnNote?.note,
+                          ].filter(Boolean)
+                          return (
+                            <li key={signer.id} className="flex items-start gap-3">
+                              <span
+                                className={cn(
+                                  "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
+                                  signer.status === "signed"
+                                    ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
+                                    : turn
+                                      ? "bg-(--pn-accent-soft) text-(--pn-accent)"
+                                      : "bg-(--pn-muted) text-(--pn-fg-muted)"
+                                )}
+                              >
+                                {index + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <span className="truncate text-[14px] font-medium">{signer.name}</span>
+                                    {signer.sub === me && <YouChip />}
+                                  </span>
+                                  <SignerStatusBadge
+                                    signer={signer}
+                                    turn={turn}
+                                    mine={signer.sub === me}
+                                    requestStatus={request.status}
+                                  />
+                                </div>
+                                {meta.length > 0 && (
+                                  <div className="text-[13px] text-(--pn-fg-muted) tabular-nums">
+                                    {meta.join(" · ")}
+                                  </div>
+                                )}
+                                {turnNote?.warning && (
+                                  <div className="text-[12px] text-(--pn-warning-fg)">{turnNote.warning}</div>
+                                )}
+                                {signer.status === "signed" && signer.certificateIssuer && (
+                                  <div
+                                    className="truncate text-[12px] text-(--pn-fg-muted)"
+                                    title={signer.certificateSubject ?? undefined}
+                                  >
+                                    CIE · {signer.fiscalCode ?? signer.certificateIssuer}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                      {inProgress && !request.ordered && pendingCount > 1 && (
+                        <p className="mt-3 text-[12px] text-(--pn-fg-muted)">Signers can sign in any order.</p>
+                      )}
+                    </SectionCard>
+                  )}
 
-              <SectionCard title="Activity">
-                <ol className="flex flex-col gap-2.5">
-                  {events
-                    .filter((event) => !CARD_EVENTS.has(event.type))
-                    .reverse()
-                    .map((event) => (
-                      <li key={event.id} className="flex flex-col">
-                        <span className="text-[14px] text-pretty">{eventText(event, names)}</span>
-                        <span className="text-[12px] text-(--pn-fg-muted) tabular-nums">
-                          {formatDateTime(new Date(event.at))}
-                        </span>
-                      </li>
-                    ))}
-                </ol>
-              </SectionCard>
+                  {inProgress && deliveryPlanned && (
+                    <SectionCard title="Delivery">
+                      <ul className="flex flex-col gap-3 text-[14px]">
+                        {request.output && (
+                          <li className="flex items-start gap-2.5">
+                            <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                            <span className="min-w-0 break-words">
+                              Will be saved to {drive}: {outputPath(request.output, request.output.fileName)}
+                            </span>
+                          </li>
+                        )}
+                        {request.email?.to.length ? (
+                          <li className="flex items-start gap-2.5">
+                            <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                            <span className="min-w-0 break-words">
+                              Will be emailed to {request.email.to.join(", ")}
+                            </span>
+                          </li>
+                        ) : null}
+                      </ul>
+                    </SectionCard>
+                  )}
 
-              {/* Declined and cancelled requests have it in the card; there a red button doesn't read as an alarm. */}
-              {request.status === "completed" && canDelete && deleteButton}
+                  <SectionCard title="Activity">
+                    <ol className="flex flex-col gap-2.5">
+                      {events
+                        .filter((event) => !CARD_EVENTS.has(event.type))
+                        .reverse()
+                        .map((event) => (
+                          <li key={event.id} className="flex flex-col">
+                            <span className="text-[14px] text-pretty">{eventText(event, names)}</span>
+                            <span className="text-[12px] text-(--pn-fg-muted) tabular-nums">
+                              {formatDateTime(new Date(event.at))}
+                            </span>
+                          </li>
+                        ))}
+                    </ol>
+                  </SectionCard>
+
+                  {/* Declined and cancelled requests have it in the card; there a red button doesn't read as an alarm. */}
+                  {request.status === "completed" && canDelete && deleteButton}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -818,4 +830,19 @@ function CardOutcome({ card, retrying, onRetry }: { card: RequestCard; retrying:
       ))}
     </ul>
   )
+}
+
+/** Whether the element given to `ref` scrolls: its content is taller than it. */
+function useScrolls() {
+  const [element, setElement] = useState<HTMLElement | null>(null)
+  const [scrolls, setScrolls] = useState(false)
+  useLayoutEffect(() => {
+    if (!element) return
+    // The element resizes with the layout, its content with every reload.
+    const observer = new ResizeObserver(() => setScrolls(element.scrollHeight > element.clientHeight + 1))
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    return () => observer.disconnect()
+  }, [element])
+  return { ref: setElement, scrolls }
 }

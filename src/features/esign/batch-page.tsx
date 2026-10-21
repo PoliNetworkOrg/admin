@@ -246,80 +246,85 @@ export function EsignBatchPage({
         }
       />
       <PageContent width="record">
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_360px] min-[1100px]:grid-rows-[auto_1fr]">
-          <div className="min-w-0 min-[1100px]:col-start-2 min-[1100px]:row-start-1">
-            <EsignActionCard
-              title={active.request.title}
-              titleAction={
-                // A new tab: the review progress and the moved boxes live only in this page.
-                <IconButton
-                  label="Open the request"
-                  icon={ExternalLink}
-                  className="-mt-1 -mr-2"
-                  nativeButton={false}
-                  render={
-                    <Link
-                      to="/dashboard/esign/requests/$requestId"
-                      params={{ requestId: active.request.id }}
-                      target="_blank"
-                      rel="noreferrer"
-                    />
-                  }
-                />
-              }
-              meta={[signer?.role, places.length > 0 && pagesShort(places)].filter(Boolean).join(" · ") || null}
-              body={signs ? body : null}
-              bodyId={bodyId}
-              note={device === "computer" ? null : PHONE_NOTE}
-              muted={signs && !out && !lockedBy && <ReadyLine known={knownBrowser} />}
-              lock={
-                signs && !out && lockedBy ? `${lockedBy.name} is signing this right now. Wait, or leave it out.` : null
-              }
-              lockId={lockId}
-              primary={signs && primary}
-              primarySigns
-              after={signs && more > 0 && `${more} more ${more === 1 ? "is" : "are"} waiting after these.`}
-              device={device}
-            >
-              {signs && out && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(buttonMotion, "mt-2", gate)}
-                  onClick={() => toggle(active.request.id)}
-                >
-                  <Plus aria-hidden /> Sign it too
-                </Button>
-              )}
-            </EsignActionCard>
-          </div>
-          <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-span-2 min-[1100px]:row-start-1">
-            <DocumentViewer
-              key={active.request.id}
-              item={active}
-              me={me}
-              loadPdf={loadPdf}
-              places={places}
-              editable={editable}
-              onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
-              placing={placing}
-              onPlace={(page, x, y) => {
-                const next = places.map((p, at) =>
-                  at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
-                )
-                setMoved((current) => new Map(current).set(active.request.id, next))
-                setPlacing(null)
-              }}
-              onCancelPlacing={() => setPlacing(null)}
-              toolbarStart={
-                editable &&
-                places.length > 0 && (
-                  <div className={gate}>
-                    <MoveBoxButton ref={moveRef} places={places} onPlacing={setPlacing} />
-                  </div>
-                )
-              }
-            />
+        {/* The request page's layout: two columns once the content leaves the viewer about 520px. */}
+        <div className="@container">
+          <div className="grid gap-4 @min-[896px]:grid-cols-[minmax(0,1fr)_360px] @min-[896px]:grid-rows-[auto_1fr]">
+            <div className="min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-1">
+              <EsignActionCard
+                title={active.request.title}
+                titleAction={
+                  // A new tab: the review progress and the moved boxes live only in this page.
+                  <IconButton
+                    label="Open the request"
+                    icon={ExternalLink}
+                    className="-mt-1 -mr-2"
+                    nativeButton={false}
+                    render={
+                      <Link
+                        to="/dashboard/esign/requests/$requestId"
+                        params={{ requestId: active.request.id }}
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  />
+                }
+                meta={[signer?.role, places.length > 0 && pagesShort(places)].filter(Boolean).join(" · ") || null}
+                body={signs ? body : null}
+                bodyId={bodyId}
+                note={device === "computer" ? null : PHONE_NOTE}
+                muted={signs && !out && !lockedBy && <ReadyLine known={knownBrowser} />}
+                lock={
+                  signs && !out && lockedBy
+                    ? `${lockedBy.name} is signing this right now. Wait, or leave it out.`
+                    : null
+                }
+                lockId={lockId}
+                primary={signs && primary}
+                primarySigns
+                after={signs && more > 0 && `${more} more ${more === 1 ? "is" : "are"} waiting after these.`}
+                device={device}
+              >
+                {signs && out && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(buttonMotion, "mt-2", gate)}
+                    onClick={() => toggle(active.request.id)}
+                  >
+                    <Plus aria-hidden /> Sign it too
+                  </Button>
+                )}
+              </EsignActionCard>
+            </div>
+            <div className="min-w-0 @min-[896px]:col-start-1 @min-[896px]:row-span-2 @min-[896px]:row-start-1">
+              <DocumentViewer
+                key={active.request.id}
+                item={active}
+                me={me}
+                loadPdf={loadPdf}
+                places={places}
+                editable={editable}
+                onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
+                placing={placing}
+                onPlace={(page, x, y) => {
+                  const next = places.map((p, at) =>
+                    at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
+                  )
+                  setMoved((current) => new Map(current).set(active.request.id, next))
+                  setPlacing(null)
+                }}
+                onCancelPlacing={() => setPlacing(null)}
+                toolbarStart={
+                  editable &&
+                  places.length > 0 && (
+                    <div className={gate}>
+                      <MoveBoxButton ref={moveRef} places={places} onPlacing={setPlacing} />
+                    </div>
+                  )
+                }
+              />
+            </div>
           </div>
         </div>
       </PageContent>
