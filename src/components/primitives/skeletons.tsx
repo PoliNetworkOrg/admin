@@ -192,11 +192,21 @@ export function WorkspaceSkeleton({ label = "Loading…", className }: { label?:
   )
 }
 
-/** One bar in place of a line still being worked out, e.g. a list read from a document. */
-export function BarSkeleton({ label = "Loading…", className }: { label?: string; className?: string }) {
+/** Bars in place of lines still being worked out, e.g. a list read from a document; they share the height, 4px apart. */
+export function BarSkeleton({
+  label = "Loading…",
+  bars = 1,
+  className,
+}: {
+  label?: string
+  bars?: number
+  className?: string
+}) {
   return (
-    <Pulse label={label} className={className} bodyClassName="h-full">
-      <Block className="h-full" />
+    <Pulse label={label} className={className} bodyClassName="flex h-full flex-col gap-1">
+      {Array.from({ length: bars }, (_, bar) => (
+        <Block key={bar} className="min-h-0 flex-1" />
+      ))}
     </Pulse>
   )
 }
