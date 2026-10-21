@@ -27,18 +27,33 @@ import { cn } from "@/lib/utils"
 
 import { computerOnly, EsignActionCard } from "./action-card"
 import { declineEsignRequest, getEsignDocumentContent } from "./esign.functions"
-import { PdfViewer, usePdfBytes } from "./pdf-viewer"
+import { type PdfFocus, PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, placeAt, placesLeft } from "./places"
 import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
 import { isDelivering, openPoint, type RequestCard, requestCardState } from "./request-card"
 import { SignerStatusBadge, YouChip } from "./request-status"
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
-import { SignWithCie } from "./sign-with-cie"
+import { SignTrigger, useSignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
 import { useKnownBrowser, useSigningDevice } from "./signing-device"
 import { useReloadWhile } from "./use-reload-while"
 
 type EventData = { sub?: string; name?: string; path?: string; to?: string[]; error?: string; reason?: string | null }
+
+/**
+ * The boxes the viewer just signed, kept over their spots until the new version is drawn there (`painted`) and the
+ * signing dialog has closed (`released`); then they dissolve into the stamps.
+ */
+type Ghosts = {
+  places: (Place & { at: number })[]
+  label: string
+  role: string | null
+  number?: number
+  painted: boolean
+  released: boolean
+  /** Painted before the dialog closed, so the fade waits for the dialog's exit. */
+  afterDialog: boolean
+}
 
 type Detail = Omit<EsignRequestDetail, "events"> & {
   events: (Omit<EsignRequestDetail["events"][number], "data"> & { data: EventData })[]
@@ -111,7 +126,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     return target
   }
 
-  const [content, setContent] = useState<{ base64: string; fileName: string } | null>(null)
+  const [content, setContent] = useState<{ base64: string; fileName: string; documentId: string } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const bytes = usePdfBytes(content?.base64 ?? null)
 
@@ -121,7 +136,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     setLoadError(null)
     contentFn({ data: { documentId: currentDocumentId } })
       .then((result) => {
-        if (!cancelled) setContent(result)
+        if (!cancelled) setContent({ ...result, documentId: currentDocumentId })
       })
       .catch((error) => {
         console.error(error)
@@ -155,8 +170,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     myDone
   )
 
-  // Once: following the box as it moves would scroll it away from the pointer.
-  const [focus] = useState(() => openPoint(request, me, new Date()))
+  // From the first data only: following the box as it moves would scroll it away from the pointer. After signing it
+  // moves to the signed spot, if that isn't in view.
+  const [focus, setFocus] = useState<PdfFocus | null>(() => openPoint(request, me, new Date()))
 
   // After placing, by a click on a page or Esc, focus returns to Move box.
   const moveRef = useRef<HTMLButtonElement>(null)
@@ -176,6 +192,67 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     knownBrowser,
     now: new Date(),
     places: myTurn ? myPlaces : undefined,
+  })
+
+  const [ghosts, setGhosts] = useState<Ghosts | null>(null)
+  /** The hand-off waits for this page of a version other than `from` to be drawn. */
+  const awaitedPaint = useRef<{ from: string | null; page: number; resolve: () => void } | null>(null)
+
+  /**
+   * Runs behind the signing dialog once the signature is saved: the boxes stay where they were signed, the page
+   * reloads into its outcome, and the new version is drawn under them before the dialog lets go.
+   */
+  async function handOff() {
+    const first = myLeft[0]
+    let painted = Promise.resolve()
+    if (first && mySigner) {
+      const index = request.signers.findIndex((s) => s.id === mySigner.id)
+      setGhosts({
+        places: myLeft,
+        label: mySigner.name,
+        role: mySigner.role,
+        number: request.signers.length > 1 ? index + 1 : undefined,
+        painted: false,
+        released: false,
+        afterDialog: false,
+      })
+      setFocus({ page: first.page, y: first.y + first.height / 2, height: first.height, ifHidden: true })
+      painted = new Promise((resolve) => {
+        awaitedPaint.current = { from: currentDocumentId, page: first.page, resolve }
+      })
+    }
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+    await painted
+  }
+
+  function onPainted(page: number) {
+    const awaited = awaitedPaint.current
+    if (!awaited || page !== awaited.page || content?.documentId === awaited.from) return
+    awaitedPaint.current = null
+    // Painted before the dialog let go, `released` makes the fade wait for its exit; painted after it (the hand-off
+    // stopped waiting), the fade starts at once.
+    setGhosts((current) => current && { ...current, painted: true, afterDialog: false })
+    awaited.resolve()
+  }
+
+  /** The dialog is closing: the boxes dissolve into the stamps, or go at once without motion. */
+  function released() {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    setGhosts((current) => {
+      if (!current || (reduced && current.painted)) return null
+      return { ...current, released: true, afterDialog: current.painted }
+    })
+  }
+
+  const signing = useSignWithCie({
+    items: [{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }],
+    handOff,
+    onSigned: released,
+    finalFocus: () => bodyRef.current,
   })
 
   // Delivery (OneDrive, email) runs after the last signature: follow it until it settles.
@@ -319,8 +396,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                   <CardPrimary
                     card={card}
                     requestId={request.id}
-                    title={request.title}
-                    places={myDone === 0 ? myPlaces : undefined}
+                    signing={signing}
                     describedBy={card.lock ? lockId : undefined}
                   />
                 )
@@ -365,6 +441,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 data={bytes}
                 pages={pages}
                 focus={focus}
+                onPainted={onPainted}
                 cursor={placingAt !== null ? "crosshair" : "default"}
                 onPageClick={(page, x, y) => {
                   if (placingAt === null) return
@@ -383,37 +460,55 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     </div>
                   )
                 }
-                overlay={(page) =>
-                  request.signers.flatMap((signer, index) => {
-                    if (!inProgress || signer.status !== "pending") return []
-                    const mine = myTurn && signer.id === mySigner?.id
-                    const left = mine
-                      ? myLeft
-                      : placesLeft(
-                          signer.places.map((place, at) => ({ ...place, at })),
-                          signer.signaturesDone
-                        )
-                    return left
+                overlay={(page) => (
+                  <>
+                    {request.signers.flatMap((signer, index) => {
+                      if (!inProgress || signer.status !== "pending") return []
+                      const mine = myTurn && signer.id === mySigner?.id
+                      const left = mine
+                        ? myLeft
+                        : placesLeft(
+                            signer.places.map((place, at) => ({ ...place, at })),
+                            signer.signaturesDone
+                          )
+                      return left
+                        .filter((place) => place.page === page)
+                        .map((place) => (
+                          <SignatureBox
+                            key={`${signer.id}-${place.at}`}
+                            placement={place}
+                            label={signer.name}
+                            role={signer.role}
+                            number={request.signers.length > 1 ? index + 1 : undefined}
+                            kind={place.kind}
+                            state={mine ? "active" : "pending"}
+                            editable={mine && editable}
+                            onChange={(moved) =>
+                              setMyPlaces((current) =>
+                                current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
+                              )
+                            }
+                          />
+                        ))
+                    })}
+                    {ghosts?.places
                       .filter((place) => place.page === page)
                       .map((place) => (
                         <SignatureBox
-                          key={`${signer.id}-${place.at}`}
+                          key={`signed-${place.at}`}
                           placement={place}
-                          label={signer.name}
-                          role={signer.role}
-                          number={request.signers.length > 1 ? index + 1 : undefined}
+                          label={ghosts.label}
+                          role={ghosts.role}
+                          number={ghosts.number}
                           kind={place.kind}
-                          state={mine ? "active" : "pending"}
-                          editable={mine && editable}
-                          onChange={(moved) =>
-                            setMyPlaces((current) =>
-                              current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
-                            )
-                          }
+                          state="active"
+                          leaving={ghosts.released && ghosts.painted ? "fading" : "waiting"}
+                          afterDialog={ghosts.afterDialog}
+                          onLeft={() => setGhosts(null)}
                         />
-                      ))
-                  })
-                }
+                      ))}
+                  </>
+                )}
               />
             )}
           </div>
@@ -560,6 +655,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
         </FormField>
       </FormDialog>
 
+      {signing.dialog}
+
       {canManage && (
         <ConfirmDialog
           open={cancelOpen}
@@ -641,27 +738,18 @@ function ReadyLine({ muted }: { muted: NonNullable<RequestCard["muted"]> }) {
 function CardPrimary({
   card,
   requestId,
-  title,
-  places,
+  signing,
   describedBy,
 }: {
   card: RequestCard
   requestId: string
-  title: string
-  places: Place[] | undefined
+  signing: ReturnType<typeof useSignWithCie>
   describedBy: string | undefined
 }) {
   const primary = card.primary
   if (!primary) return null
   if (primary.kind === "sign")
-    return (
-      <SignWithCie
-        items={[{ requestId, title, places }]}
-        disabled={card.lock !== null}
-        describedBy={describedBy}
-        className="w-full"
-      />
-    )
+    return <SignTrigger signing={signing} disabled={card.lock !== null} describedBy={describedBy} className="w-full" />
   if (primary.kind === "next")
     return (
       <Hint label={`Next to sign: ${primary.title}`} overflowOnly>

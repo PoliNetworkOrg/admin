@@ -21,6 +21,13 @@ type SignatureBoxProps = {
   highlighted?: boolean
   onChange?: (placement: BoxPlacement) => void
   onRemove?: () => void
+  /**
+   * The box of a place just signed, over the stamp that replaces it: hidden from assistive tech and the pointer.
+   * "fading" dissolves it in 200 ms (after the dialog's 150 ms exit with `afterDialog`), then calls `onLeft`.
+   */
+  leaving?: "waiting" | "fading"
+  afterDialog?: boolean
+  onLeft?: () => void
 }
 
 const MIN = 0.04
@@ -58,6 +65,9 @@ export function SignatureBox({
   highlighted,
   onChange,
   onRemove,
+  leaving,
+  afterDialog,
+  onLeft,
 }: SignatureBoxProps) {
   const ref = useRef<HTMLDivElement>(null)
   const detail = kind === "mark" ? (role ? `Mark · ${role}` : "Mark") : role
@@ -118,6 +128,9 @@ export function SignatureBox({
     <div
       ref={ref}
       role="group"
+      aria-hidden={leaving ? true : undefined}
+      inert={leaving !== undefined}
+      onAnimationEnd={leaving === "fading" ? onLeft : undefined}
       tabIndex={editable ? 0 : -1}
       aria-label={
         editable
@@ -141,7 +154,12 @@ export function SignatureBox({
         kind === "mark" && state === "active" && "border-dashed",
         highlighted && "ring-4 ring-(--pn-accent)/35",
         // Only a box that moves takes the finger; on the others it scrolls the page.
-        editable && "cursor-move touch-none"
+        editable && "cursor-move touch-none",
+        leaving && "pointer-events-none",
+        leaving === "fading" &&
+          (afterDialog
+            ? "animate-[pn-fade-out_200ms_var(--pn-ease-move)_150ms_forwards]"
+            : "animate-[pn-fade-out_200ms_var(--pn-ease-move)_forwards]")
       )}
       style={{
         left: `${placement.x * 100}%`,

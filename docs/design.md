@@ -304,8 +304,8 @@ after the mutation, and keep the dialog's record in state after closing so its c
 dirty form intercepts every close with the discard confirmation (`FormDialog` does it when the dialog passes `dirty`).
 Key a dialog body with `useOpenGeneration` so every opening starts clean. Autofocus the first field on fine pointers
 only. The one exception to the success toast is a page that states the outcome in place: on a signature request,
-Decline, Cancel request and Retry delivery change the action card's sentence, so they show no toast and return focus to
-that sentence (`finalFocus`, on both `ConfirmDialog` and `FormDialog`).
+signing, Decline, Cancel request and Retry delivery change the action card's sentence, so they show no toast and return
+focus to that sentence (`finalFocus`, on `ConfirmDialog`, `FormDialog` and the signing dialog).
 
 **Popover or dialog.** Popover only when all hold: not destructive, at most one input or a picker, at most 320px wide,
 and closing without acting is harmless. Otherwise a dialog. Every delete is a `ConfirmDialog`. Group label filters use compact selected chips and an Add picker, one
@@ -367,10 +367,11 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Chart tooltip and hover guide                                                          | none: they follow the pointer or keyboard focus                                                                                                                                                                          |
 | Skeleton                                                                               | opacity pulse 1.4s; the only loop besides spinners                                                                                                                                                                       |
 | Theme toggle                                                                           | light-bulb reveal: a View Transition `clip-path` circle from the toggle (700ms to light, 520ms to dark), reversible mid-way; element transitions are off while it runs (`data-theme-switching`). Go through `useTheme()` |
+| Signature box after signing                                                            | opacity 1→0, 200ms `--pn-ease-move`, once the signing dialog's exit ends; the stamp is already drawn underneath. A new PDF version replaces each page without a fade                                                     |
 | Navigation, sort, filter, paging, inline-edit swap, command palette, active indicators | none                                                                                                                                                                                                                     |
 
 Reduced motion: the global rule in `styles.css` zeroes CSS durations; `motion/react` code checks `useReducedMotion()`;
-the theme reveal and the skeleton pulse switch off.
+the theme reveal and the skeleton pulse switch off; the signed box is removed at once.
 
 ## 7. Copy
 
@@ -477,7 +478,10 @@ Rules that the templates above don't imply.
   it after 2.5 s it closes the window and says PoliNetwork eSign isn't running, offering "Start PoliNetwork eSign" to a
   browser that has run it and "Install PoliNetwork eSign" otherwise. An agent too old to sign gets "Update PoliNetwork
   eSign" with the download for the computer's system. Errors the agent window can retry stay there; the dialog shows
-  only what ends the attempt. A batch that signed only some documents stays open until Close. A person appears once
+  only what ends the attempt. Once everything is signed the page updates behind the dialog: the card turns into the
+  outcome, the viewer stays on the signed spot and draws the new version, then the agent window and the dialog close
+  together (1 to 4 s after the signature) and the blue box dissolves into the stamp. A batch that signed only some
+  documents stays open until Close. Signing from the batch lands on To sign with a toast. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
   menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
   With several documents waiting, "Sign N together" opens a strip of up to ten documents in the page bar's toolbar row,
