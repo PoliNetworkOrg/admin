@@ -281,6 +281,25 @@ void test("on another document people keep the spots it names; the others get a 
   )
 })
 
+void test("the same document read again keeps a free signer's places, unless their role names a label", () => {
+  const anchors = minutes(run("Il Presidente", 380, 420))
+  const old = { kind: "signature", page: 0, x: 0.1, y: 0.85, width: 0.3, height: 0.07 }
+  const mark = { kind: "mark", page: 1, x: 0.6, y: 0.85, width: 0.3, height: 0.07 }
+  const rows = [
+    { id: "person:anna", spot: null, person: anna, role: "Fornitore", places: [old, mark] },
+    { id: "person:mario", spot: null, person: mario, role: "Presidente", places: [old] },
+  ]
+  const kept = placeRows(rows, findSpots(anchors, [A4, A4]), anchors, [A4, A4], { keepPlaces: true })
+  assert.deepEqual(kept[0].places, [old, mark], "Anna keeps both places")
+  assert.equal(kept[1].spot?.key, "presidente", "Mario fills the Presidente spot")
+
+  // A page the document no longer has, or another document: the places are laid out anew.
+  const shorter = placeRows(rows.slice(0, 1), [], anchors, [A4], { keepPlaces: true })
+  assert.notDeepEqual(shorter[0].places, [old, mark])
+  const changed = placeRows(rows.slice(0, 1), [], anchors, [A4, A4])
+  assert.notDeepEqual(changed[0].places, [old, mark])
+})
+
 void test("a free signer whose typed role names a spot takes it, and Presidente never takes Vicepresidente", () => {
   const anchors = minutes(run("Il Vicepresidente", 72, 420), run("Il Presidente", 380, 420))
   const free = { id: "person:mario", spot: null, person: mario, role: "Presidente", places: [] }

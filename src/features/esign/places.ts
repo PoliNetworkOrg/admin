@@ -465,12 +465,21 @@ export function freeRow(person: NonNullable<SignerDraft["person"]>, role: string
  * The signers on a document just read. A person keeps a spot of their role when the document has one (the spot they
  * had, or the label their typed role names); the others get a box under their role's label, or in clear space. They
  * keep their order, and the spots nobody fills follow as empty rows.
+ *
+ * `keepPlaces` is for the same document read again, such as a request sent again: a person whose role names no label
+ * keeps their places while the document still has those pages.
  */
-export function placeRows(rows: SignerDraft[], spots: Spot[], anchors: TextAnchor[], pages: PageSize[]) {
+export function placeRows(
+  rows: SignerDraft[],
+  spots: Spot[],
+  anchors: TextAnchor[],
+  pages: PageSize[],
+  { keepPlaces = false } = {}
+) {
   const open = [...spots]
   const taken: BoxPlacement[] = spots.flatMap((s) => s.places)
   const placed: SignerDraft[] = []
-  for (const { person, spot, role } of rows) {
+  for (const { person, spot, role, places } of rows) {
     if (!person) continue
     const key = spot?.key ?? roleKey(role)?.key
     const at = open.findIndex((s) => s.key === key)
@@ -478,7 +487,13 @@ export function placeRows(rows: SignerDraft[], spots: Spot[], anchors: TextAncho
       placed.push(spotRow(open.splice(at, 1)[0], person))
       continue
     }
-    const box = placeUnderRole(role, anchors, pages, taken) ?? defaultPlace(anchors, pages, taken)
+    const underRole = placeUnderRole(role, anchors, pages, taken)
+    if (!underRole && keepPlaces && places.length > 0 && places.every((p) => p.page < pages.length)) {
+      taken.push(...places)
+      placed.push({ id: `person:${person.sub}`, spot: null, person, role, places })
+      continue
+    }
+    const box = underRole ?? defaultPlace(anchors, pages, taken)
     taken.push(box)
     placed.push(freeRow(person, role, box))
   }
