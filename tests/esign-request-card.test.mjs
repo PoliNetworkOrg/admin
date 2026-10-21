@@ -136,7 +136,7 @@ void test("your turn, partly signed: how many signatures are done", () => {
 
 void test("your turn while someone else signs: the lock line and a disabled Sign", () => {
   const locked = card(unorderedTwo({ signingNow: { sub: MARIO, name: "Mario Rossi" } }))
-  assert.equal(locked.lock, "Mario Rossi is signing right now. You can sign when they finish.")
+  assert.equal(locked.lock, "Mario Rossi is signing right now.")
   assert.equal(locked.muted, null)
   assert.deepEqual(locked.primary, { kind: "sign" })
   // The viewer's own lock, from another tab, isn't someone else's.

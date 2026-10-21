@@ -283,8 +283,9 @@ function yourTurn(
         ? "Check the blue boxes, then sign with CIE."
         : "Check the blue box, then sign with CIE."
   const holder = detail.signingNow
-  card.lock =
-    holder && holder.sub !== options.me ? `${holder.name} is signing right now. You can sign when they finish.` : null
+  // One line, like the muted line it replaces, so the card keeps its height when the lock comes and goes. The disabled
+  // Sign with CIE says the rest.
+  card.lock = holder && holder.sub !== options.me ? `${holder.name} is signing right now.` : null
   card.muted = card.lock || done > 0 ? null : options.knownBrowser ? "ready" : "setup"
   card.primary = { kind: "sign" }
   card.signTogether = detail.waiting.count > 0 ? Math.min(detail.waiting.count + 1, MAX_BATCH) : null

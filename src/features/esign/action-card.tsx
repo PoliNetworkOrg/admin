@@ -108,9 +108,10 @@ export function EsignActionCard({
         {children}
       </div>
       {muted && <p className={cn("mt-1 text-[13px] leading-5 text-(--pn-fg-muted)", signing)}>{muted}</p>}
+      {/* In the muted line's place and with its spacing, so the card's height holds as the lock comes and goes. */}
       {lock && (
-        <p id={lockId} className={cn("mt-2 flex items-center gap-2 text-[13px] leading-5", signing)}>
-          <Spinner className="size-3.5 shrink-0 text-(--pn-fg-muted)" />
+        <p id={lockId} className={cn("mt-1 flex items-start gap-2 text-[13px] leading-5", signing)}>
+          <Spinner className="mt-[3px] size-3.5 shrink-0 text-(--pn-fg-muted)" />
           {lock}
         </p>
       )}
