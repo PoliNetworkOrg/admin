@@ -446,7 +446,9 @@ Rules that the templates above don't imply.
   page puts the box there, the viewer's toolbar says so in place of the page counter, and Esc or Cancel stops it.
   The viewer jumps to a box without scrolling smoothly, and zooming keeps the middle of the view in place.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
-  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. A person appears once
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. When that window was closed
+  or PoliNetwork eSign doesn't answer, the dialog's footer primary is "Open the window again" beside "Cancel
+  signature", and "Start PoliNetwork eSign" (outline) and "Setup guide" (ghost) sit in the body. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
   menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
   With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each

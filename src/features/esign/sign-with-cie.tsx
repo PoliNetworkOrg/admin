@@ -388,6 +388,7 @@ export function SignWithCie({
   const active = shown && shown.kind !== "ended" ? shown : null
   const batch = (active?.jobs ?? items ?? []).length > 1
   const silent = active?.kind === "waiting" && now - active.since > AGENT_TIMEOUT_MS
+  const notAnswering = active !== null && (silent || agentLost)
   const signed = active?.jobs.filter((j) => states.get(j.jobId)?.status === "completed").length ?? 0
   const openJobs = active?.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending")) ?? []
   // Every document is signed or ended: the poll is finishing and the page reloads.
@@ -461,10 +462,9 @@ export function SignWithCie({
               >
                 {batch ? jobList : "Updating the page…"}
               </Status>
-            ) : active && (silent || agentLost) ? (
+            ) : notAnswering ? (
               <NotAnswering
                 title={silent ? "PoliNetwork eSign isn't answering" : "PoliNetwork eSign stopped answering"}
-                onOpenAgain={() => openWindowAgain(active.url)}
               >
                 {silent
                   ? "Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide."
@@ -483,12 +483,11 @@ export function SignWithCie({
                 </p>
                 {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
                 {batch && jobList}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className={buttonMotion} onClick={() => showWindow(active.url)}>
-                    <ExternalLink aria-hidden /> Open the window again
-                  </Button>
-                  {needsSetup && <SetupGuideButton />}
-                </div>
+                {needsSetup && (
+                  <div className="mt-2 -ml-2">
+                    <SetupGuideButton />
+                  </div>
+                )}
               </Status>
             ) : active?.kind === "waiting" ? (
               <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
@@ -532,6 +531,14 @@ export function SignWithCie({
                   <Button variant="outline" className={dialogFooterButton} onClick={() => void close()}>
                     {signed > 0 ? "Stop here" : "Cancel signature"}
                   </Button>
+                  {active && (notAnswering || windowClosed) && (
+                    <Button
+                      className={dialogFooterButton}
+                      onClick={() => (notAnswering ? openWindowAgain(active.url) : showWindow(active.url))}
+                    >
+                      Open the window again
+                    </Button>
+                  )}
                 </div>
               )
             )}
@@ -542,8 +549,11 @@ export function SignWithCie({
   )
 }
 
-/** PoliNetwork eSign doesn't answer: start it, open its window again, or set it up. */
-function NotAnswering({ title, children, onOpenAgain }: { title: string; children: string; onOpenAgain: () => void }) {
+/**
+ * PoliNetwork eSign doesn't answer: start it (or set it up) here, then open its window again, the footer's primary
+ * action, so the buttons read in the order of the steps.
+ */
+function NotAnswering({ title, children }: { title: string; children: string }) {
   return (
     <Status icon={<TriangleAlert className="size-5" />} tone="warning" title={title}>
       <p>{children}</p>
@@ -556,9 +566,6 @@ function NotAnswering({ title, children, onOpenAgain }: { title: string; childre
           render={<a href={AGENT_LAUNCH_URL} />}
         >
           <Play aria-hidden /> Start PoliNetwork eSign
-        </Button>
-        <Button variant="outline" size="sm" className={buttonMotion} onClick={onOpenAgain}>
-          <ExternalLink aria-hidden /> Open the window again
         </Button>
         <SetupGuideButton />
       </div>
