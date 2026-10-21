@@ -39,11 +39,13 @@ export type SignItem = { requestId: string; title: string; places?: BoxPlacement
 type Job = { jobId: string; requestId: string; title: string }
 type JobState = { status: string; errorCode: string | null; errorMessage: string | null; seen: boolean }
 
+/** Nothing was signed and the attempt can't go on; `code` is the job's error code. */
+type Ending = { kind: "ended"; reason: keyof typeof ENDED_TITLES; code: string | null; message: string }
 type Phase =
   | { kind: "starting" }
   | { kind: "waiting"; jobs: Job[]; url: string; since: number }
   | { kind: "signing"; jobs: Job[]; url: string }
-  | { kind: "ended"; reason: "cancelled" | "expired" | "failed"; message: string }
+  | Ending
 type Shown = Exclude<Phase, { kind: "starting" }>
 
 const POLL_MS = 1200
@@ -51,29 +53,80 @@ const POLL_MS = 1200
 const AGENT_TIMEOUT_MS = 7000
 const OPEN = new Set(["pending", "prepared"])
 
+const ENDED_TITLES = {
+  cancelled: "Request cancelled",
+  declined: "Request declined",
+  expired: "The link expired",
+  failed: "Signature failed",
+}
+
 /** What the agent reported, by its error code (esign `internal/token`, backend `agent_outdated`). */
 const AGENT_ERRORS = new Map([
   ["pin_incorrect", "Wrong PIN. Type it again in the PoliNetwork eSign window."],
-  ["pin_locked", "The PIN is blocked. Unblock it with the PUK in the CIE ID app, then try again."],
+  [
+    "pin_locked",
+    "The PIN is blocked. Unblock it with your PUK in the CieID app on your phone or in CIE ID on this computer, then sign again. The PUK's first half is on the receipt from the Comune, the second half in the letter that came with the card.",
+  ],
   ["pin_invalid", "The PIN must be the 8 digits of your CIE PIN."],
   ["no_card", "PoliNetwork eSign can't see the card. Place the CIE on the reader."],
   ["no_reader", "PoliNetwork eSign can't find an NFC reader. Connect it and try again."],
   ["card_removed", "The card moved away from the reader. Keep it still and try again."],
-  ["middleware_missing", "PoliNetwork eSign found no CIE software. Open the setup guide."],
-  ["not_paired", "This CIE is not set up on this computer yet. Open the setup guide."],
+  ["middleware_missing", "PoliNetwork eSign found no CIE software on this computer."],
+  ["not_paired", "This CIE isn't set up on this computer yet."],
   ["card_unsupported", "This card isn't a supported CIE."],
   ["card_untrusted", "The card couldn't be verified as a genuine CIE, so the PIN wasn't sent to it."],
   ["device_error", "The card couldn't complete the signature. Try again."],
-  ["signature_invalid", "The card's signature didn't match. Try again."],
+  ["signature_invalid", "The card's signature didn't match. Sign again."],
   [
     "agent_outdated",
     "This version of the signing app is too old. Install the latest PoliNetwork eSign from the setup guide.",
   ],
 ])
 
+/** Errors the setup guide resolves; the dialog links it next to them. */
+const SETUP_ERRORS = new Set(["middleware_missing", "not_paired", "card_untrusted", "agent_outdated"])
+
 function errorText(state: JobState | undefined) {
   if (!state?.errorCode || state.errorCode === "cancelled") return null
   return AGENT_ERRORS.get(state.errorCode) ?? state.errorMessage ?? "The signature failed. Try again."
+}
+
+/**
+ * How an attempt that signed nothing ended, once none of its jobs is open: someone else cancelled or declined the
+ * request, the link expired, or a job failed for good. Null when every job was cancelled, which is the signer's own
+ * cancel (in the agent window or another tab) and needs no message.
+ */
+function endingOf(statuses: (JobState & { jobId: string })[], jobs: Job[], preparing: boolean): Ending | null {
+  const titled = (status: { jobId: string }, message: string) => {
+    const title = jobs.length > 1 && jobs.find((j) => j.jobId === status.jobId)?.title
+    return title ? `${title}: ${message}` : message
+  }
+  const foreign = statuses.find((s) => s.errorCode === "request_cancelled" || s.errorCode === "request_declined")
+  if (foreign)
+    return {
+      kind: "ended",
+      reason: foreign.errorCode === "request_declined" ? "declined" : "cancelled",
+      code: foreign.errorCode,
+      message: titled(foreign, foreign.errorMessage ?? "Nothing was signed."),
+    }
+  if (statuses.some((s) => s.status === "expired"))
+    return {
+      kind: "ended",
+      reason: "expired",
+      code: null,
+      message: preparing
+        ? "Close to open the request and sign it from there."
+        : "The PoliNetwork eSign window waited too long for the PIN. Start again to open a new one.",
+    }
+  const failed = statuses.find((s) => s.status === "failed")
+  if (!failed) return null
+  const known = failed.errorCode && AGENT_ERRORS.get(failed.errorCode)
+  return {
+    kind: "ended",
+    reason: "failed",
+    code: failed.errorCode,
+    message: titled(failed, known || failed.errorMessage || "The signature failed."),
+  }
 }
 
 /** The agent window's size, centered horizontally over the dashboard window. */
@@ -166,7 +219,18 @@ export function SignWithCie({
     [reload, onSigned]
   )
 
+  /** Closes the dialog after the signer's own cancel: no message, no reload, nothing left to cancel. */
+  const dismiss = useCallback(() => {
+    if (finishing.current) return
+    finishing.current = true
+    setPhase(null)
+    popupRef.current?.close()
+    popupRef.current = null
+    onStopped?.(null)
+  }, [onStopped])
+
   const jobs = phase && "jobs" in phase ? phase.jobs : null
+  const preparing = prepare !== undefined
 
   useEffect(() => {
     if (!jobs) return
@@ -179,22 +243,11 @@ export function SignWithCie({
         const statuses = await statusFn({ data: { jobIds: jobs.map((j) => j.jobId) } })
         if (stopped) return
         setStates(new Map(statuses.map((s) => [s.jobId, s])))
-        const done = statuses.filter((s) => s.status === "completed").length
-        const ended = statuses.find((s) => s.status !== "completed" && !OPEN.has(s.status))
         if (statuses.every((s) => !OPEN.has(s.status))) {
-          if (done > 0 || !ended) return void finish(done, jobs.length)
-          const reason = ended.status === "expired" ? "expired" : ended.status === "cancelled" ? "cancelled" : "failed"
-          setPhase({
-            kind: "ended",
-            reason,
-            message:
-              reason === "expired"
-                ? "The signing link expired. Start again."
-                : reason === "cancelled"
-                  ? "The signature was cancelled."
-                  : (ended.errorMessage ?? "The signature failed."),
-          })
-          return
+          const done = statuses.filter((s) => s.status === "completed").length
+          if (done > 0) return void finish(done, jobs.length)
+          const ending = endingOf(statuses, jobs, preparing)
+          return ending ? setPhase(ending) : dismiss()
         }
         // Closed before and after the request, so a window opened again meanwhile counts as open. The agent closes
         // its window on cancel or success only after the backend recorded it, so those end above.
@@ -219,9 +272,11 @@ export function SignWithCie({
       window.clearInterval(tick)
       window.removeEventListener("message", onMessage)
     }
-  }, [jobs, statusFn, finish])
+  }, [jobs, preparing, statusFn, finish, dismiss])
 
   async function start() {
+    // The dialog is on its way out: its Close is reloading the page.
+    if (finishing.current && phase) return
     const prepared = prepare ? prepare() : Promise.resolve(items ?? [])
     if (!prepared) return
     setError(null)
@@ -267,13 +322,19 @@ export function SignWithCie({
     }
   }
 
-  /** Closes the dialog, cancelling what isn't signed yet; reloads when part of a batch was signed. */
+  /** Closes the dialog, cancelling what isn't signed yet; reloads when part of a batch was signed or it ended. */
   async function close() {
     if (finishing.current) return
     finishing.current = true
     const current = phase
-    setPhase(null)
     popupRef.current?.close()
+    if (current?.kind === "ended") {
+      // Reloaded while the dialog is still open, as finish() does: the request may have been cancelled meanwhile.
+      await reload()
+      setPhase(null)
+      return onStopped?.(null)
+    }
+    setPhase(null)
     if (!current || !("jobs" in current)) return onStopped?.(null)
     const open = current.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending"))
     if (open.length > 0) {
@@ -314,6 +375,7 @@ export function SignWithCie({
   const firstCode = openJobs[0] && states.get(openJobs[0].jobId)?.errorCode
   const sharedCode = firstCode && openJobs.every((j) => states.get(j.jobId)?.errorCode === firstCode) ? firstCode : null
   const sharedError = sharedCode && openJobs[0] ? errorText(states.get(openJobs[0].jobId)) : null
+  const needsSetup = sharedCode !== null && SETUP_ERRORS.has(sharedCode)
   const total = active?.jobs.length ?? 0
   const jobList = active && (
     <ul className="mt-2 flex flex-col gap-2" aria-live="polite">
@@ -353,23 +415,16 @@ export function SignWithCie({
           <DialogPrimitive.Popup className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}>
             {shown?.kind === "ended" ? (
               <Status
-                icon={
-                  shown.reason === "cancelled" ? (
-                    <CircleCheck className="size-5" />
-                  ) : (
-                    <TriangleAlert className="size-5" />
-                  )
-                }
+                icon={<TriangleAlert className="size-5" />}
                 tone={shown.reason === "failed" ? "danger" : "neutral"}
-                title={
-                  shown.reason === "expired"
-                    ? "The link expired"
-                    : shown.reason === "cancelled"
-                      ? "Signature cancelled"
-                      : "Signature failed"
-                }
+                title={ENDED_TITLES[shown.reason]}
               >
-                {shown.message}
+                <p>{shown.message}</p>
+                {shown.code && SETUP_ERRORS.has(shown.code) && (
+                  <div className="mt-2 -ml-2">
+                    <SetupGuideButton />
+                  </div>
+                )}
               </Status>
             ) : settled ? (
               <Status
@@ -428,14 +483,12 @@ export function SignWithCie({
                 </p>
                 {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
                 {batch && jobList}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(buttonMotion, "mt-3")}
-                  onClick={() => showWindow(active.url)}
-                >
-                  <ExternalLink aria-hidden /> Open the window again
-                </Button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" className={buttonMotion} onClick={() => showWindow(active.url)}>
+                    <ExternalLink aria-hidden /> Open the window again
+                  </Button>
+                  {needsSetup && <SetupGuideButton />}
+                </div>
               </Status>
             ) : active?.kind === "waiting" ? (
               <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
@@ -449,21 +502,30 @@ export function SignWithCie({
                 </p>
                 {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
                 {progress}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(buttonMotion, "mt-2 -ml-2")}
-                  onClick={() => showWindow(active.url)}
-                >
-                  <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
-                </Button>
+                <div className="mt-2 -ml-2 flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => showWindow(active.url)}>
+                    <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
+                  </Button>
+                  {needsSetup && <SetupGuideButton />}
+                </div>
               </Status>
             ) : null}
             {shown?.kind === "ended" ? (
               <div className={dialogFooter}>
-                <Button className={dialogFooterButton} onClick={() => void close()}>
-                  Close
-                </Button>
+                {shown.reason === "expired" && !preparing ? (
+                  <>
+                    <Button variant="outline" className={dialogFooterButton} onClick={() => void close()}>
+                      Close
+                    </Button>
+                    <Button className={dialogFooterButton} disabled={disabled} onClick={start}>
+                      Start again
+                    </Button>
+                  </>
+                ) : (
+                  <Button className={dialogFooterButton} onClick={() => void close()}>
+                    Close
+                  </Button>
+                )}
               </div>
             ) : (
               !settled && (

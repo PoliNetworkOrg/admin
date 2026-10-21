@@ -63,7 +63,23 @@ Agent → backend (through the dashboard origin, `{origin}/api/esign/agent/…`,
 | `POST /api/esign/agent/jobs/{ticket}/fail`     | `{code, message?}`                                   | `{status}` — records cancellations / card errors for the dashboard                                                                                   |
 
 Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expired` (410), `job_done` (409),
-`document_changed` (409), `certificate_invalid` (422), `signer_mismatch` (403), `signature_invalid` (422).
+`job_cancelled` (409: the message names who cancelled or declined the request, else "This signature was cancelled."),
+`job_failed` (409: the message of the error that ended the job), `document_changed` (409), `certificate_invalid` (422),
+`signer_mismatch` (403), `signature_invalid` (422).
+
+An error is terminal or retryable, the same in the agent, the backend and the dashboard. A terminal error ends the job:
+the backend moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it
+itself, and the agent shows it without a PIN form. A retryable error keeps the job open in the same agent window. An
+unknown code is retryable.
+
+- Terminal, reported by the agent: `pin_locked`, `card_untrusted`, `middleware_missing`, `not_paired`,
+  `certificate_not_found`.
+- Terminal, raised by the backend: `signer_mismatch`, `certificate_invalid`, `signature_invalid`, `document_changed`,
+  `pdf_invalid`, `job_done`, `agent_outdated`.
+- Retryable: `pin_incorrect`, `pin_invalid`, `pin_required`, `no_card`, `no_reader`, `card_removed`, `card_unsupported`,
+  `device_error`, `busy`, `backend_unreachable`.
+
+`/fail` on a job that already failed changes nothing and answers `{status: "failed"}`.
 
 ## Backend tRPC (`esign.*`)
 
@@ -90,7 +106,12 @@ permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permiss
   record `drives` (source and output); `esign.config().drives` and `esign.signers.list()[].drives` are filtered.
 - `esign.jobs.create({items: [{requestId, places?}]})` (1–10, all or none) → `[{requestId, jobId, ticket, expiresAt}]`,
   opened together in one agent window; `places` moves the caller's boxes (one position per place) before signing.
-  `esign.jobs.statuses({jobIds})`, `esign.jobs.cancel({jobIds})`.
+- `esign.jobs.statuses({jobIds})` → one entry per job:
+  `{jobId, requestId, status, errorCode, errorMessage, expiresAt, seen, signaturesLeft}`. `status` is `pending`,
+  `prepared`, `completed`, `failed` (a terminal error, its code in `errorCode`), `cancelled` or `expired`. A job
+  cancelled because its request was cancelled or declined has `errorCode` `request_cancelled` or `request_declined`,
+  and an `errorMessage` naming who did it (with the reason of a decline).
+- `esign.jobs.cancel({jobIds})`.
 
 Placement: `{page (0-based), x, y, width, height}` as fractions of the displayed page (crop box after rotation),
 origin top-left.

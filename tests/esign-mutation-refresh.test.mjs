@@ -306,6 +306,70 @@ void test("opening the window again reloads the signing page in the open agent w
   assert.ok(!events.some((event) => event[0] === "open"))
 })
 
+void test("the signer's own cancel closes the dialog once, without a reload", async () => {
+  const env = environment()
+  const popup = { close: () => env.events.push("popup closed") }
+  const dismiss = await handler("src/features/esign/sign-with-cie.tsx", "dismiss", {
+    ...env.dependencies,
+    finishing: { current: false },
+    setPhase: env.setter("phase"),
+    popupRef: { current: popup },
+    onStopped: (error) => env.events.push(["stopped", error]),
+  })
+  dismiss()
+  dismiss()
+  assert.equal(env.state.phase, null)
+  assert.deepEqual(env.events, ["popup closed", ["stopped", null]])
+})
+
+async function endingOf() {
+  const path = "src/features/esign/sign-with-cie.tsx"
+  const AGENT_ERRORS = await handler(path, "AGENT_ERRORS", {})
+  return handler(path, "endingOf", { AGENT_ERRORS })
+}
+
+function jobStatus(jobId, status, errorCode = null, errorMessage = null) {
+  return { jobId, status, errorCode, errorMessage, seen: true }
+}
+
+void test("an attempt ends quietly only when the signer cancelled every job", async () => {
+  const ending = await endingOf()
+  const jobs = [{ jobId: "a", requestId: "r", title: "Verbale" }]
+  assert.equal(ending([jobStatus("a", "cancelled", "pin_incorrect", "Wrong PIN.")], jobs, false), null)
+  const declined = ending(
+    [jobStatus("a", "cancelled", "request_declined", "Mario Rossi declined this request.")],
+    jobs,
+    false
+  )
+  assert.equal(declined.reason, "declined")
+  assert.equal(declined.message, "Mario Rossi declined this request.")
+  const failed = ending([jobStatus("a", "failed", "pin_locked", "PIN blocked")], jobs, false)
+  assert.equal(failed.reason, "failed")
+  assert.equal(failed.code, "pin_locked")
+  assert.match(failed.message, /^The PIN is blocked\./)
+})
+
+void test("an ended batch names the document, and an expired link points where to sign again", async () => {
+  const ending = await endingOf()
+  const jobs = [
+    { jobId: "a", requestId: "r1", title: "Verbale" },
+    { jobId: "b", requestId: "r2", title: "Contratto" },
+  ]
+  const cancelled = ending(
+    [
+      jobStatus("a", "cancelled"),
+      jobStatus("b", "cancelled", "request_cancelled", "Anna Bianchi cancelled this request."),
+    ],
+    jobs,
+    false
+  )
+  assert.equal(cancelled.reason, "cancelled")
+  assert.equal(cancelled.message, "Contratto: Anna Bianchi cancelled this request.")
+  const statuses = [jobStatus("a", "expired"), jobStatus("b", "cancelled")]
+  assert.match(ending(statuses, jobs, false).message, /Start again/)
+  assert.match(ending(statuses, jobs, true).message, /^Close to open the request/)
+})
+
 for (const outcome of ["delivered", "failed", "throws"]) {
   void test(`delivery retry waits for refresh before reporting ${outcome}`, async () => {
     const env = environment()
