@@ -32,26 +32,28 @@ Dashboard                      Admin BFF                Backend                 
 
 Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:47321` or `localhost:47321`.
 
-| Route             | Caller               | Notes                                                                                |
-| ----------------- | -------------------- | ------------------------------------------------------------------------------------ |
-| `GET /`           | anyone               | "Agent is running" page                                                              |
-| `GET /sign`       | popup navigation     | Query `ticket` repeated 1–10 times (43 chars base64url each), `origin` (allowlisted) |
-| `GET /api/job`    | the agent's own page | Same-origin only (`Origin`/`Sec-Fetch-Site` checks). Job + card status               |
-| `POST /api/sign`  | the agent's own page | `{tickets, origin, pin}`: one card session signs every job; a result per ticket      |
-| `GET /api/status` | the agent's own page | Providers, readers, card presence                                                    |
+| Route              | Caller               | Notes                                                                                                                                           |
+| ------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /`            | anyone               | Status page: running, and ready to sign once reader, card and software check out                                                                |
+| `GET /sign`        | popup navigation     | Query `ticket` repeated 1–10 times (43 chars base64url each), `origin` (allowlisted)                                                            |
+| `POST /api/job`    | the agent's own page | `{tickets, origin}`. Same-origin only (`Origin`/`Sec-Fetch-Site` checks). The jobs, the remembered PIN, wrong attempts in a row                 |
+| `POST /api/sign`   | the agent's own page | `{tickets, origin, pin, remember?}`: one card session signs every job, a result per ticket; an empty `pin` uses the PIN this browser remembered |
+| `POST /api/cancel` | the agent's own page | `{tickets, origin}`: the signer cancelled; each job is reported to the backend as `cancelled`                                                   |
+| `POST /api/forget` | the agent's own page | Forgets the remembered PIN                                                                                                                      |
+| `GET /api/status`  | the agent's own page | Providers, readers, card presence, and `card`: `present`, `absent` or `unknown` (the PIN and Sign are held only while `absent`)                 |
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
 The signing page tells its opener what happened with `postMessage({type: "pn-esign", status, detail?, …}, origin)`,
 to the dashboard's origin only (agents up to v0.1.x post type `pn-sign-agent`):
 
-| `status`    | Other fields                                        | When                                                                                                                                                   |
-| ----------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ready`     | `detail`: the agent's version                       | First thing the page's script does, before any request. From the release after v0.3.0.                                                                 |
-| `error`     | `detail`: code, `message`: its words, `fatal: true` | The page can't go on (job load failed, backend unreachable, link expired, `agent_outdated`) and shows the error instead of the PIN form. Same release. |
-| `error`     | `detail`: code                                      | A signature failed and the page went back to the PIN form; `agent_unreachable` when the page can no longer reach the agent behind it.                  |
-| `completed` |                                                     | Every document of the window is signed.                                                                                                                |
-| `cancelled` |                                                     | The signer cancelled in the agent window.                                                                                                              |
+| `status`    | Other fields                                        | When                                                                                                                                                                                                                    |
+| ----------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`     | `detail`: the agent's version                       | First thing the page's script does, before any request. From the release after v0.3.0.                                                                                                                                  |
+| `error`     | `detail`: code, `message`: its words, `fatal: true` | The page can't go on (job load failed, backend unreachable, link expired, `agent_outdated`, `agent_unreachable` when its own job call can't reach the agent) and shows the error instead of the PIN form. Same release. |
+| `error`     | `detail`: code                                      | A signature failed and the page went back to the PIN form; `agent_unreachable` when the page can no longer reach the agent behind it.                                                                                   |
+| `completed` |                                                     | Every document of the window is signed.                                                                                                                                                                                 |
+| `cancelled` |                                                     | The signer cancelled in the agent window.                                                                                                                                                                               |
 
 The dashboard polls `esign.jobs.statuses` every 1.2 s and at once on every message. A job's terminal status from the
 poll wins over a message. Messages the dashboard acts on by themselves:
@@ -61,17 +63,23 @@ poll wins over a message. Messages the dashboard acts on by themselves:
   The browser remembers it in `localStorage["pn-esign-agent"] = {"version": "<detail>", "at": ISO}`.
 - **Older agents** never say `ready`: the job's `seen` (the agent fetched it) stands in for it, and the flag is stored
   with `"version": null`.
-- **No answer.** Without `ready` or `seen` 2.5 s after the window is sent to the agent (6 s when the flag's version is
-  null), the dashboard polls once more, then closes the window and says PoliNetwork eSign isn't running: "Start
-  PoliNetwork eSign" (`polinetwork-esign://open`, then the window opens again) when the flag exists, otherwise "Install
-  PoliNetwork eSign" (the setup page). A window closed before any answer means the same, at once.
+- **No answer.** Without `ready` or `seen` 2.5 s after the window is sent to the agent, the dashboard polls once more,
+  then closes the window and says PoliNetwork eSign isn't running: "Start PoliNetwork eSign"
+  (`polinetwork-esign://open`, then the window opens again) when the flag exists, otherwise "Install PoliNetwork
+  eSign" (the setup page) with "It's already installed: start it". The wait is 6 s when the flag's version is null, and
+  4 s when there is no flag: that browser may hold an old agent, which shows only once the backend has served its job
+  (`seen` is set after the agent's job request went agent → dashboard → backend). The trade-off: a running old agent
+  whose job takes longer than that to load is still closed, as "isn't running"; Start or "It's already installed"
+  then stores the flag, and the next attempts wait 6 s. A window closed before any answer means the same, at once.
 - **Fatal errors.** `agent_outdated` shows the update (a direct download of the newest version, the release page on
   Linux), `backend_unreachable` "can't connect" and `job_expired` the timed-out state at once; any other code waits
   for the poll the message starts, in case the job ended with words of its own, then shows the message. The window
-  stays open: it shows the same error with its own buttons. A job that failed with `agent_outdated` without a fatal
-  message (an agent too old to post one) closes the window, which shows only plain text.
-- **`agent_unreachable`** after the agent answered: it stopped, and only the page can tell. Older agents (v0.3.0 and
-  before) don't post it.
+  stays open: it shows the same error with its own buttons. A job that failed with `agent_outdated` closes the window
+  only when the agent neither said `ready` nor posted a fatal message (an agent too old to post either), whose page
+  shows only plain text: the backend fails the job before the agent's page learns why, so a poll can see the failure
+  first.
+- **`agent_unreachable`**, fatal or not, after the agent answered: it stopped, and only the page can tell; the dialog
+  offers "Start PoliNetwork eSign". Older agents (v0.3.0 and before) don't post it.
 
 The dashboard notices a closed agent window by reading `popup.closed` on every poll, and acts once two polls in a row
 read it closed: it keeps waiting while a job is `prepared` (the card is signing), shows which documents were signed when
@@ -93,17 +101,26 @@ Providers (tried in order, first with a card present; never falls back once a PI
 Agent → backend (through the dashboard origin, `{origin}/api/esign/agent/…`, proxied by the BFF to the backend's
 `/esign/agent/…`). Authentication is the ticket in the path; no cookies, no bearer tokens.
 
-| Request                                        | Body                                                 | Response                                                                                                                                             |
-| ---------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET  /api/esign/agent/jobs/{ticket}`          |                                                      | `{job: {id, status, expiresAt, document: {title, fileName, pages}, signer: {name, role}, placement: {page}, requestedBy, signatures, marks, pages}}` |
-| `POST /api/esign/agent/jobs/{ticket}/prepare`  | `{certificate: b64 DER, chain?: b64[], protocol: 2}` | `{toBeSigned: b64 SHA-256, algorithm: "RSASSA-PKCS1-v1_5-SHA256", step, steps}`; without `protocol: 2`, 426 `agent_outdated`                         |
-| `POST /api/esign/agent/jobs/{ticket}/complete` | `{signature: b64}`                                   | `{status: "next" \| "completed", request: {status, remaining}}`: on `next`, prepare the job's next place with the same session                       |
-| `POST /api/esign/agent/jobs/{ticket}/fail`     | `{code, message?}`                                   | `{status}` — records cancellations / card errors for the dashboard                                                                                   |
+The agent sends `User-Agent: PoliNetwork-eSign/<version>` (`PoliNetwork-Sign-Agent/<version>` before the rename, up to
+v0.1.x). The BFF proxy forwards a User-Agent only when it matches
+`^PoliNetwork-(?:eSign|Sign-Agent)/[0-9A-Za-z.+-]{1,32}$` (`agentUserAgent` in `src/features/esign/agent.ts`) and
+drops any other. The backend refuses versions below `MIN_AGENT_VERSION` (0.2.0, the first with protocol 2; backend
+`src/esign/agent-version.ts`): loading the job (and preparing it) answers 426 `agent_outdated`, and the job ends
+`failed` with that code and `seen`, so the dashboard shows the update instead of waiting. A missing or foreign
+User-Agent, `dev` and source builds (`v0.3.0-12-gabc`) and anything unparsable pass, so the dashboard, the backend and
+the agent can be deployed in any order. Raising the minimum makes every older agent update before its PIN.
+
+| Request                                        | Body                                                 | Response                                                                                                                                                                                                             |
+| ---------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET  /api/esign/agent/jobs/{ticket}`          |                                                      | `{job: {id, status, expiresAt, document: {title, fileName, pages}, signer: {name, role}, placement: {page}, requestedBy, signatures, marks, pages}}`; 426 `agent_outdated` below the minimum version (the job fails) |
+| `POST /api/esign/agent/jobs/{ticket}/prepare`  | `{certificate: b64 DER, chain?: b64[], protocol: 2}` | `{toBeSigned: b64 SHA-256, algorithm: "RSASSA-PKCS1-v1_5-SHA256", step, steps}`; 426 `agent_outdated` below the minimum version or without `protocol: 2`                                                             |
+| `POST /api/esign/agent/jobs/{ticket}/complete` | `{signature: b64}`                                   | `{status: "next" \| "completed", request: {status, remaining}}`: on `next`, prepare the job's next place with the same session                                                                                       |
+| `POST /api/esign/agent/jobs/{ticket}/fail`     | `{code, message?}`                                   | `{status}` — records cancellations / card errors for the dashboard                                                                                                                                                   |
 
 Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expired` (410), `job_done` (409),
 `job_cancelled` (409: the message names who cancelled or declined the request, else "This signature was cancelled."),
 `job_failed` (409: the message of the error that ended the job), `document_changed` (409), `certificate_invalid` (422),
-`signer_mismatch` (403), `signature_invalid` (422).
+`signer_mismatch` (403), `signature_invalid` (422), `agent_outdated` (426: the message says to update).
 
 The agent, the backend and the dashboard agree on which errors are terminal. A terminal error ends the job: the backend
 moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it itself, and
