@@ -389,8 +389,10 @@ export function usePdfBytes(base64: string | null) {
 }
 
 /**
- * The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". Long
- * documents are read on their first 40 and last 10 pages, where signature labels are.
+ * The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario", and the
+ * signatures already on it, which boxes keep off. Long documents are read on their first 40 and last 10 pages, where
+ * signature labels are. Text that doesn't run left to right on screen, such as a note printed up the margin, only
+ * counts as something to keep off.
  */
 export async function extractTextAnchors(data: Uint8Array): Promise<TextAnchor[]> {
   const pdfjs = await loadPdfjs()
@@ -402,23 +404,54 @@ export async function extractTextAnchors(data: Uint8Array): Promise<TextAnchor[]
     for (const index of pages) {
       const page = await pdf.getPage(index + 1)
       const viewport = page.getViewport({ scale: 1 })
+      /** The rectangle around points of the page's user space, in fractions of the displayed page. */
+      const around = (points: [number, number][]) => {
+        const xs: number[] = []
+        const ys: number[] = []
+        for (const [x, y] of points) {
+          const [screenX, screenY] = viewport.convertToViewportPoint(x, y)
+          xs.push(screenX)
+          ys.push(screenY)
+        }
+        const left = Math.min(...xs)
+        const top = Math.min(...ys)
+        return {
+          page: index,
+          x: left / viewport.width,
+          y: top / viewport.height,
+          width: (Math.max(...xs) - left) / viewport.width,
+          height: (Math.max(...ys) - top) / viewport.height,
+        }
+      }
       const content = await page.getTextContent()
       for (const item of content.items) {
         if (!("str" in item) || item.str.trim() === "") continue
-        const [, , , , x, y] = item.transform
-        const corners = [
-          viewport.convertToViewportPoint(x, y),
-          viewport.convertToViewportPoint(x + item.width, y + item.height),
+        // The run goes `width` along its baseline and `height` up from it, whichever way the page and text turn.
+        const [a, b, c, d, e, f]: number[] = item.transform
+        const along = Math.hypot(a, b) || 1
+        const up = Math.hypot(c, d) || 1
+        const at = (length: number, rise: number): [number, number] => [
+          e + (a / along) * length + (c / up) * rise,
+          f + (b / along) * length + (d / up) * rise,
         ]
-        const left = Math.min(corners[0][0], corners[1][0])
-        const top = Math.min(corners[0][1], corners[1][1])
+        const [startX, startY] = viewport.convertToViewportPoint(e, f)
+        const [stepX, stepY] = viewport.convertToViewportPoint(...at(1, 0))
+        const leftToRight = stepX - startX > 0 && Math.abs(stepY - startY) < 0.05 * (stepX - startX)
+        const rect = around([at(0, 0), at(item.width, 0), at(0, item.height), at(item.width, item.height)])
+        anchors.push(leftToRight ? { ...rect, text: item.str } : { ...rect, text: "", kind: "sideways" })
+      }
+      for (const annotation of await page.getAnnotations()) {
+        if (annotation.fieldType !== "Sig" || !Array.isArray(annotation.rect)) continue
+        const [x1, y1, x2, y2]: number[] = annotation.rect
+        // An invisible signature has no rectangle on the page.
+        if (Math.abs(x2 - x1) < 1 || Math.abs(y2 - y1) < 1) continue
         anchors.push({
-          page: index,
-          text: item.str,
-          x: left / viewport.width,
-          y: top / viewport.height,
-          width: Math.abs(corners[1][0] - corners[0][0]) / viewport.width,
-          height: Math.abs(corners[1][1] - corners[0][1]) / viewport.height,
+          ...around([
+            [x1, y1],
+            [x2, y2],
+          ]),
+          text: "",
+          kind: "signature",
         })
       }
     }

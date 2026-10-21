@@ -51,7 +51,7 @@ import { extractTextAnchors, PdfViewer, sizeOnPage, usePdfBytes } from "./pdf-vi
 import {
   BOX_PT,
   type DraftPlace,
-  defaultPlace,
+  defaultPlaces,
   findSpots,
   freeRow,
   placeRows,
@@ -467,10 +467,23 @@ export function NewEsignRequestPage({
   const signerList = useFocusAfterRemoval<HTMLOListElement>("[data-signer-row]")
   const allPlaces = (except?: string) => rows.flatMap((r) => (r.id === except ? [] : r.places))
 
+  /**
+   * Adds a person without a spot. The boxes still in the default place are laid out again with theirs, so on the page
+   * they read in signing order.
+   */
   function addSigner(person: EsignProfile) {
-    const box = defaultPlace(anchors ?? [], pages, allPlaces())
-    const row = freeRow({ sub: person.sub, name: person.name }, "", box)
-    changeRows((current) => [...current, row])
+    const laidOut = rows.filter((r) => r.places.some((p) => p.auto === "default"))
+    const fixed = rows.flatMap((r) => r.places.filter((p) => p.auto !== "default"))
+    const boxes = defaultPlaces(anchors ?? [], pages, fixed, laidOut.length + 1)
+    const moved = new Map(laidOut.map((r, i) => [r.id, boxes[i]]))
+    const row = freeRow({ sub: person.sub, name: person.name }, "", boxes[laidOut.length], "default")
+    changeRows((current) => [
+      ...current.map((r) => {
+        const box = moved.get(r.id)
+        return box ? { ...r, places: r.places.map((p) => (p.auto === "default" ? { ...p, ...box } : p)) } : r
+      }),
+      row,
+    ])
     setFocus(middleOf(row.places[0]))
     pendingFocus.current = { row: row.id, part: "role" }
   }
@@ -526,7 +539,7 @@ export function NewEsignRequestPage({
   function setRole(id: string, role: string) {
     const row = rows.find((r) => r.id === id)
     if (!row) return
-    const at = row.places.findIndex((p) => p.byRole)
+    const at = row.places.findIndex((p) => p.auto)
     const box = row.places[at]
     const target =
       box && anchors
@@ -535,7 +548,7 @@ export function NewEsignRequestPage({
         : null
     const moved = target && !samePlace(target, box)
     const places = moved
-      ? row.places.map((p, i) => (i === at ? { ...target, kind: p.kind, byRole: true as const } : p))
+      ? row.places.map((p, i) => (i === at ? { ...target, kind: p.kind, auto: "label" as const } : p))
       : row.places
     if (moved) setFocus(middleOf(places[at]))
     changeRows((current) => current.map((r) => (r.id === id ? { ...r, role, places } : r)))
@@ -547,7 +560,7 @@ export function NewEsignRequestPage({
     const empty = row?.person ? spotFor(row.role) : undefined
     if (!row?.person || !empty?.spot) return
     const { person } = row
-    const places = [...empty.spot.places, ...row.places.filter((p) => !p.byRole)]
+    const places = [...empty.spot.places, ...row.places.filter((p) => !p.auto)]
     changeRows((current) =>
       current.filter((r) => r.id !== id).map((r) => (r.id === empty.id ? { ...r, person, places } : r))
     )
@@ -560,7 +573,7 @@ export function NewEsignRequestPage({
     changeRows((current) => current.map((r) => (r.id === id ? { ...r, places: withSignature(update(r.places)) } : r)))
   }
 
-  // The box comes back with every field it was given: rebuilt without `byRole`, it no longer follows the role.
+  // The box comes back with every field it was given: rebuilt without `auto`, the composer no longer moves it.
   function movePlace(id: string, at: number, { page, x, y, width, height }: BoxPlacement) {
     updatePlaces(id, (places) => places.map((p, i) => (i === at ? { page, x, y, width, height, kind: p.kind } : p)))
   }

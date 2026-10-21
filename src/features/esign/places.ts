@@ -53,8 +53,20 @@ export function placeAt(place: Place, pages: PageSize[], page: number, x: number
   }
 }
 
-/** A run of text on a page, in fractions of the displayed page (origin top-left). */
-export type TextAnchor = { page: number; text: string; x: number; y: number; width: number; height: number }
+/**
+ * A run of text on a page, in fractions of the displayed page (origin top-left), reading left to right. Otherwise
+ * `kind` says what else a box keeps off: a signature already on the page, the rectangle of its field ("signature"),
+ * whose label is signed; or text that runs another way, such as a note up the margin ("sideways"), never a label.
+ */
+export type TextAnchor = {
+  page: number
+  text: string
+  x: number
+  y: number
+  width: number
+  height: number
+  kind?: "signature" | "sideways"
+}
 
 /** A signature spot: a label found in the PDF ("Il Presidente") with a box under it on every page that repeats it. */
 export type Spot = { id: string; key: string; role: string; places: Place[] }
@@ -97,24 +109,31 @@ const TAILS = [
   "pro tempore",
 ]
 const APOSTROPHES = /[’‘`´]/g
+const DASHES = /[‐‑‒–—]/g
 /** "F.to", "Firma del", and the article. */
 const PREFIX = String.raw`(?:f\.?\s?to\s+)?(?:firma\s+(?:del|della|dello|dell'|dei)\s*)?(?:(?:il\/la|il|la|lo)\s+|l'\s*)?`
 const ROLE_WORDS = [...SIGN_ROLES.map((role) => role.toLowerCase()), ...FEMININE.keys()]
 const LABEL = new RegExp(
-  `^(?<prefix>${PREFIX})(?:(?<qualifier>${QUALIFIERS.join("|")})[\\s-]?)?(?<role>${ROLE_WORDS.join("|")})(?:\\/a)?(?:\\s+(?:${TAILS.join("|")}))?$`
+  `^(?<prefix>${PREFIX})(?:(?<qualifier>${QUALIFIERS.join("|")})\\s*-?\\s*)?(?<role>${ROLE_WORDS.join("|")})(?:\\/a)?(?:\\s+(?:${TAILS.join("|")}))?$`
 )
+/**
+ * The first line of a label wrapped in a narrow cell, tested with a space after it: "Il Vice" or "Il Vice-" over
+ * "Presidente", "Firma del" over "Presidente".
+ */
+const LABEL_START = new RegExp(`^(?=\\S)${PREFIX}(?:(?:${QUALIFIERS.join("|")})\\s*-?)?\\s*$`)
 const ORIGINAL_PREFIX = new RegExp(`^${PREFIX.replaceAll("'", "['’‘`´]")}`, "i")
 /** A signature line: underscores, dots or ellipses. */
 const UNDERLINE = /^(?:_{3,}|\.{3,}|…{2,}|(?:\. ){3,}\.?)$/
 /** Where one text run holds several pieces: wide spaces between labels, and signature lines. */
 const BREAKS = /\s{3,}|_{3,}|\.{3,}|…{2,}|(?:\. ){3,}\.?/g
 
-/** Lowercase, no accents, one kind of apostrophe and single spaces. */
+/** Lowercase, no accents, one kind of apostrophe and of dash, and single spaces. */
 function fold(text: string) {
   return text
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .replace(APOSTROPHES, "'")
+    .replace(DASHES, "-")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim()
@@ -135,6 +154,7 @@ function matchLabel(text: string) {
     bare: prefix === "" && !/:\s*[_.…]*\s*$/.test(text),
   }
 }
+type Label = NonNullable<ReturnType<typeof matchLabel>>
 
 /**
  * The spot a label or a typed role names: "Il Vice Presidente" → `vicepresidente`, role "Vice Presidente". Null when
@@ -148,11 +168,26 @@ export function roleKey(text: string): { key: string; role: string } | null {
 /** Points from the page's top-left corner. */
 type Rect = { x: number; y: number; width: number; height: number }
 /**
- * A run of text between wide gaps on one line. Its column runs halfway to its neighbours: `left`/`right` stop at the
- * page's text block, `edgeLeft`/`edgeRight` at the page margins.
+ * A run of text between wide gaps on one line, or a label wrapped over two lines. Its column runs halfway to its
+ * neighbours: `left`/`right` stop at the page's text block, `edgeLeft`/`edgeRight` at the page margins.
  */
-type Segment = Rect & { text: string; line: number; left: number; right: number; edgeLeft: number; edgeRight: number }
-type PageText = { size: PageSize; obstacles: Rect[]; underlines: Rect[]; segments: Segment[] }
+type Segment = Rect & {
+  text: string
+  /** The line it starts on; lines are numbered top to bottom. */
+  line: number
+  /** The bottom of its glyphs, descenders included. */
+  foot: number
+  /** About the font size: its tallest run's height. */
+  size: number
+  left: number
+  right: number
+  edgeLeft: number
+  edgeRight: number
+  label: Label | null
+  /** The first line of a label wrapped onto the next one, whose segment holds the whole label. */
+  part?: true
+}
+type PageText = { size: PageSize; segments: Segment[]; underlines: Rect[]; signatures: Rect[]; sideways: Rect[] }
 
 const bottom = (r: Rect) => r.y + r.height
 const right = (r: Rect) => r.x + r.width
@@ -162,21 +197,40 @@ function overlap(a: Rect, b: Rect) {
   const h = Math.min(bottom(a), bottom(b)) - Math.max(a.y, b.y)
   return w > 0 && h > 0 ? w * h : 0
 }
+/** Whether two rectangles share some width. */
+const acrossFrom = (a: Rect, b: Rect) => a.x < right(b) && right(a) > b.x
 /** pdf.js measures text from the baseline up: below it go the descenders, about a fifth of the height. */
 const textBottom = (r: Rect) => r.y + r.height * 1.2
 /** Room kept around text a box must not cover. */
 const PAD = 2
+const grow = (r: Rect, by: number): Rect => ({
+  x: r.x - by,
+  y: r.y - by,
+  width: r.width + 2 * by,
+  height: r.height + 2 * by,
+})
+/** The room a segment's text takes, a little padded. */
+const room = (s: Segment) => grow({ x: s.x, y: s.y, width: s.width, height: s.foot - s.y }, PAD)
+/** Labels and the first lines of wrapped ones: text a box never covers, even when no place is clear. */
+const isLabel = (s: Segment) => s.label !== null || s.part === true
 
-/** The page's text as lines of segments, the text a box must not cover, and the signature lines it may sit on. */
+/** The page's text as segments on lines, the signatures already on it, and the signature lines a box may sit on. */
 function readPage(anchors: TextAnchor[], size: PageSize): PageText {
   const pieces: (Rect & { text: string })[] = []
   const underlines: Rect[] = []
+  const signatures: Rect[] = []
+  const sideways: Rect[] = []
   for (const anchor of anchors) {
     const run: Rect = {
       x: anchor.x * size.width,
       y: anchor.y * size.height,
       width: anchor.width * size.width,
       height: Math.max(anchor.height * size.height, 1),
+    }
+    if (anchor.kind) {
+      const into = anchor.kind === "signature" ? signatures : sideways
+      into.push(grow(run, PAD))
+      continue
     }
     // Pieces of one run are placed in proportion to their characters.
     const perChar = run.width / Math.max(anchor.text.length, 1)
@@ -213,7 +267,7 @@ function readPage(anchors: TextAnchor[], size: PageSize): PageText {
   lines.forEach((line, index) => {
     line.sort((a, b) => a.x - b.x)
     const height = Math.max(...line.map((p) => p.height))
-    const runs: (Rect & { text: string })[] = []
+    const runs: (Rect & { text: string; foot: number; size: number })[] = []
     for (const piece of line) {
       const last = runs.at(-1)
       const gap = last ? piece.x - right(last) : Number.POSITIVE_INFINITY
@@ -223,7 +277,9 @@ function readPage(anchors: TextAnchor[], size: PageSize): PageText {
         last.height = Math.max(bottom(last), bottom(piece)) - top
         last.y = top
         last.width = right(piece) - last.x
-      } else runs.push({ ...piece })
+        last.foot = Math.max(last.foot, textBottom(piece))
+        last.size = Math.max(last.size, piece.height)
+      } else runs.push({ ...piece, foot: textBottom(piece), size: piece.height })
     }
     runs.forEach((run, i) => {
       const before = runs[i - 1]
@@ -233,75 +289,227 @@ function readPage(anchors: TextAnchor[], size: PageSize): PageText {
       // Within the page's text block too, unless the run itself sticks out of it.
       const left = Math.min(Math.max(edgeLeft, textLeft), run.x)
       const end = Math.max(Math.min(edgeRight, textRight), right(run))
-      segments.push({ ...run, line: index, left, right: end, edgeLeft, edgeRight })
+      segments.push({ ...run, line: index, left, right: end, edgeLeft, edgeRight, label: null })
     })
   })
-
-  const obstacles = pieces.map((p) => ({
-    x: p.x - PAD,
-    y: p.y - PAD,
-    width: p.width + 2 * PAD,
-    height: textBottom(p) - p.y + 2 * PAD,
-  }))
-  return { size, obstacles, underlines, segments }
+  joinWrappedLabels(segments)
+  for (const segment of segments) if (!segment.part) segment.label = matchLabel(segment.text)
+  return { size, segments, underlines, signatures, sideways }
 }
 
 /**
- * A box for a label: on the signature line under it or beside it, else in the clear space below it (past a name line
- * printed under the label), else above it. It stays in the label's column and inside the page, and covers no text and
- * no box in `taken`; when nothing is clear, the place covering the least.
+ * A label wrapped in a narrow cell reads as one: "Il Vice" over "Presidente" is the Vicepresidente, never a second
+ * Presidente. The lower segment takes the whole label, the upper line's place in reading order and the column the two
+ * share; the upper one becomes its `part`.
+ */
+function joinWrappedLabels(segments: Segment[]) {
+  for (const lower of segments) {
+    if (lower.part) continue
+    const upper = segments
+      .filter((s) => s.line < lower.line && !s.part && acrossFrom(s, lower) && lower.y - s.foot < 0.8 * lower.size)
+      .sort((a, b) => b.foot - a.foot)[0]
+    if (!upper || !LABEL_START.test(`${fold(upper.text)} `)) continue
+    const text = `${upper.text.trimEnd()}${/[-‐‑‒–—'’]$/.test(upper.text.trimEnd()) ? "" : " "}${lower.text}`
+    if (!matchLabel(text)) continue
+    upper.part = true
+    const x = Math.min(upper.x, lower.x)
+    Object.assign(lower, {
+      text,
+      x,
+      y: upper.y,
+      width: Math.max(right(upper), right(lower)) - x,
+      height: bottom(lower) - upper.y,
+      line: upper.line,
+      size: Math.max(upper.size, lower.size),
+      left: Math.max(upper.left, lower.left),
+      right: Math.min(upper.right, lower.right),
+      edgeLeft: Math.max(upper.edgeLeft, lower.edgeLeft),
+      edgeRight: Math.min(upper.edgeRight, lower.edgeRight),
+    })
+  }
+}
+
+/** A signature line on the same line as `segment`, starting after `x`. */
+const lineAfter = (page: PageText, segment: Segment, x: number) =>
+  page.underlines.some(
+    (u) => u.x >= x - 1 && Math.abs(middle(u) - middle(segment)) < 0.4 * Math.max(u.height, segment.size)
+  )
+
+/**
+ * Whether a label, or a short line naming a role, stands on its own to be signed under. Not when it captions a field
+ * filled in on its line ("Presidente:   Mario Rossi") without a signature line, nor when it is the end of a sentence
+ * wrapped onto a line of its own ("…approvato dal\nil Presidente.").
+ */
+function standsAlone(page: PageText, segment: Segment) {
+  const next = page.segments
+    .filter((s) => s !== segment && s.line === segment.line && s.x >= right(segment) - 1)
+    .sort((a, b) => a.x - b.x)[0]
+  if (next && !isLabel(next) && !lineAfter(page, segment, right(segment))) return false
+  const above = page.segments
+    .filter((s) => s.line < segment.line && acrossFrom(s, segment))
+    .sort((a, b) => b.foot - a.foot)[0]
+  const text = segment.text.trim()
+  const sentence = /[^.]\.$/.test(text) || /^\p{Ll}/u.test(text)
+  return !(sentence && above && !isLabel(above) && segment.y - above.foot < 0.8 * segment.size)
+}
+
+/** A bare role ("Presidente") is a label only on a line of labels, not as a word in a table. */
+const amongLabels = (page: PageText, segment: Segment) =>
+  page.segments.every((s) => s.line !== segment.line || isLabel(s))
+
+/** A signature already on the page in the label's column, where its box would go: the label is signed. */
+function signedUnder(page: PageText, label: Segment) {
+  return page.signatures.some((signature) => {
+    const shared = Math.min(right(signature), label.right) - Math.max(signature.x, label.left)
+    return (
+      shared >= Math.min(signature.width, label.right - label.left) / 2 &&
+      signature.y < label.foot + 100 &&
+      bottom(signature) > label.y - 100
+    )
+  })
+}
+
+/** Box heights: a full one, then shorter ones where the space is tight. */
+const TALL = [BOX_PT.height, 44]
+const SHORT = [36, 30]
+
+/**
+ * A box for a label, close to it and inside the page: on the signature line under or beside it; else in clear space
+ * below it, past a short name line printed under the label but never past other text; else above it. It is tried in
+ * the label's column first, then shifted towards the page margins, then shorter. `clear` is false when every such
+ * place covers text: the place returned then covers the least, and never a label, a signature or a box in `taken`.
  */
 function clearPlacement(label: Segment, page: PageText, taken: Rect[]) {
   const { width: pageWidth, height: pageHeight } = page.size
-  const obstacles = [...page.obstacles, ...taken]
+  const top = pageHeight * 0.02
+  const floor = pageHeight * 0.98
+  const near = (o: Rect) => bottom(o) > label.y - 180 && o.y < label.foot + 180
+  const nameWidth = Math.max(label.width * 1.6, 170)
+  /** Text a box may cover when nothing is clear; `name`: a short line, such as the name printed under a label. */
+  const soft = page.segments
+    .filter((s) => !isLabel(s) && near(s))
+    .map((s) => ({ ...room(s), name: s.width <= nameWidth || /^\(.*\)$/.test(s.text.trim()) }))
+    .concat(page.sideways.filter(near).map((r) => ({ ...r, name: false })))
+  const labels = page.segments.filter(isLabel).map(room).filter(near)
+  const hard = [...labels, ...page.signatures, ...taken].filter(near)
+  /** What the box keeps to its own side of: the text around the label, not the other boxes. */
+  const text = [...soft, ...labels]
+  const obstacles = [...text, ...page.signatures, ...taken]
+  const covered = (rect: Rect, of: Rect[]) => of.reduce((sum, o) => sum + overlap(rect, o), 0)
+
   const width = Math.max(120, Math.min(BOX_PT.width, label.right - label.left - 8))
-  /** Centred on `center`, inside the column when it fits. */
-  const columnX = (center: number, boxWidth = width) =>
-    label.right - boxWidth < label.left
-      ? center - boxWidth / 2
-      : clamp(center - boxWidth / 2, label.left, label.right - boxWidth)
-  /** Inside the page, with a 2% margin. */
-  const fit = (x: number, y: number, height: number, boxWidth = width): Rect => ({
-    x: clamp(x, pageWidth * 0.02, pageWidth * 0.98 - boxWidth),
-    y: clamp(y, pageHeight * 0.02, pageHeight * 0.98 - height),
-    width: boxWidth,
-    height,
-  })
-  const labelBottom = textBottom(label) + PAD
-  const candidates: Rect[] = []
+  const centre = label.x + label.width / 2
+  /** Centred on `center`, inside the column when it fits, and inside the page. */
+  const columnX = (center: number, boxWidth: number) =>
+    clamp(
+      label.right - boxWidth < label.left
+        ? center - boxWidth / 2
+        : clamp(center - boxWidth / 2, label.left, label.right - boxWidth),
+      pageWidth * 0.02,
+      pageWidth * 0.98 - boxWidth
+    )
+  type Span = { x: number; width: number }
+  const inColumn: Span[] = [{ x: columnX(centre, width), width }]
+  // Out to the neighbouring columns or the page margins, still across from a good part of the label.
+  const shifted: Span[] = []
+  for (const boxWidth of new Set([Math.max(120, Math.min(BOX_PT.width, label.edgeRight - label.edgeLeft - 8)), 120]))
+    for (let x = label.edgeLeft; x <= label.edgeRight - boxWidth; x += 6) {
+      const shared = Math.min(x + boxWidth, right(label)) - Math.max(x, label.x)
+      if (shared >= Math.min(label.width, boxWidth) / 2) shifted.push({ x, width: boxWidth })
+    }
+  shifted.sort((a, b) => Math.abs(a.x + a.width / 2 - centre) - Math.abs(b.x + b.width / 2 - centre))
 
-  // A signature line under the label, or after it on its line: the box stands on it, below whatever is above it.
-  for (const line of page.underlines) {
-    const under =
-      line.y >= middle(label) && line.y <= labelBottom + 60 && line.x < label.right && right(line) > label.left
-    const beside =
-      Math.abs(middle(line) - middle(label)) < 0.4 * Math.max(line.height, label.height) &&
-      line.x >= right(label) - 1 &&
-      line.x < label.edgeRight
-    if (!under && !beside) continue
-    const base = line.y + line.height * 1.1
-    // As wide as the line, within the column.
-    const start = under ? line.x : Math.max(line.x, right(label) + PAD + 1)
-    const room = under ? width : Math.min(BOX_PT.width, label.edgeRight - start)
-    const boxWidth = Math.min(Math.max(right(line) - start, 120), room)
-    const x = under ? columnX(line.x + line.width / 2, boxWidth) : start
-    const above = obstacles.filter((o) => o.x < x + boxWidth && right(o) > x && bottom(o) <= base + 1)
-    const top = Math.max(base - BOX_PT.height, ...above.map((o) => bottom(o) + 1))
-    if (base - top >= 30 && boxWidth >= 120) candidates.push(fit(x, top, base - top, boxWidth))
+  /** Under the label, from the nearest; unless `past`, it stops at the first line that isn't a short name line. */
+  function below({ x, width: boxWidth }: Span, height: number, past = false) {
+    const span = { x, y: 0, width: boxWidth, height: 0 }
+    let limit = Number.POSITIVE_INFINITY
+    if (!past) {
+      const under = text.filter((o) => o.y >= label.foot - 1 && acrossFrom(o, span)).sort((a, b) => a.y - b.y)
+      let names = 0
+      let lastName = Number.NEGATIVE_INFINITY
+      for (const o of under) {
+        const name = "name" in o && o.name
+        if (name && o.y > lastName + 4) {
+          names++
+          lastName = o.y
+        }
+        if (!name || names > 2) {
+          limit = o.y
+          break
+        }
+      }
+    }
+    const rects: Rect[] = []
+    for (let gap = height < 40 ? 2 : 4; gap <= 80; gap += 2) {
+      const y = label.foot + gap
+      if (y + height > floor || y >= limit) break
+      rects.push({ x, y, width: boxWidth, height })
+    }
+    return rects
   }
-  const x = columnX(label.x + label.width / 2)
-  for (const height of [BOX_PT.height, 44])
-    for (let gap = 4; gap <= 80; gap += 2) candidates.push(fit(x, textBottom(label) + gap, height))
-  for (const height of [BOX_PT.height, 44])
-    for (let gap = 4; gap <= 80; gap += 2) candidates.push(fit(x, label.y - gap - height, height))
+  /** Over the label, from the nearest, never past the text above it. */
+  function above({ x, width: boxWidth }: Span, height: number) {
+    const span = { x, y: 0, width: boxWidth, height: 0 }
+    const ceiling = Math.max(top, ...text.filter((o) => bottom(o) <= label.y && acrossFrom(o, span)).map(bottom))
+    const rects: Rect[] = []
+    for (let gap = height < 40 ? 2 : 4; gap <= 80; gap += 2) {
+      const y = label.y - gap - height
+      if (y < ceiling) break
+      rects.push({ x, y, width: boxWidth, height })
+    }
+    return rects
+  }
+  /** The nearest places first, then the ones closest to the label's middle. */
+  const byGap = (lists: Rect[][]) =>
+    Array.from({ length: Math.max(0, ...lists.map((l) => l.length)) }, (_, i) =>
+      lists.flatMap((l) => l[i] ?? [])
+    ).flat()
 
-  let best = { rect: candidates[0], covered: Number.POSITIVE_INFINITY }
-  for (const rect of candidates) {
-    const covered = obstacles.reduce((sum, o) => sum + overlap(rect, o), 0)
-    if (covered === 0) return { rect, covered }
-    if (covered < best.covered) best = { rect, covered }
+  function* places(): Generator<Rect> {
+    // A signature line under the label, or after it on its line: the box stands on it, below whatever is above it.
+    for (const line of page.underlines) {
+      const under =
+        line.y >= middle(label) && line.y <= label.foot + PAD + 60 && line.x < label.right && right(line) > label.left
+      const beside =
+        Math.abs(middle(line) - middle(label)) < 0.4 * Math.max(line.height, label.size) &&
+        line.x >= right(label) - 1 &&
+        line.x < label.edgeRight
+      if (!under && !beside) continue
+      const base = line.y + line.height * 1.1
+      // As wide as the line, within the column.
+      const start = under ? line.x : Math.max(line.x, right(label) + PAD + 1)
+      const space = under ? width : Math.min(BOX_PT.width, label.edgeRight - start)
+      const boxWidth = Math.min(Math.max(right(line) - start, 120), space)
+      const x = under ? columnX(line.x + line.width / 2, boxWidth) : start
+      const over = obstacles.filter((o) => o.x < x + boxWidth && right(o) > x && bottom(o) <= base + 1)
+      const y = Math.max(base - BOX_PT.height, ...over.map((o) => bottom(o) + 1))
+      if (base - y >= 30 && boxWidth >= 120 && y >= top && base <= floor)
+        yield { x, y, width: boxWidth, height: base - y }
+    }
+    for (const [spans, heights] of [
+      [inColumn, TALL],
+      [shifted, TALL],
+      [inColumn, SHORT],
+      [shifted, SHORT],
+    ] as const) {
+      for (const height of heights) yield* byGap(spans.map((span) => below(span, height)))
+      for (const height of heights) yield* byGap(spans.map((span) => above(span, height)))
+    }
+    // Past the text under the label: clear, but further from it.
+    for (const height of TALL) yield* below(inColumn[0], height, true)
   }
-  return best
+
+  let best: { rect: Rect; cost: number } | null = null
+  for (const rect of places()) {
+    if (covered(rect, hard) > 0) continue
+    const cost = covered(rect, soft)
+    if (cost === 0) return { rect, clear: true }
+    if (!best || cost < best.cost) best = { rect, cost }
+  }
+  return {
+    rect: best?.rect ?? { x: inColumn[0].x, y: Math.min(label.foot + 4, floor - 44), width, height: 44 },
+    clear: false,
+  }
 }
 
 const toPlacement = (rect: Rect, page: number, size: PageSize): BoxPlacement => ({
@@ -327,17 +535,21 @@ function readPages(anchors: TextAnchor[], pages: PageSize[]) {
   )
 }
 
-/** The segments of a page that are labels; a bare role only on a line of labels, with room to sign. */
+/**
+ * The labels of a page that are signature spots, in reading order: standing on their own, a bare role only on a line
+ * of labels, not signed yet, and with room to sign.
+ */
 function labelsOf(page: PageText) {
-  const matches = page.segments.map((segment) => ({ segment, match: matchLabel(segment.text) }))
-  return matches.flatMap(({ segment, match }) => {
-    if (!match) return []
-    if (match.bare) {
-      const lineOfLabels = matches.every((m) => m.segment.line !== segment.line || m.match)
-      if (!lineOfLabels || clearPlacement(segment, page, []).covered > 0) return []
-    }
-    return [{ segment, ...match }]
-  })
+  return page.segments
+    .filter(
+      (s): s is Segment & { label: Label } =>
+        s.label !== null &&
+        standsAlone(page, s) &&
+        (!s.label.bare || amongLabels(page, s)) &&
+        !signedUnder(page, s) &&
+        clearPlacement(s, page, []).clear
+    )
+    .sort((a, b) => a.line - b.line || a.x - b.x)
 }
 
 /**
@@ -350,13 +562,14 @@ export function findSpots(anchors: TextAnchor[], pages: PageSize[]): Spot[] {
   readPages(anchors, pages).forEach((page, index) => {
     const taken: Rect[] = []
     const seen = new Map<string, number>()
-    for (const label of labelsOf(page)) {
-      const occurrence = seen.get(label.key) ?? 0
-      seen.set(label.key, occurrence + 1)
-      const { rect } = clearPlacement(label.segment, page, taken)
+    for (const segment of labelsOf(page)) {
+      const { key, role } = segment.label
+      const occurrence = seen.get(key) ?? 0
+      seen.set(key, occurrence + 1)
+      const { rect } = clearPlacement(segment, page, taken)
       taken.push(rect)
-      const id = `${label.key}-${occurrence}`
-      const spot = spots.get(id) ?? { id, key: label.key, role: label.role, places: [] }
+      const id = `${key}-${occurrence}`
+      const spot = spots.get(id) ?? { id, key, role, places: [] }
       spot.places.push({ kind: "signature", ...toPlacement(rect, index, page.size) })
       spots.set(id, spot)
     }
@@ -374,8 +587,9 @@ function namesRole(text: string, role: string[]) {
 }
 
 /**
- * Where a signer with a typed role signs: under the label naming the role (the last one, as signatures come at the
- * end), in clear space that avoids text and the boxes in `taken`. Null when the document doesn't name the role.
+ * Where a signer with a typed role signs: under a label naming the role, else under a short line naming it ("Per
+ * l'Associazione, il Presidente"), the last first, as signatures come at the end. Only in clear space, avoiding text
+ * and the boxes in `taken`; null when the document names the role nowhere with room to sign.
  */
 export function placeUnderRole(
   role: string,
@@ -387,25 +601,35 @@ export function placeUnderRole(
   if (folded.length < 3) return null
   const key = roleKey(role)?.key
   const words = folded.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
-  const read = readPages(anchors, pages)
-  const labels = read.flatMap((page, index) =>
-    page.segments.map((segment) => ({ page, index, segment, match: matchLabel(segment.text) }))
+  const lines = readPages(anchors, pages).flatMap((page, index) =>
+    page.segments.filter((s) => !s.part && standsAlone(page, s)).map((segment) => ({ page, index, segment }))
   )
-  const found =
-    (key !== undefined &&
-      (labels.findLast((l) => l.match?.key === key && !l.match.bare) ??
-        labels.findLast((l) => l.match?.key === key))) ||
-    labels.findLast((l) => namesRole(fold(l.segment.text), words))
-  if (!found) return null
-  const boxes = taken.filter((p) => p.page === found.index).map((p) => toRect(p, found.page.size))
-  return toPlacement(clearPlacement(found.segment, found.page, boxes).rect, found.index, found.page.size)
+  const labels = lines.filter(
+    ({ page, segment }) =>
+      key !== undefined && segment.label?.key === key && (!segment.label.bare || amongLabels(page, segment))
+  )
+  const named = lines.filter(
+    ({ segment }) => !segment.label && !segment.text.trim().endsWith(".") && namesRole(fold(segment.text), words)
+  )
+  for (const { page, index, segment } of [...labels.reverse(), ...named.reverse()]) {
+    const boxes = taken.filter((p) => p.page === index).map((p) => toRect(p, page.size))
+    const { rect, clear } = clearPlacement(segment, page, boxes)
+    if (clear) return toPlacement(rect, index, page.size)
+  }
+  return null
 }
 
 /**
- * Where a signer without a label signs: the first clear space on the last page, scanning from its bottom-right
- * corner leftwards, then upwards, so a second signer lands beside the first. Corner slots when the page is full.
+ * Where signers without a label sign, in their order: clear space at the foot of the last page, taken from its
+ * bottom row up and each row from the right, then handed out top to bottom and left to right, so the boxes read in
+ * signing order. One signer gets the bottom right corner, two share the bottom row. Corner slots when the page is full.
  */
-export function defaultPlace(anchors: TextAnchor[], pages: PageSize[], taken: BoxPlacement[]): BoxPlacement {
+export function defaultPlaces(
+  anchors: TextAnchor[],
+  pages: PageSize[],
+  taken: BoxPlacement[],
+  count: number
+): BoxPlacement[] {
   const index = Math.max(pages.length - 1, 0)
   const size = pages[index] ?? { width: 595, height: 842 }
   const page = readPage(
@@ -413,32 +637,40 @@ export function defaultPlace(anchors: TextAnchor[], pages: PageSize[], taken: Bo
     size
   )
   const boxes = taken.filter((p) => p.page === index).map((p) => toRect(p, size))
-  // Away from labels it needn't sit close to the text: a little more room reads calmer.
-  const room = 4
-  const obstacles = [...page.obstacles, ...boxes].map((o) => ({
-    x: o.x - room,
-    y: o.y - room,
-    width: o.width + 2 * room,
-    height: o.height + 2 * room,
-  }))
+  // Away from labels a box needn't sit close to the text: a little more room reads calmer.
+  const obstacles = [...page.segments.map(room), ...page.sideways, ...page.signatures, ...boxes].map((o) => grow(o, 4))
   const { width, height } = BOX_PT
   const marginX = size.width * 0.07
   const marginY = size.height * 0.07
-  for (let y = size.height - marginY - height; y >= marginY; y -= 4)
+  const gap = 12
+  const slots: Rect[] = []
+  for (let y = size.height - marginY - height; y >= marginY && slots.length < count;) {
+    const row: Rect[] = []
     for (let x = size.width - marginX - width; x >= marginX; x -= 10) {
       const rect = { x, y, width, height }
-      if (obstacles.every((o) => overlap(rect, o) === 0)) return toPlacement(rect, index, size)
+      if (row.every((r) => x + width + gap <= r.x) && obstacles.every((o) => overlap(rect, o) === 0)) row.push(rect)
     }
-  const slot = boxes.length
-  const column = slot % 2
-  const row = Math.floor(slot / 2)
-  const x = column === 0 ? size.width - marginX - width : marginX
-  const y = Math.max(marginY, size.height - marginY - height - row * (height + 0.03 * size.height))
-  return toPlacement({ x, y, width, height }, index, size)
+    slots.push(...row.slice(0, count - slots.length))
+    y -= row.length > 0 ? height + gap : 4
+  }
+  for (let slot = boxes.length + slots.length; slots.length < count; slot++) {
+    const row = Math.floor(slot / 2)
+    slots.push({
+      x: slot % 2 === 0 ? size.width - marginX - width : marginX,
+      y: Math.max(marginY, size.height - marginY - height - row * (height + 0.03 * size.height)),
+      width,
+      height,
+    })
+  }
+  return slots.sort((a, b) => a.y - b.y || a.x - b.x).map((rect) => toPlacement(rect, index, size))
 }
 
-/** `byRole`: the box a signer's typed role places under its label, until the user moves it. */
-export type DraftPlace = Place & { byRole?: true }
+/**
+ * `auto`: placed by the composer, and moved by it until the user moves it: in the default place, laid out again with
+ * the other signers there as people are added ("default"), or under the label the typed role names ("label"). Either
+ * follows the typed role.
+ */
+export type DraftPlace = Place & { auto?: "default" | "label" }
 
 /**
  * A row of the composer's signers, in signing order: a person, a spot found in the PDF waiting for one, or a person in
@@ -457,17 +689,23 @@ export function spotRow(spot: Spot, person: SignerDraft["person"]): SignerDraft 
   return { id: `spot:${spot.id}`, spot, person, role: spot.role, places: spot.places }
 }
 
-export function freeRow(person: NonNullable<SignerDraft["person"]>, role: string, box: BoxPlacement): SignerDraft {
-  return { id: `person:${person.sub}`, spot: null, person, role, places: [{ ...box, kind: "signature", byRole: true }] }
+export function freeRow(
+  person: NonNullable<SignerDraft["person"]>,
+  role: string,
+  box: BoxPlacement,
+  auto: NonNullable<DraftPlace["auto"]>
+): SignerDraft {
+  return { id: `person:${person.sub}`, spot: null, person, role, places: [{ ...box, kind: "signature", auto }] }
 }
 
 /**
  * The signers on a document just read. A person keeps a spot of their role when the document has one (the spot they
- * had, or the label their typed role names); the others get a box under their role's label, or in clear space. They
- * keep their order, and the spots nobody fills follow as empty rows.
+ * had, or the label their typed role names); the others get a box under their role's label, or in the default place.
+ * They keep their order, and the spots nobody fills follow as empty rows.
  *
- * `keepPlaces` is for the same document read again, such as a request sent again: a person whose role names no label
- * keeps their places while the document still has those pages.
+ * `keepPlaces` is for the same document read again, such as a request sent again: a person in a spot keeps their
+ * marks and their signatures on pages without the label, and a person whose role names no label keeps their places,
+ * while the document still has those pages.
  */
 export function placeRows(
   rows: SignerDraft[],
@@ -478,24 +716,38 @@ export function placeRows(
 ) {
   const open = [...spots]
   const taken: BoxPlacement[] = spots.flatMap((s) => s.places)
-  const placed: SignerDraft[] = []
+  const onPage = (p: BoxPlacement) => p.page < pages.length
+  /** Rows waiting for the default place, laid out together once the others are placed. */
+  type Waiting = Pick<SignerDraft, "role"> & { person: NonNullable<SignerDraft["person"]> }
+  const placed: (SignerDraft | Waiting)[] = []
   for (const { person, spot, role, places } of rows) {
     if (!person) continue
     const key = spot?.key ?? roleKey(role)?.key
     const at = open.findIndex((s) => s.key === key)
     if (at >= 0) {
-      placed.push(spotRow(open.splice(at, 1)[0], person))
+      const [own] = open.splice(at, 1)
+      const kept = keepPlaces
+        ? places.filter(
+            (p) => !p.auto && onPage(p) && (p.kind === "mark" || !own.places.some((s) => s.page === p.page))
+          )
+        : []
+      taken.push(...kept)
+      placed.push({ ...spotRow(own, person), places: [...own.places, ...kept] })
       continue
     }
     const underRole = placeUnderRole(role, anchors, pages, taken)
-    if (!underRole && keepPlaces && places.length > 0 && places.every((p) => p.page < pages.length)) {
+    if (underRole) {
+      taken.push(underRole)
+      placed.push(freeRow(person, role, underRole, "label"))
+    } else if (keepPlaces && places.length > 0 && places.every(onPage)) {
       taken.push(...places)
       placed.push({ id: `person:${person.sub}`, spot: null, person, role, places })
-      continue
-    }
-    const box = underRole ?? defaultPlace(anchors, pages, taken)
-    taken.push(box)
-    placed.push(freeRow(person, role, box))
+    } else placed.push({ person, role })
   }
-  return [...placed, ...open.map((spot) => spotRow(spot, null))]
+  const boxes = defaultPlaces(anchors, pages, taken, placed.filter((r) => !("places" in r)).length)
+  let next = 0
+  return [
+    ...placed.map((r) => ("places" in r ? r : freeRow(r.person, r.role, boxes[next++], "default"))),
+    ...open.map((spot) => spotRow(spot, null)),
+  ]
 }
