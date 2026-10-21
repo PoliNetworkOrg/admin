@@ -1,3 +1,4 @@
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
@@ -14,16 +15,17 @@ import {
 } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 
-import { InlineAlert, LoadingButton } from "@/components/primitives"
+import { buttonMotion, dialogMotion, InlineAlert, LoadingButton, scrimClasses } from "@/components/primitives"
 import {
   dialogDescriptionText,
   dialogFooter,
+  dialogFooterButton,
   dialogPanel,
   dialogTitleText,
 } from "@/components/primitives/confirm-dialog"
 import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +44,7 @@ type Phase =
   | { kind: "waiting"; jobs: Job[]; url: string; since: number }
   | { kind: "signing"; jobs: Job[]; url: string }
   | { kind: "ended"; reason: "cancelled" | "expired" | "failed"; message: string }
+type Shown = Exclude<Phase, { kind: "starting" }>
 
 const POLL_MS = 1200
 /** After this long without the agent fetching the job, it is probably not running. */
@@ -125,6 +128,8 @@ export function SignWithCie({
   const cancelFn = useServerFn(cancelEsignSignature)
   const statusFn = useServerFn(getEsignJobStatus)
   const [phase, setPhase] = useState<Phase | null>(null)
+  // The last phase the dialog showed: its content stays while the dialog animates out.
+  const [shown, setShown] = useState<Shown | null>(null)
   const [states, setStates] = useState<Map<string, JobState>>(new Map())
   const [now, setNow] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
@@ -154,7 +159,6 @@ export function SignWithCie({
   )
 
   const jobs = phase && "jobs" in phase ? phase.jobs : null
-  const batch = (jobs ?? items ?? []).length > 1
 
   useEffect(() => {
     if (!jobs) return
@@ -250,6 +254,8 @@ export function SignWithCie({
 
   /** Closes the dialog, cancelling what isn't signed yet; reloads when part of a batch was signed. */
   async function close() {
+    if (finishing.current) return
+    finishing.current = true
     const current = phase
     setPhase(null)
     popupRef.current?.close()
@@ -270,13 +276,34 @@ export function SignWithCie({
     popupRef.current = window.open(url, "pn-esign", "popup=yes,width=460,height=680")
   }
 
-  const silent = phase?.kind === "waiting" && now - phase.since > AGENT_TIMEOUT_MS
-  const signed = jobs?.filter((j) => states.get(j.jobId)?.status === "completed").length ?? 0
+  if (phase && phase.kind !== "starting" && phase !== shown) setShown(phase)
+  const active = shown && shown.kind !== "ended" ? shown : null
+  const batch = (active?.jobs ?? items ?? []).length > 1
+  const silent = active?.kind === "waiting" && now - active.since > AGENT_TIMEOUT_MS
+  const signed = active?.jobs.filter((j) => states.get(j.jobId)?.status === "completed").length ?? 0
+  const openJobs = active?.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending")) ?? []
+  // Every document is signed or ended: the poll is finishing and the page reloads.
+  const settled = active !== null && signed > 0 && openJobs.length === 0
   // A failure every open document shares (a wrong PIN, no card) is shown once, above the list.
-  const open = jobs?.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending")) ?? []
-  const firstCode = open[0] && states.get(open[0].jobId)?.errorCode
-  const sharedCode = firstCode && open.every((j) => states.get(j.jobId)?.errorCode === firstCode) ? firstCode : null
-  const sharedError = sharedCode && open[0] ? errorText(states.get(open[0].jobId)) : null
+  const firstCode = openJobs[0] && states.get(openJobs[0].jobId)?.errorCode
+  const sharedCode = firstCode && openJobs.every((j) => states.get(j.jobId)?.errorCode === firstCode) ? firstCode : null
+  const sharedError = sharedCode && openJobs[0] ? errorText(states.get(openJobs[0].jobId)) : null
+  const total = active?.jobs.length ?? 0
+  const jobList = active && (
+    <ul className="mt-2 flex flex-col gap-2" aria-live="polite">
+      {active.jobs.map((job) => (
+        <JobRow key={job.jobId} job={job} state={states.get(job.jobId)} hideError={sharedCode !== null} />
+      ))}
+    </ul>
+  )
+  const progress = batch && (
+    <>
+      <p className="mt-3 text-[13px] font-medium text-(--pn-fg) tabular-nums">
+        {signed} of {pluralize(total, "document")} signed
+      </p>
+      {jobList}
+    </>
+  )
 
   return (
     <>
@@ -295,109 +322,135 @@ export function SignWithCie({
         disablePointerDismissal
         onOpenChange={(open) => !open && void close()}
       >
-        <DialogContent className={cn(dialogPanel, "max-w-[460px]")} showCloseButton={false}>
-          {phase?.kind === "waiting" && !silent && (
-            <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
-              A PoliNetwork eSign window opens on this computer.
-            </Status>
-          )}
-          {phase?.kind === "waiting" && silent && (
-            <Status
-              icon={<TriangleAlert className="size-5" />}
-              tone="warning"
-              title="PoliNetwork eSign isn't answering"
-            >
-              <p>
-                Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" nativeButton={false} render={<a href={AGENT_LAUNCH_URL} />}>
-                  <Play aria-hidden /> Start PoliNetwork eSign
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => reopen(phase.url)}>
-                  <ExternalLink aria-hidden /> Open the window again
-                </Button>
+        <DialogPortal>
+          <DialogOverlay className={scrimClasses} />
+          <DialogPrimitive.Popup className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}>
+            {shown?.kind === "ended" ? (
+              <Status
+                icon={
+                  shown.reason === "cancelled" ? (
+                    <CircleCheck className="size-5" />
+                  ) : (
+                    <TriangleAlert className="size-5" />
+                  )
+                }
+                tone={shown.reason === "failed" ? "danger" : "neutral"}
+                title={
+                  shown.reason === "expired"
+                    ? "The link expired"
+                    : shown.reason === "cancelled"
+                      ? "Signature cancelled"
+                      : "Signature failed"
+                }
+              >
+                {shown.message}
+              </Status>
+            ) : settled ? (
+              <Status
+                icon={signed === total ? <CircleCheck className="size-5" /> : <TriangleAlert className="size-5" />}
+                tone={signed === total ? "success" : "warning"}
+                title={
+                  signed < total
+                    ? `${signed} of ${pluralize(total, "document")} signed`
+                    : total === 1
+                      ? "Document signed"
+                      : `${pluralize(total, "document")} signed`
+                }
+              >
+                {batch ? jobList : "Updating the page…"}
+              </Status>
+            ) : active?.kind === "waiting" && silent ? (
+              <Status
+                icon={<TriangleAlert className="size-5" />}
+                tone="warning"
+                title="PoliNetwork eSign isn't answering"
+              >
+                <p>
+                  Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={buttonMotion}
+                    nativeButton={false}
+                    render={<a href={AGENT_LAUNCH_URL} />}
+                  >
+                    <Play aria-hidden /> Start PoliNetwork eSign
+                  </Button>
+                  <Button variant="outline" size="sm" className={buttonMotion} onClick={() => reopen(active.url)}>
+                    <ExternalLink aria-hidden /> Open the window again
+                  </Button>
+                  <SetupGuideButton />
+                </div>
+              </Status>
+            ) : active?.kind === "waiting" ? (
+              <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
+                A PoliNetwork eSign window opens on this computer.
+              </Status>
+            ) : active ? (
+              <Status icon={<KeyRound className="size-5" />} title="Type your PIN in PoliNetwork eSign">
+                <p>
+                  Keep the CIE on the reader. {batch ? `One PIN signs all ${total} documents. ` : ""}
+                  The PIN goes only to the card, never to PoliNetwork.
+                </p>
+                {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
+                {progress}
                 <Button
                   variant="ghost"
                   size="sm"
-                  nativeButton={false}
-                  render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
+                  className={cn(buttonMotion, "mt-2 -ml-2")}
+                  onClick={() => reopen(active.url)}
                 >
-                  <MonitorDown aria-hidden /> Setup guide
+                  <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
+                </Button>
+              </Status>
+            ) : null}
+            {shown?.kind === "ended" ? (
+              <div className={dialogFooter}>
+                <Button className={dialogFooterButton} onClick={() => void close()}>
+                  Close
                 </Button>
               </div>
-            </Status>
-          )}
-          {phase?.kind === "signing" && (
-            <Status icon={<KeyRound className="size-5" />} title="Type your PIN in PoliNetwork eSign">
-              <p>
-                Keep the CIE on the reader. {batch ? `One PIN signs all ${phase.jobs.length} documents. ` : ""}
-                The PIN goes only to the card, never to PoliNetwork.
-              </p>
-              {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
-              {batch && (
-                <>
-                  <p className="mt-3 text-[13px] font-medium text-(--pn-fg) tabular-nums">
-                    {signed} of {pluralize(phase.jobs.length, "document")} signed
-                  </p>
-                  <ul className="mt-2 flex flex-col gap-2" aria-live="polite">
-                    {phase.jobs.map((job) => (
-                      <JobRow key={job.jobId} job={job} state={states.get(job.jobId)} hideError={sharedCode !== null} />
-                    ))}
-                  </ul>
-                </>
-              )}
-              <Button variant="ghost" size="sm" className="mt-2 -ml-2" onClick={() => reopen(phase.url)}>
-                <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
-              </Button>
-            </Status>
-          )}
-          {phase?.kind === "ended" && (
-            <Status
-              icon={
-                phase.reason === "cancelled" ? <CircleCheck className="size-5" /> : <TriangleAlert className="size-5" />
-              }
-              tone={phase.reason === "failed" ? "danger" : "neutral"}
-              title={
-                phase.reason === "expired"
-                  ? "The link expired"
-                  : phase.reason === "cancelled"
-                    ? "Signature cancelled"
-                    : "Signature failed"
-              }
-            >
-              {phase.message}
-            </Status>
-          )}
-          <div className={dialogFooter}>
-            {phase?.kind === "ended" ? (
-              <Button className="h-10" onClick={() => void close()}>
-                Close
-              </Button>
-            ) : signed > 0 ? (
-              <Button variant="outline" className="h-10" onClick={() => void close()}>
-                Stop here
-              </Button>
             ) : (
-              <Button variant="outline" className="h-10" onClick={() => void close()}>
-                Cancel signature
-              </Button>
+              !settled && (
+                <div className={dialogFooter}>
+                  <Button variant="outline" className={dialogFooterButton} onClick={() => void close()}>
+                    {signed > 0 ? "Stop here" : "Cancel signature"}
+                  </Button>
+                </div>
+              )
             )}
-          </div>
-        </DialogContent>
+          </DialogPrimitive.Popup>
+        </DialogPortal>
       </Dialog>
     </>
+  )
+}
+
+function SetupGuideButton() {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={buttonMotion}
+      nativeButton={false}
+      render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
+    >
+      <MonitorDown aria-hidden /> Setup guide
+    </Button>
   )
 }
 
 function JobRow({ job, state, hideError }: { job: Job; state: JobState | undefined; hideError: boolean }) {
   const done = state?.status === "completed"
   const failure = done || hideError ? null : errorText(state)
+  const notSigned = failure !== null || (state !== undefined && !done && !OPEN.has(state.status))
   return (
     <li className="flex items-start gap-2 text-[13px]">
       {done ? (
         <CircleCheck aria-label="Signed" className="mt-0.5 size-4 shrink-0 text-(--pn-success-fg)" />
-      ) : failure ? (
+      ) : notSigned ? (
         <CircleAlert aria-label="Not signed" className="mt-0.5 size-4 shrink-0 text-(--pn-danger-fg)" />
       ) : (
         <Circle aria-label="Waiting" className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
@@ -418,15 +471,16 @@ function Status({
 }: {
   icon: ReactNode
   title: string
-  tone?: "brand" | "warning" | "danger" | "neutral"
+  tone?: "brand" | "success" | "warning" | "danger" | "neutral"
   children: ReactNode
 }) {
   return (
-    <div className="flex gap-4 p-6 pb-2">
+    <div className="flex min-h-0 items-start gap-3.5 overflow-y-auto px-5.5 pt-5 pb-5">
       <span
         className={cn(
           "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4)",
           tone === "brand" && "bg-(--pn-accent-soft) text-(--pn-accent)",
+          tone === "success" && "bg-(--pn-success-bg) text-(--pn-success-fg)",
           tone === "warning" && "bg-(--pn-warning-bg) text-(--pn-warning-fg)",
           tone === "danger" && "bg-(--pn-danger-bg) text-(--pn-danger-fg)",
           tone === "neutral" && "bg-(--pn-muted) text-(--pn-fg-muted)"
