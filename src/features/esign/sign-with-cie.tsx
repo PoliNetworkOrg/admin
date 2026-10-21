@@ -170,6 +170,8 @@ export function SignWithCie({
   prepare,
   disabled,
   children,
+  className,
+  "aria-keyshortcuts": keyShortcuts,
   onSigned,
   onStopped,
 }: (
@@ -185,6 +187,9 @@ export function SignWithCie({
 ) & {
   disabled?: boolean
   children?: ReactNode
+  /** For a button outside a page header: its classes, and the shortcut that clicks it. */
+  className?: string
+  "aria-keyshortcuts"?: string
   /** After the signatures are saved and the page data reloaded. */
   onSigned?: () => void
   /** After the dialog closes before every document is signed, or the signature couldn't start (with why). */
@@ -422,7 +427,8 @@ export function SignWithCie({
         pending={phase?.kind === "starting"}
         disabled={disabled || items?.length === 0}
         onClick={start}
-        className="h-10"
+        aria-keyshortcuts={keyShortcuts}
+        className={cn("h-10", className)}
       >
         {children ?? (items && items.length > 1 ? `Sign ${items.length} documents` : "Sign with CIE")}
       </LoadingButton>

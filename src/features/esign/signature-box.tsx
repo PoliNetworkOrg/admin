@@ -21,6 +21,8 @@ type SignatureBoxProps = {
   highlighted?: boolean
   onChange?: (placement: BoxPlacement) => void
   onRemove?: () => void
+  /** The pointer entered (true) or left (false) the box, e.g. to point out its signer elsewhere on the page. */
+  onHover?: (hovering: boolean) => void
 }
 
 const MIN = 0.04
@@ -58,6 +60,7 @@ export function SignatureBox({
   highlighted,
   onChange,
   onRemove,
+  onHover,
 }: SignatureBoxProps) {
   const ref = useRef<HTMLDivElement>(null)
   const detail = kind === "mark" ? (role ? `Mark · ${role}` : "Mark") : role
@@ -129,10 +132,12 @@ export function SignatureBox({
       onPointerMove={move}
       onPointerUp={end}
       onPointerCancel={end}
+      onPointerEnter={onHover && (() => onHover(true))}
+      onPointerLeave={onHover && (() => onHover(false))}
       data-focus-ring="none"
       className={cn(
         "group/box absolute flex touch-none flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
-        "outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
+        "transition-[box-shadow] duration-120 outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
         state === "active" &&
           "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
         state === "pending" &&

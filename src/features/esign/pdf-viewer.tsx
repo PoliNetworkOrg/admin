@@ -23,6 +23,8 @@ type PdfViewerProps = {
   cursor?: "default" | "crosshair"
   /** A point to bring to the middle of the viewer when it changes: a page and a fraction of its height. */
   focus?: { page: number; y: number } | null
+  /** Scroll to `focus` only when the point is outside the middle 80% of the viewer, so a nearby box doesn't jump. */
+  focusOnlyIfAway?: boolean
   /**
    * Replaces "Page n of total" in the toolbar while set, e.g. what the next click on a page does; announced politely.
    * Below 448px of toolbar the zoom controls hide meanwhile.
@@ -30,6 +32,13 @@ type PdfViewerProps = {
   status?: string | null
   /** A control after the status, e.g. Cancel while placing a box. */
   statusAction?: ReactNode
+  /** A control at the start of the toolbar, before the page counter; hidden while a status shows. */
+  toolbarStart?: ReactNode
+  /**
+   * Fills the page's scroll container down to its bottom padding (default). Off, the viewer takes the full height of
+   * its parent, which sizes it.
+   */
+  fill?: boolean
 }
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -59,11 +68,14 @@ export function PdfViewer({
   onPageClick,
   cursor = "default",
   focus,
+  focusOnlyIfAway = false,
   status,
   statusAction,
+  toolbarStart,
+  fill = true,
 }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const fill = useFillHeight<HTMLDivElement>()
+  const fillHeight = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
   const [doc, setDoc] = useState<{ pdf: PDFDocumentProxy; pdfjs: Pdfjs } | null>(null)
@@ -127,8 +139,9 @@ export function PdfViewer({
   useLayoutEffect(() => {
     const container = scrollRef.current
     if (focusPage === undefined || !laidOut || !container) return
+    if (focusOnlyIfAway && nearMiddle(container, focusPage, focusY)) return
     centerOn(container, focusPage, focusY)
-  }, [focusPage, focusY, laidOut])
+  }, [focusPage, focusY, laidOut, focusOnlyIfAway])
 
   function step(direction: 1 | -1) {
     const current = zoom === "fit" ? fitScale : zoom
@@ -139,12 +152,16 @@ export function PdfViewer({
 
   return (
     <div
-      ref={fill.ref}
-      style={fill.style}
-      className="flex h-[calc(100dvh-210px)] min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)"
+      ref={fill ? fillHeight.ref : undefined}
+      style={fill ? fillHeight.style : undefined}
+      className={cn(
+        "flex min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
+        fill ? "h-[calc(100dvh-210px)]" : "h-full"
+      )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          {!status && toolbarStart}
           <span
             className={cn(
               "min-w-0 truncate px-2 text-[13px] tabular-nums",
@@ -218,6 +235,14 @@ function centerOn(container: HTMLElement, page: number, y: number) {
   const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
   const top = offset + element.offsetHeight * y - container.clientHeight / 2
   container.scrollTo({ top: Math.max(0, top), behavior: "instant" })
+}
+
+/** Whether a point of a page (a fraction of its height) is inside the middle 80% of the viewer. */
+function nearMiddle(container: HTMLElement, page: number, y: number) {
+  const element = container.querySelector<HTMLElement>(`[data-page="${page}"]`)
+  if (!element) return false
+  const top = element.getBoundingClientRect().top - container.getBoundingClientRect().top + element.offsetHeight * y
+  return top >= container.clientHeight * 0.1 && top <= container.clientHeight * 0.9
 }
 
 /** The point of a page in the middle of the viewer, the inverse of `centerOn`. */

@@ -1,8 +1,8 @@
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowUp, FileText, Folder, LoaderCircle } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 
-import { IconButton, InlineAlert } from "@/components/primitives"
+import { buttonMotion, IconButton, InlineAlert } from "@/components/primitives"
 import { floatingMotion, raisedSurface } from "@/components/primitives/motion"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -31,6 +31,10 @@ type DriveBrowserProps = {
   onPickFolder?: (folder: DriveFolder) => void
   /** The item being imported, shown with a spinner. */
   busyId?: string | null
+  /** Inside a form whose primary action is elsewhere: "Save here" is an outline button. */
+  embedded?: boolean
+  /** Folder mode: a control at the start of the footer, before "Save here". */
+  footerStart?: ReactNode
   className?: string
 }
 
@@ -50,6 +54,8 @@ export function DriveBrowser({
   onPickFile,
   onPickFolder,
   busyId,
+  embedded = false,
+  footerStart,
   className,
 }: DriveBrowserProps) {
   const listFn = useServerFn(listEsignDrive)
@@ -113,7 +119,7 @@ export function DriveBrowser({
               aria-label="Drive"
               className="h-8 max-w-[45%] shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
             >
-              <SelectValue />
+              <SelectValue className="block min-w-0 truncate" />
             </SelectTrigger>
             <SelectContent className={cn(raisedSurface, floatingMotion)}>
               {drives.map((d) => (
@@ -130,8 +136,9 @@ export function DriveBrowser({
           disabled={!listing || listing.folder.isRoot}
           onClick={() => setFolderId(listing?.folder.parentId ?? undefined)}
         />
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-(--pn-fg-muted)">
-          /{listing?.path ?? ""}
+        {/* Cut at the start, so the open folder stays in view. */}
+        <span className="min-w-0 flex-1 truncate text-left font-mono text-[12px] text-(--pn-fg-muted) [direction:rtl]">
+          <bdi>/{listing?.path ?? ""}</bdi>
         </span>
         {loading && <LoaderCircle aria-label="Loading" className="size-4 animate-spin text-(--pn-fg-muted)" />}
       </div>
@@ -155,7 +162,7 @@ export function DriveBrowser({
                 type="button"
                 disabled={Boolean(busyId)}
                 onClick={() => (item.kind === "folder" ? setFolderId(item.id) : here && onPickFile?.(item, here))}
-                className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) disabled:opacity-60"
+                className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) focus-visible:outline-offset-[-2px] disabled:opacity-60"
               >
                 {item.kind === "folder" ? (
                   <Folder aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
@@ -175,9 +182,16 @@ export function DriveBrowser({
           ))}
         </ul>
       )}
-      {mode === "folder" && here && (
-        <div className="flex shrink-0 items-center justify-end border-t border-(--pn-line) bg-(--pn-surface) p-2">
-          <Button size="sm" disabled={loading} onClick={() => onPickFolder?.(here)}>
+      {mode === "folder" && (
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-(--pn-line) bg-(--pn-surface) p-2">
+          {footerStart && <div className="mr-auto flex">{footerStart}</div>}
+          <Button
+            size="sm"
+            variant={embedded ? "outline" : "default"}
+            className={buttonMotion}
+            disabled={loading || !here}
+            onClick={() => here && onPickFolder?.(here)}
+          >
             Save here
           </Button>
         </div>
