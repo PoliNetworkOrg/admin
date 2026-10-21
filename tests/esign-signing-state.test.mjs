@@ -11,6 +11,7 @@ import {
   notRunningVariant,
   OLD_AGENT_READY_MS,
   outcomeOf,
+  outdatedCopy,
   READY_MS,
   stateForFatal,
   TERMINAL_COPY,
@@ -39,6 +40,13 @@ void test("a browser that has run PoliNetwork eSign is offered Start, until star
   assert.equal(notRunningVariant(null, false), "install")
 })
 
+void test("the update is worded as the agent window words it, for packages on Linux", () => {
+  assert.match(outdatedCopy("macos").body, /Download the new one and open it: it replaces this one\.$/)
+  assert.equal(outdatedCopy("windows").body, outdatedCopy("macos").body)
+  assert.match(outdatedCopy("linux").body, /Update the polinetwork-esign package, or install the new one/)
+  for (const os of ["macos", "windows", "linux"]) assert.equal(outdatedCopy(os).title, "Update PoliNetwork eSign")
+})
+
 void test("each fatal error of the agent window has its own state", () => {
   assert.equal(stateForFatal("agent_outdated"), "outdated")
   assert.equal(stateForFatal("backend_unreachable"), "connect")
@@ -49,7 +57,11 @@ void test("each fatal error of the agent window has its own state", () => {
 
 void test("a failed job is worded by its code, never with where PIN or PUK digits come from", () => {
   const expected = {
-    pin_locked: ["Your PIN is blocked", "Unblock it with your PUK in CIE ID or the CieID app, then sign again.", null],
+    pin_locked: [
+      "Your PIN is blocked",
+      "Unblock it with your PUK in the CieID app on your phone or in CIE ID on this computer, then sign again.",
+      null,
+    ],
     middleware_missing: ["CIE ID isn't set up on this computer", "Follow the setup guide, then sign again.", "setup"],
     not_paired: ["Pair your CIE in CIE ID", "Open CIE ID and pair the card, then sign again.", "setup"],
     card_untrusted: ["This card can't be verified", "The PIN wasn't sent to it.", "setup"],
@@ -161,7 +173,7 @@ void test("batch rows say why a document wasn't signed, and nothing while it sti
   )
   assert.equal(
     jobFailure(job("a", "failed", "pin_locked")),
-    "Your PIN is blocked. Unblock it with your PUK in CIE ID or the CieID app, then sign again."
+    "Your PIN is blocked. Unblock it with your PUK in the CieID app on your phone or in CIE ID on this computer, then sign again."
   )
 })
 

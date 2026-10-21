@@ -42,7 +42,10 @@ type Copy = { title: string; body: string | null; extra?: "setup" | "again" }
 export const TERMINAL_COPY = new Map<string, Copy>([
   [
     "pin_locked",
-    { title: "Your PIN is blocked", body: "Unblock it with your PUK in CIE ID or the CieID app, then sign again." },
+    {
+      title: "Your PIN is blocked",
+      body: "Unblock it with your PUK in the CieID app on your phone or in CIE ID on this computer, then sign again.",
+    },
   ],
   [
     "middleware_missing",
@@ -69,10 +72,18 @@ export function terminalCopy(code: string | null, message: string | null) {
   return { title: copy.title, body: copy.body ?? message ?? "Nothing was signed.", extra: copy.extra ?? null }
 }
 
-/** The Update state: the agent is older than the backend accepts. */
-export const OUTDATED = {
-  title: "Update PoliNetwork eSign",
-  body: "This version is too old to sign. Download the new one and open it: it replaces the old one.",
+/**
+ * The Update state: the agent is older than the backend accepts. Worded as the agent window says it, whose page is
+ * open beside it; on Linux PoliNetwork eSign may come from a package manager.
+ */
+export function outdatedCopy(os: Os) {
+  return {
+    title: "Update PoliNetwork eSign",
+    body:
+      os === "linux"
+        ? "This version is too old to sign. Update the polinetwork-esign package, or install the new one from the download page."
+        : "This version is too old to sign. Download the new one and open it: it replaces this one.",
+  }
 }
 
 /** How an attempt that signed nothing ended. */
@@ -118,8 +129,9 @@ export function endingOf(statuses: JobStatus[], jobs: Job[], preparing: boolean)
     }
   const failed = statuses.find((s) => s.status === "failed")
   if (!failed) return null
+  // The dialog words the update for the computer's system (outdatedCopy).
   if (failed.errorCode === "agent_outdated")
-    return { reason: "outdated", code: failed.errorCode, ...OUTDATED, extra: null }
+    return { reason: "outdated", code: failed.errorCode, ...outdatedCopy("macos"), extra: null }
   const copy = terminalCopy(failed.errorCode, failed.errorMessage)
   return { reason: "failed", code: failed.errorCode, ...copy, body: titled(failed, copy.body) }
 }

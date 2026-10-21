@@ -47,8 +47,8 @@ import {
   jobFailure,
   notRunningVariant,
   OPEN_STATUSES,
-  OUTDATED,
   outcomeOf,
+  outdatedCopy,
   stateForFatal,
 } from "./signing-state"
 
@@ -986,11 +986,12 @@ function viewOf(mode: Mode, props: DialogProps, actions: Actions): View {
 }
 
 function outdatedView(actions: Actions): View {
-  const download = agentDownload(detectOs(navigator.userAgent))
+  const os = detectOs(navigator.userAgent)
+  const download = agentDownload(os)
   return {
     icon: <MonitorDown className="size-5" />,
     tone: "warning",
-    ...OUTDATED,
+    ...outdatedCopy(os),
     secondary: actions.close(false),
     primary: download.direct
       ? actions.link(
