@@ -19,7 +19,7 @@ export function kindsLabel(places: Pick<Place, "kind">[]) {
 }
 
 /** Keeps at least one full signature: when none is left, the first place becomes one. */
-export function withSignature(places: Place[]): Place[] {
+export function withSignature<T extends Place>(places: T[]): T[] {
   if (places.length === 0 || places.some((p) => p.kind === "signature")) return places
   return places.map((p, i) => (i === 0 ? { ...p, kind: "signature" } : p))
 }

@@ -57,8 +57,9 @@ import { type BoxPlacement, SignatureBox } from "./signature-box"
 import { useFillHeight } from "./use-fill-height"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
-/** `manual`: the user moved the first box, so a role no longer places it. */
-type SignerDraft = { sub: string; name: string; role: string; places: Place[]; manual: boolean }
+/** `byRole`: the box the signer's role places under its label, until the user moves it. */
+type DraftPlace = Place & { byRole?: true }
+type SignerDraft = { sub: string; name: string; role: string; places: DraftPlace[] }
 /** Where the next click on a page puts a box: a signer's existing place, or a new one when `place` is null. */
 type Placing = { signer: number; place: number | null }
 
@@ -105,9 +106,23 @@ function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
+/**
+ * Moves the signer's role box under the label naming their role. The same signer when there is nothing to move: no
+ * role box, a role the document doesn't name (the box stays where it is), or a box already there.
+ */
+function placeByRole(signer: SignerDraft, anchors: TextAnchor[], pages: PageSize[]): SignerDraft {
+  const at = signer.places.findIndex((p) => p.byRole)
+  const box = signer.places[at]
+  const placed = box ? placementForRole(signer.role, anchors, pages) : null
+  if (!box || !placed) return signer
+  const keys = ["page", "x", "y", "width", "height"] as const
+  if (keys.every((key) => placed[key] === box[key])) return signer
+  return { ...signer, places: signer.places.map((p, i) => (i === at ? { ...placed, kind: p.kind, byRole: true } : p)) }
+}
+
 function draftOf(person: EsignProfile, index: number, pages: PageSize[]): SignerDraft {
   const where = defaultPlacement(index, pages)
-  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false }
+  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature", byRole: true }] }
 }
 
 export function NewEsignRequestPage({
@@ -165,10 +180,13 @@ export function NewEsignRequestPage({
   const [search, setSearch] = useState("")
 
   const [title, setTitle] = useState("")
+  const [titleTouched, setTitleTouched] = useState(false)
   const [saveToDrive, setSaveToDrive] = useState(config.drives.length > 0)
   const [folder, setFolder] = useState<DriveFolder | null>(null)
   const [choosingFolder, setChoosingFolder] = useState(false)
   const [fileName, setFileName] = useState("")
+  const [fileNameTouched, setFileNameTouched] = useState(false)
+  const [folderTouched, setFolderTouched] = useState(false)
   const [emails, setEmails] = useState("")
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -181,14 +199,29 @@ export function NewEsignRequestPage({
   const drivesName = config.drives.length === 1 ? config.drives[0].label : "OneDrive"
   const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
 
+  // The labels of the document on screen place the role boxes, including roles typed before they were read.
+  useEffect(() => {
+    if (!staged || anchors.length === 0) return
+    setSigners((current) => {
+      const next = current.map((s) => placeByRole(s, anchors, staged.pdf.pages))
+      return next.some((s, i) => s !== current[i]) ? next : current
+    })
+  }, [anchors, staged])
+
   function adopt(next: Staged, content: string) {
     setStaged(next)
     setBase64(content)
-    setTitle(baseName(next.fileName))
-    setFileName(`${baseName(next.fileName)} - firmato.pdf`)
-    if (next.folder) setFolder(next.folder)
+    // The same PDF picked again keeps its labels: its bytes aren't read again.
+    if (content !== base64) setAnchors([])
+    const name = baseName(next.fileName)
+    if (!titleTouched || title.trim() === "") setTitle(name)
+    if (!fileNameTouched || fileName.trim() === "") setFileName(`${name} - firmato.pdf`)
+    if (next.folder && (!folderTouched || !folder)) setFolder(next.folder)
     setSigners((current) =>
-      current.map((s, i) => ({ ...s, places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature" }] }))
+      current.map((s, i) => ({
+        ...s,
+        places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature", byRole: true }],
+      }))
     )
   }
 
@@ -238,10 +271,6 @@ export function NewEsignRequestPage({
     setSearch("")
   }
 
-  function updateSigner(index: number, patch: Partial<SignerDraft>) {
-    setSigners((current) => current.map((s, i) => (i === index ? { ...s, ...patch } : s)))
-  }
-
   function moveSigner(index: number, by: -1 | 1) {
     setSigners((current) => {
       const next = [...current]
@@ -251,20 +280,27 @@ export function NewEsignRequestPage({
     })
   }
 
-  function updatePlaces(index: number, update: (places: Place[]) => Place[], manual = true) {
+  function setRole(index: number, role: string) {
+    const s = signers[index]
+    const next = placeByRole({ ...s, role }, anchors, pages)
+    const placed = next.places.find((p) => p.byRole)
+    if (next.places !== s.places && placed) setFocus({ page: placed.page, y: placed.y })
+    setSigners((current) => current.map((c, i) => (i === index ? next : c)))
+  }
+
+  function updatePlaces(index: number, update: (places: DraftPlace[]) => DraftPlace[]) {
     setSigners((current) =>
-      current.map((s, i) =>
-        i === index ? { ...s, places: withSignature(update(s.places)), manual: s.manual || manual } : s
-      )
+      current.map((s, i) => (i === index ? { ...s, places: withSignature(update(s.places)) } : s))
     )
   }
 
-  function movePlace(index: number, at: number, placement: BoxPlacement) {
-    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p)), at === 0)
+  // The box comes back with every field it was given: rebuilt without `byRole`, it no longer follows the role.
+  function movePlace(index: number, at: number, { page, x, y, width, height }: BoxPlacement) {
+    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { page, x, y, width, height, kind: p.kind } : p)))
   }
 
   function removePlace(index: number, at: number) {
-    updatePlaces(index, (places) => places.filter((_, i) => i !== at), false)
+    updatePlaces(index, (places) => places.filter((_, i) => i !== at))
   }
 
   function place(page: number, x: number, y: number) {
@@ -279,14 +315,11 @@ export function NewEsignRequestPage({
     }
     const at = placing.place
     // Clicked places keep reading order (page, then top to bottom), which is also the order they are signed in.
-    updatePlaces(
-      placing.signer,
-      (places) =>
-        (at === null
-          ? [...places, { ...placement, kind: "signature" as const }]
-          : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
-        ).sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x),
-      at === 0
+    updatePlaces(placing.signer, (places) =>
+      (at === null
+        ? [...places, { ...placement, kind: "signature" as const }]
+        : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
+      ).sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x)
     )
     setPlacing(null)
   }
@@ -349,7 +382,11 @@ export function NewEsignRequestPage({
           title: title.trim(),
           documentId,
           ordered,
-          signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, places: s.places })),
+          signers: signers.map((s) => ({
+            sub: s.sub,
+            role: s.role.trim() || null,
+            places: s.places.map(({ page, x, y, width, height, kind }) => ({ page, x, y, width, height, kind })),
+          })),
           output:
             saveToDrive && folder ? { driveId: folder.driveId, folderId: folder.id, fileName: fileName.trim() } : null,
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
@@ -629,17 +666,7 @@ export function NewEsignRequestPage({
                         value={s.role}
                         maxLength={80}
                         className={cn(fieldControl, "h-9")}
-                        onChange={(event) => {
-                          const role = event.target.value
-                          const placed = s.manual ? null : placementForRole(role, anchors, pages)
-                          if (placed) setFocus({ page: placed.page, y: placed.y })
-                          updateSigner(
-                            index,
-                            placed
-                              ? { role, places: s.places.map((p, at) => (at === 0 ? { ...placed, kind: p.kind } : p)) }
-                              : { role }
-                          )
-                        }}
+                        onChange={(event) => setRole(index, event.target.value)}
                       />
                       {blockedDrive(s.sub) !== undefined && (
                         <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
@@ -658,7 +685,7 @@ export function NewEsignRequestPage({
                           if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
                         }}
                         onKind={(at, kind) =>
-                          updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)), false)
+                          updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)))
                         }
                         onMove={(at) => setPlacing({ signer: index, place: at })}
                         onRemove={(at) => removePlace(index, at)}
@@ -764,7 +791,10 @@ export function NewEsignRequestPage({
                     className={fieldControl}
                     value={title}
                     maxLength={200}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitle(e.target.value)
+                      setTitleTouched(true)
+                    }}
                   />
                 </FormField>
                 {config.drives.length > 0 && (
@@ -798,6 +828,7 @@ export function NewEsignRequestPage({
                             className="h-72"
                             onPickFolder={(picked) => {
                               setFolder(picked)
+                              setFolderTouched(true)
                               setChoosingFolder(false)
                             }}
                           />
@@ -808,7 +839,10 @@ export function NewEsignRequestPage({
                             className={fieldControl}
                             value={fileName}
                             maxLength={200}
-                            onChange={(e) => setFileName(e.target.value)}
+                            onChange={(e) => {
+                              setFileName(e.target.value)
+                              setFileNameTouched(true)
+                            }}
                           />
                         </FormField>
                       </>
