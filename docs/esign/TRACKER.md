@@ -157,6 +157,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token, then
     drop the Run anyway sentence from AGENT_STEPS.windows.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
+- ☐ Before deploying the Setup buttons "Download for macOS" / "Download for Windows": publish an agent release that
+  ships `PoliNetwork-eSign-macos.dmg` and `PoliNetwork-eSign-windows-amd64.zip` (esign "publish the macOS and Windows
+  downloads under fixed names"), tagged `vX.Y.Z` with no suffix, so it is not a pre-release and becomes
+  `releases/latest`. Then check that both names answer 200:
+  `curl -sL -o /dev/null -w '%{http_code}\n' https://github.com/PoliNetworkOrg/esign/releases/latest/download/<name>`.
+  Until then they answer 404, and the buttons, which open in the same tab, take the user to GitHub's 404 page.
 
 ## Local end-to-end
 
