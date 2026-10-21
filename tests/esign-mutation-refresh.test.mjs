@@ -22,7 +22,8 @@ async function handler(path, name, dependencies) {
   const compiled = ts.transpileModule(`const handler = ${found.getText().replace(/^export /, "")}`, {
     compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.None },
   }).outputText
-  return runInNewContext(`${compiled}; handler`, { ...dependencies })
+  // `read()` is how the signing hook reads its options: here, the dependencies themselves.
+  return runInNewContext(`${compiled}; handler`, { read: () => dependencies, ...dependencies })
 }
 
 function deferred() {
@@ -541,7 +542,8 @@ async function signingMachine(mode, overrides = {}) {
     outcomeOf,
     closedWindowAction,
     stateForFatal,
-    preparing: false,
+    preparingRef: { current: false },
+    readySeen: { current: false },
     handOff: undefined,
     handOver: () => events.push("hand-off"),
     finish: () => events.push("finish"),
@@ -689,6 +691,8 @@ void test("every document signed hands off, or reloads when nothing hands off", 
   const handing = await signingMachine({ kind: "signing" }, { handOff: async () => {} })
   handing.track(handing.status("completed"), false, Date.now())
   assert.deepEqual(handing.events, ["signed", "hand-off"])
+  // The count stays with the state, so the title doesn't change as the dialog closes without its jobs.
+  assert.deepEqual({ ...handing.dependencies.modeRef.current }, { kind: "signed", total: 1 })
   // Settled: later polls change nothing.
   handing.track(handing.status("completed"), false, Date.now())
   assert.deepEqual(handing.events, ["signed", "hand-off"])

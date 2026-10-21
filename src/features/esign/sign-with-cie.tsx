@@ -67,7 +67,8 @@ type Mode =
   | { kind: "stopped" }
   | { kind: "fatal"; state: FatalState; message: string }
   | { kind: "ended"; ending: Ending }
-  | { kind: "signed" }
+  /** `total`: the documents signed, kept while the dialog closes without its jobs. */
+  | { kind: "signed"; total: number }
   | { kind: "partial" }
 
 /** States after which nothing is followed anymore: the dialog waits for Close, or closes by itself. */
@@ -148,7 +149,7 @@ function promptAnswered() {
   })
 }
 
-type SignOptions = (
+export type SignOptions = (
   | { items: SignItem[]; prepare?: never }
   | {
       items?: never
@@ -180,7 +181,14 @@ type SignOptions = (
  * there. Render `dialog` where it outlives the trigger, which the page may replace while the signatures land.
  */
 export function useSignWithCie(options: SignOptions) {
-  const { items, prepare, handOff, onSigned, onStopped, finalFocus } = options
+  return useSigning(() => options)
+}
+
+/**
+ * `useSignWithCie` with its options read whenever one is needed: the signing host passes the options of the page that
+ * started, which may be gone by the time its hand-off ends.
+ */
+export function useSigning(read: () => SignOptions) {
   const router = useRouter()
   const startFn = useServerFn(startEsignSignature)
   const cancelFn = useServerFn(cancelEsignSignature)
@@ -216,7 +224,9 @@ export function useSignWithCie(options: SignOptions) {
    * focus before the dialog opens.
    */
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const preparing = prepare !== undefined
+  /** The documents of this attempt are created in its click (New request), so they are signed from their page later. */
+  const [preparing, setPreparing] = useState(false)
+  const preparingRef = useRef(false)
 
   function show(next: Session | null) {
     sessionRef.current = next
@@ -244,7 +254,7 @@ export function useSignWithCie(options: SignOptions) {
     show(null)
     popupRef.current = null
     appToast.success(count === 1 ? "Document signed." : `${count} documents signed.`)
-    onSigned?.()
+    read().onSigned?.()
   }
 
   /**
@@ -258,9 +268,9 @@ export function useSignWithCie(options: SignOptions) {
     await Promise.race([Promise.all([updated, sleep(SIGNED_MIN_MS)]), sleep(SIGNED_MAX_MS)])
     popupRef.current?.close()
     popupRef.current = null
-    focusAfter.current = finalFocus ?? null
+    focusAfter.current = read().finalFocus ?? null
     show(null)
-    onSigned?.()
+    read().onSigned?.()
   }
 
   /** Closes the dialog after the signer's own cancel: no message, no reload, nothing left to cancel. */
@@ -270,7 +280,7 @@ export function useSignWithCie(options: SignOptions) {
     show(null)
     popupRef.current?.close()
     popupRef.current = null
-    onStopped?.(null)
+    read().onStopped?.(null)
   }
 
   /**
@@ -332,11 +342,13 @@ export function useSignWithCie(options: SignOptions) {
     if (!current || !now || finishing.current || SETTLED.has(now.kind)) return
     statesRef.current = new Map(statuses.map((s) => [s.jobId, s]))
     setStates(statesRef.current)
-    const outcome = outcomeOf(statuses, current.jobs, preparing)
+    const outcome = outcomeOf(statuses, current.jobs, preparingRef.current)
     switch (outcome.kind) {
-      case "signed":
-        go({ kind: "signed" })
+      case "signed": {
+        go({ kind: "signed", total: current.jobs.length })
+        const { handOff } = read()
         return void (handOff ? handOver(current.jobs, handOff) : finish(current.jobs.length))
+      }
       case "partial":
         return go({ kind: "partial" })
       case "dismissed":
@@ -386,9 +398,12 @@ export function useSignWithCie(options: SignOptions) {
 
   async function start() {
     if (creating || (finishing.current && sessionRef.current)) return
+    const { items, prepare } = read()
     const prepared = prepare ? prepare() : Promise.resolve(items ?? [])
     if (!prepared) return
     const mine = ++attempt.current
+    preparingRef.current = prepare !== undefined
+    setPreparing(preparingRef.current)
     finishing.current = false
     fatal.current = null
     fatalShown.current = false
@@ -442,7 +457,7 @@ export function useSignWithCie(options: SignOptions) {
       show(null)
       const message = cause instanceof Error ? cause.message : "Couldn't start the signature."
       setError(message)
-      onStopped?.(message)
+      read().onStopped?.(message)
     } finally {
       setCreating(false)
     }
@@ -467,7 +482,7 @@ export function useSignWithCie(options: SignOptions) {
     if (ended) {
       // Reloaded while the dialog is still open, as a hand-off does: the request may have changed meanwhile.
       setClosing(true)
-      focusAfter.current = finalFocus ?? null
+      focusAfter.current = read().finalFocus ?? null
     } else show(null)
     if (open.length > 0) {
       try {
@@ -478,7 +493,7 @@ export function useSignWithCie(options: SignOptions) {
     }
     if (ended || signed) await reload()
     show(null)
-    onStopped?.(null)
+    read().onStopped?.(null)
   }
 
   /** Brings the agent window to the front without reloading it (the PIN may be half typed), or opens it again. */
@@ -642,7 +657,7 @@ export function SignTrigger({
   "aria-keyshortcuts": keyShortcuts,
   children = "Sign with CIE",
 }: {
-  signing: ReturnType<typeof useSignWithCie>
+  signing: Pick<ReturnType<typeof useSignWithCie>, "start" | "creating" | "error" | "triggerRef">
   disabled?: boolean
   className?: string
   describedBy?: string
@@ -946,7 +961,7 @@ function viewOf(mode: Mode, props: DialogProps, actions: Actions): View {
       return {
         icon: <CircleCheck className="size-5" />,
         tone: "success",
-        title: total > 1 ? `${total} documents signed` : "Document signed",
+        title: mode.total > 1 ? `${mode.total} documents signed` : "Document signed",
       }
     case "partial":
       return {

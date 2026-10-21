@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouter } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
@@ -15,9 +15,10 @@ import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { type Place, pagesShort, placeAt, placesLeft } from "./places"
 import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
 import { PHONE_NOTE } from "./request-card"
-import { SignTrigger, useSignWithCie } from "./sign-with-cie"
+import { SignTrigger } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
 import { useKnownBrowser, useSigningDevice } from "./signing-device"
+import { useHostedSignWithCie } from "./signing-host"
 import { useReloadWhile } from "./use-reload-while"
 
 type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
@@ -41,7 +42,6 @@ export function EsignBatchPage({
   moved?: Record<string, Place[]>
 }) {
   const navigate = useNavigate()
-  const router = useRouter()
   const device = useSigningDevice()
   const knownBrowser = useKnownBrowser()
   const contentFn = useServerFn(getEsignDocumentContent)
@@ -94,8 +94,9 @@ export function EsignBatchPage({
     3000
   )
 
-  // At page level: closing a batch that signed only some reloads it, which may leave nothing to sign and no card.
-  const signing = useSignWithCie({
+  // Above the routes: To sign opens under the dialog once every document is signed. Closing a batch that signed only
+  // some reloads this page, which may leave nothing to sign and no card.
+  const signing = useHostedSignWithCie({
     items: included.map((item) => {
       const mine = item.request.signers.find((s) => s.sub === me && s.status === "pending")
       return {
@@ -104,15 +105,13 @@ export function EsignBatchPage({
         places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
       }
     }),
-    // To sign loads behind the dialog, so it is already there when the dialog lets go; navigating any earlier would
-    // unmount the dialog and lose the agent window.
+    // To sign opens behind the dialog, so it is there when the dialog lets go; the dialog lives above the routes.
     handOff: async () => {
-      await router.preloadRoute({ to: "/dashboard/esign/inbox" })
+      await navigate({ to: "/dashboard/esign/inbox" })
     },
-    onSigned: () => {
-      void navigate({ to: "/dashboard/esign/inbox" })
-      appToast.success(included.length === 1 ? "Document signed." : `${included.length} documents signed.`)
-    },
+    // To sign only loses the documents: the toast says they were signed.
+    onSigned: () =>
+      appToast.success(included.length === 1 ? "Document signed." : `${included.length} documents signed.`),
   })
 
   const activeDocument = active?.currentDocumentId
@@ -162,7 +161,6 @@ export function EsignBatchPage({
             }
           />
         </PageContent>
-        {signing.dialog}
       </>
     )
   }
@@ -328,7 +326,6 @@ export function EsignBatchPage({
           </div>
         </div>
       </PageContent>
-      {signing.dialog}
     </>
   )
 }

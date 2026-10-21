@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils"
 
 import { computerOnly, EsignActionCard } from "./action-card"
 import { declineEsignRequest, getEsignDocumentContent } from "./esign.functions"
+import { landingFor } from "./landing"
 import { type PdfFocus, PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, placeAt, placesLeft } from "./places"
 import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
@@ -128,12 +129,19 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     return target
   }
 
-  const [content, setContent] = useState<{ base64: string; fileName: string; documentId: string } | null>(null)
+  // A signature from New request landing here: the signing dialog is still open above the page, which draws the new
+  // version under the boxes it signed before the dialog closes.
+  const [landing] = useState(() => landingFor(request.id))
+  const [content, setContent] = useState<{ base64: string; fileName: string; documentId: string } | null>(
+    () => landing?.pdf ?? null
+  )
   const [loadError, setLoadError] = useState<string | null>(null)
   const bytes = usePdfBytes(content?.base64 ?? null)
 
+  // A landing brought the PDF along.
+  const brought = useRef(landing?.pdf?.documentId ?? null)
   useEffect(() => {
-    if (!currentDocumentId) return
+    if (!currentDocumentId || currentDocumentId === brought.current) return
     let cancelled = false
     setLoadError(null)
     contentFn({ data: { documentId: currentDocumentId } })
@@ -200,9 +208,28 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     places: myTurn ? myPlaces : undefined,
   })
 
-  const [ghosts, setGhosts] = useState<Ghosts | null>(null)
+  const [ghosts, setGhosts] = useState<Ghosts | null>(() => {
+    const landed = landing && request.signers.find((s) => s.sub === me && s.signaturesDone > 0)
+    if (!landed) return null
+    return {
+      places: landed.places.map((place, at) => ({ ...place, at })),
+      label: landed.name,
+      role: landed.role,
+      number: numberOf(landed.id),
+      painted: false,
+      released: false,
+      afterDialog: false,
+    }
+  })
   /** The hand-off waits for this page of a version other than `from` to be drawn. */
-  const awaitedPaint = useRef<{ from: string | null; page: number; resolve: () => void } | null>(null)
+  const awaitedPaint = useRef<{ from: string | null; page: number; resolve: () => void } | null>(
+    landing ? { from: null, page: ghosts?.places[0]?.page ?? focus?.page ?? 0, resolve: landing.painted } : null
+  )
+  useEffect(() => {
+    if (!landing) return
+    landing.release = released
+    landing.focus = () => bodyRef.current
+  })
 
   /**
    * Runs behind the signing dialog once the signature is saved: the boxes stay where they were signed, the page

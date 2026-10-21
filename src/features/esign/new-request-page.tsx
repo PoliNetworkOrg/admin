@@ -47,6 +47,7 @@ import { DeliveryRows, REVEAL_MS, type SaveView } from "./delivery-rows"
 import { DocumentDialogBody, DocumentPanes, useFileDrop } from "./document-picker"
 import type { DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
+import { expectLanding } from "./landing"
 import { extractTextAnchors, type PdfFocus, PdfViewer, sizeOnPage, usePdfBytes } from "./pdf-viewer"
 import {
   BOX_PT,
@@ -63,10 +64,11 @@ import {
 } from "./places"
 import { PlacingCancel } from "./placing"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
-import { SignWithCie } from "./sign-with-cie"
+import { SignTrigger } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
 import { SignerPicker, SignerRow, SpotRow } from "./signer-rows"
 import { useCanSignHere } from "./signing-device"
+import { useHostedSignWithCie } from "./signing-host"
 import { useFillHeight } from "./use-fill-height"
 
 /**
@@ -788,6 +790,36 @@ export function NewEsignRequestPage({
     else appToast.success("Request created. Sign it here when you're ready.")
   }
 
+  /** The request page the signature lands on, which says when it drew the signed spot. */
+  const landing = useRef<ReturnType<typeof expectLanding> | null>(null)
+  // Above the routes: the request page opens under the dialog, on the spot just signed, and the dialog and the agent
+  // window close once it is drawn, as when signing from the request page.
+  const signing = useHostedSignWithCie({
+    prepare: createAndSign,
+    handOff: async ([requestId]) => {
+      // The composer stays under the dialog while the request's data and its signed PDF arrive.
+      const matches = await router.preloadRoute({ to: "/dashboard/esign/requests/$requestId", params: { requestId } })
+      const documentId = matches?.find((m) => m.routeId === "/dashboard/esign/requests/$requestId")?.loaderData
+        ?.currentDocumentId
+      const pdf = documentId
+        ? await contentFn({ data: { documentId } }).then(
+            (content) => ({ ...content, documentId }),
+            (error) => {
+              console.error(error)
+              return null
+            }
+          )
+        : null
+      const expected = expectLanding(requestId, pdf)
+      landing.current = expected
+      await openRequest(requestId)
+      await expected.painted
+    },
+    onSigned: () => landing.current?.release(),
+    onStopped: signingStopped,
+    finalFocus: () => landing.current?.focus() ?? null,
+  })
+
   // ⌘/Ctrl+Enter runs the primary from anywhere on the page. A key press counts as the user's gesture, so the agent
   // window still opens in the same turn.
   const primaryRef = useRef<HTMLDivElement>(null)
@@ -1188,25 +1220,14 @@ export function NewEsignRequestPage({
                           Send request {shortcut}
                         </LoadingButton>
                       ) : (
-                        <SignWithCie
+                        <SignTrigger
+                          signing={signing}
                           className="gap-2"
                           aria-keyshortcuts="Meta+Enter Control+Enter"
-                          prepare={createAndSign}
                           disabled={submitting || createdRequest !== null || loading}
-                          // The request page loads behind the dialog, so it is there, on the spot just signed and
-                          // saying so, when the dialog lets go; navigating any earlier would unmount the dialog and lose
-                          // the agent window.
-                          handOff={async ([requestId]) => {
-                            await router.preloadRoute({
-                              to: "/dashboard/esign/requests/$requestId",
-                              params: { requestId },
-                            })
-                          }}
-                          onSigned={() => created.current && void openRequest(created.current.id)}
-                          onStopped={signingStopped}
                         >
                           {primary === "sign" ? "Sign with CIE" : "Sign and send"} {shortcut}
-                        </SignWithCie>
+                        </SignTrigger>
                       )}
                     </div>
                   </div>
