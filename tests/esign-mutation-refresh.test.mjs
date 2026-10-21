@@ -251,60 +251,151 @@ for (const failure of [null, "Agent unavailable"]) {
   })
 }
 
+const SIGN = "src/features/esign/sign-with-cie.tsx"
+
 for (const refreshFails of [false, true]) {
-  void test(`CIE completion waits for refresh, including failure=${refreshFails}, before closing and notifying`, async () => {
+  void test(`a signature without a hand-off waits for refresh, failure=${refreshFails}, before closing and notifying`, async () => {
     const env = environment()
     const dependencies = {
       ...env.dependencies,
       finishing: { current: false },
-      setPhase: env.setter("phase"),
+      show: env.setter("session"),
       popupRef: { current: {} },
       onSigned: () => env.events.push("signed"),
     }
-    dependencies.reload = await handler("src/features/esign/sign-with-cie.tsx", "reload", dependencies)
-    const finish = await handler("src/features/esign/sign-with-cie.tsx", "finish", dependencies)
-    const pending = finish(1, 2)
+    dependencies.reload = await handler(SIGN, "reload", dependencies)
+    const finish = await handler(SIGN, "finish", dependencies)
+    const pending = finish(2)
     assert.deepEqual(env.events, ["reload"])
-    assert.equal(env.state.phase, undefined)
+    assert.equal(env.state.session, undefined)
     if (refreshFails) env.reload.reject(new Error("Refresh failed"))
     else env.reload.resolve()
     await pending
-    assert.equal(env.state.phase, null)
+    assert.equal(env.state.session, null)
     assert.equal(dependencies.popupRef.current, null)
-    assert.deepEqual(env.events.slice(-2), [["warning", "1 of 2 documents signed."], "signed"])
-    await finish(1, 2)
+    assert.deepEqual(env.events.slice(-2), [["success", "2 documents signed."], "signed"])
+    await finish(2)
     assert.equal(env.events.filter((event) => event === "reload").length, 1)
   })
 }
 
-async function agentWindow(popup) {
+/** Timers that fire only when the test says so. */
+function fakeSleep() {
+  const waiting = []
+  return {
+    sleep: (ms) => {
+      const timer = deferred()
+      waiting.push({ ms, resolve: timer.resolve })
+      return timer.promise
+    },
+    fire: async (ms) => {
+      for (const timer of waiting.filter((t) => t.ms === ms)) timer.resolve()
+      await setImmediate()
+    },
+  }
+}
+
+async function handOver(update) {
+  const events = []
+  const clock = fakeSleep()
+  const finalFocus = () => "card body"
+  const dependencies = {
+    sleep: clock.sleep,
+    SIGNED_MIN_MS: 1000,
+    SIGNED_MAX_MS: 4000,
+    finishing: { current: false },
+    popupRef: { current: { close: () => events.push("popup closed") } },
+    focusAfter: { current: null },
+    finalFocus,
+    show: (session) => events.push(["show", session]),
+    onSigned: () => events.push("signed"),
+    console: { error: (error) => events.push(["logged", error.message]) },
+  }
+  const run = await handler(SIGN, "handOver", dependencies)
+  const pending = run([{ jobId: "a", requestId: "r1", title: "Verbale" }], update)
+  await setImmediate()
+  return { events, clock, pending, run, dependencies, finalFocus }
+}
+
+const RELEASED = ["popup closed", ["show", null], "signed"]
+
+void test("the hand-off keeps the agent's Signed up for at least a second", async () => {
+  const requested = []
+  const { events, clock, pending, dependencies, finalFocus } = await handOver(async (ids) => {
+    requested.push(ids)
+  })
+  assert.deepEqual(requested, [["r1"]])
+  assert.deepEqual(events, [])
+  await clock.fire(1000)
+  await pending
+  assert.deepEqual(events, RELEASED)
+  assert.equal(dependencies.focusAfter.current, finalFocus)
+})
+
+void test("the hand-off waits for the page to update, but no longer than four seconds", async () => {
+  const update = deferred()
+  const slow = await handOver(() => update.promise)
+  await slow.clock.fire(1000)
+  assert.deepEqual(slow.events, [])
+  update.resolve()
+  await slow.pending
+  assert.deepEqual(slow.events, RELEASED)
+
+  const stuck = await handOver(() => new Promise(() => {}))
+  await stuck.clock.fire(1000)
+  assert.deepEqual(stuck.events, [])
+  await stuck.clock.fire(4000)
+  await stuck.pending
+  assert.deepEqual(stuck.events, RELEASED)
+})
+
+void test("a failed hand-off is logged and lets go after a second", async () => {
+  const { events, clock, pending, run } = await handOver(async () => {
+    throw new Error("Reload failed")
+  })
+  assert.deepEqual(events, [["logged", "Reload failed"]])
+  await clock.fire(1000)
+  await pending
+  assert.deepEqual(events.slice(1), RELEASED)
+  await run([], async () => {})
+  assert.equal(events.filter((event) => event === "signed").length, 1)
+})
+
+async function agentWindow(popup, overrides = {}) {
   const events = []
   const dependencies = {
     Date,
     popupRef: { current: popup },
+    closedReads: { current: 3 },
+    sessionRef: { current: { jobs: [], url: "sign-url" } },
     popupFeatures: () => "popup=yes",
+    openPopup: (text) => {
+      events.push(["placeholder", text])
+      return { closed: false, focus: () => events.push("focused") }
+    },
+    go: (mode) => events.push(["mode", mode.kind]),
+    load: (target, url, next) => events.push(["load", url, next, target === popup ? "same" : "new"]),
     window: {
       open: (url, name) => {
         events.push(["open", url, name])
         return { closed: false }
       },
     },
-    setWindowClosed: (closed) => events.push(["closed", closed]),
-    setAgentLost: (lost) => events.push(["lost", lost]),
+    ...overrides,
   }
-  const path = "src/features/esign/sign-with-cie.tsx"
-  dependencies.showWindow = await handler(path, "showWindow", dependencies)
-  dependencies.openWindowAgain = await handler(path, "openWindowAgain", dependencies)
+  dependencies.showWindow = await handler(SIGN, "showWindow", dependencies)
+  dependencies.retry = await handler(SIGN, "retry", dependencies)
   return { events, ...dependencies }
 }
 
 void test("showing the open agent window focuses it without reloading or duplicating it", async () => {
   const popup = { closed: false, location: { href: "pin-form" }, focus: () => (popup.focused = true) }
-  const { events, showWindow } = await agentWindow(popup)
+  const { events, closedReads, showWindow } = await agentWindow(popup)
   showWindow("sign-url")
   assert.equal(popup.focused, true)
   assert.equal(popup.location.href, "pin-form")
-  assert.deepEqual(events, [["closed", false]])
+  assert.deepEqual(events, [])
+  assert.equal(closedReads.current, 0)
 })
 
 void test("a closed agent window opens again under a new name", async () => {
@@ -316,130 +407,279 @@ void test("a closed agent window opens again under a new name", async () => {
   assert.equal(popupRef.current.closed, false)
 })
 
-void test("opening the window again reloads the signing page in the open agent window", async () => {
-  const popup = { closed: false, location: { href: "error-page" }, focus: () => (popup.focused = true) }
-  const { events, openWindowAgain } = await agentWindow(popup)
-  openWindowAgain("sign-url")
-  assert.equal(popup.location.href, "sign-url")
+void test("trying again reloads the signing page in the agent window, or opens one", async () => {
+  const popup = { closed: false, focus: () => (popup.focused = true) }
+  const open = await agentWindow(popup)
+  open.retry()
+  assert.deepEqual(open.events, [["load", "sign-url", "opening", "same"]])
   assert.equal(popup.focused, true)
-  assert.deepEqual(events, [
-    ["closed", false],
-    ["lost", false],
+
+  const closed = await agentWindow({ closed: true })
+  closed.retry()
+  assert.deepEqual(closed.events, [
+    ["placeholder", "Opening PoliNetwork eSign…"],
+    ["load", "sign-url", "opening", "new"],
+    "focused",
   ])
+
+  const blocked = await agentWindow({ closed: true }, { openPopup: () => null })
+  blocked.retry()
+  assert.deepEqual(blocked.events, [["mode", "blocked"]])
 })
 
 void test("the signer's own cancel closes the dialog once, without a reload", async () => {
   const env = environment()
   const popup = { close: () => env.events.push("popup closed") }
-  const dismiss = await handler("src/features/esign/sign-with-cie.tsx", "dismiss", {
+  const dismiss = await handler(SIGN, "dismiss", {
     ...env.dependencies,
     finishing: { current: false },
-    setPhase: env.setter("phase"),
+    show: env.setter("session"),
     popupRef: { current: popup },
     onStopped: (error) => env.events.push(["stopped", error]),
   })
   dismiss()
   dismiss()
-  assert.equal(env.state.phase, null)
+  assert.equal(env.state.session, null)
   assert.deepEqual(env.events, ["popup closed", ["stopped", null]])
 })
 
+async function closing(mode, statuses) {
+  const env = environment()
+  const jobs = statuses.map(([jobId]) => ({ jobId, requestId: jobId, title: jobId }))
+  const finalFocus = () => "card body"
+  const dependencies = {
+    ...env.dependencies,
+    finishing: { current: false },
+    attempt: { current: 0 },
+    sessionRef: { current: { jobs, url: "sign-url" } },
+    modeRef: { current: mode },
+    statesRef: { current: new Map(statuses.map(([jobId, status]) => [jobId, { status }])) },
+    OPEN_STATUSES: new Set(["pending", "prepared"]),
+    focusAfter: { current: null },
+    finalFocus,
+    show: env.setter("session"),
+    setClosing: env.setter("closing"),
+    popupRef: { current: { close: () => env.events.push("popup closed") } },
+    cancelFn: async ({ data }) => env.events.push(["cancel", data.jobIds]),
+    onStopped: (error) => env.events.push(["stopped", error]),
+  }
+  dependencies.reload = await handler(SIGN, "reload", dependencies)
+  const close = await handler(SIGN, "close", dependencies)
+  return { env, close, dependencies, finalFocus }
+}
+
 for (const refreshFails of [false, true]) {
   void test(`closing an ended attempt shows it is busy until the refresh settles, failure=${refreshFails}`, async () => {
-    const env = environment()
-    const dependencies = {
-      ...env.dependencies,
-      finishing: { current: false },
-      phase: { kind: "ended", reason: "expired", code: null, message: "The link expired." },
-      states: new Map(),
-      setPhase: env.setter("phase"),
-      setClosing: env.setter("closing"),
-      popupRef: { current: { close: () => env.events.push("popup closed") } },
-      cancelFn: async () => env.events.push("cancel"),
-      onStopped: (error) => env.events.push(["stopped", error]),
-    }
-    dependencies.reload = await handler("src/features/esign/sign-with-cie.tsx", "reload", dependencies)
-    const close = await handler("src/features/esign/sign-with-cie.tsx", "close", dependencies)
+    const { env, close, dependencies, finalFocus } = await closing({ kind: "ended", ending: { reason: "expired" } }, [
+      ["a", "expired"],
+    ])
     const pending = close()
     assert.equal(env.state.closing, true)
-    assert.equal(env.state.phase, undefined)
+    assert.equal(env.state.session, undefined)
+    await setImmediate()
     assert.deepEqual(env.events, ["popup closed", "reload"])
     await close()
     assert.deepEqual(env.events, ["popup closed", "reload"])
     if (refreshFails) env.reload.reject(new Error("Refresh failed"))
     else env.reload.resolve()
     await pending
-    assert.equal(env.state.phase, null)
+    assert.equal(env.state.session, null)
     // Still busy while the dialog fades out, so the button doesn't flash back to idle.
     assert.equal(env.state.closing, true)
+    assert.equal(dependencies.focusAfter.current, finalFocus)
     assert.deepEqual(env.events.at(-1), ["stopped", null])
-    assert.ok(!env.events.includes("cancel"))
+    assert.ok(!env.events.some((event) => event[0] === "cancel"))
   })
 }
 
-async function endingOf() {
-  const path = "src/features/esign/sign-with-cie.tsx"
-  const AGENT_ERRORS = await handler(path, "AGENT_ERRORS", {})
-  return handler(path, "endingOf", { AGENT_ERRORS })
-}
+void test("cancelling a signature closes at once, cancels what's open and reloads only after a signature", async () => {
+  const nothing = await closing({ kind: "signing" }, [["a", "pending"]])
+  await nothing.close()
+  assert.equal(nothing.env.state.session, null)
+  assert.equal(nothing.env.state.closing, undefined)
+  assert.equal(nothing.dependencies.focusAfter.current, null)
+  assert.deepEqual(nothing.env.events, ["popup closed", ["cancel", ["a"]], ["stopped", null]])
 
-function jobStatus(jobId, status, errorCode = null, errorMessage = null) {
-  return { jobId, status, errorCode, errorMessage, seen: true }
-}
-
-void test("an attempt ends quietly only when the signer cancelled every job", async () => {
-  const ending = await endingOf()
-  const jobs = [{ jobId: "a", requestId: "r", title: "Verbale" }]
-  assert.equal(ending([jobStatus("a", "cancelled", "pin_incorrect", "Wrong PIN.")], jobs, false), null)
-  const declined = ending(
-    [jobStatus("a", "cancelled", "request_declined", "Mario Rossi declined this request.")],
-    jobs,
-    false
-  )
-  assert.equal(declined.reason, "declined")
-  assert.equal(declined.message, "Mario Rossi declined this request.")
-  const failed = ending([jobStatus("a", "failed", "pin_locked", "PIN blocked")], jobs, false)
-  assert.equal(failed.reason, "failed")
-  assert.equal(failed.code, "pin_locked")
-  assert.match(failed.message, /^The PIN is blocked\./)
-  // A code reserved for cancels and declines counts only on a cancelled job, as in the backend.
-  const reserved = ending([jobStatus("a", "failed", "request_cancelled", "Cancelled.")], jobs, false)
-  assert.equal(reserved.reason, "failed")
+  const some = await closing({ kind: "signing" }, [
+    ["a", "completed"],
+    ["b", "prepared"],
+  ])
+  const pending = some.close()
+  await setImmediate()
+  assert.equal(some.env.state.session, null)
+  assert.deepEqual(some.env.events, ["popup closed", ["cancel", ["b"]], "reload"])
+  some.env.reload.resolve()
+  await pending
+  assert.deepEqual(some.env.events.at(-1), ["stopped", null])
 })
 
-void test("an attempt the backend ended is worded for the dashboard, not the agent window", async () => {
-  const ending = await endingOf()
-  const jobs = [{ jobId: "a", requestId: "r", title: "Verbale" }]
-  for (const [code, message] of [
-    ["document_changed", "Someone else signed in the meantime. Start again from the dashboard."],
-    ["job_done", "This request no longer needs your signature"],
+/** The dialog's reaction to polls and agent messages, with the real rules of signing-state.ts. */
+async function signingMachine(mode, overrides = {}) {
+  const { closedWindowAction, outcomeOf, stateForFatal } = await import("../src/features/esign/signing-state.ts")
+  const events = []
+  const flags = []
+  const dependencies = {
+    Date,
+    sessionRef: { current: { jobs: [{ jobId: "a", requestId: "r1", title: "Verbale" }], url: "sign-url" } },
+    modeRef: { current: mode },
+    finishing: { current: false },
+    SETTLED: new Set(["ended", "signed", "partial"]),
+    statesRef: { current: new Map() },
+    setStates: () => {},
+    outcomeOf,
+    closedWindowAction,
+    stateForFatal,
+    preparing: false,
+    handOff: undefined,
+    handOver: () => events.push("hand-off"),
+    finish: () => events.push("finish"),
+    dismiss: () => events.push("dismiss"),
+    close: () => events.push("close"),
+    popupRef: { current: { close: () => events.push("popup closed") } },
+    fatalShown: { current: false },
+    seenCounts: { current: true },
+    answered: { current: false },
+    fatal: { current: null },
+    closedReads: { current: 0 },
+    CLOSED_READS: 2,
+    CLOSED_RECHECK_MS: 400,
+    sleep: (ms) => {
+      events.push(["recheck in", ms])
+      return new Promise(() => {})
+    },
+    poll: () => {},
+    writeAgentFlag: (version) => flags.push(version),
+    ...overrides,
+  }
+  dependencies.go = (next) => {
+    dependencies.modeRef.current = next
+    events.push(next.kind === "fatal" ? ["fatal", next.state, next.message] : next.kind)
+  }
+  dependencies.answer = await handler(SIGN, "answer", dependencies)
+  const track = await handler(SIGN, "track", dependencies)
+  const onMessage = await handler(SIGN, "onMessage", dependencies)
+  const status = (status, extra = {}) => [
+    { jobId: "a", status, errorCode: null, errorMessage: null, seen: true, ...extra },
+  ]
+  return { track, onMessage, status, events, flags, dependencies }
+}
+
+const OPENING = { kind: "opening", deadline: 1 }
+
+void test("a ready agent is remembered with its version, which the job fetch after it doesn't overwrite", async () => {
+  const { track, onMessage, status, events, flags } = await signingMachine(OPENING)
+  onMessage({ type: "pn-esign", status: "ready", detail: "0.4.0" })
+  assert.deepEqual(events, ["signing"])
+  track(status("pending"), false, Date.now())
+  assert.deepEqual(flags, ["0.4.0"])
+})
+
+void test("an agent too old to say ready is known by its job fetch, unless the job was fetched before", async () => {
+  const old = await signingMachine(OPENING)
+  old.track(old.status("pending", { seen: false }), false, Date.now())
+  assert.deepEqual(old.events, [])
+  old.track(old.status("pending"), false, Date.now())
+  assert.deepEqual(old.events, ["signing"])
+  assert.deepEqual(old.flags, [null])
+
+  const reloaded = await signingMachine(OPENING, { seenCounts: { current: false } })
+  reloaded.track(reloaded.status("pending"), false, Date.now())
+  assert.deepEqual(reloaded.events, [])
+})
+
+void test("a fatal error waits for the next poll, which may show the job's own end", async () => {
+  const ended = await signingMachine({ kind: "signing" }, { answered: { current: true } })
+  const before = Date.now() - 1
+  ended.onMessage({ type: "pn-esign", status: "error", detail: "job_done", message: "Nothing to sign.", fatal: true })
+  assert.deepEqual(ended.events, [])
+  // A poll that started before the message says nothing about it.
+  ended.track(ended.status("pending"), false, before)
+  assert.deepEqual(ended.events, [])
+  ended.track(ended.status("failed", { errorCode: "job_done" }), false, Date.now() + 1)
+  assert.equal(ended.events[0], "ended")
+  assert.equal(ended.dependencies.modeRef.current.ending.title, "Nothing left to sign")
+
+  const open = await signingMachine({ kind: "signing" })
+  open.onMessage({ type: "pn-esign", status: "error", detail: "ticket_invalid", message: "Bad link.", fatal: true })
+  open.track(open.status("pending"), false, Date.now() + 1)
+  assert.deepEqual(open.events, [["fatal", "continue", "Bad link."]])
+})
+
+void test("an outdated agent, a lost connection and a timed-out window show at once", async () => {
+  for (const [code, state] of [
+    ["agent_outdated", "outdated"],
+    ["backend_unreachable", "connect"],
+    ["job_expired", "expired"],
   ]) {
-    const failed = ending([jobStatus("a", "failed", code, message)], jobs, false)
-    assert.equal(failed.reason, "failed")
-    assert.notEqual(failed.message, message)
-    assert.doesNotMatch(failed.message, /dashboard/)
+    const { onMessage, events } = await signingMachine(OPENING)
+    onMessage({ type: "pn-esign", status: "error", detail: code, message: "From the agent.", fatal: true })
+    assert.deepEqual(events, [["fatal", state, "From the agent."]], code)
   }
 })
 
-void test("an ended batch names the document, and an expired link points where to sign again", async () => {
-  const ending = await endingOf()
-  const jobs = [
-    { jobId: "a", requestId: "r1", title: "Verbale" },
-    { jobId: "b", requestId: "r2", title: "Contratto" },
-  ]
-  const cancelled = ending(
-    [
-      jobStatus("a", "cancelled"),
-      jobStatus("b", "cancelled", "request_cancelled", "Anna Bianchi cancelled this request."),
-    ],
-    jobs,
-    false
+void test("an outdated agent's window closes only when it couldn't explain the update itself", async () => {
+  const outdated = (machine) => machine.status("failed", { errorCode: "agent_outdated" })
+  const explained = await signingMachine(
+    { kind: "fatal", state: "outdated", message: "" },
+    { fatalShown: { current: true } }
   )
-  assert.equal(cancelled.reason, "cancelled")
-  assert.equal(cancelled.message, "Contratto: Anna Bianchi cancelled this request.")
-  const statuses = [jobStatus("a", "expired"), jobStatus("b", "cancelled")]
-  assert.match(ending(statuses, jobs, false).message, /Start again/)
-  assert.match(ending(statuses, jobs, true).message, /^Close to open the request/)
+  explained.track(outdated(explained), false, Date.now())
+  assert.deepEqual(explained.events, ["ended"])
+  const silent = await signingMachine({ kind: "signing" })
+  silent.track(outdated(silent), false, Date.now())
+  assert.deepEqual(silent.events, ["popup closed", "ended"])
+})
+
+void test("someone else ending the request closes the agent window", async () => {
+  const { track, status, events } = await signingMachine({ kind: "signing" })
+  track(status("cancelled", { errorCode: "request_cancelled", errorMessage: "Anna cancelled." }), false, Date.now())
+  assert.deepEqual(events, ["popup closed", "ended"])
+})
+
+void test("a window closed after the agent answered is acted on after two polls", async () => {
+  const cancelled = await signingMachine({ kind: "signing" }, { answered: { current: true } })
+  cancelled.track(cancelled.status("pending"), true, Date.now())
+  // The second read comes sooner than the next regular poll.
+  assert.deepEqual(cancelled.events, [["recheck in", 400]])
+  cancelled.track(cancelled.status("pending"), true, Date.now())
+  assert.deepEqual(cancelled.events, [["recheck in", 400], "close"])
+
+  const working = await signingMachine({ kind: "signing" }, { answered: { current: true } })
+  working.track(working.status("prepared"), true, Date.now())
+  working.track(working.status("prepared"), true, Date.now())
+  assert.deepEqual(working.events, [["recheck in", 400]])
+
+  // A window open again between two closed reads starts the count over.
+  const reopened = await signingMachine({ kind: "signing" }, { answered: { current: true } })
+  reopened.track(reopened.status("pending"), true, Date.now())
+  reopened.track(reopened.status("pending"), false, Date.now())
+  reopened.track(reopened.status("pending"), true, Date.now())
+  assert.deepEqual(reopened.events, [
+    ["recheck in", 400],
+    ["recheck in", 400],
+  ])
+})
+
+void test("the agent stopping after it answered is the one outcome the dialog learns from a message", async () => {
+  const lost = { type: "pn-esign", status: "error", detail: "agent_unreachable" }
+  const answered = await signingMachine({ kind: "signing" }, { answered: { current: true } })
+  answered.onMessage(lost)
+  assert.deepEqual(answered.events, ["stopped"])
+  const silent = await signingMachine(OPENING)
+  silent.onMessage(lost)
+  assert.deepEqual(silent.events, [])
+})
+
+void test("every document signed hands off, or reloads when nothing hands off", async () => {
+  const plain = await signingMachine({ kind: "signing" })
+  plain.track(plain.status("completed"), false, Date.now())
+  assert.deepEqual(plain.events, ["signed", "finish"])
+  const handing = await signingMachine({ kind: "signing" }, { handOff: async () => {} })
+  handing.track(handing.status("completed"), false, Date.now())
+  assert.deepEqual(handing.events, ["signed", "hand-off"])
+  // Settled: later polls change nothing.
+  handing.track(handing.status("completed"), false, Date.now())
+  assert.deepEqual(handing.events, ["signed", "hand-off"])
 })
 
 for (const outcome of ["delivered", "failed", "throws"]) {

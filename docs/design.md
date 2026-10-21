@@ -470,9 +470,14 @@ Rules that the templates above don't imply.
   viewer's box, the spot they just signed, else the box of whoever's turn it is), jumps without scrolling smoothly, and
   zooming keeps the middle of the view in place.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
-  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. When that window was closed
-  or PoliNetwork eSign doesn't answer, the dialog's footer primary is "Open the window again" beside "Cancel
-  signature" ("Stop here" once part of a batch is signed), and "Start PoliNetwork eSign" (outline) and "Setup guide" (ghost) sit in the body. A person appears once
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. The dialog behind it
+  (`useSignWithCie`, rules in `signing-state.ts`) has one 40px tile, one title, at most one line or a batch's list, and
+  a footer of "Cancel signature" ("Stop here" once part of a batch is signed) or "Close" and one primary; states swap
+  without motion inside one live region. It waits for the agent's `ready` (or an older agent fetching its job): without
+  it after 2.5 s it closes the window and says PoliNetwork eSign isn't running, offering "Start PoliNetwork eSign" to a
+  browser that has run it and "Install PoliNetwork eSign" otherwise. An agent too old to sign gets "Update PoliNetwork
+  eSign" with the download for the computer's system. Errors the agent window can retry stay there; the dialog shows
+  only what ends the attempt. A batch that signed only some documents stays open until Close. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
   menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
   With several documents waiting, "Sign N together" opens a strip of up to ten documents in the page bar's toolbar row,

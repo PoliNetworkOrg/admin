@@ -178,7 +178,10 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
   the cards under it scroll; "Move box" moved into the viewer's toolbar; phones and tablets only review; declined and
   cancelled requests offer "Send again" (`/dashboard/esign/new?from=`, which the composer branch fills in); the upload
   fallback is gone; the agent proxy forwards PoliNetwork eSign's User-Agent, so the backend can refuse versions too old
-  to sign.
+  to sign. The signing dialog listens for the agent's `ready` and fatal errors (older agents through the job's `seen`),
+  says within 2.5 s when PoliNetwork eSign isn't running (Start for a browser that has run it, Install otherwise) and
+  asks for an update with a direct download when the agent is too old. The `ready` and fatal messages need the next
+  agent release; until then the dashboard follows `seen`.
 
 - 2026-10-21: UX pass (admin `feat/esign-ux-pass`, backend `fix/esign-ux`, agent `fix/sign-page-ux`; not pushed): the
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on
