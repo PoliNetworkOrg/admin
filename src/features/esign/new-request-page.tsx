@@ -1,5 +1,5 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
-import { useNavigate, useRouter } from "@tanstack/react-router"
+import { useBlocker, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
   ArrowDown,
@@ -27,6 +27,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ConfirmDialog,
   FormField,
   fieldControl,
   fieldHintId,
@@ -431,6 +432,21 @@ export function NewEsignRequestPage({
   const created = useRef<{ id: string; title: string } | null>(null)
 
   const creating = useRef(false)
+
+  // "Sign a document" starts with the viewer as signer: that alone is nothing to lose.
+  const untouched =
+    staged === null &&
+    title.trim() === "" &&
+    emails.trim() === "" &&
+    message.trim() === "" &&
+    signers.every((s) => withMe && s.sub === me && s.role.trim() === "")
+  const dirty = createdRequest === null && !untouched
+  // Reads the ref when it runs, so moving to the request just created is never blocked.
+  const leave = useBlocker({
+    shouldBlockFn: () => dirty && created.current === null,
+    enableBeforeUnload: () => dirty && created.current === null,
+    withResolver: true,
+  })
 
   async function create(documentId: string) {
     if (created.current) return created.current
@@ -1001,6 +1017,17 @@ export function NewEsignRequestPage({
           </div>
         </div>
       </PageContent>
+      <ConfirmDialog
+        open={leave.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) leave.reset?.()
+        }}
+        title="Discard changes?"
+        description="The document, signers and boxes you set up here will be lost."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={async () => leave.proceed?.()}
+      />
     </>
   )
 }
