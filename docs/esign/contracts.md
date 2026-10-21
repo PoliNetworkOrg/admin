@@ -102,7 +102,13 @@ browse OneDrive). Requests are visible to their signers and creator.
 - `esign.requests.create({title, documentId, signers: [{sub, role, places: [{...placement, kind}]}], ordered, output: {driveId, folderId, fileName}, email?: {to[], message?}})`.
   `kind` is `signature` (its own PDF signature) or `mark` (the first signature's mark, drawn in that signature's
   update); each signer has 1–20 places, at least one a signature, and appears once in the request.
-- `esign.requests.list({scope: "inbox"|"mine"|"all", status?})`, `esign.requests.get({id})`.
+- `esign.requests.list({scope: "inbox"|"mine"|"all", status?})` → request views. Each of a view's `signers[]` has
+  `lostAccess`: for a pending signer who may no longer sign the documents of one of the request's drives (its "sign"
+  rule changed, or the IdP took a role away), that drive's label; else null. `myTurn` is true when it is the caller's
+  turn and the caller's `lostAccess` is null (`turn` still lists every signer whose turn it is). `inbox` holds the
+  requests where `myTurn` is true, so a request the caller can no longer sign stays reachable under `mine`.
+- `esign.requests.get({id})` → `{request, events, versions, currentDocumentId, signingNow}`. `signingNow` is
+  `{sub, name, until}` while a signer has a signature open, `until` being when it expires at the latest; else null.
 - `esign.requests.cancel({id})`, `esign.requests.decline({id, reason})`, `esign.requests.retryDelivery({id})`.
 - `esign.drive.access()` (`esign:drives:manage`) → `{drives: [{id, label, request: {roles, permissions}, sign: {roles,
 permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permissions: [{key, name}]}}`;
@@ -110,6 +116,9 @@ permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permiss
   empty rule keeps the default (request: `esign:requests:manage`; sign: everyone who signs). `request` covers browsing
   the drive, using it in a request and seeing its requests; `sign` covers being chosen as signer and signing. Requests
   record `drives` (source and output); `esign.config().drives` and `esign.signers.list()[].drives` are filtered.
+  `esign.drive.accessImpact({driveId, sign})` (`esign:drives:manage`) → `[{id, title, signers: [name]}]`: the requests
+  in progress on that drive with pending signers who may sign under the current rule but not under the proposed `sign`
+  rule (the same empty-rule default); empty when the change strands nobody.
 - `esign.jobs.create({items: [{requestId, places?}]})` (1–10, all or none) → `[{requestId, jobId, ticket, expiresAt}]`,
   opened together in one agent window; `places` moves the caller's boxes (one position per place) before signing.
 - `esign.jobs.statuses({jobIds})` → one entry per job:
