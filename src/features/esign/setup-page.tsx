@@ -7,8 +7,7 @@ import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { AGENT_LAUNCH_URL, AGENT_ORIGINS, AGENT_RELEASES_URL } from "./agent"
-
-type Os = "macos" | "windows" | "linux"
+import { type Os, detectOs } from "./signing-device"
 
 const OS_ITEMS: { value: Os; label: string }[] = [
   { value: "macos", label: "macOS" },
@@ -80,13 +79,6 @@ const AGENT_STEPS = {
   ),
 }
 
-function detectOs(): Os {
-  const agent = navigator.userAgent
-  if (/windows/i.test(agent)) return "windows"
-  if (/linux|x11/i.test(agent) && !/android/i.test(agent)) return "linux"
-  return "macos"
-}
-
 function Step({
   number,
   icon: Icon,
@@ -119,7 +111,7 @@ function Step({
 /** How to prepare a computer to sign with the CIE: reader, CIE software, PoliNetwork eSign, a check. */
 export function EsignSetupPage() {
   const [os, setOs] = useState<Os>("macos")
-  useEffect(() => setOs(detectOs()), [])
+  useEffect(() => setOs(detectOs(navigator.userAgent)), [])
   const software = CIE_SOFTWARE[os]
 
   return (

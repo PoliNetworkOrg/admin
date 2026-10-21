@@ -7,6 +7,12 @@ export const AGENT_LAUNCH_URL = "polinetwork-esign://open"
 
 export const AGENT_RELEASES_URL = "https://github.com/PoliNetworkOrg/esign/releases/latest"
 
+/** Release assets with stable names, so these links always download the latest version. Linux uses the release page. */
+export const AGENT_DOWNLOAD_URLS = {
+  macos: `${AGENT_RELEASES_URL}/download/PoliNetwork-eSign-macos.dmg`,
+  windows: `${AGENT_RELEASES_URL}/download/PoliNetwork-eSign-windows-amd64.zip`,
+} as const
+
 /**
  * The agent's signing page for one or more jobs, signed with one PIN. `origin` is this dashboard, which the agent
  * checks against its allowlist.
