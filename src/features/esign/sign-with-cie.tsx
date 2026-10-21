@@ -257,7 +257,10 @@ export function SignWithCie({
           const done = statuses.filter((s) => s.status === "completed").length
           if (done > 0) return void finish(done, jobs.length)
           const ending = endingOf(statuses, jobs, preparing)
-          return ending ? setPhase(ending) : dismiss()
+          if (!ending) return dismiss()
+          // Someone else ended the request: the agent window would keep asking for a PIN that can sign nothing.
+          if (ending.reason === "cancelled" || ending.reason === "declined") popupRef.current?.close()
+          return setPhase(ending)
         }
         // Closed before and after the request, so a window opened again meanwhile counts as open. The agent closes
         // its window on cancel or success only after the backend recorded it, so those end above.
