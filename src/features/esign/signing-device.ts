@@ -1,3 +1,5 @@
+import { createIsomorphicFn } from "@tanstack/react-start"
+import { getRequestHeader } from "@tanstack/react-start/server"
 import { useSyncExternalStore } from "react"
 import { z } from "zod"
 
@@ -21,15 +23,39 @@ export function detectOs(userAgent: string): Os {
   return "macos"
 }
 
+/** "unknown" until the browser can be asked: a Mac's User-Agent may be an iPad's. */
+export type SigningDevice = "computer" | "phone" | "unknown"
+
+/**
+ * The browser's User-Agent. On the server it comes from the request, so the server render already fits the device and
+ * hydration agrees with it.
+ */
+const userAgent = createIsomorphicFn()
+  .server(() => getRequestHeader("user-agent") ?? "")
+  .client(() => navigator.userAgent)
+
 const subscribe = () => () => {}
 
-/** False on phones and tablets, where signing buttons give way to a note. True while rendering on the server. */
-export function useCanSignHere() {
+/**
+ * Whether this is a computer that can sign or a phone or tablet that can only review. The server render and hydration
+ * go by the User-Agent alone, which can't tell an iPad asking for the desktop site from a Mac: there it is "unknown",
+ * and the page renders both variants behind the `(hover: none) and (pointer: coarse)` media query, so neither flashes.
+ */
+export function useSigningDevice(): SigningDevice {
   return useSyncExternalStore(
     subscribe,
-    () => !isPhoneOrTablet(navigator.userAgent, navigator.maxTouchPoints),
-    () => true
+    () => (isPhoneOrTablet(navigator.userAgent, navigator.maxTouchPoints) ? "phone" : "computer"),
+    () => {
+      const agent = userAgent()
+      if (isPhoneOrTablet(agent, 0)) return "phone"
+      return /Macintosh/.test(agent) ? "unknown" : "computer"
+    }
   )
+}
+
+/** False on phones and tablets, where signing buttons give way to a note. */
+export function useCanSignHere() {
+  return useSigningDevice() !== "phone"
 }
 
 function subscribeStorage(onChange: () => void) {
