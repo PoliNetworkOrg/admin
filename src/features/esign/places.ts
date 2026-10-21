@@ -386,12 +386,17 @@ function signedUnder(page: PageText, label: Segment) {
 /** Box heights: a full one, then shorter ones where the space is tight. */
 const TALL = [BOX_PT.height, 44]
 const SHORT = [36, 30]
+/** Less room than this between two labels in a column, and a box between them would read as either's. */
+const CROWDED = SHORT[0] + 16
 
 /**
  * A box for a label, close to it and inside the page: on the signature line under or beside it; else in clear space
  * below it, past a short name line printed under the label but never past other text; else above it. It is tried in
- * the label's column first, then shifted towards the page margins, then shorter. `clear` is false when every such
- * place covers text: the place returned then covers the least, and never a label, a signature or a box in `taken`.
+ * the label's column first, then shifted towards the page margins, then shorter, then beside the label on its own
+ * line. Labels stacked closer than a box in one column ("Il Presidente" over "Il Vicepresidente") get their boxes
+ * beside them first, all alike, so no box sits between two labels. A box never goes past another label. `clear` is
+ * false when every such place covers text: the place returned then covers the least, and never a label, a signature
+ * or a box in `taken`.
  */
 function clearPlacement(label: Segment, page: PageText, taken: Rect[]) {
   const { width: pageWidth, height: pageHeight } = page.size
@@ -433,12 +438,17 @@ function clearPlacement(label: Segment, page: PageText, taken: Rect[]) {
     }
   shifted.sort((a, b) => Math.abs(a.x + a.width / 2 - centre) - Math.abs(b.x + b.width / 2 - centre))
 
-  /** Under the label, from the nearest; unless `past`, it stops at the first line that isn't a short name line. */
+  /**
+   * Under the label, from the nearest: it stops at the first line that isn't a short name line, or with `past` at the
+   * next label.
+   */
   function below({ x, width: boxWidth }: Span, height: number, past = false) {
     const span = { x, y: 0, width: boxWidth, height: 0 }
-    let limit = Number.POSITIVE_INFINITY
+    const beneath = (of: Rect[]) =>
+      of.filter((o) => o.y >= label.foot - 1 && acrossFrom(o, span)).sort((a, b) => a.y - b.y)
+    let limit = past ? (beneath(labels)[0]?.y ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY
     if (!past) {
-      const under = text.filter((o) => o.y >= label.foot - 1 && acrossFrom(o, span)).sort((a, b) => a.y - b.y)
+      const under = beneath(text)
       let names = 0
       let lastName = Number.NEGATIVE_INFINITY
       for (const o of under) {
@@ -473,6 +483,41 @@ function clearPlacement(label: Segment, page: PageText, taken: Rect[]) {
     }
     return rects
   }
+  // The labels above and below in the label's column (not the first line of the label itself, wrapped).
+  const column = page.segments.filter(
+    (s) => s !== label && isLabel(s) && acrossFrom(s, label) && !(s.part && overlap(s, label) > 0)
+  )
+  const upper = Math.max(Number.NEGATIVE_INFINITY, ...column.filter((s) => s.foot <= label.y + 1).map((s) => s.foot))
+  const lower = Math.min(Number.POSITIVE_INFINITY, ...column.filter((s) => s.y >= label.foot - 1).map((s) => s.y))
+  const stacked = label.y - upper < CROWDED || lower - label.foot < CROWDED
+  // A box beside goes past the label and the name lines under it; a stack's boxes line up, past all of its labels.
+  const blockOf = (s: Segment) => [
+    room(s),
+    ...soft.filter((o) => o.name && acrossFrom(o, s) && o.y + PAD >= s.foot - 1 && o.y < s.foot + 2.5 * s.size),
+  ]
+  const block = (stacked ? [label, ...column] : [label]).flatMap(blockOf)
+  const sideLeft = Math.min(...block.map((o) => o.x))
+  const sideRight = Math.max(...block.map(right))
+  /**
+   * On the label's line, its middle on the label's: to its right, else to its left. It stays within halfway to the
+   * labels above and below, so it reads as this one's.
+   */
+  function beside(height: number) {
+    const y = middle(label) - height / 2
+    const ceiling = Math.max(top, Number.isFinite(upper) ? (upper + label.y) / 2 : top)
+    const ground = Math.min(floor, Number.isFinite(lower) ? (label.foot + lower) / 2 : floor)
+    if (y < ceiling || y + height > ground) return []
+    const rects: Rect[] = []
+    const start = sideRight + 8
+    const after = Math.min(BOX_PT.width, label.edgeRight - start)
+    if (after >= 120) rects.push({ x: start, y, width: after, height })
+    const end = sideLeft - 8
+    const before = Math.min(BOX_PT.width, end - label.edgeLeft)
+    if (before >= 120) rects.push({ x: end - before, y, width: before, height })
+    return rects
+  }
+  const heights = [...TALL, ...SHORT]
+
   /** The nearest places first, then the ones closest to the label's middle. */
   const byGap = (lists: Rect[][]) =>
     Array.from({ length: Math.max(0, ...lists.map((l) => l.length)) }, (_, i) =>
@@ -500,16 +545,18 @@ function clearPlacement(label: Segment, page: PageText, taken: Rect[]) {
       if (base - y >= 30 && boxWidth >= 120 && y >= top && base <= floor)
         yield { x, y, width: boxWidth, height: base - y }
     }
-    for (const [spans, heights] of [
+    if (stacked) for (const height of heights) yield* beside(height)
+    for (const [spans, sizes] of [
       [inColumn, TALL],
       [shifted, TALL],
       [inColumn, SHORT],
       [shifted, SHORT],
     ] as const) {
-      for (const height of heights) yield* byGap(spans.map((span) => below(span, height)))
-      for (const height of heights) yield* byGap(spans.map((span) => above(span, height)))
+      for (const height of sizes) yield* byGap(spans.map((span) => below(span, height)))
+      for (const height of sizes) yield* byGap(spans.map((span) => above(span, height)))
     }
-    // Past the text under the label: clear, but further from it.
+    if (!stacked) for (const height of heights) yield* beside(height)
+    // Past the text under the label, up to the next label: clear, but further from it.
     for (const height of TALL) yield* below(inColumn[0], height, true)
   }
 

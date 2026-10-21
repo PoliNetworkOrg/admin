@@ -156,6 +156,62 @@ void test("a label at the very bottom of the page gets its box above, without co
   assertClear(spot.places, anchors)
 })
 
+void test("labels stacked tightly in one column get their boxes beside them, never between two labels", () => {
+  for (const gap of [40, 55]) {
+    const labels = [
+      run("Il Presidente", 380, 572),
+      run("Il Vicepresidente", 380, 572 + gap),
+      run("Il Tesoriere", 380, 572 + 2 * gap),
+    ]
+    const anchors = [...paragraph(120, 4), ...labels]
+    const spots = findSpots(anchors, [A4])
+    assert.deepEqual(
+      spots.map((s) => s.key),
+      ["presidente", "vicepresidente", "tesoriere"],
+      `${gap} pt`
+    )
+    assertClear(
+      spots.flatMap((s) => s.places),
+      anchors
+    )
+    const boxes = spots.map((s) => points(s.places[0]))
+    for (const [i, box] of boxes.entries()) {
+      // A reader pairs a box with the nearest label: its own.
+      const centre = (box.top + box.bottom) / 2
+      const distances = labels.map((l) => Math.abs((l.y + l.height / 2) * A4.height - centre))
+      assert.equal(distances.indexOf(Math.min(...distances)), i, `${gap} pt: ${JSON.stringify(boxes)}`)
+    }
+    // One side for the whole stack, lined up.
+    assert.equal(new Set(boxes.map((b) => Math.round(b.left))).size, 1, JSON.stringify(boxes))
+  }
+})
+
+void test("a stack of labels with names under them gets its boxes past the names, beside each label", () => {
+  const labels = [run("Il Presidente", 72, 480), run("Il Segretario", 72, 535)]
+  const anchors = [
+    ...paragraph(120, 4),
+    ...labels,
+    run("(Mario Rossi)", 72, 494, { width: 66 }),
+    run("(Anna Bianchi)", 72, 549, { width: 72 }),
+  ]
+  const spots = findSpots(anchors, [A4])
+  assert.deepEqual(
+    spots.map((s) => s.key),
+    ["presidente", "segretario"]
+  )
+  assertClear(
+    spots.flatMap((s) => s.places),
+    anchors
+  )
+  const boxes = spots.map((s) => points(s.places[0]))
+  for (const [i, box] of boxes.entries()) {
+    const centre = (box.top + box.bottom) / 2
+    const distances = labels.map((l) => Math.abs((l.y + l.height / 2) * A4.height - centre))
+    assert.equal(distances.indexOf(Math.min(...distances)), i, JSON.stringify(boxes))
+    assert.ok(box.left >= 72 + 72, "past the longest name")
+  }
+})
+
 void test("a label followed by a name line gets its box below the name", () => {
   const anchors = [...paragraph(120, 6), run("Il Segretario", 100, 300), run("(Anna Bianchi)", 98, 314)]
   const [spot] = findSpots(anchors, [A4])
