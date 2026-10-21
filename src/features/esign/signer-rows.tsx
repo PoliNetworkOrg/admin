@@ -198,7 +198,8 @@ export function SignerRow({
               maxLength={80}
               onBlur={onRoleDone}
             />
-            <ComboboxContent className="w-48">
+            {/* Hidden while nothing matches: a role typed by hand needs no empty list under it. */}
+            <ComboboxContent className="w-48 data-empty:hidden">
               <ComboboxList>
                 {(role: string) => (
                   <ComboboxItem key={role} value={role}>
