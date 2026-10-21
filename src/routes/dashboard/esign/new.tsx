@@ -16,7 +16,14 @@ export const Route = createFileRoute("/dashboard/esign/new")({
   },
   loaderDeps: ({ search }) => ({ from: search.from }),
   loader: ({ deps }) => getEsignComposer({ data: { from: deps.from } }),
-  pendingComponent: () => (
+  pendingComponent: NewRequestPending,
+  component: NewRequestRoute,
+})
+
+function NewRequestPending() {
+  // Sent again from an earlier request, the composer opens on its PDF, not on the chooser.
+  const { from } = Route.useSearch()
+  return (
     <>
       <PageBar
         width="record"
@@ -24,12 +31,11 @@ export const Route = createFileRoute("/dashboard/esign/new")({
         context="New request"
       />
       <PageContent width="record" fill>
-        <WorkspaceSkeleton label="Loading…" />
+        <WorkspaceSkeleton label="Loading…" document={from !== undefined} />
       </PageContent>
     </>
-  ),
-  component: NewRequestRoute,
-})
+  )
+}
 
 function NewRequestRoute() {
   const { config, signers, me, source, sourceError } = Route.useLoaderData()
