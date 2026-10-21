@@ -8,8 +8,9 @@ import { getEsignComposer } from "@/features/esign/requests.functions"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/esign/new")({
-  // `?from=<request id>` starts from an earlier request ("Send again"); the loader says when it can't be read.
-  validateSearch: z.object({ from: z.string().optional() }),
+  // `?from=<request id>` starts from an earlier request ("Send again"). Any value reaches the loader as text, which says
+  // when it isn't a request that can be read: the router reads `?from=123` as a number.
+  validateSearch: z.object({ from: z.coerce.string().optional() }),
   beforeLoad: ({ context }) => {
     if (!hasPermission(context.permissions, "esign:requests:manage")) throw redirect({ to: "/unauthorized" })
   },

@@ -37,7 +37,7 @@ async function composerSource(backend: BackendClient, from: string) {
  */
 export const getEsignComposer = createServerFn()
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ from: z.string().max(100).optional() }))
+  .validator(z.object({ from: z.string().optional() }))
   .handler(async ({ data, context }) => {
     await context.backend.esign.profile.sync.mutate({ name: context.user.name, email: context.user.email || null })
     const [config, signers, from] = await Promise.all([
