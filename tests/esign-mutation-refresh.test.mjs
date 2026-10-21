@@ -70,10 +70,15 @@ async function composer(env, overrides = {}) {
     created: { current: null },
     creating: { current: false },
     setAttempted: env.setter("attempted"),
+    setShown: env.setter("shown"),
+    setBlockedSubmits: (update) => {
+      env.state.blockedSubmits = update(env.state.blockedSubmits ?? 0)
+    },
     setSubmitting: env.setter("submitting"),
     setSubmitError: env.setter("error"),
     setCreatedRequest: env.setter("createdRequest"),
-    problems: [],
+    problems: false,
+    errors: {},
     staged: { id: "document-1" },
     title: "Request",
     ordered: true,
@@ -91,6 +96,7 @@ async function composer(env, overrides = {}) {
     ...overrides,
   }
   dependencies.create = await handler(path, "create", dependencies)
+  dependencies.showProblems = await handler(path, "showProblems", dependencies)
   dependencies.openRequest = await handler(path, "openRequest", dependencies)
   return {
     submit: await handler(path, "submit", dependencies),
@@ -110,6 +116,18 @@ void test("creation waits for loader refresh before navigation and notification"
   env.reload.resolve()
   await pending
   assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"], ["success", "Request created."]])
+})
+
+void test("a blocked submit shows every problem without creating or reloading", async () => {
+  const env = environment()
+  const errors = { title: "Give the request a title.", fileName: undefined, email: "“x” isn't an email address." }
+  const { submit, createAndSign } = await composer(env, { problems: true, errors })
+  await submit()
+  assert.equal(createAndSign(), null)
+  assert.deepEqual(env.events, [])
+  assert.equal(env.state.attempted, true)
+  assert.deepEqual({ ...env.state.shown }, errors)
+  assert.equal(env.state.blockedSubmits, 2)
 })
 
 void test("a failed create stays retryable without navigation or a success notification", async () => {

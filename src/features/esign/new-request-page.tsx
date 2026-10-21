@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  CircleAlert,
   Cloud,
   FileUp,
   MapPin,
@@ -16,7 +17,7 @@ import {
   TriangleAlert,
   UserPlus,
 } from "lucide-react"
-import { type DragEvent, useEffect, useId, useMemo, useRef, useState } from "react"
+import { type DragEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   Autocomplete,
@@ -28,6 +29,7 @@ import {
   ComboboxList,
   FormField,
   fieldControl,
+  fieldHintId,
   IconButton,
   InlineAlert,
   LoadingButton,
@@ -152,7 +154,16 @@ export function NewEsignRequestPage({
   const contentFn = useServerFn(getEsignDocumentContent)
   const createFn = useServerFn(createEsignRequest)
   const dropFill = useFillHeight<HTMLElement>()
-  const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId() }
+  const ids = {
+    title: useId(),
+    file: useId(),
+    fileName: useId(),
+    folderError: useId(),
+    emails: useId(),
+    message: useId(),
+    search: useId(),
+    signersError: useId(),
+  }
 
   const [source, setSource] = useState<"drive" | "upload">(config.drives.length > 0 ? "drive" : "upload")
   const [staged, setStaged] = useState<Staged | null>(null)
@@ -200,7 +211,20 @@ export function NewEsignRequestPage({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdRequest, setCreatedRequest] = useState<string | null>(null)
+  /** A submit was blocked: problems fixed with a click (document, signers, folder) show from then on. */
   const [attempted, setAttempted] = useState(false)
+  /** Text-field errors on screen: set by a blocked submit, then re-checked when the field loses focus. */
+  const [shown, setShown] = useState<{ title?: string; fileName?: string; email?: string }>({})
+  /** Each blocked submit focuses the first problem once its message has rendered. */
+  const [blockedSubmits, setBlockedSubmits] = useState(0)
+  const form = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (blockedSubmits > 0) form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid]')?.focus()
+  }, [blockedSubmits])
+  const submitAlert = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (submitError) submitAlert.current?.scrollIntoView({ block: "nearest" })
+  }, [submitError])
 
   const pages = staged?.pdf.pages ?? []
   // One drive goes by its own name; several are browsed together under "OneDrive".
@@ -225,6 +249,7 @@ export function NewEsignRequestPage({
     if (!titleTouched || title.trim() === "") setTitle(name)
     if (!fileNameTouched || fileName.trim() === "") setFileName(`${name} - firmato.pdf`)
     if (next.folder && (!folderTouched || !folder)) setFolder(next.folder)
+    setShown(({ email }) => ({ email }))
     setSigners((current) =>
       current.map((s, i) => ({
         ...s,
@@ -376,15 +401,26 @@ export function NewEsignRequestPage({
     .map((e) => e.trim())
     .filter(Boolean)
   const badEmail = recipients.find((e) => !EMAIL.test(e))
-  const problems = [
-    !staged && "Choose the document.",
-    signers.length === 0 && "Add at least one signer.",
-    title.trim() === "" && "Give the request a title.",
-    saveToDrive && !folder && "Choose the OneDrive folder.",
-    saveToDrive && fileName.trim() === "" && "Name the signed file.",
-    badEmail && `“${badEmail}” isn't an email address.`,
-    ...outsiders.map((s) => `${s.name} can't sign documents of ${driveLabel(blockedDrive(s.sub) ?? "")}.`),
-  ].filter((p): p is string => Boolean(p))
+  const errors = {
+    document: staged ? undefined : "Choose the document.",
+    signers: signers.length > 0 ? undefined : "Add at least one signer.",
+    title: title.trim() === "" ? "Give the request a title." : undefined,
+    folder: saveToDrive && !folder ? "Choose the OneDrive folder." : undefined,
+    fileName: saveToDrive && fileName.trim() === "" ? "Name the signed file." : undefined,
+    email: badEmail ? `“${badEmail}” isn't an email address.` : undefined,
+  }
+  // Signers who may not sign these documents block the request too; their rows say why.
+  const problems = outsiders.length > 0 || Object.values(errors).some(Boolean)
+
+  function revalidate(field: keyof typeof shown) {
+    if (shown[field]) setShown((current) => ({ ...current, [field]: errors[field] }))
+  }
+
+  function showProblems() {
+    setAttempted(true)
+    setShown({ title: errors.title, fileName: errors.fileName, email: errors.email })
+    setBlockedSubmits((count) => count + 1)
+  }
 
   // When the viewer signs first, creating the request and signing it are one step.
   const myIndex = signers.findIndex((s) => s.sub === me)
@@ -445,8 +481,7 @@ export function NewEsignRequestPage({
 
   async function submit() {
     if (submitting || created.current) return
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return
+    if (problems || !staged) return showProblems()
     setSubmitting(true)
     const request = await create(staged.id)
     if (!request) return setSubmitting(false)
@@ -457,8 +492,10 @@ export function NewEsignRequestPage({
 
   function createAndSign() {
     if (submitting || created.current) return null
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return null
+    if (problems || !staged) {
+      showProblems()
+      return null
+    }
     return create(staged.id).then((request) => (request ? [{ requestId: request.id, title: request.title }] : []))
   }
 
@@ -501,7 +538,7 @@ export function NewEsignRequestPage({
         }
       />
       <PageContent width="record">
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
+        <div ref={form} className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">
             {staged ? (
               <div className="flex flex-col gap-2">
@@ -548,6 +585,8 @@ export function NewEsignRequestPage({
             ) : (
               <section
                 aria-label="Choose the document"
+                tabIndex={-1}
+                data-invalid={attempted || undefined}
                 onDragOver={(event) => {
                   event.preventDefault()
                   setDragging(true)
@@ -582,7 +621,7 @@ export function NewEsignRequestPage({
                     </div>
                   )}
                 </div>
-                {docError && <InlineAlert>{docError}</InlineAlert>}
+                {(docError || attempted) && <InlineAlert>{docError ?? errors.document}</InlineAlert>}
                 {source === "drive" && config.drives.length > 0 ? (
                   <DriveBrowser
                     mode="file"
@@ -625,8 +664,11 @@ export function NewEsignRequestPage({
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
-            {attempted && problems.length > 0 && <InlineAlert>{problems[0]}</InlineAlert>}
-            {submitError && <InlineAlert>{submitError}</InlineAlert>}
+            {submitError && (
+              <div ref={submitAlert}>
+                <InlineAlert>{submitError}</InlineAlert>
+              </div>
+            )}
             {createdRequest && (
               <InlineAlert tone="info">
                 Request created.{" "}
@@ -656,94 +698,106 @@ export function NewEsignRequestPage({
             <SectionCard title="Signers" count={signers.length || undefined}>
               {signers.length > 0 && (
                 <ol ref={signerList.surfaceRef} tabIndex={-1} className="mb-3 flex flex-col gap-3">
-                  {signers.map((s, index) => (
-                    <li
-                      key={s.sub}
-                      data-signer-row
-                      className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
-                          {index + 1}
-                        </span>
-                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                          <span className="truncate text-[14px] font-medium">{s.name}</span>
-                          {s.sub === me && <YouChip />}
-                        </span>
-                        {signers.length > 1 && (
-                          <>
-                            <IconButton
-                              label="Move up"
-                              icon={ArrowUp}
-                              disabled={index === 0}
-                              onClick={() => moveSigner(index, -1)}
-                            />
-                            <IconButton
-                              label="Move down"
-                              icon={ArrowDown}
-                              disabled={index === signers.length - 1}
-                              onClick={() => moveSigner(index, 1)}
-                            />
-                          </>
-                        )}
-                        <IconButton
-                          label={`Remove ${s.name}`}
-                          icon={Trash2}
-                          tone="danger"
-                          onClick={(event) => removeSigner(index, event.currentTarget)}
-                        />
-                      </div>
-                      {/* No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion. */}
-                      <Autocomplete items={ROLES} value={s.role} onValueChange={(role) => setRole(index, role)}>
-                        <ComboboxInput
-                          ref={(input: HTMLInputElement | null) => {
-                            if (input) roleInputs.current.set(s.sub, input)
-                            else roleInputs.current.delete(s.sub)
+                  {signers.map((s, index) => {
+                    const blocked = blockedDrive(s.sub)
+                    const blockedId = `${ids.signersError}-${index}`
+                    return (
+                      <li
+                        key={s.sub}
+                        data-signer-row
+                        tabIndex={blocked === undefined ? undefined : -1}
+                        aria-describedby={blocked === undefined ? undefined : blockedId}
+                        data-invalid={(attempted && blocked !== undefined) || undefined}
+                        className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
+                            {index + 1}
+                          </span>
+                          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span className="truncate text-[14px] font-medium">{s.name}</span>
+                            {s.sub === me && <YouChip />}
+                          </span>
+                          {signers.length > 1 && (
+                            <>
+                              <IconButton
+                                label="Move up"
+                                icon={ArrowUp}
+                                disabled={index === 0}
+                                onClick={() => moveSigner(index, -1)}
+                              />
+                              <IconButton
+                                label="Move down"
+                                icon={ArrowDown}
+                                disabled={index === signers.length - 1}
+                                onClick={() => moveSigner(index, 1)}
+                              />
+                            </>
+                          )}
+                          <IconButton
+                            label={`Remove ${s.name}`}
+                            icon={Trash2}
+                            tone="danger"
+                            onClick={(event) => removeSigner(index, event.currentTarget)}
+                          />
+                        </div>
+                        {/* No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion. */}
+                        <Autocomplete items={ROLES} value={s.role} onValueChange={(role) => setRole(index, role)}>
+                          <ComboboxInput
+                            ref={(input: HTMLInputElement | null) => {
+                              if (input) roleInputs.current.set(s.sub, input)
+                              else roleInputs.current.delete(s.sub)
+                            }}
+                            listLabel="roles"
+                            aria-label={`Role of ${s.name}`}
+                            placeholder="Role (optional), e.g. Segretario"
+                            maxLength={80}
+                          />
+                          <ComboboxContent>
+                            <ComboboxList>
+                              {(role: string) => (
+                                <ComboboxItem key={role} value={role}>
+                                  {role}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </ComboboxContent>
+                        </Autocomplete>
+                        {blocked !== undefined &&
+                          (attempted ? (
+                            <FieldError id={blockedId}>Can't sign documents of {driveLabel(blocked)}</FieldError>
+                          ) : (
+                            <p id={blockedId} className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
+                              <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                              Can't sign documents of {driveLabel(blocked)}
+                            </p>
+                          ))}
+                        <PlacesEditor
+                          name={s.name}
+                          places={s.places}
+                          disabled={!staged}
+                          adding={placing?.signer === index && placing.place === null}
+                          onShow={(at) => {
+                            setHighlight(at === null ? null : { signer: s.sub, place: at })
+                            const p = at === null ? undefined : s.places[at]
+                            if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
                           }}
-                          listLabel="roles"
-                          aria-label={`Role of ${s.name}`}
-                          placeholder="Role (optional), e.g. Segretario"
-                          maxLength={80}
+                          onKind={(at, kind) =>
+                            updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)))
+                          }
+                          onMove={(at) => setPlacing({ signer: index, place: at })}
+                          onRemove={(at) => removePlace(index, at)}
+                          onAdd={() =>
+                            setPlacing(
+                              placing?.signer === index && placing.place === null
+                                ? null
+                                : { signer: index, place: null }
+                            )
+                          }
                         />
-                        <ComboboxContent>
-                          <ComboboxList>
-                            {(role: string) => (
-                              <ComboboxItem key={role} value={role}>
-                                {role}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </ComboboxContent>
-                      </Autocomplete>
-                      {blockedDrive(s.sub) !== undefined && (
-                        <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
-                          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-                          Can't sign documents of {driveLabel(blockedDrive(s.sub) ?? "")}
-                        </p>
-                      )}
-                      <PlacesEditor
-                        name={s.name}
-                        places={s.places}
-                        disabled={!staged}
-                        adding={placing?.signer === index && placing.place === null}
-                        onShow={(at) => {
-                          setHighlight(at === null ? null : { signer: s.sub, place: at })
-                          const p = at === null ? undefined : s.places[at]
-                          if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
-                        }}
-                        onKind={(at, kind) =>
-                          updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)))
-                        }
-                        onMove={(at) => setPlacing({ signer: index, place: at })}
-                        onRemove={(at) => removePlace(index, at)}
-                        onAdd={() =>
-                          setPlacing(
-                            placing?.signer === index && placing.place === null ? null : { signer: index, place: null }
-                          )
-                        }
-                      />
-                    </li>
-                  ))}
+                      </li>
+                    )
+                  })}
                 </ol>
               )}
               {/* The page filters people itself and lists them only once something is typed; the list stays in place. */}
@@ -773,8 +827,11 @@ export function NewEsignRequestPage({
                       render={<Input id={ids.search} className={cn(fieldControl, "pl-9")} />}
                       aria-label="Find a person to add"
                       placeholder="Add a signer…"
+                      aria-invalid={(attempted && errors.signers !== undefined) || undefined}
+                      aria-describedby={attempted && errors.signers ? ids.signersError : undefined}
                     />
                   </div>
+                  {attempted && errors.signers && <FieldError id={ids.signersError}>{errors.signers}</FieldError>}
                   <ComboboxList className="p-0 empty:hidden">
                     {(person: EsignProfile) => (
                       <ComboboxItem key={person.sub} value={person} className="min-h-10 px-2 py-1.5">
@@ -832,16 +889,19 @@ export function NewEsignRequestPage({
 
             <SectionCard title="Details">
               <div className="flex flex-col gap-4">
-                <FormField label="Title" htmlFor={ids.title}>
+                <FormField label="Title" htmlFor={ids.title} error={shown.title}>
                   <Input
                     id={ids.title}
                     className={fieldControl}
                     value={title}
                     maxLength={200}
+                    aria-invalid={shown.title ? true : undefined}
+                    aria-describedby={shown.title ? fieldHintId(ids.title) : undefined}
                     onChange={(e) => {
                       setTitle(e.target.value)
                       setTitleTouched(true)
                     }}
+                    onBlur={() => revalidate("title")}
                   />
                 </FormField>
                 {config.drives.length > 0 && (
@@ -862,10 +922,17 @@ export function NewEsignRequestPage({
                               ? `${config.drives.length > 1 ? `${driveLabel(folder.driveId)}: ` : ""}/${folder.path}`
                               : "No folder chosen"}
                           </span>
-                          <Button variant="outline" size="sm" onClick={() => setChoosingFolder((v) => !v)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-invalid={(attempted && errors.folder !== undefined) || undefined}
+                            aria-describedby={attempted && errors.folder ? ids.folderError : undefined}
+                            onClick={() => setChoosingFolder((v) => !v)}
+                          >
                             {choosingFolder ? "Close" : "Choose folder"}
                           </Button>
                         </div>
+                        {attempted && errors.folder && <FieldError id={ids.folderError}>{errors.folder}</FieldError>}
                         {choosingFolder && (
                           <DriveBrowser
                             mode="folder"
@@ -880,16 +947,19 @@ export function NewEsignRequestPage({
                             }}
                           />
                         )}
-                        <FormField label="File name" htmlFor={`${ids.title}-file`}>
+                        <FormField label="File name" htmlFor={ids.fileName} error={shown.fileName}>
                           <Input
-                            id={`${ids.title}-file`}
+                            id={ids.fileName}
                             className={fieldControl}
                             value={fileName}
                             maxLength={200}
+                            aria-invalid={shown.fileName ? true : undefined}
+                            aria-describedby={shown.fileName ? fieldHintId(ids.fileName) : undefined}
                             onChange={(e) => {
                               setFileName(e.target.value)
                               setFileNameTouched(true)
                             }}
+                            onBlur={() => revalidate("fileName")}
                           />
                         </FormField>
                       </>
@@ -901,6 +971,7 @@ export function NewEsignRequestPage({
                   htmlFor={ids.emails}
                   optional
                   hint="Addresses separated by commas. Sent when every signature is in."
+                  error={shown.email}
                 >
                   <Input
                     id={ids.emails}
@@ -908,7 +979,10 @@ export function NewEsignRequestPage({
                     value={emails}
                     inputMode="email"
                     placeholder="segreteria@polinetwork.org"
+                    aria-invalid={shown.email ? true : undefined}
+                    aria-describedby={fieldHintId(ids.emails)}
                     onChange={(e) => setEmails(e.target.value)}
+                    onBlur={() => revalidate("email")}
                   />
                 </FormField>
                 {recipients.length > 0 && (
@@ -928,6 +1002,16 @@ export function NewEsignRequestPage({
         </div>
       </PageContent>
     </>
+  )
+}
+
+/** A problem shown at the control it is about, styled like `FormField`'s error. */
+function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="flex items-center gap-1.5 text-xs text-(--pn-danger-fg)">
+      <CircleAlert aria-hidden className="size-3.5 shrink-0" />
+      {children}
+    </p>
   )
 }
 
