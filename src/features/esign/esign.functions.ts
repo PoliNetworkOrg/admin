@@ -75,12 +75,17 @@ export const getEsignRequest = createServerFn()
 /** Documents signed together with one PIN, at most this many. */
 export const MAX_BATCH = 10
 
-/** The documents waiting for the caller's signature, in inbox order, for signing them together. */
+/**
+ * The documents waiting for the caller's signature, in inbox order, for signing them together; `first` (the request
+ * the caller came from) leads, so it is always among them.
+ */
 export const getEsignBatch = createServerFn()
   .middleware([esignReadMiddleware])
-  .handler(async ({ context }) => {
+  .validator(z.object({ first: z.uuid().optional() }))
+  .handler(async ({ data, context }) => {
     const inbox = await context.backend.esign.requests.list.query({ scope: "inbox" })
-    const waiting = inbox.filter((r) => r.myTurn)
+    const mine = inbox.filter((r) => r.myTurn)
+    const waiting = [...mine.filter((r) => r.id === data.first), ...mine.filter((r) => r.id !== data.first)]
     const items = await Promise.all(waiting.slice(0, MAX_BATCH).map((r) => requestDetail(context.backend, r.id)))
     return { items, more: Math.max(waiting.length - MAX_BATCH, 0), me: context.user.sub }
   })

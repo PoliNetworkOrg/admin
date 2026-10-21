@@ -26,7 +26,18 @@ const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" 
  * Signs the documents waiting for the viewer together: a strip of documents to check one by one, where the viewer's
  * boxes can still be moved, then one "Sign" that opens a single agent window and one PIN for all of them.
  */
-export function EsignBatchPage({ items, more, me }: { items: Item[]; more: number; me: string }) {
+export function EsignBatchPage({
+  items,
+  more,
+  me,
+  moved: carried,
+}: {
+  items: Item[]
+  more: number
+  me: string
+  /** Boxes already moved on the request page the viewer came from, by request id. */
+  moved?: Record<string, Place[]>
+}) {
   const navigate = useNavigate()
   const contentFn = useServerFn(getEsignDocumentContent)
   /** PDF contents by document id (a version never changes), so Next opens a document fetched in advance. */
@@ -51,7 +62,7 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
   const [reviewed, setReviewed] = useState<Set<string>>(() => new Set(items[0] ? [items[0].request.id] : []))
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set())
   /** The viewer's boxes per request, as they drag them. */
-  const [moved, setMoved] = useState<Map<string, Place[]>>(new Map())
+  const [moved, setMoved] = useState<Map<string, Place[]>>(() => new Map(Object.entries(carried ?? {})))
   /** The open document's place waiting for a click on its new spot. */
   const [placing, setPlacing] = useState<number | null>(null)
 

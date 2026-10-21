@@ -370,7 +370,18 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                       variant="outline"
                       size="sm"
                       nativeButton={false}
-                      render={<Link to="/dashboard/esign/sign" />}
+                      render={
+                        <Link
+                          to="/dashboard/esign/sign"
+                          search={{ first: request.id }}
+                          // Boxes moved here would otherwise snap back in a document the batch counts as checked.
+                          state={
+                            myDone === 0 && savedKey !== JSON.stringify(myPlaces)
+                              ? { esignMoved: { [request.id]: myPlaces } }
+                              : {}
+                          }
+                        />
+                      }
                     >
                       <Files aria-hidden /> Sign them together
                     </Button>
