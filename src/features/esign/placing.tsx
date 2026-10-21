@@ -53,10 +53,18 @@ export function MoveBoxButton({
   onPlacing: (at: number) => void
   ref?: Ref<HTMLButtonElement>
 }) {
-  if (places.length === 1) return <MoveBoxTrigger ref={ref} onClick={() => onPlacing(0)} />
+  if (places.length === 1)
+    return (
+      <Hint label="Move box" overflowOnly>
+        <MoveBoxTrigger ref={ref} onClick={() => onPlacing(0)} />
+      </Hint>
+    )
   return (
     <Menu>
-      <MenuTrigger render={<MoveBoxTrigger ref={ref} menu />} />
+      {/* The tooltip's trigger outside the menu's, so both get the button's pointer and focus events. */}
+      <Hint label="Move box" overflowOnly>
+        <MenuTrigger render={<MoveBoxTrigger ref={ref} menu />} />
+      </Hint>
       <MenuContent align="start">
         {places.map((p, at) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
@@ -71,18 +79,16 @@ export function MoveBoxButton({
 
 function MoveBoxTrigger({ menu = false, className, ...props }: ComponentProps<typeof Button> & { menu?: boolean }) {
   return (
-    <Hint label="Move box" overflowOnly>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={cn(buttonMotion, "text-(--pn-fg) @max-[420px]:w-9 @max-[420px]:px-0", className)}
-        {...props}
-      >
-        <MapPin aria-hidden className="text-(--pn-fg-muted)" />
-        <span className="@max-[420px]:sr-only">Move box</span>
-        {menu && <ChevronDown aria-hidden className="text-(--pn-fg-muted) @max-[420px]:hidden" />}
-      </Button>
-    </Hint>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(buttonMotion, "text-(--pn-fg) @max-[420px]:w-9 @max-[420px]:px-0", className)}
+      {...props}
+    >
+      <MapPin aria-hidden className="text-(--pn-fg-muted)" />
+      <span className="@max-[420px]:sr-only">Move box</span>
+      {menu && <ChevronDown aria-hidden className="text-(--pn-fg-muted) @max-[420px]:hidden" />}
+    </Button>
   )
 }
 
