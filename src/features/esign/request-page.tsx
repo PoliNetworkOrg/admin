@@ -653,6 +653,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
         }
         noun="reason"
         dirty={reason.trim() !== ""}
+        tone="danger"
+        icon={X}
         submitLabel="Decline request"
         onSubmit={decline}
         finalFocus={focusOutcome}
