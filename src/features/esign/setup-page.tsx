@@ -1,13 +1,15 @@
 import { CreditCard, Download, ExternalLink, MonitorCheck, Nfc, Play } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import { inlineLink, SectionCard } from "@/components/primitives"
+import { InlineAlert, inlineLink, SectionCard } from "@/components/primitives"
 import { SegmentedControl } from "@/components/primitives/segmented-control"
 import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
+import { computerOnly, phoneOnly } from "./action-card"
 import { AGENT_DOWNLOAD_URLS, AGENT_LAUNCH_URL, AGENT_ORIGINS, AGENT_RELEASES_URL } from "./agent"
-import { type Os, useComputerOs } from "./signing-device"
+import { type Os, useComputerOs, useSigningDevice } from "./signing-device"
 
 const OS_NAMES = { macos: "macOS", windows: "Windows", linux: "Linux" } satisfies Record<Os, string>
 
@@ -153,14 +155,18 @@ function PairStep({ os }: { os: Os }) {
   )
 }
 
-/** The download comes first on every system: the instructions start from the downloaded file. */
-function InstallStep({ os }: { os: Os }) {
+/**
+ * The download comes first on every system: the instructions start from the downloaded file. On a phone, reading the
+ * steps for a computer, it is a plain link rather than the page's primary.
+ */
+function InstallStep({ os, here }: { os: Os; here: boolean }) {
   if (os === "linux") {
     return (
       <Step number={3} icon={Download} title="Install PoliNetwork eSign">
         <div>
           <Button
             size="sm"
+            variant={here ? "default" : "outline"}
             nativeButton={false}
             render={<a href={AGENT_RELEASES_URL} target="_blank" rel="noreferrer" />}
           >
@@ -175,7 +181,12 @@ function InstallStep({ os }: { os: Os }) {
     <Step number={3} icon={Download} title="Install PoliNetwork eSign">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         {/* Same tab: the release asset downloads without leaving the page. */}
-        <Button size="sm" nativeButton={false} render={<a href={AGENT_DOWNLOAD_URLS[os]} />}>
+        <Button
+          size="sm"
+          variant={here ? "default" : "outline"}
+          nativeButton={false}
+          render={<a href={AGENT_DOWNLOAD_URLS[os]} />}
+        >
           <Download aria-hidden /> Download for {OS_NAMES[os]}
         </Button>
         <a
@@ -215,47 +226,88 @@ function CheckStep({ os }: { os: Os }) {
           <Play aria-hidden /> Start PoliNetwork eSign
         </Button>
       </div>
-      <p className="text-[13px]">Page doesn't open? Start PoliNetwork eSign, then open the status page again.</p>
     </Step>
+  )
+}
+
+function ComputerSteps({ os, here }: { os: Os; here: boolean }) {
+  return (
+    <>
+      <PairStep os={os} />
+      <InstallStep os={os} here={here} />
+      <CheckStep os={os} />
+    </>
+  )
+}
+
+/** On a phone or tablet: where to go, and how to read the steps here meanwhile. */
+function PhoneNote({ picked, className }: { picked: boolean; className?: string }) {
+  return (
+    <div className={className}>
+      <InlineAlert tone="info">
+        Open this page on the computer you will sign with.{!picked && " Or choose its system above to read the steps."}
+      </InlineAlert>
+    </div>
   )
 }
 
 /**
  * How to prepare a computer to sign with the CIE: reader, CIE ID, PoliNetwork eSign, a check. Phones and tablets get
- * no system preselected: the steps after the reader happen on the computer.
+ * no system preselected: the steps after the reader happen on the computer. Before hydration a Mac may be an iPad, so
+ * both renders come from the server and CSS shows the one for the screen.
  */
 export function EsignSetupPage() {
+  const device = useSigningDevice()
   const detected = useComputerOs()
   const [picked, setPicked] = useState<Os | null>(null)
   const os = picked ?? detected
+  const unknown = device === "unknown" && picked === null
+  const control = (value: Os | null) => (
+    <SegmentedControl label="Operating system" items={OS_ITEMS} value={value} onValueChange={setPicked} />
+  )
+  const reader = (
+    <Step number={1} icon={Nfc} title="Connect an NFC card reader">
+      <p>
+        The CIE is contactless: you need a USB NFC reader that works as a standard smart-card reader (PC/SC), sold as
+        compatible with the CIE 3.0. A phone can't take its place.
+      </p>
+    </Step>
+  )
 
   return (
     <>
       <PageBar
         width="settings"
-        description={
-          detected
-            ? "Prepare this computer once to sign with your CIE"
-            : "Open this page on the computer you will sign with"
+        description="Prepare your computer once to sign with your CIE"
+        left={
+          unknown ? (
+            <>
+              <div className={computerOnly}>{control(os)}</div>
+              <div className={phoneOnly}>{control(null)}</div>
+            </>
+          ) : (
+            control(os)
+          )
         }
-        left={<SegmentedControl label="Operating system" items={OS_ITEMS} value={os} onValueChange={setPicked} />}
       />
       <PageContent width="settings">
         <div className="flex max-w-[760px] flex-col gap-4">
-          <Step number={1} icon={Nfc} title="Connect an NFC card reader">
-            <p>
-              The CIE is contactless: you need a USB NFC reader that works as a standard smart-card reader (PC/SC), sold
-              as compatible with the CIE 3.0. A phone can't take its place.
-            </p>
-          </Step>
-          {os ? (
+          {unknown ? (
             <>
-              <PairStep os={os} />
-              <InstallStep os={os} />
-              <CheckStep os={os} />
+              <PhoneNote picked={false} className={phoneOnly} />
+              {reader}
+              {os && (
+                <div className={cn("flex flex-col gap-4", computerOnly)}>
+                  <ComputerSteps os={os} here />
+                </div>
+              )}
             </>
           ) : (
-            <p className="text-[13px] text-(--pn-fg-muted)">Choose your computer's system above for the next steps.</p>
+            <>
+              {!detected && <PhoneNote picked={picked !== null} />}
+              {reader}
+              {os && <ComputerSteps os={os} here={detected !== null} />}
+            </>
           )}
         </div>
       </PageContent>
