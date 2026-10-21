@@ -44,7 +44,7 @@ function NewRequestButton({ variant = "default", self }: { variant?: "default" |
 }
 
 /** Whom a request in progress waits on; the viewer's own turn shows as a badge, so it keeps the progress. */
-function waitingText(request: EsignRequest) {
+function turnText(request: EsignRequest) {
   const name = request.signers.find((s) => s.sub === request.turn[0])?.name
   if (request.myTurn || !name) return signedProgress(request)
   return request.turn.length > 1 ? `Waiting for ${name} and ${request.turn.length - 1} more` : `Waiting for ${name}`
@@ -69,20 +69,23 @@ const columns: DataTableColumn<EsignRequest>[] = [
     label: "Signers",
     width: 260,
     priority: 1,
-    cell: (r) => (
-      <span className="flex min-w-0 items-center gap-2">
-        <AvatarGroup
-          people={r.signers.map((s) => ({ id: s.id, name: s.name }))}
-          max={4}
-          listLabel={`Signers of ${r.title}`}
-        />
-        {r.status === "in_progress" && (
-          <Hint overflowOnly label={waitingText(r)}>
-            <span className="min-w-0 truncate text-[13px] text-(--pn-fg-muted) tabular-nums">{waitingText(r)}</span>
-          </Hint>
-        )}
-      </span>
-    ),
+    cell: (r) => {
+      const text = r.status === "in_progress" ? turnText(r) : null
+      return (
+        <span className="flex min-w-0 items-center gap-2">
+          <AvatarGroup
+            people={r.signers.map((s) => ({ id: s.id, name: s.name }))}
+            max={4}
+            listLabel={`Signers of ${r.title}`}
+          />
+          {text && (
+            <Hint overflowOnly label={text}>
+              <span className="min-w-0 truncate text-[13px] text-(--pn-fg-muted) tabular-nums">{text}</span>
+            </Hint>
+          )}
+        </span>
+      )
+    },
   },
   {
     id: "created",
