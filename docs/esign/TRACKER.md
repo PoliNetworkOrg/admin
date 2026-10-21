@@ -133,6 +133,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
+- ☐ Setup step 4 (`src/features/esign/setup-page.tsx`) says the status page "should show that PoliNetwork eSign is
+  running and ready to sign", which fits both v0.3.0 ("The agent is running") and the readiness status page of the next
+  agent release ("Ready to sign" once reader, card and software check out). Once that release is out, the step can
+  quote "Ready to sign".
 
 ## Manual steps for the maintainer (cannot be automated here)
 

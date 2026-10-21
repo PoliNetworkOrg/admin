@@ -184,8 +184,8 @@ export function EsignSetupPage() {
           </Step>
           <Step number={4} icon={MonitorCheck} title="Check that it works">
             <p>
-              Put your CIE on the reader and open the PoliNetwork eSign status page: it should say it's ready to sign.
-              Then sign a document from Signatures.
+              Put your CIE on the reader and open the PoliNetwork eSign status page: it should show that PoliNetwork
+              eSign is running and ready to sign. Then sign a document from Signatures.
             </p>
             {os === "macos" && (
               <p>
