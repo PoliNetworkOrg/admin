@@ -582,7 +582,14 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             {canCancel && (
               <ConfirmDialog
                 title="Cancel request?"
-                description="Nobody will be able to sign it anymore. Signatures already added stay in the document."
+                description={
+                  <>
+                    Nobody will be able to sign it anymore. Signatures already added stay in the document.
+                    {signingNow &&
+                      signingNow.sub !== me &&
+                      ` ${signingNow.name} is signing it right now and won't be able to finish.`}
+                  </>
+                }
                 confirmLabel="Cancel request"
                 cancelLabel="Keep request"
                 tone="danger"
