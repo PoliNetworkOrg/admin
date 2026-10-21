@@ -297,6 +297,8 @@ export function useSignWithCie(options: SignOptions) {
   }
 
   function notRunning() {
+    // The attempt is over (Cancel while waiting for the agent): the dialog keeps its last state while it fades out.
+    if (finishing.current || !sessionRef.current) return
     popupRef.current?.close()
     popupRef.current = null
     go({ kind: "notRunning", variant: notRunningVariant(readAgentFlag(), startFailed.current), setupOpened: false })
@@ -554,7 +556,7 @@ export function useSignWithCie(options: SignOptions) {
     }
   }, [following, session])
 
-  const deadline = mode?.kind === "opening" ? mode.deadline : null
+  const deadline = session && mode?.kind === "opening" ? mode.deadline : null
   useEffect(() => {
     if (deadline === null) return
     // Closed before PoliNetwork eSign answered: most likely on the browser's "can't be reached" page.
