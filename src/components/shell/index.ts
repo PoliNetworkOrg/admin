@@ -7,6 +7,7 @@ export {
   type PageKind,
   type PageMatch,
   panelServices,
+  type PendingCounts,
   type Section,
   sectionFor,
   type Service,

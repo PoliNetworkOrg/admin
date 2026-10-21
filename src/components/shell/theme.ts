@@ -213,10 +213,16 @@ function switchTheme(theme: Theme, source?: ThemeToggleSource) {
   const current: Reveal = { from, to: theme, heading: theme, clip: null, hold: null }
   reveal = current
   const toggle = revealToggle(source)
-  const { x, y } = iconCenter(toggle) ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  const width = window.innerWidth
+  const height = window.innerHeight
+  const { x, y } = iconCenter(toggle) ?? { x: width / 2, y: height / 2 }
+  const radius = Math.hypot(Math.max(x, width - x), Math.max(y, height - y))
   const lightOn = theme === "light"
-  const bulb = (r: number) => `circle(${r}px at ${x}px ${y}px)`
+  // In percentages of the snapshot (the viewport), not px: under browser zoom Chrome scales px lengths on the
+  // transition pseudo-elements a second time, which moved the circle off the toggle. A circle's % radius is
+  // relative to the box's diagonal / √2.
+  const bulb = (r: number) =>
+    `circle(${(r / (Math.hypot(width, height) / Math.SQRT2)) * 100}% at ${(x / width) * 100}% ${(y / height) * 100}%)`
   // The new snapshot is live: keep CSS transitions off until the reveal ends, or colors would also fade.
   root.setAttribute("data-theme-switching", "")
   root.setAttribute("data-theme-reveal", lightOn ? "on" : "off")
