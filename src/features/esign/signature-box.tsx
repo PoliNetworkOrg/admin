@@ -159,6 +159,8 @@ export function SignatureBox({
         "transition-[box-shadow,border-color,background-color,color] duration-[120ms,150ms,150ms,150ms] ease-(--pn-ease-out)",
         state === "active" &&
           "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
+        // The same colour on the white sheet, but opaque: the stamp drawn under a leaving box shows only as it fades.
+        state === "active" && leaving && "bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,white)]",
         state === "pending" &&
           "border-dashed border-(--pn-n-500) bg-[color-mix(in_oklab,white_70%,transparent)] text-(--pn-n-600)",
         state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-solid)",
