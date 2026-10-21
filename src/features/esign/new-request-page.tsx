@@ -1,8 +1,10 @@
 import { useBlocker, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
+import { TriangleAlert } from "lucide-react"
 import {
   type CSSProperties,
   type KeyboardEvent,
+  type SetStateAction,
   useEffect,
   useId,
   useLayoutEffect,
@@ -28,10 +30,18 @@ import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import type { EsignConfig, EsignPdfInfo, EsignProfile } from "@/lib/api/types"
+import type { EsignConfig, EsignDocumentMeta, EsignPdfInfo, EsignProfile } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
-import { composerPrimary, invalidRecipient, parseRecipients, signsFirst as creatorSignsFirst } from "./composer"
+import {
+  type ComposerSource,
+  composerPrimary,
+  declinedLine,
+  invalidRecipient,
+  parseRecipients,
+  prefillDraft,
+  signsFirst as creatorSignsFirst,
+} from "./composer"
 import { FieldError, quietField } from "./composer-fields"
 import { DeliveryRows, REVEAL_MS, type SaveView } from "./delivery-rows"
 import { DocumentDialogBody, DocumentPanes, useFileDrop } from "./document-picker"
@@ -59,7 +69,18 @@ import { SignerPicker, SignerRow, SpotRow } from "./signer-rows"
 import { useCanSignHere } from "./signing-device"
 import { useFillHeight } from "./use-fill-height"
 
-type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
+/**
+ * The document of the request: `folder` is the drive folder it was picked in, `drive` the drive it comes from, which
+ * decides who may sign it (null for an upload).
+ */
+type Staged = {
+  id: string
+  fileName: string
+  sha256: string
+  pdf: EsignPdfInfo
+  folder: DriveFolder | null
+  drive: string | null
+}
 /** Where the next click on a page puts a box: a row's existing place, or a new one when `place` is null. */
 type Placing = { row: string; place: number | null }
 /** Where the focus goes once the rows render: a row's picker, role or menu, or the free picker (`row: null`). */
@@ -76,6 +97,25 @@ function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
+function toStaged(
+  result: { document: EsignDocumentMeta; pdf: EsignPdfInfo },
+  folder: DriveFolder | null,
+  drive: string | null
+): Staged {
+  const { id, fileName, sha256 } = result.document
+  return { id, fileName, sha256, pdf: result.pdf, folder, drive }
+}
+
+function pdfFile(base64: string, fileName: string) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], fileName, { type: "application/pdf" })
+}
+
+/** The page size of the blank sheets shown while an earlier request's PDF opens. */
+const A4 = { width: 595, height: 842 }
+
 const middleOf = (p: BoxPlacement) => ({ page: p.page, y: p.y + p.height / 2 })
 const samePlace = (a: BoxPlacement, b: BoxPlacement) =>
   a.page === b.page && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
@@ -84,15 +124,22 @@ const samePlace = (a: BoxPlacement, b: BoxPlacement) =>
  * New request: the document fills the left of the workspace, and one column on the right says who signs and where
  * the signed copy goes, with the primary action pinned at its foot. Before there is a document the same two places
  * offer the shared drives and a dropzone.
+ *
+ * With a `source` it starts from an earlier request ("Send again"): everything is filled in from it, and its PDF is
+ * opened again from OneDrive, so a corrected file saved over the original is the one sent.
  */
 export function NewEsignRequestPage({
   config,
   signers: people,
   me,
+  source,
+  sourceError,
 }: {
   config: EsignConfig
   signers: EsignProfile[]
   me: string
+  source: ComposerSource | null
+  sourceError: string | null
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -105,12 +152,29 @@ export function NewEsignRequestPage({
   const workspace = useFillHeight<HTMLDivElement>()
   const ids = { titleError: useId(), signersError: useId() }
   const hasDrives = config.drives.length > 0
+  const [prefill] = useState(() =>
+    source
+      ? prefillDraft(
+          source.request,
+          config.drives.map((d) => d.id)
+        )
+      : null
+  )
 
   const [staged, setStaged] = useState<Staged | null>(null)
   const [base64, setBase64] = useState<string | null>(null)
   const [busyItem, setBusyItem] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [docError, setDocError] = useState<{ from: "drive" | "upload"; message: string } | null>(null)
+  const [docError, setDocError] = useState<{ from: "drive" | "upload"; message: string } | null>(
+    sourceError ? { from: "drive", message: sourceError } : null
+  )
+  /** The earlier request's PDF is being opened: the workspace shows its pages as blank sheets meanwhile. */
+  const [opening, setOpening] = useState(source !== null)
+  /** The document that is the earlier request's own copy, because its OneDrive file couldn't be opened. */
+  const [copyOf, setCopyOf] = useState<string | null>(null)
+  /** The document "Check again" found unchanged in OneDrive. */
+  const [stillSame, setStillSame] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
   const [changingPdf, setChangingPdf] = useState(false)
   const bytes = usePdfBytes(base64)
   /** The text of the document on screen, where its signature spots are found; null while it is read. */
@@ -132,15 +196,24 @@ export function NewEsignRequestPage({
     }
   }, [bytes])
   const reading = bytes !== null && anchors === null
+  /** Until the document is open and read, its spots may still become rows: the signers and the primary wait. */
+  const loading = opening || reading
   const [slowReading, setSlowReading] = useState(false)
   useEffect(() => {
-    if (!reading) return setSlowReading(false)
+    if (!loading) return setSlowReading(false)
     const timer = window.setTimeout(() => setSlowReading(true), READING_SKELETON_MS)
     return () => window.clearTimeout(timer)
-  }, [reading])
+  }, [loading])
 
   /** The signers group in signing order: people, and the spots found in the PDF, filled or not. */
-  const [rows, setRows] = useState<SignerDraft[]>([])
+  const [rows, setRows] = useState<SignerDraft[]>(prefill?.rows ?? [])
+  /** Something was changed by hand, so leaving asks first. A request started from another one opens unchanged. */
+  const [edited, setEdited] = useState(false)
+  /** The signers as changed by hand. */
+  function changeRows(update: SetStateAction<SignerDraft[]>) {
+    setEdited(true)
+    setRows(update)
+  }
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
@@ -153,12 +226,13 @@ export function NewEsignRequestPage({
   const [activation, setActivation] = useState({ row: "", count: 0 })
   /** "2 signature spots found", announced once per document. */
   const [spotsFound, setSpotsFound] = useState("")
-  const [ordered, setOrdered] = useState(true)
+  const [ordered, setOrdered] = useState(prefill?.ordered ?? true)
 
-  const [title, setTitle] = useState("")
-  const [titleTouched, setTitleTouched] = useState(false)
-  const [saveToDrive, setSaveToDrive] = useState(hasDrives)
-  const [folder, setFolder] = useState<DriveFolder | null>(null)
+  // A request started from another one keeps its title, folder and file name when its document comes.
+  const [title, setTitle] = useState(prefill?.title ?? "")
+  const [titleTouched, setTitleTouched] = useState(prefill !== null)
+  const [saveToDrive, setSaveToDrive] = useState(prefill?.saveToDrive ?? hasDrives)
+  const [folder, setFolder] = useState<DriveFolder | null>(prefill?.folder ?? null)
   const [saveView, setSaveView] = useState<SaveView>("closed")
   /** Undefined until local storage is read after mount, so the server and the first client render agree. */
   const [lastFolder, setLastFolder] = useState<Pick<DriveFolder, "driveId" | "id"> | null>()
@@ -171,12 +245,12 @@ export function NewEsignRequestPage({
     }
     setLastFolder(stored)
   }, [])
-  const [fileName, setFileName] = useState("")
-  const [fileNameTouched, setFileNameTouched] = useState(false)
-  const [folderTouched, setFolderTouched] = useState(false)
-  const [emails, setEmails] = useState("")
+  const [fileName, setFileName] = useState(prefill?.fileName ?? "")
+  const [fileNameTouched, setFileNameTouched] = useState(Boolean(prefill?.fileName))
+  const [folderTouched, setFolderTouched] = useState(Boolean(prefill?.folder))
+  const [emails, setEmails] = useState(prefill?.emails ?? "")
   const [emailOpen, setEmailOpen] = useState(false)
-  const [message, setMessage] = useState("")
+  const [message, setMessage] = useState(prefill?.message ?? "")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdRequest, setCreatedRequest] = useState<string | null>(null)
@@ -209,7 +283,11 @@ export function NewEsignRequestPage({
     return () => window.clearTimeout(timer)
   }, [blockedSubmits])
 
-  const pages = staged?.pdf.pages ?? []
+  const blankPages = useMemo(
+    () => Array.from({ length: source?.original.pages ?? 0 }, () => A4),
+    [source?.original.pages]
+  )
+  const pages = staged?.pdf.pages ?? (opening ? blankPages : [])
   const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
 
   const pickerRef = useRef<HTMLInputElement>(null)
@@ -231,13 +309,15 @@ export function NewEsignRequestPage({
 
   /** The first document was just picked: once its spots are known, the focus moves on to the first one to fill. */
   const focusAfterPick = useRef(false)
+  /** The document is the earlier request's again: signers without a spot keep the places they had on it. */
+  const keepPlaces = useRef(false)
   /** The text the rows were last laid out on: each document's text lays them out once. */
   const laidOut = useRef<TextAnchor[] | null>(null)
   useEffect(() => {
     if (!staged || anchors === null || laidOut.current === anchors) return
     laidOut.current = anchors
     const spots = findSpots(anchors, staged.pdf.pages)
-    const next = placeRows(rows, spots, anchors, staged.pdf.pages)
+    const next = placeRows(rows, spots, anchors, staged.pdf.pages, { keepPlaces: keepPlaces.current })
     setRows(next)
     setPlacing(null)
     setSpotsFound(
@@ -248,13 +328,21 @@ export function NewEsignRequestPage({
     setFocus(first ? middleOf(first) : { page: 0, y: 0 })
     if (focusAfterPick.current && window.matchMedia("(pointer: fine)").matches) {
       const empty = next.find((r) => !r.person)
-      pendingFocus.current = { row: empty?.id ?? null, part: "picker" }
+      // A request started from another one comes complete: only a spot left to fill takes the focus.
+      if (empty || !source) pendingFocus.current = { row: empty?.id ?? null, part: "picker" }
     }
     focusAfterPick.current = false
-  }, [anchors, staged, rows])
+  }, [anchors, staged, rows, source])
 
-  function adopt(next: Staged, content: string) {
+  /**
+   * Shows a document and lays the rows out on it. `again`: it is the earlier request's document, opened for it or
+   * checked again, which keeps the signers' places and isn't a change made by hand.
+   */
+  function adopt(next: Staged, content: string, { again = false } = {}) {
     if (!staged) focusAfterPick.current = true
+    keepPlaces.current = again
+    if (!again) setEdited(true)
+    setOpening(false)
     setStaged(next)
     setBase64(content)
     setChangingPdf(false)
@@ -286,7 +374,7 @@ export function NewEsignRequestPage({
       const buffer = new Uint8Array(await file.arrayBuffer())
       let binary = ""
       for (let i = 0; i < buffer.length; i += 0x8000) binary += String.fromCharCode(...buffer.subarray(i, i + 0x8000))
-      adopt({ id: result.document.id, fileName: result.document.fileName, pdf: result.pdf, folder: null }, btoa(binary))
+      adopt(toStaged(result, null, null), btoa(binary))
     } catch (error) {
       console.error(error)
       setDocError({ from: "upload", message: error instanceof Error ? error.message : "Couldn't upload the PDF." })
@@ -301,10 +389,7 @@ export function NewEsignRequestPage({
     try {
       const result = await importFn({ data: { driveId: from.driveId, itemId } })
       const content = await contentFn({ data: { documentId: result.document.id } })
-      adopt(
-        { id: result.document.id, fileName: result.document.fileName, pdf: result.pdf, folder: from },
-        content.base64
-      )
+      adopt(toStaged(result, from, from.driveId), content.base64)
       const last = { driveId: from.driveId, id: from.id }
       window.localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify(last))
       setLastFolder(last)
@@ -313,6 +398,66 @@ export function NewEsignRequestPage({
       setDocError({ from: "drive", message: error instanceof Error ? error.message : "Couldn't open the PDF." })
     } finally {
       setBusyItem(null)
+    }
+  }
+
+  /**
+   * Opens the earlier request's PDF: its OneDrive file read again, so a corrected file saved over the original is the
+   * one sent; else, for an upload or a file gone from OneDrive, the request's own first version, uploaded again as a
+   * new document. Each ends up a new document, as the backend has no way to reuse one.
+   */
+  async function openSource({ original }: ComposerSource) {
+    const from = original.source
+    if (from.kind === "drive") {
+      try {
+        const result = await importFn({ data: { driveId: from.driveId, itemId: from.itemId } })
+        const content = await contentFn({ data: { documentId: result.document.id } })
+        return adopt(toStaged(result, null, from.driveId), content.base64, { again: true })
+      } catch (error) {
+        // Deleted, moved or out of reach: the request's own copy stands in, and the composer says so.
+        console.error(error)
+      }
+    }
+    try {
+      const content = await contentFn({ data: { documentId: original.id } })
+      const form = new FormData()
+      form.set("file", pdfFile(content.base64, content.fileName))
+      const result = await uploadFn({ data: form })
+      adopt(toStaged(result, null, null), content.base64, { again: true })
+      if (from.kind === "drive") setCopyOf(result.document.id)
+    } catch (error) {
+      // The rest stays filled in for whichever document is chosen.
+      console.error(error)
+      setOpening(false)
+      setDocError({ from: "drive", message: "Couldn't open the PDF." })
+    }
+  }
+
+  // Once, however often the loader runs again.
+  const sourceOpened = useRef(false)
+  useEffect(() => {
+    if (!source || sourceOpened.current) return
+    sourceOpened.current = true
+    void openSource(source)
+  }, [source])
+
+  /** Reads the earlier request's OneDrive file again, and takes it when it changed. */
+  async function checkAgain() {
+    const from = source?.original.source
+    if (!staged || from?.kind !== "drive") return
+    setChecking(true)
+    try {
+      const result = await importFn({ data: { driveId: from.driveId, itemId: from.itemId } })
+      if (result.document.sha256 === staged.sha256) setStillSame(staged.id)
+      else {
+        const content = await contentFn({ data: { documentId: result.document.id } })
+        adopt(toStaged(result, staged.folder, from.driveId), content.base64, { again: true })
+      }
+    } catch (error) {
+      console.error(error)
+      appToast.error("Couldn't open the OneDrive file.")
+    } finally {
+      setChecking(false)
     }
   }
 
@@ -325,7 +470,7 @@ export function NewEsignRequestPage({
   function addSigner(person: EsignProfile) {
     const box = defaultPlace(anchors ?? [], pages, allPlaces())
     const row = freeRow({ sub: person.sub, name: person.name }, "", box)
-    setRows((current) => [...current, row])
+    changeRows((current) => [...current, row])
     setFocus(middleOf(row.places[0]))
     pendingFocus.current = { row: row.id, part: "role" }
   }
@@ -333,7 +478,7 @@ export function NewEsignRequestPage({
   /** Puts a person in an empty spot; the focus moves on to the next empty one, else to the row's menu. */
   function fillSpot(id: string, person: EsignProfile) {
     const next = rows.map((r) => (r.id === id ? { ...r, person: { sub: person.sub, name: person.name } } : r))
-    setRows(next)
+    changeRows(next)
     const at = next.findIndex((r) => r.id === id)
     const following = [...next.slice(at + 1), ...next.slice(0, at)].find((r) => !r.person)
     pendingFocus.current = following ? { row: following.id, part: "picker" } : { row: id, part: "menu" }
@@ -344,7 +489,7 @@ export function NewEsignRequestPage({
     const row = rows.find((r) => r.id === id)
     if (!row?.spot) return removeRow(id, trigger)
     const { spot } = row
-    setRows((current) => current.map((r) => (r.id === id ? { ...r, person: null, places: spot.places } : r)))
+    changeRows((current) => current.map((r) => (r.id === id ? { ...r, person: null, places: spot.places } : r)))
     setPlacing(null)
     pendingFocus.current = { row: id, part: "picker" }
   }
@@ -352,7 +497,7 @@ export function NewEsignRequestPage({
   function removeRow(id: string, trigger: HTMLElement | null) {
     if (rows.length === 1) pendingFocus.current = { row: null, part: "picker" }
     else if (trigger) signerList.capture(trigger, { restore: true })
-    setRows((current) => current.filter((r) => r.id !== id))
+    changeRows((current) => current.filter((r) => r.id !== id))
     setPlacing(null)
     setRowPointed(null)
     setBoxPointed(null)
@@ -360,7 +505,7 @@ export function NewEsignRequestPage({
 
   function moveRow(index: number, by: -1 | 1) {
     setPlacing(null)
-    setRows((current) => {
+    changeRows((current) => {
       const next = [...current]
       const [item] = next.splice(index, 1)
       next.splice(index + by, 0, item)
@@ -393,7 +538,7 @@ export function NewEsignRequestPage({
       ? row.places.map((p, i) => (i === at ? { ...target, kind: p.kind, byRole: true as const } : p))
       : row.places
     if (moved) setFocus(middleOf(places[at]))
-    setRows((current) => current.map((r) => (r.id === id ? { ...r, role, places } : r)))
+    changeRows((current) => current.map((r) => (r.id === id ? { ...r, role, places } : r)))
   }
 
   /** A free row whose finished role names an empty spot moves into it: one row for the person, at the label. */
@@ -403,7 +548,7 @@ export function NewEsignRequestPage({
     if (!row?.person || !empty?.spot) return
     const { person } = row
     const places = [...empty.spot.places, ...row.places.filter((p) => !p.byRole)]
-    setRows((current) =>
+    changeRows((current) =>
       current.filter((r) => r.id !== id).map((r) => (r.id === empty.id ? { ...r, person, places } : r))
     )
     setPlacing(null)
@@ -412,7 +557,7 @@ export function NewEsignRequestPage({
   }
 
   function updatePlaces(id: string, update: (places: DraftPlace[]) => DraftPlace[]) {
-    setRows((current) => current.map((r) => (r.id === id ? { ...r, places: withSignature(update(r.places)) } : r)))
+    changeRows((current) => current.map((r) => (r.id === id ? { ...r, places: withSignature(update(r.places)) } : r)))
   }
 
   // The box comes back with every field it was given: rebuilt without `byRole`, it no longer follows the role.
@@ -469,7 +614,13 @@ export function NewEsignRequestPage({
   const meAddable = available.some((p) => p.sub === me)
   /** "Me" sits in the first slot to fill: the first empty spot, else the free picker. */
   const firstEmpty = rows.find((r) => !r.person)?.id
-  const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
+  /** Why a signer can't sign this request: no longer among those who may sign, or kept out by a drive's rule. */
+  function cantSign(sub: string) {
+    if (!people.some((p) => p.sub === sub)) return "Can't sign anymore."
+    const drive = blockedDrive(sub)
+    return drive === undefined ? undefined : `Can't sign documents of ${driveLabel(drive)}.`
+  }
+  const outsiders = signers.filter((s) => cantSign(s.sub) !== undefined)
 
   function emptyText(query: string) {
     if (eligible.length === 0)
@@ -525,9 +676,7 @@ export function NewEsignRequestPage({
 
   const creating = useRef(false)
 
-  const untouched =
-    staged === null && title.trim() === "" && emails.trim() === "" && message.trim() === "" && rows.length === 0
-  const dirty = createdRequest === null && !untouched
+  const dirty = createdRequest === null && edited
   // Reads the ref when it runs, so moving to the request just created is never blocked.
   const leave = useBlocker({
     shouldBlockFn: () => dirty && created.current === null,
@@ -652,6 +801,24 @@ export function NewEsignRequestPage({
   }
   const driveError = docError?.from === "drive" && <InlineAlert className="shrink-0">{docError.message}</InlineAlert>
   const uploadError = docError?.from === "upload" && <InlineAlert className="shrink-0">{docError.message}</InlineAlert>
+  /** The workspace shows from the start for a request started from another one, its PDF still opening. */
+  const workspaceOn = staged !== null || opening
+
+  const declined = source && declinedLine(source.request)
+  /** The PDF on screen stands in for the OneDrive file, or is the very one that was declined. */
+  function sourceWarning() {
+    if (!source || !staged) return null
+    if (copyOf === staged.id) return "Couldn't open the OneDrive file. This is the request's copy."
+    if (source.request.status !== "declined" || staged.sha256 !== source.original.sha256) return null
+    return stillSame === staged.id ? "Still the same PDF." : "Same PDF as before."
+  }
+  const warning = sourceWarning()
+  const canCheckAgain = source?.original.source.kind === "drive" && copyOf !== staged?.id
+  // While the PDF opens or is read, the signers group keeps the height it will have: one row for a first document; a
+  // request started from another one has its rows, "Add signer" and, with two people, the order checkbox.
+  const waitingRows = Math.max(rows.length, 1)
+  const waitingRowsHeight = waitingRows * 40 + (waitingRows - 1) * 4
+  const waitingHeight = rows.length === 0 ? waitingRowsHeight : waitingRowsHeight + 44 + (rows.length > 1 ? 32 : 0)
 
   return (
     <>
@@ -665,13 +832,13 @@ export function NewEsignRequestPage({
           ref={workspace.ref}
           style={workspaceStyle}
           className="@container/composer [--workspace-h:max(480px,calc(100dvh-112px))]"
-          {...(staged ? {} : pageDrop.handlers)}
+          {...(workspaceOn ? {} : pageDrop.handlers)}
         >
           <section
-            aria-label={staged ? undefined : "Choose the document"}
+            aria-label={workspaceOn ? undefined : "Choose the document"}
             className="flex flex-col gap-4 @min-[900px]/composer:grid @min-[900px]/composer:h-(--workspace-h) @min-[900px]/composer:grid-cols-[minmax(0,1fr)_380px] @min-[1040px]/composer:grid-cols-[minmax(0,1fr)_400px]"
           >
-            {!staged ? (
+            {!workspaceOn ? (
               <DocumentPanes
                 {...documentPicker}
                 dragging={pageDrop.dragging}
@@ -687,7 +854,9 @@ export function NewEsignRequestPage({
                     pages={pages}
                     status={
                       placing === null
-                        ? null
+                        ? opening
+                          ? "Opening the PDF…"
+                          : null
                         : placing.place === null
                           ? `Click where ${placingName} signs again.`
                           : `Click the new spot for ${placingName}.`
@@ -711,7 +880,7 @@ export function NewEsignRequestPage({
                     focus={focus}
                     focusOnlyIfAway
                     overlay={(page) =>
-                      !reading &&
+                      !loading &&
                       rows.flatMap((row) =>
                         row.places.map((p, at) => {
                           if (p.page !== page) return null
@@ -766,11 +935,35 @@ export function NewEsignRequestPage({
                         onChange={(value) => {
                           setTitle(value)
                           setTitleTouched(true)
+                          setEdited(true)
                         }}
                         onBlur={() => revalidate("title")}
                       />
                       {shown.title && <FieldError id={ids.titleError}>{shown.title}</FieldError>}
-                      {staged.pdf.signatures.length > 0 && (
+                      {declined && <p className="text-[13px]/5 text-pretty text-(--pn-fg-muted)">{declined}</p>}
+                      {source && (
+                        <div aria-live="polite">
+                          {warning && (
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="flex items-start gap-1.5 py-1.5 text-[13px]/5 text-pretty text-(--pn-warning-fg)">
+                                <TriangleAlert aria-hidden className="mt-[3px] size-3.5 shrink-0" />
+                                {warning}
+                              </p>
+                              {canCheckAgain && (
+                                <LoadingButton
+                                  variant="ghost"
+                                  className="-mr-2 shrink-0"
+                                  pending={checking}
+                                  onClick={checkAgain}
+                                >
+                                  Check again
+                                </LoadingButton>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {staged && staged.pdf.signatures.length > 0 && (
                         <p className="text-[13px] text-(--pn-fg-muted)">
                           Already signed by {staged.pdf.signatures.map((s) => s.signerName).join(", ")}
                         </p>
@@ -782,10 +975,13 @@ export function NewEsignRequestPage({
                       <p className="sr-only" aria-live="polite">
                         {spotsFound}
                       </p>
-                      {reading ? (
-                        // One row's height while the PDF is read, so nothing jumps when its spots arrive.
-                        <div className="h-10">
-                          {slowReading && <BarSkeleton label="Reading the PDF…" className="h-10" />}
+                      {loading ? (
+                        <div style={{ height: waitingHeight }}>
+                          {slowReading && (
+                            <div style={{ height: waitingRowsHeight }}>
+                              <BarSkeleton label="Reading the PDF…" bars={waitingRows} className="h-full" />
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <>
@@ -816,7 +1012,6 @@ export function NewEsignRequestPage({
                                       onRemove={(trigger) => removeRow(row.id, trigger)}
                                     />
                                   )
-                                const blocked = blockedDrive(row.person.sub)
                                 return (
                                   <SignerRow
                                     key={row.id}
@@ -827,7 +1022,7 @@ export function NewEsignRequestPage({
                                     number={numbers.get(row.id)}
                                     numbered={numbered}
                                     isMe={row.person.sub === me}
-                                    blockedBy={blocked === undefined ? undefined : driveLabel(blocked)}
+                                    cantSign={cantSign(row.person.sub)}
                                     attempted={attempted}
                                     {...pointProps}
                                     onRole={(role) => setRole(row.id, role)}
@@ -873,7 +1068,10 @@ export function NewEsignRequestPage({
                               <Checkbox
                                 className={cn(checkboxControl, "mt-0")}
                                 checked={ordered}
-                                onCheckedChange={(value) => setOrdered(Boolean(value))}
+                                onCheckedChange={(value) => {
+                                  setOrdered(Boolean(value))
+                                  setEdited(true)
+                                }}
                               />
                               Sign in this order
                             </label>
@@ -896,24 +1094,35 @@ export function NewEsignRequestPage({
                           setFolder(picked)
                           setFolderTouched(true)
                           setSaveToDrive(true)
+                          setEdited(true)
                         }}
-                        onDontSave={() => setSaveToDrive(false)}
+                        onDontSave={() => {
+                          setSaveToDrive(false)
+                          setEdited(true)
+                        }}
                         onFileName={(name) => {
                           setFileName(name)
                           setFileNameTouched(true)
+                          setEdited(true)
                         }}
                         onFileNameBlur={() => revalidate("fileName")}
                         folderError={attempted ? errors.folder : undefined}
                         fileNameError={shown.fileName}
                         emails={emails}
                         recipients={recipients}
-                        onEmails={setEmails}
+                        onEmails={(value) => {
+                          setEmails(value)
+                          setEdited(true)
+                        }}
                         onEmailsBlur={() => revalidate("email")}
                         emailError={shown.email}
                         emailOpen={emailOpen}
                         onEmailOpen={setEmailOpen}
                         message={message}
-                        onMessage={setMessage}
+                        onMessage={(value) => {
+                          setMessage(value)
+                          setEdited(true)
+                        }}
                       />
                     </div>
                   </div>
@@ -931,18 +1140,18 @@ export function NewEsignRequestPage({
                         </a>
                       </InlineAlert>
                     )}
-                    {/* Busy while the PDF is read: its spots may still become rows to fill. */}
+                    {/* Busy while the PDF opens or is read: its spots may still become rows to fill. */}
                     <div
                       ref={primaryRef}
                       data-composer-primary
-                      aria-busy={reading || undefined}
+                      aria-busy={loading || undefined}
                       className="flex flex-col items-end gap-2 self-end"
                     >
                       {primary === "send" ? (
                         <LoadingButton
                           className="h-10 gap-2"
                           pending={submitting}
-                          disabled={createdRequest !== null || reading}
+                          disabled={createdRequest !== null || loading}
                           aria-keyshortcuts="Meta+Enter Control+Enter"
                           onClick={submit}
                         >
@@ -953,7 +1162,7 @@ export function NewEsignRequestPage({
                           className="gap-2"
                           aria-keyshortcuts="Meta+Enter Control+Enter"
                           prepare={createAndSign}
-                          disabled={submitting || createdRequest !== null || reading}
+                          disabled={submitting || createdRequest !== null || loading}
                           onSigned={() => created.current && void openRequest(created.current.id)}
                           onStopped={signingStopped}
                         >

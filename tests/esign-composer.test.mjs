@@ -3,8 +3,10 @@ import test from "node:test"
 
 import {
   composerPrimary,
+  declinedLine,
   invalidRecipient,
   parseRecipients,
+  prefillDraft,
   savedToText,
   signsFirst,
 } from "../src/features/esign/composer.ts"
@@ -51,4 +53,67 @@ void test("recipients split on commas, semicolons and spaces, and the first bad 
   assert.equal(invalidRecipient(recipients), undefined)
   assert.equal(invalidRecipient(parseRecipients("mario@example.com, foo")), "foo")
   assert.deepEqual(parseRecipients(""), [])
+})
+
+const place = { page: 0, x: 0.1, y: 0.8, width: 0.3, height: 0.07, kind: "signature" }
+const signer = (position, sub, name, role, extra = {}) => ({
+  position,
+  sub,
+  name,
+  role,
+  places: [{ ...place, x: 0.1 + position * 0.4 }],
+  status: "pending",
+  declineReason: null,
+  ...extra,
+})
+const declined = {
+  title: "Verbale Consiglio Direttivo 2026-10-10",
+  status: "declined",
+  ordered: true,
+  // Listed out of order: the prefill follows `position`.
+  signers: [
+    signer(1, "mario", "Mario Rossi", "Presidente", { status: "declined", declineReason: " Wrong date. " }),
+    signer(0, "me", "Anna Bianchi", null, { status: "signed" }),
+  ],
+  output: { driveId: "dev", folderId: "f1", folderPath: "Verbali/2026", fileName: "Verbale - firmato.pdf" },
+  email: { to: ["segreteria@example.org", "mario@example.com"], message: "In allegato." },
+}
+
+void test("a request sent again copies the title, the signers in order with roles and places, and the delivery", () => {
+  const draft = prefillDraft(declined, ["dev"])
+  assert.equal(draft.title, "Verbale Consiglio Direttivo 2026-10-10")
+  assert.equal(draft.ordered, true)
+  assert.deepEqual(
+    draft.rows.map((r) => [r.id, r.person.name, r.role, r.spot, r.places[0].x]),
+    [
+      ["person:me", "Anna Bianchi", "", null, 0.1],
+      ["person:mario", "Mario Rossi", "Presidente", null, 0.5],
+    ]
+  )
+  assert.deepEqual(draft.rows[0].places[0], { ...place, x: 0.1 })
+  assert.equal(draft.saveToDrive, true)
+  assert.deepEqual(draft.folder, { driveId: "dev", id: "f1", path: "Verbali/2026" })
+  assert.equal(draft.fileName, "Verbale - firmato.pdf")
+  assert.equal(draft.emails, "segreteria@example.org, mario@example.com")
+  assert.equal(draft.message, "In allegato.")
+})
+
+void test("a request kept in the dashboard stays so, and a folder on a drive gone is asked again", () => {
+  const kept = prefillDraft({ ...declined, output: null, email: null }, ["dev"])
+  assert.equal(kept.saveToDrive, false)
+  assert.equal(kept.folder, null)
+  assert.equal(kept.emails, "")
+  assert.equal(kept.message, "")
+  const driveGone = prefillDraft(declined, ["other"])
+  assert.equal(driveGone.saveToDrive, true)
+  assert.equal(driveGone.folder, null)
+  assert.equal(driveGone.fileName, "Verbale - firmato.pdf")
+  assert.equal(prefillDraft(declined, []).saveToDrive, false, "no drives configured at all")
+})
+
+void test("a declined request names who declined and why; other requests have no line", () => {
+  assert.equal(declinedLine(declined), "Mario Rossi declined: “Wrong date.”")
+  const noReason = declined.signers.map((s) => ({ ...s, declineReason: null }))
+  assert.equal(declinedLine({ status: "declined", signers: noReason }), "Mario Rossi declined.")
+  assert.equal(declinedLine({ ...declined, status: "cancelled" }), null)
 })

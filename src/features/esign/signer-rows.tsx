@@ -117,9 +117,9 @@ type SignerRowProps = {
   number?: number
   numbered: boolean
   isMe: boolean
-  /** The drive whose documents this signer may not sign, by its label. */
-  blockedBy?: string
-  /** A blocked submit made the drive rule an error. */
+  /** Why this signer can't sign the request ("Can't sign documents of OneDrive."): a warning, an error once submitted. */
+  cantSign?: string
+  /** A blocked submit made `cantSign` an error. */
   attempted: boolean
   pointed: boolean
   onPoint: (inside: boolean) => void
@@ -149,7 +149,7 @@ export function SignerRow({
   number,
   numbered,
   isMe,
-  blockedBy,
+  cantSign,
   attempted,
   pointed,
   onPoint,
@@ -173,8 +173,8 @@ export function SignerRow({
       numbered={numbered}
       pointed={pointed}
       onPoint={onPoint}
-      invalid={attempted && blockedBy !== undefined}
-      describedBy={blockedBy === undefined ? undefined : blockedId}
+      invalid={attempted && cantSign !== undefined}
+      describedBy={cantSign === undefined ? undefined : blockedId}
     >
       {numbered && (
         <span className="grid size-5 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
@@ -278,14 +278,14 @@ export function SignerRow({
           onRemove={onRemovePlace}
         />
       )}
-      {blockedBy !== undefined && (
+      {cantSign !== undefined && (
         <div className={cn("pb-2", detailCell(numbered))}>
           {attempted ? (
-            <FieldError id={blockedId}>Can't sign documents of {blockedBy}.</FieldError>
+            <FieldError id={blockedId}>{cantSign}</FieldError>
           ) : (
             <p id={blockedId} className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
               <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-              Can't sign documents of {blockedBy}.
+              {cantSign}
             </p>
           )}
         </div>

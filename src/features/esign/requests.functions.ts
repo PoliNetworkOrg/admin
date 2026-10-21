@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
 import { esignRequestsManageMiddleware } from "@/server/auth.middleware"
+import type { BackendClient } from "@/server/backend.server"
 
 const MAX_PDF_BYTES = 30 * 1024 * 1024
 
@@ -13,16 +14,38 @@ const placement = z.object({
   height: z.number().gt(0).max(1),
 })
 
-/** What a new request needs: dashboard users who can sign, and the shared drives (none without OneDrive). */
+/**
+ * The request a new one starts from, in any status, with its PDF as it was first added (its lowest version, before
+ * anyone signed); `sourceError` instead when it doesn't exist or the caller can't see it.
+ */
+async function composerSource(backend: BackendClient, from: string) {
+  const id = z.uuid().safeParse(from)
+  if (!id.success) return { source: null, sourceError: "Couldn't load that request." }
+  try {
+    const { request, versions } = await backend.esign.requests.get.query({ id: id.data })
+    const [original] = [...versions].sort((a, b) => a.version - b.version)
+    if (original) return { source: { request, original }, sourceError: null }
+  } catch (error) {
+    console.error(error)
+  }
+  return { source: null, sourceError: "Couldn't load that request." }
+}
+
+/**
+ * What a new request needs: dashboard users who can sign, and the shared drives (none without OneDrive). With `from`,
+ * also the earlier request it starts from.
+ */
 export const getEsignComposer = createServerFn()
   .middleware([esignRequestsManageMiddleware])
-  .handler(async ({ context }) => {
+  .validator(z.object({ from: z.string().max(100).optional() }))
+  .handler(async ({ data, context }) => {
     await context.backend.esign.profile.sync.mutate({ name: context.user.name, email: context.user.email || null })
-    const [config, signers] = await Promise.all([
+    const [config, signers, from] = await Promise.all([
       context.backend.esign.config.query(),
       context.backend.esign.signers.list.query(),
+      data.from ? composerSource(context.backend, data.from) : { source: null, sourceError: null },
     ])
-    return { config, signers, me: context.user.sub }
+    return { config, signers, me: context.user.sub, ...from }
   })
 
 export const listEsignDrive = createServerFn()

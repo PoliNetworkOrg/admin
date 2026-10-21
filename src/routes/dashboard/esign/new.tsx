@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
+import { z } from "zod"
 
 import { WorkspaceSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
@@ -7,10 +8,13 @@ import { getEsignComposer } from "@/features/esign/requests.functions"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/esign/new")({
+  // `?from=<request id>` starts from an earlier request ("Send again"); the loader says when it can't be read.
+  validateSearch: z.object({ from: z.string().optional() }),
   beforeLoad: ({ context }) => {
     if (!hasPermission(context.permissions, "esign:requests:manage")) throw redirect({ to: "/unauthorized" })
   },
-  loader: () => getEsignComposer(),
+  loaderDeps: ({ search }) => ({ from: search.from }),
+  loader: ({ deps }) => getEsignComposer({ data: { from: deps.from } }),
   pendingComponent: () => (
     <>
       <PageBar
@@ -27,6 +31,17 @@ export const Route = createFileRoute("/dashboard/esign/new")({
 })
 
 function NewRequestRoute() {
-  const { config, signers, me } = Route.useLoaderData()
-  return <NewEsignRequestPage config={config} signers={signers} me={me} />
+  const { config, signers, me, source, sourceError } = Route.useLoaderData()
+  const { from } = Route.useSearch()
+  // Another request to start from is another composer.
+  return (
+    <NewEsignRequestPage
+      key={from ?? ""}
+      config={config}
+      signers={signers}
+      me={me}
+      source={source}
+      sourceError={sourceError}
+    />
+  )
 }

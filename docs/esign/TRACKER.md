@@ -136,6 +136,15 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   in clear space (on the signature line when there is one), covering no text. Labels match whole and keep qualifiers
   apart ("Vice Presidente" is never "Presidente"); several labels on a line, the first 40 and last 10 pages, and labels
   at the page bottom are handled. Contracts without labels keep the free picker (admin only, `places.ts` tested).
+- ☑ Send again: New request takes `?from=<request id>` (any status, so "Duplicate" is one link) and fills in the
+  title, the signers in order with their roles, the order, the folder, the file name and the email. The PDF is the same
+  OneDrive item read again, so a corrected file saved over the original is picked up, and its spots are found again
+  (people keep the spot their role names, the others their places). An uploaded PDF, or a OneDrive file that can no
+  longer be opened (the composer says so), is the request's first version, before anyone signed, fetched and uploaded
+  again as a new document. A declined request whose PDF has the same sha256 as that version says "Same PDF as before.",
+  with "Check again" for a OneDrive file (admin only).
+- ☐ After a backend release, optional: reuse a version as a new request's document, so Send again of an uploaded PDF
+  doesn't take the bytes through the browser and opening it leaves no staged document behind.
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).

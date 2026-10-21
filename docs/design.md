@@ -495,5 +495,14 @@ Rules that the templates above don't imply.
   signer and "Sign and send" when the viewer signs first, creating the request and opening PoliNetwork eSign in one
   click; otherwise, and on phones and tablets, "Send request". It carries a `Kbd` hint: ⌘/Ctrl+Enter runs it from
   anywhere on the page, and plain Enter never submits.
+  `?from=<request id>` starts New request from an earlier request in any status ("Send again"): title, signers in
+  order with their roles, the order, folder, file name and email come filled in, and leaving asks to discard only after
+  an edit. The PDF is the same OneDrive file read again, so a corrected file saved over the original is the one sent;
+  an upload, or a file OneDrive no longer gives, is the request's first version. While it opens the viewer shows blank
+  pages with "Opening the PDF…", the signers group keeps its final height and the primary waits. Under the title a
+  declined request says who declined and why, then "Same PDF as before." when nothing changed ("Check again" re-reads
+  a OneDrive file); a cancelled one says nothing. A signer who may no longer sign reads "Can't sign anymore." and
+  blocks sending until removed. A request that can't be read opens the empty composer with "Couldn't load that
+  request.".
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
