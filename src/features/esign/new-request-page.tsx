@@ -1,3 +1,4 @@
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
@@ -18,13 +19,20 @@ import {
 import { type DragEvent, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
+  Autocomplete,
   checkboxControl,
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
   FormField,
   fieldControl,
   IconButton,
   InlineAlert,
   LoadingButton,
   SectionCard,
+  useFocusAfterRemoval,
 } from "@/components/primitives"
 import {
   Menu,
@@ -144,7 +152,7 @@ export function NewEsignRequestPage({
   const contentFn = useServerFn(getEsignDocumentContent)
   const createFn = useServerFn(createEsignRequest)
   const dropFill = useFillHeight<HTMLElement>()
-  const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId(), roles: useId() }
+  const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId() }
 
   const [source, setSource] = useState<"drive" | "upload">(config.drives.length > 0 ? "drive" : "upload")
   const [staged, setStaged] = useState<Staged | null>(null)
@@ -264,11 +272,29 @@ export function NewEsignRequestPage({
     }
   }
 
+  const signerList = useFocusAfterRemoval<HTMLOListElement>("[data-signer-row]")
+  const searchRef = useRef<HTMLInputElement>(null)
+  const roleInputs = useRef(new Map<string, HTMLInputElement>())
+  /** The signer just added, whose role takes the focus once their row renders. */
+  const focusRole = useRef<string | null>(null)
+  useEffect(() => {
+    if (focusRole.current === null) return
+    roleInputs.current.get(focusRole.current)?.focus()
+    focusRole.current = null
+  }, [signers])
+
   function addSigner(person: EsignProfile) {
     const draft = draftOf(person, signers.length, pages)
     setSigners((current) => [...current, draft])
     setFocus({ page: draft.places[0].page, y: draft.places[0].y })
     setSearch("")
+    focusRole.current = person.sub
+  }
+
+  function removeSigner(index: number, button: HTMLElement) {
+    if (signers.length === 1) searchRef.current?.focus()
+    else signerList.capture(button, { restore: true })
+    setSigners((current) => current.filter((_, i) => i !== index))
   }
 
   function moveSigner(index: number, by: -1 | 1) {
@@ -629,9 +655,13 @@ export function NewEsignRequestPage({
 
             <SectionCard title="Signers" count={signers.length || undefined}>
               {signers.length > 0 && (
-                <ol className="mb-3 flex flex-col gap-3">
+                <ol ref={signerList.surfaceRef} tabIndex={-1} className="mb-3 flex flex-col gap-3">
                   {signers.map((s, index) => (
-                    <li key={s.sub} className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3">
+                    <li
+                      key={s.sub}
+                      data-signer-row
+                      className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
                           {index + 1}
@@ -640,34 +670,51 @@ export function NewEsignRequestPage({
                           <span className="truncate text-[14px] font-medium">{s.name}</span>
                           {s.sub === me && <YouChip />}
                         </span>
-                        <IconButton
-                          label="Move up"
-                          icon={ArrowUp}
-                          disabled={index === 0}
-                          onClick={() => moveSigner(index, -1)}
-                        />
-                        <IconButton
-                          label="Move down"
-                          icon={ArrowDown}
-                          disabled={index === signers.length - 1}
-                          onClick={() => moveSigner(index, 1)}
-                        />
+                        {signers.length > 1 && (
+                          <>
+                            <IconButton
+                              label="Move up"
+                              icon={ArrowUp}
+                              disabled={index === 0}
+                              onClick={() => moveSigner(index, -1)}
+                            />
+                            <IconButton
+                              label="Move down"
+                              icon={ArrowDown}
+                              disabled={index === signers.length - 1}
+                              onClick={() => moveSigner(index, 1)}
+                            />
+                          </>
+                        )}
                         <IconButton
                           label={`Remove ${s.name}`}
                           icon={Trash2}
                           tone="danger"
-                          onClick={() => setSigners((current) => current.filter((_, i) => i !== index))}
+                          onClick={(event) => removeSigner(index, event.currentTarget)}
                         />
                       </div>
-                      <Input
-                        aria-label={`Role of ${s.name}`}
-                        placeholder="Role (optional), e.g. Segretario"
-                        list={ids.roles}
-                        value={s.role}
-                        maxLength={80}
-                        className={cn(fieldControl, "h-9")}
-                        onChange={(event) => setRole(index, event.target.value)}
-                      />
+                      {/* No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion. */}
+                      <Autocomplete items={ROLES} value={s.role} onValueChange={(role) => setRole(index, role)}>
+                        <ComboboxInput
+                          ref={(input: HTMLInputElement | null) => {
+                            if (input) roleInputs.current.set(s.sub, input)
+                            else roleInputs.current.delete(s.sub)
+                          }}
+                          listLabel="roles"
+                          aria-label={`Role of ${s.name}`}
+                          placeholder="Role (optional), e.g. Segretario"
+                          maxLength={80}
+                        />
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {(role: string) => (
+                              <ComboboxItem key={role} value={role}>
+                                {role}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Autocomplete>
                       {blockedDrive(s.sub) !== undefined && (
                         <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
                           <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
@@ -699,71 +746,71 @@ export function NewEsignRequestPage({
                   ))}
                 </ol>
               )}
-              <datalist id={ids.roles}>
-                {ROLES.map((role) => (
-                  <option key={role} value={role} />
-                ))}
-              </datalist>
-              <div className="flex flex-col gap-2">
-                <div className="relative">
-                  <Search
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
-                  />
-                  <Input
-                    id={ids.search}
-                    aria-label="Find a person to add"
-                    placeholder="Add a signer…"
-                    value={search}
-                    className={cn(fieldControl, "pl-9")}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-                {(matches.length > 0 || available.length === 0) && (
-                  <ul className="flex max-h-60 flex-col overflow-y-auto">
-                    {matches.slice(0, 30).map((person) => (
-                      <li key={person.sub}>
-                        <button
-                          type="button"
-                          onClick={() => addSigner(person)}
-                          className="flex min-h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 py-1.5 text-left hover:bg-(--pn-hover)"
-                        >
-                          <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-[14px]">{person.name}</span>
-                              {person.sub === me && <YouChip />}
-                            </span>
-                            {person.email && (
-                              <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">
-                                {person.email}
-                              </span>
-                            )}
+              {/* The page filters people itself and lists them only once something is typed; the list stays in place. */}
+              <Combobox
+                items={matches.slice(0, 30)}
+                filter={null}
+                itemToStringLabel={(person: EsignProfile) => person.name}
+                value={null}
+                inputValue={search}
+                onInputValueChange={(value, { reason }) => {
+                  // Picking a person would otherwise put their name in the search.
+                  if (reason !== "item-press") setSearch(value)
+                }}
+                onValueChange={(person) => person && addSigner(person)}
+                autoHighlight
+                inline
+                open
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="relative">
+                    <Search
+                      aria-hidden
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
+                    />
+                    <ComboboxPrimitive.Input
+                      ref={searchRef}
+                      render={<Input id={ids.search} className={cn(fieldControl, "pl-9")} />}
+                      aria-label="Find a person to add"
+                      placeholder="Add a signer…"
+                    />
+                  </div>
+                  <ComboboxList className="p-0 empty:hidden">
+                    {(person: EsignProfile) => (
+                      <ComboboxItem key={person.sub} value={person} className="min-h-10 px-2 py-1.5">
+                        <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-[14px]">{person.name}</span>
+                            {person.sub === me && <YouChip />}
                           </span>
-                        </button>
-                      </li>
-                    ))}
-                    {available.length === 0 && (
-                      <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
-                        {search.trim() !== ""
-                          ? "Nobody matches."
-                          : eligible.length === 0 && usedDrives.length > 0
-                            ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
-                            : eligible.length === 0
-                              ? "No registered people currently have permission to sign."
-                              : usedDrives.length > 0
-                                ? "Everyone allowed to sign these documents is added."
-                                : "Everyone who can sign is added."}
-                      </li>
+                          {person.email && (
+                            <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                          )}
+                        </span>
+                      </ComboboxItem>
                     )}
-                  </ul>
-                )}
-                {matches.length > 0 && eligible.length < people.length && (
-                  <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
-                    Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
-                  </p>
-                )}
-              </div>
+                  </ComboboxList>
+                  {available.length === 0 && (
+                    <p className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
+                      {search.trim() !== ""
+                        ? "Nobody matches."
+                        : eligible.length === 0 && usedDrives.length > 0
+                          ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
+                          : eligible.length === 0
+                            ? "No registered people currently have permission to sign."
+                            : usedDrives.length > 0
+                              ? "Everyone allowed to sign these documents is added."
+                              : "Everyone who can sign is added."}
+                    </p>
+                  )}
+                  {matches.length > 0 && eligible.length < people.length && (
+                    <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
+                      Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
+                    </p>
+                  )}
+                </div>
+              </Combobox>
               {signers.length > 1 && (
                 <label className="mt-3 flex items-start gap-2 text-[14px]">
                   <Checkbox
