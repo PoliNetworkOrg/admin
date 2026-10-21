@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils"
 
 import { getEsignDocumentContent } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
-import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
+import { kindsLabel, type Place, pagesLabel, placeAt, placesLeft } from "./places"
+import { MovePlaceButtons, PlacingCancel, placingStatus } from "./placing"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
 
@@ -31,6 +32,8 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set())
   /** The viewer's boxes per request, as they drag them. */
   const [moved, setMoved] = useState<Map<string, Place[]>>(new Map())
+  /** The open document's place waiting for a click on its new spot. */
+  const [placing, setPlacing] = useState<number | null>(null)
 
   // Signed documents leave the batch when the page reloads.
   const active = items.find((item) => item.request.id === activeId) ?? items[0]
@@ -39,10 +42,12 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
 
   function open(id: string) {
     setActiveId(id)
+    setPlacing(null)
     setReviewed((current) => new Set(current).add(id))
   }
 
   function toggle(id: string) {
+    if (id === active?.request.id) setPlacing(null)
     setLeftOut((current) => {
       const next = new Set(current)
       if (!next.delete(id)) next.add(id)
@@ -154,6 +159,15 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
               me={me}
               places={places}
               onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
+              placing={placing}
+              onPlace={(page, x, y) => {
+                const next = places.map((p, at) =>
+                  at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
+                )
+                setMoved((current) => new Map(current).set(active.request.id, next))
+                setPlacing(null)
+              }}
+              onCancelPlacing={() => setPlacing(null)}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
@@ -210,6 +224,11 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                       ? "Choose Sign with CIE at the top. You need the card, its PIN and the NFC reader."
                       : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card and the NFC reader.`}
                 </p>
+                {signer && signer.signaturesDone === 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <MovePlaceButtons places={places} placing={placing} onPlacing={setPlacing} />
+                  </div>
+                )}
                 {active.signingNow && active.signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
                     {active.signingNow.name} is signing this document right now. Leave it out or try again later.
@@ -229,11 +248,18 @@ function DocumentViewer({
   me,
   places,
   onMove,
+  placing,
+  onPlace,
+  onCancelPlacing,
 }: {
   item: Item
   me: string
   places: Place[]
   onMove: (places: Place[]) => void
+  /** The place waiting for a click on its new spot. */
+  placing: number | null
+  onPlace: (page: number, x: number, y: number) => void
+  onCancelPlacing: () => void
 }) {
   const contentFn = useServerFn(getEsignDocumentContent)
   const [base64, setBase64] = useState<string | null>(null)
@@ -258,13 +284,21 @@ function DocumentViewer({
   }, [item.currentDocumentId, contentFn])
 
   const mine = request.signers.find((s) => s.sub === me && s.status === "pending")
-  const first = mine ? placesLeft(places, mine.signaturesDone)[0] : undefined
+  // Once per document (it remounts for each): following the box as it moves would scroll it away from the pointer.
+  const [focus] = useState(() => {
+    const first = mine ? placesLeft(places, mine.signaturesDone)[0] : undefined
+    return first ? { page: first.page, y: first.y + first.height / 2 } : null
+  })
   if (error) return <InlineAlert>{error}</InlineAlert>
   return (
     <PdfViewer
       data={bytes}
       pages={item.pdf?.pages ?? []}
-      focus={first ? { page: first.page, y: first.y + first.height / 2 } : null}
+      focus={focus}
+      cursor={placing !== null ? "crosshair" : "default"}
+      onPageClick={placing !== null ? onPlace : undefined}
+      status={placing !== null ? placingStatus(places, placing) : null}
+      statusAction={placing !== null && <PlacingCancel onCancel={onCancelPlacing} />}
       overlay={(page) =>
         request.signers.flatMap((signer, index) => {
           if (signer.status !== "pending") return []

@@ -1,3 +1,4 @@
+import type { PageSize } from "./pdf-viewer"
 import type { BoxPlacement } from "./signature-box"
 
 /** One of a signer's boxes: a full signature of its own, or a mark repeating their first signature. */
@@ -31,4 +32,23 @@ export function withSignature<T extends Place>(places: T[]): T[] {
 export function placesLeft<T extends Pick<Place, "kind">>(places: T[], signaturesDone: number): T[] {
   let signature = 0
   return places.filter((p) => (p.kind === "mark" ? signaturesDone === 0 : signature++ >= signaturesDone))
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+/**
+ * The place moved to a click on `page` (fractions of that page): centred on the click, inside the page, and the same
+ * size in points, so it doesn't grow or shrink on a page of another size.
+ */
+export function placeAt(place: Place, pages: PageSize[], page: number, x: number, y: number): Place {
+  const width = clamp((place.width * pages[place.page].width) / pages[page].width, 0.04, 1)
+  const height = clamp((place.height * pages[place.page].height) / pages[page].height, 0.04, 1)
+  return {
+    kind: place.kind,
+    page,
+    width,
+    height,
+    x: clamp(x - width / 2, 0, 1 - width),
+    y: clamp(y - height / 2, 0, 1 - height),
+  }
 }

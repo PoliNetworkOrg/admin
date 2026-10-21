@@ -21,7 +21,6 @@ import { type DragEvent, type ReactNode, useEffect, useId, useMemo, useRef, useS
 
 import {
   Autocomplete,
-  buttonMotion,
   checkboxControl,
   Combobox,
   ComboboxContent,
@@ -63,6 +62,7 @@ import { DriveBrowser, type DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
+import { PlacingCancel } from "./placing"
 import { YouChip } from "./request-status"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
@@ -208,19 +208,6 @@ export function NewEsignRequestPage({
     return self ? [draftOf(self, 0, [])] : []
   })
   const [placing, setPlacing] = useState<Placing | null>(null)
-  const isPlacing = placing !== null
-  useEffect(() => {
-    if (!isPlacing) return
-    function cancel(event: KeyboardEvent) {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return
-      // An open menu or dialog takes Escape for itself.
-      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
-      event.preventDefault()
-      setPlacing(null)
-    }
-    window.addEventListener("keydown", cancel)
-    return () => window.removeEventListener("keydown", cancel)
-  }, [isPlacing])
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
   const [highlight, setHighlight] = useState<{ signer: string; place: number } | null>(null)
@@ -613,25 +600,7 @@ export function NewEsignRequestPage({
                       ? `Click where ${signers[placing.signer]?.name} signs again.`
                       : `Click the new spot for ${signers[placing.signer]?.name}.`
                 }
-                statusAction={
-                  placing !== null && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(buttonMotion, "gap-2")}
-                      aria-keyshortcuts="Escape"
-                      onClick={() => setPlacing(null)}
-                    >
-                      Cancel
-                      <kbd
-                        aria-hidden
-                        className="rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) pointer-coarse:hidden"
-                      >
-                        Esc
-                      </kbd>
-                    </Button>
-                  )
-                }
+                statusAction={placing !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
                 cursor={placing !== null ? "crosshair" : "default"}
                 onPageClick={place}
                 focus={focus}
