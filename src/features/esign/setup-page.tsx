@@ -66,9 +66,8 @@ const AGENT_STEPS = {
   ),
   linux: (
     <>
-      Download the package for your system and install it: the .pkg.tar.zst with{" "}
-      <code className={code}>sudo pacman -U</code> on Arch-based systems, the .deb with apt on Debian or Ubuntu, the
-      .rpm with dnf on Fedora. It starts at login.
+      Install the package for your system: the .pkg.tar.zst with <code className={code}>sudo pacman -U</code> on
+      Arch-based systems, the .deb with apt on Debian or Ubuntu, the .rpm with dnf on Fedora. It starts at login.
     </>
   ),
 }
@@ -156,11 +155,11 @@ function PairStep({ os }: { os: Os }) {
   )
 }
 
+/** The download comes first on every system: the instructions start from the downloaded file. */
 function InstallStep({ os }: { os: Os }) {
   if (os === "linux") {
     return (
       <Step number={3} icon={Download} title="Install PoliNetwork eSign">
-        <p>{AGENT_STEPS.linux}</p>
         <div>
           <Button
             size="sm"
@@ -170,12 +169,12 @@ function InstallStep({ os }: { os: Os }) {
             <Download aria-hidden /> Download PoliNetwork eSign
           </Button>
         </div>
+        <p>{AGENT_STEPS.linux}</p>
       </Step>
     )
   }
   return (
     <Step number={3} icon={Download} title="Install PoliNetwork eSign">
-      <p>{AGENT_STEPS[os]}</p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         {/* Same tab: the release asset downloads without leaving the page. */}
         <Button size="sm" nativeButton={false} render={<a href={AGENT_DOWNLOAD_URLS[os]} />}>
@@ -190,6 +189,7 @@ function InstallStep({ os }: { os: Os }) {
           Other systems and versions
         </a>
       </div>
+      <p>{AGENT_STEPS[os]}</p>
       <p className="text-[13px]">Already installed? Download and open it again: it replaces the old version.</p>
     </Step>
   )

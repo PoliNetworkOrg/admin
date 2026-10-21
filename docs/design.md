@@ -458,9 +458,10 @@ Rules that the templates above don't imply.
   row is the viewer's turn) and no way to start a request: "New request" lives in Requests. `?status=` keeps the
   status segment across Back. The request page shows when each signer whose turn it is was emailed, or why they weren't.
   Phones and tablets can't sign (`useCanSignHere`): on them an info note takes the place of "Sign N together". Setup
-  preselects the computer's system, and its primary downloads that system's installer at once ("Download for macOS",
-  release page for Linux) with a quiet "Other systems and versions" link; on a phone its context line asks to open the
-  page on the computer and no system is preselected.
+  preselects the computer's system. Its install step opens with the primary, which downloads that system's installer at
+  once ("Download for macOS", release page for Linux), and a quiet "Other systems and versions" link on the same row;
+  what to do with the file follows. On a phone its context line asks to open the page on the computer and no system is
+  preselected.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
