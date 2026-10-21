@@ -90,8 +90,11 @@ function openPopup(): Window | null {
   const popup = window.open("", `pn-esign-${Date.now()}`, popupFeatures())
   if (popup) {
     popup.document.title = "PoliNetwork eSign"
+    // The agent page's canvas and muted text (sign-agent internal/server/web/assets/style.css), following the OS
+    // scheme as that page does rather than the dashboard's theme, so the page takes over without a change of colour.
+    popup.document.documentElement.style.colorScheme = "light dark"
     popup.document.body.style.cssText =
-      "font:15px system-ui,sans-serif;color:#58626c;display:grid;place-items:center;height:90vh;margin:0"
+      "font:15px system-ui,sans-serif;background:#f6f7f9;background:light-dark(#f6f7f9,#060e16);color:#58626c;color:light-dark(#58626c,#9da6ae);display:grid;place-items:center;height:90vh;margin:0"
     popup.document.body.textContent = "Opening PoliNetwork eSign…"
   }
   return popup
