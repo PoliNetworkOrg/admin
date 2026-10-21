@@ -28,6 +28,7 @@ import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
+import { useReloadWhile } from "./use-reload-while"
 
 type EventData = { sub?: string; name?: string; path?: string; to?: string[]; error?: string; reason?: string | null }
 
@@ -119,9 +120,16 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
   const myTurn = request.myTurn && mySigner !== undefined
-  // The viewer's boxes as they drag them; fixed once some of them are signed.
-  const [myPlaces, setMyPlaces] = useState<Place[]>(mySigner?.places ?? [])
-  useEffect(() => setMyPlaces(mySigner?.places ?? []), [mySigner?.places])
+  // The viewer's boxes as they drag them; fixed once some of them are signed. Reloads bring the saved places as new
+  // arrays, so the dragged ones reset only when the saved ones change.
+  const savedPlaces = mySigner?.places ?? []
+  const savedKey = JSON.stringify(savedPlaces)
+  const [myPlaces, setMyPlaces] = useState<Place[]>(savedPlaces)
+  const [placesKey, setPlacesKey] = useState(savedKey)
+  if (placesKey !== savedKey) {
+    setPlacesKey(savedKey)
+    setMyPlaces(savedPlaces)
+  }
   const myDone = mySigner?.signaturesDone ?? 0
   const myLeft = placesLeft(
     myPlaces.map((place, at) => ({ ...place, at })),
@@ -135,21 +143,10 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   // Delivery (OneDrive, email) runs after the last signature: follow it until it settles.
   const delivering = request.status === "completed" && request.delivery?.status === "pending"
-  useEffect(() => {
-    if (!delivering) return
-    let busy = false
-    const timer = window.setInterval(() => {
-      if (busy) return
-      busy = true
-      router
-        .invalidate()
-        .catch((error) => console.error(error))
-        .finally(() => {
-          busy = false
-        })
-    }, 2000)
-    return () => window.clearInterval(timer)
-  }, [delivering, router])
+  useReloadWhile(delivering, 2000)
+  // Another signer holds the request: follow it until they finish, so Sign with CIE turns on by itself.
+  const lockedBy = myTurn && signingNow && signingNow.sub !== me ? signingNow : null
+  useReloadWhile(lockedBy !== null, 3000)
 
   const names = useMemo(() => {
     const map = new Map(request.signers.map((s) => [s.sub, s.name]))
@@ -269,7 +266,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       {myTurn && (
         <SignWithCie
           items={[{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }]}
-          disabled={!!signingNow && signingNow.sub !== me}
+          disabled={lockedBy !== null}
         />
       )}
     </>
@@ -389,9 +386,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     </Button>
                   </div>
                 )}
-                {signingNow && signingNow.sub !== me && (
+                {lockedBy && (
                   <InlineAlert tone="warning" className="mt-3">
-                    {signingNow.name} is signing right now. Try again in a few minutes.
+                    {lockedBy.name} is signing right now. Sign with CIE turns on as soon as they finish.
                   </InlineAlert>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -15,6 +15,7 @@ import { PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
+import { useReloadWhile } from "./use-reload-while"
 
 type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
 
@@ -36,6 +37,11 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
   const active = items.find((item) => item.request.id === activeId) ?? items[0]
   const included = items.filter((item) => !leftOut.has(item.request.id))
   const unchecked = included.filter((item) => !reviewed.has(item.request.id))
+  // Follow documents another signer holds until they finish; reloads keep the review progress and moved boxes.
+  useReloadWhile(
+    included.some((item) => item.signingNow && item.signingNow.sub !== me),
+    3000
+  )
 
   function open(id: string) {
     setActiveId(id)
@@ -225,7 +231,8 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                 </p>
                 {active.signingNow && active.signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
-                    {active.signingNow.name} is signing this document right now. Leave it out or try again later.
+                    {active.signingNow.name} is signing this document right now. Leave it out, or wait: it's ready as
+                    soon as they finish.
                   </InlineAlert>
                 )}
               </SectionCard>
