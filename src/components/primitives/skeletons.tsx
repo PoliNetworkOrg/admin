@@ -191,3 +191,12 @@ export function WorkspaceSkeleton({ label = "Loading…", className }: { label?:
     </Pulse>
   )
 }
+
+/** One bar in place of a line still being worked out, e.g. a list read from a document. */
+export function BarSkeleton({ label = "Loading…", className }: { label?: string; className?: string }) {
+  return (
+    <Pulse label={label} className={className} bodyClassName="h-full">
+      <Block className="h-full" />
+    </Pulse>
+  )
+}

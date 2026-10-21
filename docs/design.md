@@ -372,6 +372,7 @@ Shared classes live in `primitives/motion.ts` (`buttonMotion`, `floatingMotion`,
 | Copy feedback (invite link)                                                            | icon swap with a short bounce-free spring                                                                                                                                                                                |
 | Chart tooltip and hover guide                                                          | none: they follow the pointer or keyboard focus                                                                                                                                                                          |
 | Skeleton                                                                               | opacity pulse 1.4s; the only loop besides spinners                                                                                                                                                                       |
+| Empty signature spot filled (composer)                                                 | the same box changes border, fill and text colour, 150ms ease-out; the dashed border snaps to solid                                                                                                                      |
 | Theme toggle                                                                           | light-bulb reveal: a View Transition `clip-path` circle from the toggle (700ms to light, 520ms to dark), reversible mid-way; element transitions are off while it runs (`data-theme-switching`). Go through `useTheme()` |
 | Navigation, sort, filter, paging, inline-edit swap, command palette, active indicators | none                                                                                                                                                                                                                     |
 
@@ -477,9 +478,15 @@ Rules that the templates above don't imply.
   where the viewer will be and a dropzone where the column will be. Then the PDF fills the left ("Change PDF" in its
   toolbar opens the same choice in a dialog) and the column holds the title as a quiet field, the signers and the
   delivery, with no headings or hints. Signers are always open: one 40px row each (the order number while ordered
-  with two or more, the role, the name, and a "More actions" menu for moving, adding a place and removing); place
-  buttons show only with several places. Hovering a row rings its boxes and hovering a box tints its row. "Me" at the
-  end of the picker adds the viewer in one click. Delivery is two summary rows in the request page's words ("Will be
+  with two or more people, the role, the name, and a "More actions" menu for moving, adding a place and removing);
+  place buttons show only with several places. Hovering a row rings its boxes and hovering a box tints its row. The
+  signature labels in the PDF's text ("Il Segretario", "Il Presidente") become spots: a row with the label as its role
+  and a "Choose signer…" picker, and a dashed box under the label, covering no text; clicking the box opens the
+  picker, and picking a person turns it into their box. The focus starts in the first spot and moves on to the next
+  one. "Add signer" under the spots, and the free picker when there are none, add someone without a spot; a free
+  row's role that names an empty spot moves the person into it. Labels match whole: "Vicepresidente" and "Vice
+  Presidente" are never the Presidente spot. "Me" at the end of the first empty spot ("Add me as Segretario"), else
+  of the free picker, adds the viewer in one click. An empty spot blocks sending until it is filled or removed. Delivery is two summary rows in the request page's words ("Will be
   saved to OneDrive: Verbali/… - firmato.pdf", always in full, and "No email" or the recipients): each opens its fields
   under it, and opens by itself when its check fails. After an upload the save row starts open on the folder browser
   at the drive root ("Choose where to save the signed PDF", with "Save here" demoted to outline and "Don't save to

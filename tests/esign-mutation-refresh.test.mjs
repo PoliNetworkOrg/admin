@@ -87,7 +87,7 @@ async function composer(env, overrides = {}) {
     staged: { id: "document-1" },
     title: "Request",
     ordered: true,
-    signers: [],
+    rows: [],
     signsFirst: false,
     saveToDrive: false,
     folder: null,

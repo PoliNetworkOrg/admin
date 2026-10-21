@@ -54,6 +54,7 @@ export { SectionEmpty } from "./section-empty"
 export { SectionHeading } from "./section-heading"
 export { SegmentedControl, type SegmentedItem } from "./segmented-control"
 export {
+  BarSkeleton,
   CardsSkeleton,
   RecordSkeleton,
   SettingsListSkeleton,

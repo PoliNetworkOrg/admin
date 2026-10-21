@@ -11,11 +11,13 @@ import {
   Stamp,
   Trash2,
   TriangleAlert,
+  X,
 } from "lucide-react"
-import { type Ref, useRef, useState } from "react"
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
 
 import {
   Autocomplete,
+  buttonMotion,
   Combobox,
   ComboboxContent,
   ComboboxItem,
@@ -41,42 +43,89 @@ import type { EsignProfile } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
 import { FieldError, quietField } from "./composer-fields"
-import type { Place } from "./places"
+import { type Place, SIGN_ROLES, type SignerDraft } from "./places"
 import { YouChip } from "./request-status"
-
-/** `byRole`: the box the signer's role places under its label, until the user moves it. */
-export type DraftPlace = Place & { byRole?: true }
-export type SignerDraft = { sub: string; name: string; role: string; places: DraftPlace[] }
 
 /** Boxes one signer may have in a document (the backend's limit). */
 export const MAX_PLACES = 20
 
-const ROLES = ["Presidente", "Vicepresidente", "Segretario", "Tesoriere", "Consigliere", "Socio"]
-
-/** Row columns: the order number (while it shows), the role, the person and their menu. */
+/** Row columns: the order number (while numbers show), the role, the person and the row's action. */
 function rowColumns(numbered: boolean) {
   return numbered
     ? "grid-cols-[20px_112px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[20px_124px_minmax(0,1fr)_36px]"
     : "grid-cols-[112px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[124px_minmax(0,1fr)_36px]"
 }
 
+/** A line under a row's 40px line, from the person column on. */
+function detailCell(numbered: boolean) {
+  return numbered ? "col-span-2 col-start-3" : "col-span-2 col-start-2"
+}
+
+/** The role a spot row takes from its label: text, not a field, since the box stays under that label. */
+function SpotRole({ role }: { role: string }) {
+  return (
+    <Hint overflowOnly label={role}>
+      <span className="truncate text-[14px] font-medium">{role}</span>
+    </Hint>
+  )
+}
+
+type RowShellProps = {
+  row: SignerDraft
+  numbered: boolean
+  /** The pointer is on one of the row's boxes. */
+  pointed: boolean
+  /** The pointer or the focus entered (true) or left (false) the row. */
+  onPoint: (inside: boolean) => void
+  invalid?: boolean
+  describedBy?: string
+  children: ReactNode
+}
+
+/** A row of the Signers group: hovering or focusing it rings its boxes, and its boxes' hover tints it. */
+function RowShell({ row, numbered, pointed, onPoint, invalid, describedBy, children }: RowShellProps) {
+  return (
+    <li
+      data-signer-row
+      data-row-id={row.id}
+      tabIndex={describedBy === undefined ? undefined : -1}
+      aria-describedby={describedBy}
+      data-invalid={invalid || undefined}
+      onPointerEnter={() => onPoint(true)}
+      onPointerLeave={() => onPoint(false)}
+      onFocus={() => onPoint(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) onPoint(false)
+      }}
+      className={cn(
+        "-mx-2 grid scroll-m-3 grid-rows-[40px] items-center gap-x-2 rounded-(--pn-r-3) px-2 transition-[background-color] duration-120",
+        rowColumns(numbered),
+        pointed && "bg-(--pn-hover)"
+      )}
+    >
+      {children}
+    </li>
+  )
+}
+
 type SignerRowProps = {
-  signer: SignerDraft
+  row: SignerDraft
+  person: NonNullable<SignerDraft["person"]>
   index: number
   count: number
-  /** Shows the order number, in the row as on its boxes. */
+  /** The row's order number, while numbers show. */
+  number?: number
   numbered: boolean
   isMe: boolean
   /** The drive whose documents this signer may not sign, by its label. */
   blockedBy?: string
   /** A blocked submit made the drive rule an error. */
   attempted: boolean
-  /** The pointer is on one of the signer's boxes. */
   pointed: boolean
-  roleRef: Ref<HTMLInputElement>
-  onRole: (role: string) => void
-  /** The pointer or the focus entered (true) or left (false) the row. */
   onPoint: (inside: boolean) => void
+  /** A free row's role, as typed; `onRoleDone` when its field loses the focus. */
+  onRole: (role: string) => void
+  onRoleDone: () => void
   onMove: (by: -1 | 1) => void
   onAddPlace: () => void
   onMovePlace: (at: number) => void
@@ -84,23 +133,28 @@ type SignerRowProps = {
   onRemovePlace: (at: number) => void
   /** A place's menu opened (its index) or closed (null). */
   onShowPlace: (at: number | null) => void
-  /** Removes the signer; `trigger` is the menu button, so the focus can stay in the list. */
+  /** Empties a spot row, removes a free one; `trigger` is the menu button, so the focus can stay in the list. */
   onRemove: (trigger: HTMLElement | null) => void
 }
 
-/** A signer edited in place: role, name and a "More actions" menu on one 40px line, their places under it. */
+/**
+ * A signer edited in place: role, name and a "More actions" menu on one 40px line, their places under it. In a spot
+ * the role is the label's; a free row types it.
+ */
 export function SignerRow({
-  signer,
+  row,
+  person,
   index,
   count,
+  number,
   numbered,
   isMe,
   blockedBy,
   attempted,
   pointed,
-  roleRef,
-  onRole,
   onPoint,
+  onRole,
+  onRoleDone,
   onMove,
   onAddPlace,
   onMovePlace,
@@ -109,138 +163,212 @@ export function SignerRow({
   onShowPlace,
   onRemove,
 }: SignerRowProps) {
-  const row = useRef<HTMLLIElement>(null)
-  /** Remove was chosen: the row goes once its menu has closed and handed the focus back to its trigger. */
+  const menuTrigger = useRef<HTMLButtonElement>(null)
+  /** Remove was chosen: the row changes once its menu has closed and handed the focus back to its trigger. */
   const removing = useRef(false)
-  const columns = rowColumns(numbered)
-  const detail = cn("grid gap-x-2", columns)
-  const detailCell = cn("col-span-2", numbered ? "col-start-3" : "col-start-2")
-  // Under the role, so two place buttons fit on one line.
-  const chipsCell = numbered ? "col-span-3 col-start-2" : "col-span-3"
-  const blockedId = `signer-blocked-${signer.sub}`
+  const blockedId = `signer-blocked-${row.id}`
   return (
-    <li
-      ref={row}
-      data-signer-row
-      tabIndex={blockedBy === undefined ? undefined : -1}
-      aria-describedby={blockedBy === undefined ? undefined : blockedId}
-      data-invalid={(attempted && blockedBy !== undefined) || undefined}
-      onPointerEnter={() => onPoint(true)}
-      onPointerLeave={() => onPoint(false)}
-      onFocus={() => onPoint(true)}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) onPoint(false)
-      }}
-      className={cn(
-        "-mx-2 flex scroll-m-3 flex-col rounded-(--pn-r-3) px-2 transition-[background-color] duration-120",
-        pointed && "bg-(--pn-hover)"
-      )}
+    <RowShell
+      row={row}
+      numbered={numbered}
+      pointed={pointed}
+      onPoint={onPoint}
+      invalid={attempted && blockedBy !== undefined}
+      describedBy={blockedBy === undefined ? undefined : blockedId}
     >
-      <div className={cn("grid h-10 items-center gap-2", columns)}>
-        {numbered && (
-          <span className="grid size-5 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
-            {index + 1}
-          </span>
-        )}
-        {/* No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion. */}
-        <Autocomplete items={ROLES} value={signer.role} onValueChange={onRole}>
-          <ComboboxPrimitive.Input
-            ref={roleRef}
-            render={
-              <Input className={cn(fieldControl, quietField, "-ml-[7px] h-9 w-[calc(100%+7px)] px-1.5 shadow-none")} />
-            }
-            aria-label={`Role of ${signer.name}`}
-            placeholder="Role"
-            maxLength={80}
-          />
-          <ComboboxContent className="w-44">
-            <ComboboxList>
-              {(role: string) => (
-                <ComboboxItem key={role} value={role}>
-                  {role}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Autocomplete>
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Hint overflowOnly label={signer.name}>
-            <span className="truncate text-[14px] font-medium">{signer.name}</span>
-          </Hint>
-          {isMe && <YouChip />}
+      {numbered && (
+        <span className="grid size-5 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
+          {number}
         </span>
-        <Menu
-          onOpenChangeComplete={(open) => {
-            if (open || !removing.current) return
-            removing.current = false
-            onRemove(row.current?.querySelector<HTMLElement>("[aria-haspopup=menu]") ?? null)
-          }}
-        >
-          <MenuTrigger
-            render={
-              <IconButton label="More actions" ariaLabel={`More actions for ${signer.name}`} icon={EllipsisVertical} />
-            }
-          />
-          <MenuContent className="w-56">
-            {count > 1 && (
-              <>
-                <MenuItem disabled={index === 0} onClick={() => onMove(-1)}>
-                  <ArrowUp aria-hidden /> Move up
-                </MenuItem>
-                <MenuItem disabled={index === count - 1} onClick={() => onMove(1)}>
-                  <ArrowDown aria-hidden /> Move down
-                </MenuItem>
-                <MenuSeparator />
-              </>
-            )}
-            <MenuItem disabled={signer.places.length >= MAX_PLACES} onClick={onAddPlace}>
-              <Plus aria-hidden /> Add a place
-            </MenuItem>
-            {signer.places.length === 1 && (
-              <MenuItem onClick={() => onMovePlace(0)}>
-                <MapPin aria-hidden /> Move to another spot
-              </MenuItem>
-            )}
-            <MenuSeparator />
-            <MenuItem
-              variant="destructive"
-              onClick={() => {
-                removing.current = true
-              }}
-            >
-              <Trash2 aria-hidden /> Remove
-            </MenuItem>
-          </MenuContent>
-        </Menu>
+      )}
+      <div className="flex h-10 min-w-0 items-center">
+        {row.spot ? (
+          <SpotRole role={row.role} />
+        ) : (
+          // No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion.
+          <Autocomplete items={SIGN_ROLES} value={row.role} onValueChange={onRole}>
+            <ComboboxPrimitive.Input
+              render={
+                <Input
+                  data-row-role
+                  className={cn(fieldControl, quietField, "-ml-[7px] h-9 w-[calc(100%+7px)] px-1.5 shadow-none")}
+                />
+              }
+              aria-label={`Role of ${person.name}`}
+              placeholder="Role"
+              maxLength={80}
+              onBlur={onRoleDone}
+            />
+            <ComboboxContent className="w-48">
+              <ComboboxList>
+                {(role: string) => (
+                  <ComboboxItem key={role} value={role}>
+                    {role}
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+            </ComboboxContent>
+          </Autocomplete>
+        )}
       </div>
-      {signer.places.length > 1 && (
-        <div className={cn(detail, "pb-2")}>
-          <PlaceChips
-            className={chipsCell}
-            name={signer.name}
-            places={signer.places}
-            onShow={onShowPlace}
-            onKind={onPlaceKind}
-            onMove={onMovePlace}
-            onRemove={onRemovePlace}
-          />
-        </div>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <Hint overflowOnly label={person.name}>
+          <span className="truncate text-[14px] font-medium">{person.name}</span>
+        </Hint>
+        {isMe && <YouChip />}
+      </span>
+      <Menu
+        onOpenChangeComplete={(open) => {
+          if (open || !removing.current) return
+          removing.current = false
+          onRemove(menuTrigger.current)
+        }}
+      >
+        <MenuTrigger
+          render={
+            <IconButton
+              ref={menuTrigger}
+              data-row-menu
+              label="More actions"
+              ariaLabel={`More actions for ${person.name}`}
+              icon={EllipsisVertical}
+            />
+          }
+        />
+        <MenuContent className="w-56">
+          {count > 1 && (
+            <>
+              <MenuItem disabled={index === 0} onClick={() => onMove(-1)}>
+                <ArrowUp aria-hidden /> Move up
+              </MenuItem>
+              <MenuItem disabled={index === count - 1} onClick={() => onMove(1)}>
+                <ArrowDown aria-hidden /> Move down
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          <MenuItem disabled={row.places.length >= MAX_PLACES} onClick={onAddPlace}>
+            <Plus aria-hidden /> Add a place
+          </MenuItem>
+          {row.places.length === 1 && (
+            <MenuItem onClick={() => onMovePlace(0)}>
+              <MapPin aria-hidden /> Move to another spot
+            </MenuItem>
+          )}
+          <MenuSeparator />
+          <MenuItem
+            variant="destructive"
+            onClick={() => {
+              removing.current = true
+            }}
+          >
+            <Trash2 aria-hidden /> Remove
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+      {row.places.length > 1 && (
+        <PlaceChips
+          // Under the role, so two place buttons fit on one line.
+          className={cn("pb-2", numbered ? "col-span-3 col-start-2" : "col-span-3")}
+          name={person.name}
+          places={row.places}
+          onShow={onShowPlace}
+          onKind={onPlaceKind}
+          onMove={onMovePlace}
+          onRemove={onRemovePlace}
+        />
       )}
       {blockedBy !== undefined && (
-        <div className={cn(detail, "pb-2")}>
-          <div className={detailCell}>
-            {attempted ? (
-              <FieldError id={blockedId}>Can't sign documents of {blockedBy}.</FieldError>
-            ) : (
-              <p id={blockedId} className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
-                <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-                Can't sign documents of {blockedBy}.
-              </p>
-            )}
-          </div>
+        <div className={cn("pb-2", detailCell(numbered))}>
+          {attempted ? (
+            <FieldError id={blockedId}>Can't sign documents of {blockedBy}.</FieldError>
+          ) : (
+            <p id={blockedId} className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
+              <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+              Can't sign documents of {blockedBy}.
+            </p>
+          )}
         </div>
       )}
-    </li>
+    </RowShell>
+  )
+}
+
+type SpotRowProps = {
+  /** A spot without a person. */
+  row: SignerDraft
+  numbered: boolean
+  people: EsignProfile[]
+  me: string
+  /** The viewer may sign and isn't a signer yet: the list shows them before anything is typed. */
+  meAddable: boolean
+  /** The first empty spot: "Me" fills it in one click while `meAddable`. */
+  first: boolean
+  emptyText: (query: string) => string | null
+  /** A blocked submit: an empty spot is an error. */
+  attempted: boolean
+  pointed: boolean
+  onPoint: (inside: boolean) => void
+  /** Changes when the spot's box on the page is clicked: the picker takes the focus and opens. */
+  activation: number
+  /** The picker got the focus: the spot's box comes into view. */
+  onFocus: () => void
+  onPick: (person: EsignProfile) => void
+  onRemove: (trigger: HTMLElement | null) => void
+}
+
+/** A signature spot found in the PDF, waiting for a person: its label as the role, a picker and "Remove spot". */
+export function SpotRow({
+  row,
+  numbered,
+  people,
+  me,
+  meAddable,
+  first,
+  emptyText,
+  attempted,
+  pointed,
+  onPoint,
+  activation,
+  onFocus,
+  onPick,
+  onRemove,
+}: SpotRowProps) {
+  const errorId = `spot-error-${row.id}`
+  return (
+    <RowShell row={row} numbered={numbered} pointed={pointed} onPoint={onPoint}>
+      {numbered && <span aria-hidden />}
+      <SpotRole role={row.role} />
+      <PersonPicker
+        people={people}
+        me={me}
+        meAddable={meAddable}
+        meLabel={meAddable && first ? `Add me as ${row.role}` : null}
+        emptyText={emptyText}
+        placeholder="Choose signer…"
+        ariaLabel={`Signer for ${row.role}`}
+        error={attempted ? "Choose a signer or remove this spot." : undefined}
+        errorId={errorId}
+        activation={activation}
+        onFocus={onFocus}
+        onPick={onPick}
+        onAddMe={() => {
+          const self = people.find((p) => p.sub === me)
+          if (self) onPick(self)
+        }}
+      />
+      <IconButton
+        label="Remove spot"
+        ariaLabel={`Remove the ${row.role} spot`}
+        icon={X}
+        onClick={(event) => onRemove(event.currentTarget)}
+      />
+      {attempted && (
+        <div className={cn("pb-2", detailCell(numbered))}>
+          <FieldError id={errorId}>Choose a signer or remove this spot.</FieldError>
+        </div>
+      )}
+    </RowShell>
   )
 }
 
@@ -312,99 +440,183 @@ function PlaceChips({
   )
 }
 
-type SignerPickerProps = {
+type PersonPickerProps = {
   /** Who may still be added, the viewer first. */
   people: EsignProfile[]
   me: string
-  /** The viewer may sign and isn't a signer yet: "Me" adds them in one click. */
+  /** The viewer may sign and isn't a signer yet: the list shows them before anything is typed. */
   meAddable: boolean
+  /** "Me" at the end of the field, adding the viewer in one click, with this name; null hides it. */
+  meLabel: string | null
   /** Why nobody is listed for a query ("" before typing), or null to keep the list closed. */
   emptyText: (query: string) => string | null
-  inputRef: Ref<HTMLInputElement>
+  placeholder: string
+  ariaLabel: string
+  /** A search icon at the start, for the free picker. */
+  search?: boolean
+  inputRef?: RefObject<HTMLInputElement | null>
   error?: string
   errorId: string
-  onAdd: (person: EsignProfile) => void
+  /** Changes to focus the field and open its list. */
+  activation?: number
+  onFocus?: () => void
+  /** The field lost the focus while empty. */
+  onLeaveEmpty?: () => void
+  onPick: (person: EsignProfile) => void
   onAddMe: () => void
 }
 
 /**
- * Adds a signer. People are listed once something is typed, so the whole directory never shows at once; the viewer is
- * the one exception, listed as soon as the list opens.
+ * Finds a person to sign. People are listed once something is typed, so the whole directory never shows at once; the
+ * viewer is the one exception, listed as soon as the list opens.
  */
-export function SignerPicker({
+function PersonPicker({
   people,
   me,
   meAddable,
+  meLabel,
   emptyText,
+  placeholder,
+  ariaLabel,
+  search = false,
   inputRef,
   error,
   errorId,
-  onAdd,
+  activation = 0,
+  onFocus,
+  onLeaveEmpty,
+  onPick,
   onAddMe,
-}: SignerPickerProps) {
+}: PersonPickerProps) {
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
+  const field = useRef<HTMLInputElement | null>(null)
   const needle = query.trim().toLocaleLowerCase()
   const items =
     needle === ""
       ? people.filter((p) => meAddable && p.sub === me)
       : people.filter((p) => `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle)).slice(0, 30)
   const empty = items.length === 0 ? emptyText(needle) : null
+
+  useEffect(() => {
+    if (activation === 0) return
+    field.current?.focus()
+    setOpen(true)
+  }, [activation])
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <Combobox
-        items={items}
-        filter={null}
-        itemToStringLabel={(person: EsignProfile) => person.name}
-        value={null}
-        inputValue={query}
-        onInputValueChange={(value, { reason }) => {
-          // Picking a person would otherwise put their name in the search.
-          if (reason !== "item-press") setQuery(value)
-        }}
-        onValueChange={(person) => {
-          if (!person) return
-          setQuery("")
-          onAdd(person)
-        }}
-        open={open && (items.length > 0 || empty !== null)}
-        onOpenChange={setOpen}
-        autoHighlight
-      >
-        <div className="relative">
+    <Combobox
+      items={items}
+      filter={null}
+      itemToStringLabel={(person: EsignProfile) => person.name}
+      value={null}
+      inputValue={query}
+      onInputValueChange={(value, { reason }) => {
+        // Picking a person would otherwise put their name in the search.
+        if (reason !== "item-press") setQuery(value)
+      }}
+      onValueChange={(person) => {
+        if (!person) return
+        setQuery("")
+        onPick(person)
+      }}
+      open={open && (items.length > 0 || empty !== null)}
+      onOpenChange={setOpen}
+      autoHighlight
+    >
+      <div className="relative min-w-0">
+        {search && (
           <Search
             aria-hidden
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
           />
-          <ComboboxPrimitive.Input
-            ref={inputRef}
-            render={<Input className={cn(fieldControl, "h-9 scroll-m-3 pl-9", meAddable && "pr-14")} />}
-            aria-label="Find a person to add"
-            placeholder="Add a signer…"
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
-          />
-          {meAddable && <MeButton label="Add me" onClick={onAddMe} />}
-        </div>
-        <ComboboxContent>
-          <ComboboxList className="max-h-[284px]">
-            {(person: EsignProfile) => (
-              <ComboboxItem key={person.sub} value={person} className="min-h-11 px-2 py-1.5">
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-[14px]">{person.name}</span>
-                    {person.sub === me && <YouChip />}
-                  </span>
-                  {person.email && (
-                    <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
-                  )}
+        )}
+        <ComboboxPrimitive.Input
+          ref={(input: HTMLInputElement | null) => {
+            field.current = input
+            if (inputRef) inputRef.current = input
+          }}
+          render={
+            <Input
+              data-row-picker
+              className={cn(fieldControl, "h-9 scroll-m-3", search && "pl-9", meLabel !== null && "pr-14")}
+            />
+          }
+          aria-label={ariaLabel}
+          placeholder={placeholder}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          onFocus={onFocus}
+          onBlur={() => {
+            if (query.trim() === "") onLeaveEmpty?.()
+          }}
+        />
+        {meLabel !== null && <MeButton label={meLabel} onClick={onAddMe} />}
+      </div>
+      <ComboboxContent className="min-w-64">
+        <ComboboxList className="max-h-[284px]">
+          {(person: EsignProfile) => (
+            <ComboboxItem key={person.sub} value={person} className="min-h-11 px-2 py-1.5">
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-[14px]">{person.name}</span>
+                  {person.sub === me && <YouChip />}
                 </span>
-              </ComboboxItem>
-            )}
-          </ComboboxList>
-          {empty && <p className="px-3 py-2.5 text-[13px] text-pretty text-(--pn-fg-muted)">{empty}</p>}
-        </ComboboxContent>
-      </Combobox>
+                {person.email && (
+                  <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                )}
+              </span>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+        {empty && <p className="px-3 py-2.5 text-[13px] text-pretty text-(--pn-fg-muted)">{empty}</p>}
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+type SignerPickerProps = Omit<PersonPickerProps, "placeholder" | "ariaLabel" | "search" | "onLeaveEmpty"> & {
+  inputRef: RefObject<HTMLInputElement | null>
+  /** Spots hold the signers: the picker folds into "Add signer" until it's wanted. */
+  folded: boolean
+}
+
+/** Adds a signer without a spot: contracts, declarations, or someone the labels don't name. */
+export function SignerPicker({ folded, error, errorId, inputRef, ...props }: SignerPickerProps) {
+  const [unfolded, setUnfolded] = useState(false)
+  const focusField = useRef(false)
+  useEffect(() => {
+    if (!unfolded || !focusField.current) return
+    focusField.current = false
+    inputRef.current?.focus()
+  }, [unfolded, inputRef])
+
+  if (folded && !unfolded)
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn(buttonMotion, "-ml-2 self-start text-(--pn-fg-muted)")}
+        onClick={() => {
+          focusField.current = true
+          setUnfolded(true)
+        }}
+      >
+        <Plus aria-hidden /> Add signer
+      </Button>
+    )
+  return (
+    <div className="flex flex-col gap-1.5">
+      <PersonPicker
+        {...props}
+        search
+        placeholder="Add a signer…"
+        ariaLabel="Find a person to add"
+        error={error}
+        errorId={errorId}
+        inputRef={inputRef}
+        onLeaveEmpty={() => setUnfolded(false)}
+      />
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   )

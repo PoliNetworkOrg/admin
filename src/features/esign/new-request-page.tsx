@@ -12,6 +12,7 @@ import {
 } from "react"
 
 import {
+  BarSkeleton,
   buttonMotion,
   checkboxControl,
   ConfirmDialog,
@@ -36,80 +37,48 @@ import { DeliveryRows, REVEAL_MS, type SaveView } from "./delivery-rows"
 import { DocumentDialogBody, DocumentPanes, useFileDrop } from "./document-picker"
 import type { DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
-import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, usePdfBytes } from "./pdf-viewer"
-import { type TextAnchor, withSignature } from "./places"
+import { extractTextAnchors, PdfViewer, sizeOnPage, usePdfBytes } from "./pdf-viewer"
+import {
+  BOX_PT,
+  type DraftPlace,
+  defaultPlace,
+  findSpots,
+  freeRow,
+  placeRows,
+  placeUnderRole,
+  roleKey,
+  type SignerDraft,
+  type TextAnchor,
+  withSignature,
+} from "./places"
 import { PlacingCancel } from "./placing"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
 import { type BoxPlacement, SignatureBox } from "./signature-box"
-import { type DraftPlace, type SignerDraft, SignerPicker, SignerRow } from "./signer-rows"
+import { SignerPicker, SignerRow, SpotRow } from "./signer-rows"
 import { useCanSignHere } from "./signing-device"
 import { useFillHeight } from "./use-fill-height"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
-/** Where the next click on a page puts a box: a signer's existing place, or a new one when `place` is null. */
-type Placing = { signer: number; place: number | null }
+/** Where the next click on a page puts a box: a row's existing place, or a new one when `place` is null. */
+type Placing = { row: string; place: number | null }
+/** Where the focus goes once the rows render: a row's picker, role or menu, or the free picker (`row: null`). */
+type PendingFocus = { row: string | null; part: "picker" | "role" | "menu"; onlyIfLost?: boolean }
 
-/** A signature box of 190 × 62 pt, the size of a typical handwritten-signature space. */
-const BOX_PT = { width: 190, height: 62 }
 /** The folder the last PDF was picked from, `{ driveId, id }`, where the drive browser opens next time. */
 const LAST_FOLDER_KEY = "pn-admin:esign-last-folder"
 /** The title field grows to three lines, then scrolls. */
 const TITLE_MAX_HEIGHT = 80
-
-/** Default places: the last page's bottom, two per row, from the bottom-right corner. */
-function defaultPlacement(index: number, pages: PageSize[]): BoxPlacement {
-  const page = Math.max(pages.length - 1, 0)
-  const size = sizeOnPage(pages[page] ?? { width: 595, height: 842 }, BOX_PT.width, BOX_PT.height)
-  const column = index % 2
-  const row = Math.floor(index / 2)
-  const x = column === 0 ? 1 - 0.07 - size.width : 0.07
-  const y = Math.max(0.02, 1 - 0.07 - size.height - row * (size.height + 0.03))
-  return { page, x, y, ...size }
-}
-
-const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase()
-
-/**
- * Where a role's signature goes: under the last label naming it ("Il Segretario", "Firma del Presidente"), or above it
- * when the label sits at the bottom of the page. Null when the document doesn't name the role.
- */
-function placementForRole(role: string, anchors: TextAnchor[], pages: PageSize[]): BoxPlacement | null {
-  const word = fold(role.trim())
-  if (word.length < 4) return null
-  const anchor = anchors.findLast((a) => fold(a.text).includes(word))
-  const page = anchor ? pages[anchor.page] : undefined
-  if (!anchor || !page) return null
-  const size = sizeOnPage(page, BOX_PT.width, BOX_PT.height)
-  const center = anchor.x + anchor.width / 2
-  const x = Math.min(Math.max(center - size.width / 2, 0.02), 1 - size.width - 0.02)
-  const below = anchor.y + anchor.height + 0.008
-  const y = below + size.height <= 0.98 ? below : Math.max(0.02, anchor.y - size.height - 0.008)
-  return { page: anchor.page, x, y, ...size }
-}
+/** A document read faster than this shows no skeleton. */
+const READING_SKELETON_MS = 400
 
 function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
-/**
- * Moves the signer's role box under the label naming their role. The same signer when there is nothing to move: no
- * role box, a role the document doesn't name (the box stays where it is), or a box already there.
- */
-function placeByRole(signer: SignerDraft, anchors: TextAnchor[], pages: PageSize[]): SignerDraft {
-  const at = signer.places.findIndex((p) => p.byRole)
-  const box = signer.places[at]
-  const placed = box ? placementForRole(signer.role, anchors, pages) : null
-  if (!box || !placed) return signer
-  const keys = ["page", "x", "y", "width", "height"] as const
-  if (keys.every((key) => placed[key] === box[key])) return signer
-  return { ...signer, places: signer.places.map((p, i) => (i === at ? { ...placed, kind: p.kind, byRole: true } : p)) }
-}
-
-function draftOf(person: EsignProfile, index: number, pages: PageSize[]): SignerDraft {
-  const where = defaultPlacement(index, pages)
-  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature", byRole: true }] }
-}
+const middleOf = (p: BoxPlacement) => ({ page: p.page, y: p.y + p.height / 2 })
+const samePlace = (a: BoxPlacement, b: BoxPlacement) =>
+  a.page === b.page && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 
 /**
  * New request: the document fills the left of the workspace, and one column on the right says who signs and where
@@ -144,29 +113,46 @@ export function NewEsignRequestPage({
   const [docError, setDocError] = useState<{ from: "drive" | "upload"; message: string } | null>(null)
   const [changingPdf, setChangingPdf] = useState(false)
   const bytes = usePdfBytes(base64)
-  const [anchors, setAnchors] = useState<TextAnchor[]>([])
+  /** The text of the document on screen, where its signature spots are found; null while it is read. */
+  const [anchors, setAnchors] = useState<TextAnchor[] | null>(null)
   useEffect(() => {
-    if (!bytes) return setAnchors([])
+    if (!bytes) return
     let cancelled = false
     extractTextAnchors(bytes)
       .then((found) => {
         if (!cancelled) setAnchors(found)
       })
-      .catch((error) => console.error(error))
+      .catch((error) => {
+        // A PDF whose text can't be read is signed like one without labels.
+        console.error(error)
+        if (!cancelled) setAnchors([])
+      })
     return () => {
       cancelled = true
     }
   }, [bytes])
+  const reading = bytes !== null && anchors === null
+  const [slowReading, setSlowReading] = useState(false)
+  useEffect(() => {
+    if (!reading) return setSlowReading(false)
+    const timer = window.setTimeout(() => setSlowReading(true), READING_SKELETON_MS)
+    return () => window.clearTimeout(timer)
+  }, [reading])
 
-  const [signers, setSigners] = useState<SignerDraft[]>([])
+  /** The signers group in signing order: people, and the spots found in the PDF, filled or not. */
+  const [rows, setRows] = useState<SignerDraft[]>([])
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
-  const [highlight, setHighlight] = useState<{ signer: string; place: number } | null>(null)
-  /** The signer whose row has the pointer or the focus: their boxes are ringed. */
+  const [highlight, setHighlight] = useState<{ row: string; place: number } | null>(null)
+  /** The row with the pointer or the focus: its boxes are ringed. */
   const [rowPointed, setRowPointed] = useState<string | null>(null)
-  /** The signer whose box has the pointer: their row is tinted. */
+  /** The row whose box has the pointer: it is tinted. */
   const [boxPointed, setBoxPointed] = useState<string | null>(null)
+  /** The empty spot whose box was clicked last, and how many times: its picker opens. */
+  const [activation, setActivation] = useState({ row: "", count: 0 })
+  /** "2 signature spots found", announced once per document. */
+  const [spotsFound, setSpotsFound] = useState("")
   const [ordered, setOrdered] = useState(true)
 
   const [title, setTitle] = useState("")
@@ -226,31 +212,58 @@ export function NewEsignRequestPage({
   const pages = staged?.pdf.pages ?? []
   const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
 
-  // The labels of the document on screen place the role boxes, including roles typed before they were read.
-  useEffect(() => {
-    if (!staged || anchors.length === 0) return
-    setSigners((current) => {
-      const next = current.map((s) => placeByRole(s, anchors, staged.pdf.pages))
-      return next.some((s, i) => s !== current[i]) ? next : current
-    })
-  }, [anchors, staged])
-
   const pickerRef = useRef<HTMLInputElement>(null)
-  /** The first document was just picked: the focus moves on to adding signers. */
-  const focusPicker = useRef(false)
+  const pendingFocus = useRef<PendingFocus | null>(null)
   useEffect(() => {
-    if (!focusPicker.current || !staged) return
-    focusPicker.current = false
-    if (window.matchMedia("(pointer: fine)").matches) pickerRef.current?.focus()
-  }, [staged])
+    const target = pendingFocus.current
+    if (!target) return
+    pendingFocus.current = null
+    // Never take the focus from where the user moved on to.
+    if (target.onlyIfLost && document.activeElement !== null && document.activeElement !== document.body) return
+    const element =
+      target.row === null
+        ? pickerRef.current
+        : column.current?.querySelector<HTMLElement>(
+            `[data-row-id="${CSS.escape(target.row)}"] [data-row-${target.part}]`
+          )
+    element?.focus()
+  }, [rows])
+
+  /** The first document was just picked: once its spots are known, the focus moves on to the first one to fill. */
+  const focusAfterPick = useRef(false)
+  /** The text the rows were last laid out on: each document's text lays them out once. */
+  const laidOut = useRef<TextAnchor[] | null>(null)
+  useEffect(() => {
+    if (!staged || anchors === null || laidOut.current === anchors) return
+    laidOut.current = anchors
+    const spots = findSpots(anchors, staged.pdf.pages)
+    const next = placeRows(rows, spots, anchors, staged.pdf.pages)
+    setRows(next)
+    setPlacing(null)
+    setSpotsFound(
+      spots.length === 1 ? "1 signature spot found" : spots.length > 1 ? `${spots.length} signature spots found` : ""
+    )
+    // The first spot comes into view; without spots, the top of the first page.
+    const first = spots[0]?.places[0]
+    setFocus(first ? middleOf(first) : { page: 0, y: 0 })
+    if (focusAfterPick.current && window.matchMedia("(pointer: fine)").matches) {
+      const empty = next.find((r) => !r.person)
+      pendingFocus.current = { row: empty?.id ?? null, part: "picker" }
+    }
+    focusAfterPick.current = false
+  }, [anchors, staged, rows])
 
   function adopt(next: Staged, content: string) {
-    if (!staged) focusPicker.current = true
+    if (!staged) focusAfterPick.current = true
     setStaged(next)
     setBase64(content)
     setChangingPdf(false)
-    // The same PDF picked again keeps its labels: its bytes aren't read again.
-    if (content !== base64) setAnchors([])
+    // The same PDF picked again keeps its text, and so its rows and boxes; another one is read and laid out anew.
+    if (content !== base64) {
+      setAnchors(null)
+      setSpotsFound("")
+      setFocus(null)
+    }
     const name = baseName(next.fileName)
     if (!titleTouched || title.trim() === "") setTitle(name)
     if (!fileNameTouched || fileName.trim() === "") setFileName(`${name} - firmato.pdf`)
@@ -259,12 +272,6 @@ export function NewEsignRequestPage({
     // An uploaded PDF has no folder of its own: the question where to save it comes at once.
     setSaveView(hasDrives && saveToDrive && !nextFolder ? "browse" : "closed")
     setShown(({ email }) => ({ email }))
-    setSigners((current) =>
-      current.map((s, i) => ({
-        ...s,
-        places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature", byRole: true }],
-      }))
-    )
   }
 
   async function upload(file: File) {
@@ -313,42 +320,47 @@ export function NewEsignRequestPage({
   const dialogDrop = useFileDrop((file) => void upload(file))
 
   const signerList = useFocusAfterRemoval<HTMLOListElement>("[data-signer-row]")
-  const roleInputs = useRef(new Map<string, HTMLInputElement>())
-  /** The signer just added, whose role takes the focus once their row renders. */
-  const focusRole = useRef<string | null>(null)
-  /** The last signer was removed: the picker takes the focus. */
-  const focusPickerAfterRemoval = useRef(false)
-  useEffect(() => {
-    if (focusRole.current !== null) {
-      roleInputs.current.get(focusRole.current)?.focus()
-      focusRole.current = null
-    }
-    if (focusPickerAfterRemoval.current) {
-      focusPickerAfterRemoval.current = false
-      pickerRef.current?.focus()
-    }
-  }, [signers])
+  const allPlaces = (except?: string) => rows.flatMap((r) => (r.id === except ? [] : r.places))
 
   function addSigner(person: EsignProfile) {
-    const draft = draftOf(person, signers.length, pages)
-    const box = draft.places[0]
-    setSigners((current) => [...current, draft])
-    setFocus({ page: box.page, y: box.y + box.height / 2 })
-    focusRole.current = person.sub
+    const box = defaultPlace(anchors ?? [], pages, allPlaces())
+    const row = freeRow({ sub: person.sub, name: person.name }, "", box)
+    setRows((current) => [...current, row])
+    setFocus(middleOf(row.places[0]))
+    pendingFocus.current = { row: row.id, part: "role" }
   }
 
-  // Placing refers to a signer by position, so it ends when the positions change.
-  function removeSigner(index: number, trigger: HTMLElement | null) {
-    if (signers.length === 1) focusPickerAfterRemoval.current = true
+  /** Puts a person in an empty spot; the focus moves on to the next empty one, else to the row's menu. */
+  function fillSpot(id: string, person: EsignProfile) {
+    const next = rows.map((r) => (r.id === id ? { ...r, person: { sub: person.sub, name: person.name } } : r))
+    setRows(next)
+    const at = next.findIndex((r) => r.id === id)
+    const following = [...next.slice(at + 1), ...next.slice(0, at)].find((r) => !r.person)
+    pendingFocus.current = following ? { row: following.id, part: "picker" } : { row: id, part: "menu" }
+  }
+
+  /** "Remove" on a person: a spot row is emptied and gets its label's boxes back; a free row goes. */
+  function removePerson(id: string, trigger: HTMLElement | null) {
+    const row = rows.find((r) => r.id === id)
+    if (!row?.spot) return removeRow(id, trigger)
+    const { spot } = row
+    setRows((current) => current.map((r) => (r.id === id ? { ...r, person: null, places: spot.places } : r)))
+    setPlacing(null)
+    pendingFocus.current = { row: id, part: "picker" }
+  }
+
+  function removeRow(id: string, trigger: HTMLElement | null) {
+    if (rows.length === 1) pendingFocus.current = { row: null, part: "picker" }
     else if (trigger) signerList.capture(trigger, { restore: true })
-    setSigners((current) => current.filter((_, i) => i !== index))
+    setRows((current) => current.filter((r) => r.id !== id))
     setPlacing(null)
     setRowPointed(null)
+    setBoxPointed(null)
   }
 
-  function moveSigner(index: number, by: -1 | 1) {
+  function moveRow(index: number, by: -1 | 1) {
     setPlacing(null)
-    setSigners((current) => {
+    setRows((current) => {
       const next = [...current]
       const [item] = next.splice(index, 1)
       next.splice(index + by, 0, item)
@@ -356,27 +368,60 @@ export function NewEsignRequestPage({
     })
   }
 
-  function setRole(index: number, role: string) {
-    const s = signers[index]
-    const next = placeByRole({ ...s, role }, anchors, pages)
-    const placed = next.places.find((p) => p.byRole)
-    if (next.places !== s.places && placed) setFocus({ page: placed.page, y: placed.y + placed.height / 2 })
-    setSigners((current) => current.map((c, i) => (i === index ? next : c)))
+  /** The empty spot a role names, for a free row whose role is typed. */
+  const spotFor = (role: string) => {
+    const key = roleKey(role)?.key
+    return key === undefined ? undefined : rows.find((r) => !r.person && r.spot?.key === key)
   }
 
-  function updatePlaces(index: number, update: (places: DraftPlace[]) => DraftPlace[]) {
-    setSigners((current) =>
-      current.map((s, i) => (i === index ? { ...s, places: withSignature(update(s.places)) } : s))
+  /**
+   * A free row's role, as typed. Its box follows: to the empty spot the role names, else under the label naming it,
+   * and stays where it is when the document doesn't name it or the user has moved it.
+   */
+  function setRole(id: string, role: string) {
+    const row = rows.find((r) => r.id === id)
+    if (!row) return
+    const at = row.places.findIndex((p) => p.byRole)
+    const box = row.places[at]
+    const target =
+      box && anchors
+        ? (spotFor(role)?.places[0] ??
+          placeUnderRole(role, anchors, pages, [...allPlaces(id), ...row.places.filter((p) => p !== box)]))
+        : null
+    const moved = target && !samePlace(target, box)
+    const places = moved
+      ? row.places.map((p, i) => (i === at ? { ...target, kind: p.kind, byRole: true as const } : p))
+      : row.places
+    if (moved) setFocus(middleOf(places[at]))
+    setRows((current) => current.map((r) => (r.id === id ? { ...r, role, places } : r)))
+  }
+
+  /** A free row whose finished role names an empty spot moves into it: one row for the person, at the label. */
+  function claimSpot(id: string) {
+    const row = rows.find((r) => r.id === id)
+    const empty = row?.person ? spotFor(row.role) : undefined
+    if (!row?.person || !empty?.spot) return
+    const { person } = row
+    const places = [...empty.spot.places, ...row.places.filter((p) => !p.byRole)]
+    setRows((current) =>
+      current.filter((r) => r.id !== id).map((r) => (r.id === empty.id ? { ...r, person, places } : r))
     )
+    setPlacing(null)
+    setRowPointed(null)
+    pendingFocus.current = { row: empty.id, part: "menu", onlyIfLost: true }
+  }
+
+  function updatePlaces(id: string, update: (places: DraftPlace[]) => DraftPlace[]) {
+    setRows((current) => current.map((r) => (r.id === id ? { ...r, places: withSignature(update(r.places)) } : r)))
   }
 
   // The box comes back with every field it was given: rebuilt without `byRole`, it no longer follows the role.
-  function movePlace(index: number, at: number, { page, x, y, width, height }: BoxPlacement) {
-    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { page, x, y, width, height, kind: p.kind } : p)))
+  function movePlace(id: string, at: number, { page, x, y, width, height }: BoxPlacement) {
+    updatePlaces(id, (places) => places.map((p, i) => (i === at ? { page, x, y, width, height, kind: p.kind } : p)))
   }
 
-  function removePlace(index: number, at: number) {
-    updatePlaces(index, (places) => places.filter((_, i) => i !== at))
+  function removePlace(id: string, at: number) {
+    updatePlaces(id, (places) => places.filter((_, i) => i !== at))
   }
 
   function place(page: number, x: number, y: number) {
@@ -391,7 +436,7 @@ export function NewEsignRequestPage({
     }
     const at = placing.place
     // Clicked places keep reading order (page, then top to bottom), which is also the order they are signed in.
-    updatePlaces(placing.signer, (places) =>
+    updatePlaces(placing.row, (places) =>
       (at === null
         ? [...places, { ...placement, kind: "signature" as const }]
         : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
@@ -412,14 +457,18 @@ export function NewEsignRequestPage({
     () => people.filter((p) => usedDrives.every((d) => p.drives.includes(d))),
     [people, usedDrives.join()]
   )
+  /** The people who sign, in order: the rows with a person. */
+  const signers = rows.flatMap((r) => (r.person ? [r.person] : []))
   const available = useMemo(
     () =>
       eligible
         .filter((p) => !signers.some((s) => s.sub === p.sub))
         .sort((a, b) => Number(b.sub === me) - Number(a.sub === me)),
-    [eligible, signers, me]
+    [eligible, signers.map((s) => s.sub).join(), me]
   )
   const meAddable = available.some((p) => p.sub === me)
+  /** "Me" sits in the first slot to fill: the first empty spot, else the free picker. */
+  const firstEmpty = rows.find((r) => !r.person)?.id
   const outsiders = signers.filter((s) => blockedDrive(s.sub) !== undefined)
 
   function emptyText(query: string) {
@@ -437,14 +486,14 @@ export function NewEsignRequestPage({
   const recipients = parseRecipients(emails)
   const badEmail = invalidRecipient(recipients)
   const errors = {
-    signers: signers.length > 0 ? undefined : "Add at least one signer.",
+    signers: rows.length > 0 ? undefined : "Add at least one signer.",
     title: title.trim() === "" ? "Give the request a title." : undefined,
     folder: saveToDrive && !folder ? "Choose a folder." : undefined,
     fileName: saveToDrive && folder && fileName.trim() === "" ? "Name the signed file." : undefined,
     email: badEmail ? `“${badEmail}” isn't an email address.` : undefined,
   }
-  // Signers who may not sign these documents block the request too; their rows say why.
-  const problems = outsiders.length > 0 || Object.values(errors).some(Boolean)
+  // Empty spots, and signers who may not sign these documents, block the request too; their rows say why.
+  const problems = firstEmpty !== undefined || outsiders.length > 0 || Object.values(errors).some(Boolean)
 
   function revalidate(field: keyof typeof shown) {
     if (shown[field]) setShown((current) => ({ ...current, [field]: errors[field] }))
@@ -463,10 +512,13 @@ export function NewEsignRequestPage({
   }
 
   // A creator whose turn comes first signs in the same click that creates the request.
-  const signerSubs = signers.map((s) => s.sub)
+  // An empty spot will hold someone, in its place in the order.
+  const signerSubs = rows.map((r) => r.person?.sub ?? "")
   const signsFirst = creatorSignsFirst(signerSubs, me, ordered)
   const primary = composerPrimary(signerSubs, me, ordered, canSignHere)
   const numbered = ordered && signers.length > 1
+  /** Order numbers count the people, not the empty spots. */
+  const numbers = new Map(rows.filter((r) => r.person).map((r, i) => [r.id, i + 1]))
 
   /** Creates the request once: a signature that doesn't start leaves it on its page, ready to sign again. */
   const created = useRef<{ id: string; title: string } | null>(null)
@@ -474,7 +526,7 @@ export function NewEsignRequestPage({
   const creating = useRef(false)
 
   const untouched =
-    staged === null && title.trim() === "" && emails.trim() === "" && message.trim() === "" && signers.length === 0
+    staged === null && title.trim() === "" && emails.trim() === "" && message.trim() === "" && rows.length === 0
   const dirty = createdRequest === null && !untouched
   // Reads the ref when it runs, so moving to the request just created is never blocked.
   const leave = useBlocker({
@@ -495,11 +547,17 @@ export function NewEsignRequestPage({
           title: title.trim(),
           documentId,
           ordered,
-          signers: signers.map((s) => ({
-            sub: s.sub,
-            role: s.role.trim() || null,
-            places: s.places.map(({ page, x, y, width, height, kind }) => ({ page, x, y, width, height, kind })),
-          })),
+          signers: rows.flatMap(({ person, role, places }) =>
+            person
+              ? [
+                  {
+                    sub: person.sub,
+                    role: role.trim() || null,
+                    places: places.map(({ page, x, y, width, height, kind }) => ({ page, x, y, width, height, kind })),
+                  },
+                ]
+              : []
+          ),
           output:
             saveToDrive && folder ? { driveId: folder.driveId, folderId: folder.id, fileName: fileName.trim() } : null,
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
@@ -579,7 +637,7 @@ export function NewEsignRequestPage({
   }, [])
 
   const shortcut = <Kbd onSolid>{modifier === "⌘" ? "⌘ ↵" : "Ctrl ↵"}</Kbd>
-  const placingName = placing === null ? null : signers[placing.signer]?.name
+  const placingName = placing === null ? null : rows.find((r) => r.id === placing.row)?.person?.name
   // The two panes share the measured height; stacked, they keep their own.
   const workspaceStyle: (CSSProperties & { "--workspace-h"?: string }) | undefined =
     workspace.height === null ? undefined : { "--workspace-h": `${workspace.height}px` }
@@ -653,30 +711,43 @@ export function NewEsignRequestPage({
                     focus={focus}
                     focusOnlyIfAway
                     overlay={(page) =>
-                      signers.flatMap((s, index) =>
-                        s.places.map((p, at) =>
-                          p.page === page ? (
+                      !reading &&
+                      rows.flatMap((row) =>
+                        row.places.map((p, at) => {
+                          if (p.page !== page) return null
+                          const point = (hovering: boolean) =>
+                            setBoxPointed((current) => (hovering ? row.id : current === row.id ? null : current))
+                          // Keyed by the row, so a spot's box stays the same element when a person fills it.
+                          const key = `${row.id}-${at}`
+                          return row.person ? (
                             <SignatureBox
-                              // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
-                              key={`${s.sub}-${at}`}
+                              key={key}
                               placement={p}
-                              label={s.name}
-                              role={s.role || null}
-                              number={numbered ? index + 1 : undefined}
+                              label={row.person.name}
+                              role={row.role || null}
+                              number={numbered ? numbers.get(row.id) : undefined}
                               kind={p.kind}
                               state="active"
                               editable
                               highlighted={
-                                (highlight?.signer === s.sub && highlight.place === at) || rowPointed === s.sub
+                                (highlight?.row === row.id && highlight.place === at) || rowPointed === row.id
                               }
-                              onChange={(placement) => movePlace(index, at, placement)}
-                              onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
-                              onHover={(hovering) =>
-                                setBoxPointed((current) => (hovering ? s.sub : current === s.sub ? null : current))
-                              }
+                              onChange={(placement) => movePlace(row.id, at, placement)}
+                              onRemove={row.places.length > 1 ? () => removePlace(row.id, at) : undefined}
+                              onHover={point}
                             />
-                          ) : null
-                        )
+                          ) : (
+                            <SignatureBox
+                              key={key}
+                              placement={p}
+                              label={row.role}
+                              state="pending"
+                              highlighted={rowPointed === row.id}
+                              onHover={point}
+                              onActivate={() => setActivation(({ count }) => ({ row: row.id, count: count + 1 }))}
+                            />
+                          )
+                        })
                       )
                     }
                   />
@@ -708,70 +779,106 @@ export function NewEsignRequestPage({
 
                     <div className="flex flex-col border-t border-(--pn-line) p-4">
                       <h2 className="sr-only">Signers</h2>
-                      {signers.length > 0 && (
-                        <ol ref={signerList.surfaceRef} tabIndex={-1} className="mb-2 flex flex-col gap-1">
-                          {signers.map((s, index) => {
-                            const blocked = blockedDrive(s.sub)
-                            return (
-                              <SignerRow
-                                key={s.sub}
-                                signer={s}
-                                index={index}
-                                count={signers.length}
-                                numbered={numbered}
-                                isMe={s.sub === me}
-                                blockedBy={blocked === undefined ? undefined : driveLabel(blocked)}
-                                attempted={attempted}
-                                pointed={boxPointed === s.sub}
-                                roleRef={(input: HTMLInputElement | null) => {
-                                  if (input) roleInputs.current.set(s.sub, input)
-                                  else roleInputs.current.delete(s.sub)
-                                }}
-                                onRole={(role) => setRole(index, role)}
-                                onPoint={(inside) =>
-                                  setRowPointed((current) => (inside ? s.sub : current === s.sub ? null : current))
+                      <p className="sr-only" aria-live="polite">
+                        {spotsFound}
+                      </p>
+                      {reading ? (
+                        // One row's height while the PDF is read, so nothing jumps when its spots arrive.
+                        <div className="h-10">
+                          {slowReading && <BarSkeleton label="Reading the PDF…" className="h-10" />}
+                        </div>
+                      ) : (
+                        <>
+                          {rows.length > 0 && (
+                            <ol ref={signerList.surfaceRef} tabIndex={-1} className="mb-2 flex flex-col gap-1">
+                              {rows.map((row, index) => {
+                                const pointProps = {
+                                  pointed: boxPointed === row.id,
+                                  onPoint: (inside: boolean) =>
+                                    setRowPointed((current) => (inside ? row.id : current === row.id ? null : current)),
                                 }
-                                onMove={(by) => moveSigner(index, by)}
-                                onAddPlace={() => setPlacing({ signer: index, place: null })}
-                                onMovePlace={(at) => setPlacing({ signer: index, place: at })}
-                                onPlaceKind={(at, kind) =>
-                                  updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)))
-                                }
-                                onRemovePlace={(at) => removePlace(index, at)}
-                                onShowPlace={(at) => {
-                                  setHighlight(at === null ? null : { signer: s.sub, place: at })
-                                  const p = at === null ? undefined : s.places[at]
-                                  if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
-                                }}
-                                onRemove={(trigger) => removeSigner(index, trigger)}
-                              />
-                            )
-                          })}
-                        </ol>
-                      )}
-                      <SignerPicker
-                        people={available}
-                        me={me}
-                        meAddable={meAddable}
-                        emptyText={emptyText}
-                        inputRef={pickerRef}
-                        error={attempted ? errors.signers : undefined}
-                        errorId={ids.signersError}
-                        onAdd={addSigner}
-                        onAddMe={() => {
-                          const self = available.find((p) => p.sub === me)
-                          if (self) addSigner(self)
-                        }}
-                      />
-                      {signers.length > 1 && (
-                        <label className="mt-2 flex h-6 items-center gap-2 text-[14px]">
-                          <Checkbox
-                            className={cn(checkboxControl, "mt-0")}
-                            checked={ordered}
-                            onCheckedChange={(value) => setOrdered(Boolean(value))}
+                                if (!row.person)
+                                  return (
+                                    <SpotRow
+                                      key={row.id}
+                                      row={row}
+                                      numbered={numbered}
+                                      people={available}
+                                      me={me}
+                                      meAddable={meAddable}
+                                      first={row.id === firstEmpty}
+                                      emptyText={emptyText}
+                                      attempted={attempted}
+                                      {...pointProps}
+                                      activation={activation.row === row.id ? activation.count : 0}
+                                      onFocus={() => setFocus(middleOf(row.places[0]))}
+                                      onPick={(person) => fillSpot(row.id, person)}
+                                      onRemove={(trigger) => removeRow(row.id, trigger)}
+                                    />
+                                  )
+                                const blocked = blockedDrive(row.person.sub)
+                                return (
+                                  <SignerRow
+                                    key={row.id}
+                                    row={row}
+                                    person={row.person}
+                                    index={index}
+                                    count={rows.length}
+                                    number={numbers.get(row.id)}
+                                    numbered={numbered}
+                                    isMe={row.person.sub === me}
+                                    blockedBy={blocked === undefined ? undefined : driveLabel(blocked)}
+                                    attempted={attempted}
+                                    {...pointProps}
+                                    onRole={(role) => setRole(row.id, role)}
+                                    onRoleDone={() => claimSpot(row.id)}
+                                    onMove={(by) => moveRow(index, by)}
+                                    onAddPlace={() => setPlacing({ row: row.id, place: null })}
+                                    onMovePlace={(at) => setPlacing({ row: row.id, place: at })}
+                                    onPlaceKind={(at, kind) =>
+                                      updatePlaces(row.id, (places) =>
+                                        places.map((p, i) => (i === at ? { ...p, kind } : p))
+                                      )
+                                    }
+                                    onRemovePlace={(at) => removePlace(row.id, at)}
+                                    onShowPlace={(at) => {
+                                      setHighlight(at === null ? null : { row: row.id, place: at })
+                                      const p = at === null ? undefined : row.places[at]
+                                      if (p) setFocus(middleOf(p))
+                                    }}
+                                    onRemove={(trigger) => removePerson(row.id, trigger)}
+                                  />
+                                )
+                              })}
+                            </ol>
+                          )}
+                          <SignerPicker
+                            folded={rows.some((r) => r.spot)}
+                            people={available}
+                            me={me}
+                            meAddable={meAddable}
+                            meLabel={meAddable && firstEmpty === undefined ? "Add me" : null}
+                            emptyText={emptyText}
+                            inputRef={pickerRef}
+                            error={attempted ? errors.signers : undefined}
+                            errorId={ids.signersError}
+                            onPick={addSigner}
+                            onAddMe={() => {
+                              const self = available.find((p) => p.sub === me)
+                              if (self) addSigner(self)
+                            }}
                           />
-                          Sign in this order
-                        </label>
+                          {signers.length > 1 && (
+                            <label className="mt-2 flex h-6 items-center gap-2 text-[14px]">
+                              <Checkbox
+                                className={cn(checkboxControl, "mt-0")}
+                                checked={ordered}
+                                onCheckedChange={(value) => setOrdered(Boolean(value))}
+                              />
+                              Sign in this order
+                            </label>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -824,12 +931,18 @@ export function NewEsignRequestPage({
                         </a>
                       </InlineAlert>
                     )}
-                    <div ref={primaryRef} data-composer-primary className="flex flex-col items-end gap-2 self-end">
+                    {/* Busy while the PDF is read: its spots may still become rows to fill. */}
+                    <div
+                      ref={primaryRef}
+                      data-composer-primary
+                      aria-busy={reading || undefined}
+                      className="flex flex-col items-end gap-2 self-end"
+                    >
                       {primary === "send" ? (
                         <LoadingButton
                           className="h-10 gap-2"
                           pending={submitting}
-                          disabled={createdRequest !== null}
+                          disabled={createdRequest !== null || reading}
                           aria-keyshortcuts="Meta+Enter Control+Enter"
                           onClick={submit}
                         >
@@ -840,7 +953,7 @@ export function NewEsignRequestPage({
                           className="gap-2"
                           aria-keyshortcuts="Meta+Enter Control+Enter"
                           prepare={createAndSign}
-                          disabled={submitting || createdRequest !== null}
+                          disabled={submitting || createdRequest !== null || reading}
                           onSigned={() => created.current && void openRequest(created.current.id)}
                           onStopped={signingStopped}
                         >

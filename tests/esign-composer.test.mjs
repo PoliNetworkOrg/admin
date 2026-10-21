@@ -23,6 +23,11 @@ void test("a creator who signs first signs and sends; anyone else's first turn o
   assert.equal(composerPrimary([], "me", true, true), "send")
 })
 
+void test("an empty spot counts as the signer it will hold, in its place", () => {
+  assert.equal(composerPrimary(["me", ""], "me", true, true), "signAndSend")
+  assert.equal(composerPrimary(["", "me"], "me", true, true), "send")
+})
+
 void test("phones and tablets only send, even on the creator's own turn", () => {
   assert.equal(composerPrimary(["me"], "me", true, false), "send")
   assert.equal(composerPrimary(["me", "mario"], "me", true, false), "send")

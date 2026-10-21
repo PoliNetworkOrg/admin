@@ -132,6 +132,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   click ("Send request" on a phone or tablet). The backend doesn't email the creator about a turn that starts as the
   request is created. To sign's
   "Sign a document" and the composer's `?self=true` are gone (admin only).
+- ☑ Signature spots in New request: the labels in the PDF's text become rows to fill, each with a box under its label
+  in clear space (on the signature line when there is one), covering no text. Labels match whole and keep qualifiers
+  apart ("Vice Presidente" is never "Presidente"); several labels on a line, the first 40 and last 10 pages, and labels
+  at the page bottom are handled. Contracts without labels keep the free picker (admin only, `places.ts` tested).
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
