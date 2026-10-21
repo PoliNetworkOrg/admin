@@ -17,7 +17,7 @@ import {
   TriangleAlert,
   UserPlus,
 } from "lucide-react"
-import { type DragEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react"
+import { type DragEvent, type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import {
   Autocomplete,
@@ -355,7 +355,29 @@ export function NewEsignRequestPage({
     setPlacing(null)
   }
 
-  function moveSigner(index: number, by: -1 | 1) {
+  const moveButtons = useRef(new Map<string, HTMLButtonElement>())
+  function moveButtonRef(key: string) {
+    return (button: HTMLButtonElement | null) => {
+      if (button) moveButtons.current.set(key, button)
+      else moveButtons.current.delete(key)
+    }
+  }
+  /** The signer just moved by the arrow that had the focus, which keeps it once the row lands. */
+  const focusMove = useRef<{ sub: string; by: -1 | 1 } | null>(null)
+  // A layout effect, so the focus is back before the browser drops it from the moved row or the disabled arrow.
+  useLayoutEffect(() => {
+    const moved = focusMove.current
+    if (moved === null) return
+    focusMove.current = null
+    const index = signers.findIndex((s) => s.sub === moved.sub)
+    // The arrow that just disabled itself (first row going up, last going down) hands the focus to the other one.
+    const atEnd = moved.by === -1 ? index === 0 : index === signers.length - 1
+    const up = moved.by === -1 ? !atEnd : atEnd
+    moveButtons.current.get(`${moved.sub}:${up ? "up" : "down"}`)?.focus()
+  }, [signers])
+
+  function moveSigner(index: number, by: -1 | 1, button: HTMLElement) {
+    if (button === document.activeElement) focusMove.current = { sub: signers[index].sub, by }
     setPlacing(null)
     setSigners((current) => {
       const next = [...current]
@@ -770,16 +792,18 @@ export function NewEsignRequestPage({
                           {signers.length > 1 && (
                             <>
                               <IconButton
+                                ref={moveButtonRef(`${s.sub}:up`)}
                                 label="Move up"
                                 icon={ArrowUp}
                                 disabled={index === 0}
-                                onClick={() => moveSigner(index, -1)}
+                                onClick={(event) => moveSigner(index, -1, event.currentTarget)}
                               />
                               <IconButton
+                                ref={moveButtonRef(`${s.sub}:down`)}
                                 label="Move down"
                                 icon={ArrowDown}
                                 disabled={index === signers.length - 1}
-                                onClick={() => moveSigner(index, 1)}
+                                onClick={(event) => moveSigner(index, 1, event.currentTarget)}
                               />
                             </>
                           )}
