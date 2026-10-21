@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router"
-import { FileSignature, Files, PenLine, Plus } from "lucide-react"
+import { FileSignature, Files, Plus } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import { AvatarGroup, DataTable, type DataTableColumn, EmptyState, Hint } from "@/components/primitives"
@@ -29,16 +29,10 @@ function inFilter(request: EsignRequest, filter: StatusFilter) {
   return request.status === filter
 }
 
-/** In To sign it starts with the viewer as the first signer, who may then add others. */
-function NewRequestButton({ variant = "default", self }: { variant?: "default" | "outline"; self: boolean }) {
+function NewRequestButton({ variant = "default" }: { variant?: "default" | "outline" }) {
   return (
-    <Button
-      variant={variant}
-      className="h-10"
-      nativeButton={false}
-      render={<Link to="/dashboard/esign/new" search={self ? { self: true } : {}} />}
-    >
-      {self ? <PenLine aria-hidden /> : <Plus aria-hidden />} {self ? "Sign a document" : "New request"}
+    <Button variant={variant} className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/new" />}>
+      <Plus aria-hidden /> New request
     </Button>
   )
 }
@@ -143,16 +137,13 @@ export function EsignRequestsPage({
       <PageBar
         description={description}
         right={
-          canManage || waiting > 1 ? (
-            <>
-              {canManage && <NewRequestButton variant={waiting > 1 ? "outline" : "default"} self={inbox} />}
-              {waiting > 1 && (
+          inbox
+            ? waiting > 1 && (
                 <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/sign" />}>
                   <Files aria-hidden /> Sign {waiting} together
                 </Button>
-              )}
-            </>
-          ) : undefined
+              )
+            : canManage && <NewRequestButton />
         }
         left={
           // Managers keep the Mine/Everyone switch even when they have no requests of their own.
@@ -208,7 +199,7 @@ export function EsignRequestsPage({
                     ? "When someone asks for your signature, the document shows up here."
                     : "Start a request from a PDF in OneDrive or on your computer, choose who signs and where."
                 }
-                action={canManage ? <NewRequestButton variant="outline" self={inbox} /> : undefined}
+                action={!inbox && canManage ? <NewRequestButton variant="outline" /> : undefined}
               />
             ) : (
               <EmptyState

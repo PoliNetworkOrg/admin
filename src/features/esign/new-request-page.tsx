@@ -120,13 +120,10 @@ export function NewEsignRequestPage({
   config,
   signers: people,
   me,
-  withMe,
 }: {
   config: EsignConfig
   signers: EsignProfile[]
   me: string
-  /** Start with the viewer as the first signer ("Sign a document"). */
-  withMe: boolean
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -161,10 +158,7 @@ export function NewEsignRequestPage({
     }
   }, [bytes])
 
-  const [signers, setSigners] = useState<SignerDraft[]>(() => {
-    const self = withMe ? people.find((p) => p.sub === me) : undefined
-    return self ? [draftOf(self, 0, [])] : []
-  })
+  const [signers, setSigners] = useState<SignerDraft[]>([])
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
@@ -479,13 +473,8 @@ export function NewEsignRequestPage({
 
   const creating = useRef(false)
 
-  // "Sign a document" starts with the viewer as signer: that alone is nothing to lose.
   const untouched =
-    staged === null &&
-    title.trim() === "" &&
-    emails.trim() === "" &&
-    message.trim() === "" &&
-    signers.every((s) => withMe && s.sub === me && s.role.trim() === "")
+    staged === null && title.trim() === "" && emails.trim() === "" && message.trim() === "" && signers.length === 0
   const dirty = createdRequest === null && !untouched
   // Reads the ref when it runs, so moving to the request just created is never blocked.
   const leave = useBlocker({

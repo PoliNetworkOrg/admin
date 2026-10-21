@@ -127,9 +127,11 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   sign its documents; default unchanged (auth#62 roles + catalog in the snapshot, auth-kit#2, backend, admin).
 - ☑ Signer picker lists every registered IdP user with `esign:sign` (filtered by the drives' sign rules), not only
   people who opened Signatures; their profile is created with the request (auth#63, backend#79, admin#113).
-- ☑ Sign it yourself: when the creator signs first (or is the only signer), the composer's "Create and sign" / "Sign
-  with CIE" creates the request and opens the agent in the same click; To sign has "Sign a document", which starts
-  with the creator as first signer (admin only).
+- ☑ Sign it yourself, inside New request: "Me" adds the creator in one click, and when the creator signs first (or is
+  the only signer) the primary, "Sign and send" / "Sign with CIE", creates the request and opens the agent in the same
+  click ("Send request" on a phone or tablet). The backend doesn't email the creator about a turn that starts as the
+  request is created. To sign's
+  "Sign a document" and the composer's `?self=true` are gone (admin only).
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
