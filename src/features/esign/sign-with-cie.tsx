@@ -194,6 +194,7 @@ export function SignWithCie({
   const [now, setNow] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
   const [windowClosed, setWindowClosed] = useState(false)
+  const [agentLost, setAgentLost] = useState(false)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
 
@@ -263,6 +264,8 @@ export function SignWithCie({
     function onMessage(event: MessageEvent) {
       // Agents up to v0.1.x, named PoliNetwork Sign Agent, post "pn-sign-agent".
       if (!isAgentOrigin(event.origin) || !["pn-esign", "pn-sign-agent"].includes(event.data?.type)) return
+      // The page lost the agent behind it: the one outcome the backend can't know about.
+      setAgentLost(event.data?.status === "error" && event.data?.detail === "agent_unreachable")
       void poll()
     }
     window.addEventListener("message", onMessage)
@@ -282,6 +285,7 @@ export function SignWithCie({
     setError(null)
     setStates(new Map())
     setWindowClosed(false)
+    setAgentLost(false)
     finishing.current = false
     popupRef.current?.close()
     let popup: Window | null = null
@@ -361,6 +365,7 @@ export function SignWithCie({
     const popup = popupRef.current
     if (popup && !popup.closed) popup.location.href = url
     showWindow(url)
+    setAgentLost(false)
   }
 
   if (phase && phase.kind !== "starting" && phase !== shown) setShown(phase)
@@ -440,36 +445,15 @@ export function SignWithCie({
               >
                 {batch ? jobList : "Updating the page…"}
               </Status>
-            ) : active?.kind === "waiting" && silent ? (
-              <Status
-                icon={<TriangleAlert className="size-5" />}
-                tone="warning"
-                title="PoliNetwork eSign isn't answering"
+            ) : active && (silent || agentLost) ? (
+              <NotAnswering
+                title={silent ? "PoliNetwork eSign isn't answering" : "PoliNetwork eSign stopped answering"}
+                onOpenAgain={() => openWindowAgain(active.url)}
               >
-                <p>
-                  Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={buttonMotion}
-                    nativeButton={false}
-                    render={<a href={AGENT_LAUNCH_URL} />}
-                  >
-                    <Play aria-hidden /> Start PoliNetwork eSign
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={buttonMotion}
-                    onClick={() => openWindowAgain(active.url)}
-                  >
-                    <ExternalLink aria-hidden /> Open the window again
-                  </Button>
-                  <SetupGuideButton />
-                </div>
-              </Status>
+                {silent
+                  ? "Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide."
+                  : "Start PoliNetwork eSign, then open its window again."}
+              </NotAnswering>
             ) : active && windowClosed ? (
               <Status
                 icon={<TriangleAlert className="size-5" />}
@@ -540,6 +524,30 @@ export function SignWithCie({
         </DialogPortal>
       </Dialog>
     </>
+  )
+}
+
+/** PoliNetwork eSign doesn't answer: start it, open its window again, or set it up. */
+function NotAnswering({ title, children, onOpenAgain }: { title: string; children: string; onOpenAgain: () => void }) {
+  return (
+    <Status icon={<TriangleAlert className="size-5" />} tone="warning" title={title}>
+      <p>{children}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className={buttonMotion}
+          nativeButton={false}
+          render={<a href={AGENT_LAUNCH_URL} />}
+        >
+          <Play aria-hidden /> Start PoliNetwork eSign
+        </Button>
+        <Button variant="outline" size="sm" className={buttonMotion} onClick={onOpenAgain}>
+          <ExternalLink aria-hidden /> Open the window again
+        </Button>
+        <SetupGuideButton />
+      </div>
+    </Status>
   )
 }
 

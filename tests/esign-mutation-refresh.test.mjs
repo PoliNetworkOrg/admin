@@ -272,6 +272,7 @@ async function agentWindow(popup) {
       },
     },
     setWindowClosed: (closed) => events.push(["closed", closed]),
+    setAgentLost: (lost) => events.push(["lost", lost]),
   }
   const path = "src/features/esign/sign-with-cie.tsx"
   dependencies.showWindow = await handler(path, "showWindow", dependencies)
@@ -303,7 +304,10 @@ void test("opening the window again reloads the signing page in the open agent w
   openWindowAgain("sign-url")
   assert.equal(popup.location.href, "sign-url")
   assert.equal(popup.focused, true)
-  assert.ok(!events.some((event) => event[0] === "open"))
+  assert.deepEqual(events, [
+    ["closed", false],
+    ["lost", false],
+  ])
 })
 
 void test("the signer's own cancel closes the dialog once, without a reload", async () => {

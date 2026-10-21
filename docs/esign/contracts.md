@@ -42,6 +42,12 @@ Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:4732
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
+The signing page tells its opener what happened with `postMessage({type: "pn-esign", status, detail?}, origin)`, to the
+dashboard's origin only: `status` is `completed`, `error` or `cancelled`, `detail` the agent error code, or
+`agent_unreachable` when the page can no longer reach the agent behind it. The dashboard polls `esign.jobs.statuses`
+again on every message and acts on a message itself only for `agent_unreachable`, because the agent can't report its own
+death to the backend. Agents up to v0.1.x post type `pn-sign-agent`.
+
 Providers (tried in order, first with a card present; never falls back once a PIN reached a module or card —
 `token.Error.PINSent`):
 
