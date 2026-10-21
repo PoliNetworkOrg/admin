@@ -1,16 +1,14 @@
 import type { AppRouter } from "@polinetwork/backend"
-import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server"
+import type { inferRouterOutputs } from "@trpc/server"
 
 import type { ReceiptRequestSource } from "@/features/people/people.contract"
 
 export type ApiOutput = inferRouterOutputs<AppRouter>
-type ApiInput = inferRouterInputs<AppRouter>
 
 export type TgUser = NonNullable<ApiOutput["tg"]["users"]["get"]["user"]>
 export type TgGrant = NonNullable<ApiOutput["tg"]["grants"]["checkUser"]["grant"]>
 export type TgGroup = ApiOutput["tg"]["groups"]["getAll"][number]
-export type TgGroupLabel = ApiOutput["tg"]["groupLabels"]["getAll"][number]
-export type TgUserRole = NonNullable<ApiInput["tg"]["permissions"]["addRole"]["role"]>
+export type TgGroupLabel = ApiOutput["groups"]["labels"]["getAll"][number]
 
 export type AzureMember = ApiOutput["azure"]["members"]["getAll"][number]
 export type AzureGroup = ApiOutput["azure"]["groups"]["getAll"][number]

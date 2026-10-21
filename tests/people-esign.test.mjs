@@ -201,3 +201,43 @@ void test("prepared receipts cannot share or duplicate signature requests", () =
   assert.equal(receiptSignaturesSchema.safeParse([item, item]).success, false)
   assert.equal(receiptSignaturesSchema.safeParse([item, { ...item, receiptId: "R2" }]).success, false)
 })
+
+void test("prepared signature requests preserve exactly the selected receipt order", async () => {
+  const { receiptSignaturesMatchSelection } = await import("../src/features/people/people.contract.ts")
+  const selected = ["receipt-b", "receipt-d"]
+  const prepared = [
+    { receiptId: "receipt-b", requestId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8" },
+    { receiptId: "receipt-d", requestId: "6ba7b811-9dad-41d1-80b4-00c04fd430c8" },
+  ]
+  assert.equal(receiptSignaturesMatchSelection(selected, prepared), true)
+  assert.equal(receiptSignaturesMatchSelection(["receipt-b"], prepared), false)
+  assert.equal(receiptSignaturesMatchSelection(selected, [prepared[0]]), false)
+  assert.equal(receiptSignaturesMatchSelection(selected, [prepared[1], prepared[0]]), false)
+  assert.equal(receiptSignaturesMatchSelection(selected, [...prepared, prepared[0]]), false)
+})
+
+void test("CIE retries reuse the backend's distinct persistent request IDs", async () => {
+  const events = []
+  const prepared = [
+    { receiptId: "receipt-b", requestId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8", title: "Receipt B" },
+    { receiptId: "receipt-d", requestId: "6ba7b811-9dad-41d1-80b4-00c04fd430c8", title: "Receipt D" },
+  ]
+  const prepare = await prepareHandler({
+    batch: [{ id: "receipt-b" }, { id: "receipt-d" }],
+    prepareSignatures: async ({ data }) => {
+      assert.deepEqual([...data.receiptIds], ["receipt-b", "receipt-d"])
+      events.push("prepare")
+      return prepared
+    },
+    router: { invalidate: async ({ sync }) => assert.equal(sync, true) },
+    console: { error: (error) => assert.fail(error) },
+    appToast: { warning: (message) => assert.fail(message) },
+  })
+  const first = await prepare()
+  const retry = await prepare()
+  assert.deepEqual(
+    first.map(({ requestId }) => requestId),
+    retry.map(({ requestId }) => requestId)
+  )
+  assert.deepEqual(events, ["prepare", "prepare"])
+})

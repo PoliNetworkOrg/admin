@@ -743,6 +743,16 @@ export const receiptSignaturesSchema = z
 export type PrepareReceiptSignaturesInput = z.infer<typeof prepareReceiptSignaturesInputSchema>
 export type ReceiptSignature = z.infer<typeof receiptSignaturesSchema>[number]
 
+/** A backend batch must preserve every selected receipt's position and cannot return extra work. */
+export function receiptSignaturesMatchSelection(
+  receiptIds: readonly string[],
+  signatures: readonly { receiptId: string }[]
+) {
+  return (
+    signatures.length === receiptIds.length && signatures.every((item, index) => item.receiptId === receiptIds[index])
+  )
+}
+
 export const receiptInputSchema = z.object({ receiptId: receiptIdSchema })
 export const voidReceiptInputSchema = z.object({ receiptId: receiptIdSchema, reason: reasonSchema })
 export const receiptsInputSchema = z.object({

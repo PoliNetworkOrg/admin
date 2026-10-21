@@ -150,6 +150,27 @@ void test("member details need people:members:read, except on the viewer's own r
   assert.deepEqual((await self.getPerson(member.id)).member, member.member)
 })
 
+void test("a Lead sees contacts of current team members only", async () => {
+  // Earlier tests may end memberships, so pick the team from the current state.
+  const inTeam = (person, id) => person.teams.some((membership) => membership.team === id && !membership.endedOn)
+  const full = (await hr.listTeams()).find(
+    (candidate) => candidate.lead && candidate.members.some((person) => !inTeam(person, candidate.id))
+  )
+  assert.ok(full, "the fixtures hold a team with a Lead and a former member")
+  const [team] = await fakePeopleApi({ permissions: SELF, personId: full.lead.id }).listTeams()
+  for (const person of team.members.filter((candidate) => !inTeam(candidate, team.id))) {
+    assert.equal(person.profile.phone, null)
+    assert.equal(person.profile.personalEmail, null)
+  }
+  const withPhone = full.members.find(
+    (person) => inTeam(person, team.id) && person.id !== full.lead.id && person.profile.phone
+  )
+  assert.ok(withPhone, "the fixtures hold a current teammate with a phone")
+  const activeRow = team.members.find((person) => person.id === withPhone.id)
+  assert.equal(activeRow.profile.phone, withPhone.profile.phone)
+  assert.equal(activeRow.profile.personalEmail, withPhone.profile.personalEmail)
+})
+
 void test("the member register works without people:read and exposes only register fields", async () => {
   const reader = fakePeopleApi({ permissions: ["people:members:read"], personId: "none" })
   const rows = await reader.listMembers()

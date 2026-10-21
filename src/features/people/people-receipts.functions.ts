@@ -11,6 +11,7 @@ import {
   MAX_SIGNED_FILES,
   prepareReceiptSignaturesInputSchema,
   receiptInputSchema,
+  receiptSignaturesMatchSelection,
   receiptsInputSchema,
   sendSignedInputSchema,
 } from "./people.contract"
@@ -70,11 +71,8 @@ export const prepareReceiptSignatures = createServerFn({ method: "POST" })
   .validator(prepareReceiptSignaturesInputSchema)
   .handler(async ({ data, context }) => {
     const signatures = await (await peopleApi(context)).prepareReceiptSignatures(data)
-    if (
-      signatures.length !== data.receiptIds.length ||
-      signatures.some((item) => !data.receiptIds.includes(item.receiptId))
-    ) {
-      throw new Error("The signing requests do not match the selected receipts.")
+    if (!receiptSignaturesMatchSelection(data.receiptIds, signatures)) {
+      throw new Error("The signing requests don't exactly match the selected receipts.")
     }
     return signatures
   })

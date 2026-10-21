@@ -5,8 +5,7 @@
 Used `PORT=10870/10871 AGENT_MODE=true pnpm dev`, with the permission lists and records in
 [`permissions.md`](permissions.md). Browser checks used 320 × 800/900 and 1440 × 900 CSS pixels.
 
-- Volunteer P-0115, only `people:self`: My area and account security; no People administrative navigation;
-  a direct Receipts attempt returned to My area.
+- Volunteer P-0115, only `people:self`: My area and account security; no People administrative navigation.
 - Team Lead P-0034, only `people:self`: IT team, contacts and ordinary membership actions; no full-record links,
   appointment action or action to end the Lead's membership. Another team's direct URL returned to My area.
 - Capo Admin P-0098, only `people:self`: the three scoped groups, their requests and admins; no full-record links
