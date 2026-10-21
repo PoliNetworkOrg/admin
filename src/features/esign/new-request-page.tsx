@@ -943,9 +943,16 @@ export function NewEsignRequestPage({
 
                 <section
                   ref={column}
-                  className="flex min-h-0 min-w-0 flex-col rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) @min-[900px]/composer:h-full"
+                  className={cn(
+                    "flex min-h-0 min-w-0 flex-col rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface)",
+                    // Beside the viewer, as tall as its content up to the viewer's height: the primary stays right
+                    // under the last row, and only a long column scrolls under a pinned footer.
+                    "@min-[900px]/composer:max-h-full @min-[900px]/composer:self-start",
+                    // Stacked, the page scrolls under the sticky footer: what takes the focus stops above it.
+                    "@max-[899px]/composer:[&_*]:scroll-mb-20"
+                  )}
                 >
-                  <div data-composer-body className="min-h-0 flex-1 @min-[900px]/composer:overflow-y-auto">
+                  <div data-composer-body className="min-h-0 @min-[900px]/composer:overflow-y-auto">
                     <div className="flex flex-col gap-1 p-4">
                       <TitleField
                         value={title}

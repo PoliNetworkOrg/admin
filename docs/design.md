@@ -176,8 +176,10 @@ audit log full width below; no summary tiles.
 **Workspace.** A page that fills the window instead of scrolling. `PageContent fill` makes its bottom padding the side
 gutter (24px), and `useFillHeight` sizes the workspace from its top down to it, at least 480px. From 900px of container
 width a document pane sits beside a 380px column (400px from 1040px); narrower, they stack and the page scrolls. The
-column scrolls inside and pins its primary action in a footer: the one page whose primary isn't in the page header,
-because the primary belongs under the last thing checked before it.
+column is as tall as its content, up to the pane's height, with its primary action in a footer right under the last
+row: the one page whose primary isn't in the page header, because the primary belongs under the last thing checked
+before it. A longer column scrolls inside under the pinned footer. Stacked, the footer is sticky at the bottom of the
+window and every control in the column has an 80px bottom scroll margin, so what takes the focus stops above it.
 
 **Settings.** `SectionCard`s in one column, each with a title and an action slot. The destructive card goes last,
 further apart, without a red border.
