@@ -1,4 +1,4 @@
-import { CreditCard, Download, ExternalLink, MonitorCheck, Nfc } from "lucide-react"
+import { CreditCard, Download, ExternalLink, MonitorCheck, Nfc, Play } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
 
 import { SectionCard } from "@/components/primitives"
@@ -6,7 +6,7 @@ import { SegmentedControl } from "@/components/primitives/segmented-control"
 import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
-import { AGENT_ORIGINS, AGENT_RELEASES_URL } from "./agent"
+import { AGENT_LAUNCH_URL, AGENT_ORIGINS, AGENT_RELEASES_URL } from "./agent"
 
 type Os = "macos" | "windows" | "linux"
 
@@ -55,16 +55,20 @@ const CIE_SOFTWARE = {
 } satisfies Record<Os, { name: string; url: string; note: ReactNode }>
 
 const AGENT_STEPS = {
+  // Drop the Open Anyway sentence once macOS releases are notarized (docs/esign/TRACKER.md, Code signing).
   macos: (
     <>
-      Download the macOS app, unzip it and open <strong>PoliNetwork eSign</strong>. It moves itself to your Applications
-      folder and starts whenever you log in.
+      Download the macOS .dmg, open it and double-click <strong>PoliNetwork eSign</strong>. The first time, macOS says
+      it can't verify the app: choose Done, open System Settings › Privacy & Security, choose Open Anyway next to
+      “PoliNetwork eSign” was blocked, and confirm with your password. It then installs itself and starts whenever you
+      log in.
     </>
   ),
+  // Drop the Run anyway sentence once Windows releases are signed (docs/esign/TRACKER.md, Code signing).
   windows: (
     <>
-      Download the Windows archive, extract it and double-click <strong>esign.exe</strong>. It installs itself and
-      starts whenever you log in.
+      Download the Windows .zip, extract it and double-click <strong>esign.exe</strong>. If Windows says “Windows
+      protected your PC”, choose More info, then Run anyway. It then installs itself and starts whenever you log in.
     </>
   ),
   linux: (
@@ -129,8 +133,9 @@ export function EsignSetupPage() {
         <div className="flex max-w-[760px] flex-col gap-4">
           <Step number={1} icon={Nfc} title="Connect an NFC card reader">
             <p>
-              The CIE is contactless: you need a USB NFC reader that works as a standard smart-card reader (PC/SC), such
-              as the ones listed by the Ministry of the Interior for the CIE. Phones can't be used here.
+              The CIE is contactless: you need a USB NFC reader that works as a standard smart-card reader (PC/SC). If
+              you don't have one yet, get one sold as compatible with the CIE 3.0 before the next steps. Phones can't be
+              used here.
             </p>
           </Step>
           <Step number={2} icon={CreditCard} title="Install the CIE software">
@@ -149,7 +154,7 @@ export function EsignSetupPage() {
               </Button>
             </div>
             <p className="text-[13px]">
-              Alternatively the agent works with the open-source{" "}
+              Alternatively PoliNetwork eSign works with the open-source{" "}
               <a
                 className="text-(--pn-accent) hover:underline"
                 href="https://github.com/M0Rf30/opencie-pkcs11/releases/latest"
@@ -169,26 +174,39 @@ export function EsignSetupPage() {
                 nativeButton={false}
                 render={<a href={AGENT_RELEASES_URL} target="_blank" rel="noreferrer" />}
               >
-                <Download aria-hidden /> Download the agent
+                <Download aria-hidden /> Download PoliNetwork eSign
               </Button>
             </div>
             <p className="text-[13px]">
-              Your PIN is typed in the agent's own window on this computer and goes only to the card. PoliNetwork never
-              receives it.
+              Your PIN is typed in the PoliNetwork eSign window on this computer and goes only to the card. PoliNetwork
+              never receives it.
             </p>
           </Step>
           <Step number={4} icon={MonitorCheck} title="Check that it works">
-            <p>Open the agent's page: it should say “The agent is running”. Then sign a document from Signatures.</p>
-            <div>
+            <p>
+              Put your CIE on the reader and open the PoliNetwork eSign status page: it should say it's ready to sign.
+              Then sign a document from Signatures.
+            </p>
+            {os === "macos" && (
+              <p>
+                When you sign, macOS may ask whether PoliNetwork eSign can access data from other apps: choose Allow, so
+                it can read the card pairing made in Software CIE.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 nativeButton={false}
                 render={<a href={`${AGENT_ORIGINS[0]}/`} target="_blank" rel="noreferrer" />}
               >
-                <ExternalLink aria-hidden /> Open the agent
+                <ExternalLink aria-hidden /> Open the status page
+              </Button>
+              <Button variant="outline" size="sm" nativeButton={false} render={<a href={AGENT_LAUNCH_URL} />}>
+                <Play aria-hidden /> Start PoliNetwork eSign
               </Button>
             </div>
+            <p className="text-[13px]">Page doesn't open? Start PoliNetwork eSign, then open the status page again.</p>
           </Step>
         </div>
       </PageContent>

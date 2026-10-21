@@ -148,8 +148,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Code signing (pipeline ready, esign PR #4; steps in esign `docs/code-signing.md`):
   - macOS: upload `~/dev/polinetwork/.signing/esign/developer-id.csr` as a Developer ID Application certificate on
     the PoliNetwork APS Apple account (team 842636PS9J), create an App Store Connect API key, run
-    `scripts/setup-macos-signing.sh secrets …`, tag a release.
-  - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token.
+    `scripts/setup-macos-signing.sh secrets …`, tag a release, then drop the Open Anyway sentence from
+    AGENT_STEPS.macos in src/features/esign/setup-page.tsx.
+  - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token, then
+    drop the Run anyway sentence from AGENT_STEPS.windows.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 
 ## Local end-to-end
