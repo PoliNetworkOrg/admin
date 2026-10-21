@@ -23,7 +23,8 @@ import { cn } from "@/lib/utils"
 
 import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
-import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
+import { kindsLabel, type Place, pagesLabel, placeAt, placesLeft } from "./places"
+import { MovePlaceButtons, PlacingCancel, placingStatus } from "./placing"
 import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "./request-status"
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
@@ -131,6 +132,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     setMyPlaces(savedPlaces)
   }
   const myDone = mySigner?.signaturesDone ?? 0
+  /** The place waiting for a click on its new spot; placing ends by itself once the boxes are fixed. */
+  const [placing, setPlacing] = useState<number | null>(null)
+  const placingAt = myTurn && myDone === 0 ? placing : null
   const myLeft = placesLeft(
     myPlaces.map((place, at) => ({ ...place, at })),
     myDone
@@ -290,6 +294,16 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 data={bytes}
                 pages={pages}
                 focus={focus}
+                cursor={placingAt !== null ? "crosshair" : "default"}
+                onPageClick={(page, x, y) => {
+                  if (placingAt === null) return
+                  setMyPlaces((current) =>
+                    current.map((p, at) => (at === placingAt ? placeAt(p, pages, page, x, y) : p))
+                  )
+                  setPlacing(null)
+                }}
+                status={placingAt !== null ? placingStatus(myPlaces, placingAt) : null}
+                statusAction={placingAt !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
                 overlay={(page) =>
                   request.signers.flatMap((signer, index) => {
                     if (request.status !== "in_progress" || signer.status !== "pending") return []
@@ -350,7 +364,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     ? `${myDone} of ${kindsLabel(myPlaces.filter((p) => p.kind === "signature"))} done. Choose Sign with CIE at the top to finish.`
                     : myPlaces.length > 1
                       ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
-                      : "Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top."}{" "}
+                      : `Your signature goes on ${pagesLabel(myPlaces)}. Drag the blue box to adjust it, then choose Sign with CIE at the top.`}{" "}
                   You need the card, its PIN and the NFC reader.
                   {myDone === 0 && (
                     <>
@@ -392,6 +406,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                   </InlineAlert>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {myDone === 0 && <MovePlaceButtons places={myPlaces} placing={placingAt} onPlacing={setPlacing} />}
                   <Button variant="outline" className="h-10 text-(--pn-danger-fg)" onClick={() => setDeclineOpen(true)}>
                     <X aria-hidden /> Decline
                   </Button>

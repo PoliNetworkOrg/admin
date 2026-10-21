@@ -441,6 +441,10 @@ Rules that the templates above don't imply.
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
 - **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
   signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
+  Until their first signature, the signer's card (and "Before you sign" in a batch) offers "Move to another spot", one
+  button per place when there are several ("Signature · p. 2"). It works like the composer's: the next click on any
+  page puts the box there, the viewer's toolbar says so in place of the page counter, and Esc or Cancel stops it.
+  The viewer jumps to a box without scrolling smoothly, and zooming keeps the middle of the view in place.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
   PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
