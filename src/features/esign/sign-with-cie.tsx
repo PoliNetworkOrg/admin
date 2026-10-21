@@ -50,19 +50,22 @@ const OPEN = new Set(["pending", "prepared"])
 
 /** What the agent reported, by its error code (esign `internal/token`, backend `agent_outdated`). */
 const AGENT_ERRORS = new Map([
-  ["pin_incorrect", "Wrong PIN. Type it again in the agent window; after 3 wrong attempts the card blocks it."],
+  ["pin_incorrect", "Wrong PIN. Type it again in the PoliNetwork eSign window."],
   ["pin_locked", "The PIN is blocked. Unblock it with the PUK in the CIE ID app, then try again."],
   ["pin_invalid", "The PIN must be the 8 digits of your CIE PIN."],
-  ["no_card", "The agent can't see the card. Place the CIE on the reader."],
-  ["no_reader", "The agent can't find an NFC reader. Connect it and try again."],
+  ["no_card", "PoliNetwork eSign can't see the card. Place the CIE on the reader."],
+  ["no_reader", "PoliNetwork eSign can't find an NFC reader. Connect it and try again."],
   ["card_removed", "The card moved away from the reader. Keep it still and try again."],
-  ["middleware_missing", "The agent found no CIE software. Open the setup guide."],
+  ["middleware_missing", "PoliNetwork eSign found no CIE software. Open the setup guide."],
   ["not_paired", "This CIE is not set up on this computer yet. Open the setup guide."],
   ["card_unsupported", "This card isn't a supported CIE."],
   ["card_untrusted", "The card couldn't be verified as a genuine CIE, so the PIN wasn't sent to it."],
   ["device_error", "The card couldn't complete the signature. Try again."],
   ["signature_invalid", "The card's signature didn't match. Try again."],
-  ["agent_outdated", "This version of PoliNetwork eSign is too old. Install the latest one from the setup guide."],
+  [
+    "agent_outdated",
+    "This version of the signing app is too old. Install the latest PoliNetwork eSign from the setup guide.",
+  ],
 ])
 
 function errorText(state: JobState | undefined) {
@@ -295,7 +298,7 @@ export function SignWithCie({
         <DialogContent className={cn(dialogPanel, "max-w-[460px]")} showCloseButton={false}>
           {phase?.kind === "waiting" && !silent && (
             <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
-              A window from PoliNetwork eSign opens on this computer. If it doesn't, open it again.
+              A PoliNetwork eSign window opens on this computer.
             </Status>
           )}
           {phase?.kind === "waiting" && silent && (
@@ -305,11 +308,11 @@ export function SignWithCie({
               title="PoliNetwork eSign isn't answering"
             >
               <p>
-                Start the agent, then open the signing window again. First time here? Install it from the setup guide.
+                Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" nativeButton={false} render={<a href={AGENT_LAUNCH_URL} />}>
-                  <Play aria-hidden /> Start the agent
+                  <Play aria-hidden /> Start PoliNetwork eSign
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => reopen(phase.url)}>
                   <ExternalLink aria-hidden /> Open the window again
@@ -326,7 +329,7 @@ export function SignWithCie({
             </Status>
           )}
           {phase?.kind === "signing" && (
-            <Status icon={<KeyRound className="size-5" />} title="Type your PIN in the agent window">
+            <Status icon={<KeyRound className="size-5" />} title="Type your PIN in PoliNetwork eSign">
               <p>
                 Keep the CIE on the reader. {batch ? `One PIN signs all ${phase.jobs.length} documents. ` : ""}
                 The PIN goes only to the card, never to PoliNetwork.
@@ -345,7 +348,7 @@ export function SignWithCie({
                 </>
               )}
               <Button variant="ghost" size="sm" className="mt-2 -ml-2" onClick={() => reopen(phase.url)}>
-                <ExternalLink aria-hidden /> Show the agent window
+                <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
               </Button>
             </Status>
           )}
