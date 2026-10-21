@@ -46,7 +46,13 @@ The signing page tells its opener what happened with `postMessage({type: "pn-esi
 dashboard's origin only: `status` is `completed`, `error` or `cancelled`, `detail` the agent error code, or
 `agent_unreachable` when the page can no longer reach the agent behind it. The dashboard polls `esign.jobs.statuses`
 again on every message and acts on a message itself only for `agent_unreachable`, because the agent can't report its own
-death to the backend. Agents up to v0.1.x post type `pn-sign-agent`.
+death to the backend. Only the next agent release (after v0.3.0) posts `agent_unreachable`: with v0.3.0 and older the
+dashboard doesn't learn that the agent stopped. Agents up to v0.1.x post type `pn-sign-agent`.
+
+The dashboard notices a closed agent window by reading `popup.closed` on every poll. That works only while the two
+windows keep their opener relationship, so neither the dashboard nor the agent page may send a
+`Cross-Origin-Opener-Policy` header: `same-origin` on either side cuts the link, the dashboard then reads the window as
+closed at once, and the page's `window.opener` is gone, so its messages stop too.
 
 Providers (tried in order, first with a card present; never falls back once a PIN reached a module or card —
 `token.Error.PINSent`):
@@ -73,17 +79,18 @@ Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expir
 `job_failed` (409: the message of the error that ended the job), `document_changed` (409), `certificate_invalid` (422),
 `signer_mismatch` (403), `signature_invalid` (422).
 
-An error is terminal or retryable, the same in the agent, the backend and the dashboard. A terminal error ends the job:
-the backend moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it
-itself, and the agent shows it without a PIN form. A retryable error keeps the job open in the same agent window. An
-unknown code is retryable.
+The agent, the backend and the dashboard agree on which errors are terminal. A terminal error ends the job: the backend
+moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it itself, and
+the agent shows it without a PIN form. Any other code, an unknown one included, leaves the job open in the backend. A
+retryable error returns to the PIN form in the same agent window. Any other per-document error ends the agent window
+while the backend keeps the job open; once the signer closes that window, the dashboard offers to open it again.
 
 - Terminal, reported by the agent: `pin_locked`, `card_untrusted`, `middleware_missing`, `not_paired`,
   `certificate_not_found`.
 - Terminal, raised by the backend: `signer_mismatch`, `certificate_invalid`, `signature_invalid`, `document_changed`,
   `pdf_invalid`, `job_done`, `agent_outdated`.
-- Retryable: `pin_incorrect`, `pin_invalid`, `pin_required`, `no_card`, `no_reader`, `card_removed`, `card_unsupported`,
-  `device_error`, `busy`, `backend_unreachable`.
+- Retryable, back to the PIN form: `pin_incorrect`, `pin_invalid`, `pin_required`, `no_card`, `no_reader`,
+  `card_removed`, `card_unsupported`, `device_error`, `busy`, `backend_unreachable`.
 
 `/fail` on a job that already failed changes nothing and answers `{status: "failed"}`.
 
