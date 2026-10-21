@@ -4,6 +4,8 @@ import { z } from "zod"
 import { esignReadMiddleware, esignSignWriteMiddleware } from "@/server/auth.middleware"
 import type { BackendClient } from "@/server/backend.server"
 
+import { MAX_BATCH } from "./agent"
+
 /** The audit payloads the backend writes; anything else is dropped. */
 const eventData = z
   .object({
@@ -67,13 +69,11 @@ export const getEsignRequest = createServerFn()
       requestDetail(context.backend, data.id),
       context.backend.esign.requests.list.query({ scope: "inbox" }),
     ])
-    /** Other documents waiting for the caller, which can be signed together with this one. */
-    const alsoWaiting = inbox.filter((r) => r.myTurn && r.id !== data.id).length
-    return { config, ...detail, me: context.user.sub, alsoWaiting }
+    // Other documents waiting for the caller: signed together with this one, or the next to open after it.
+    const others = inbox.filter((r) => r.myTurn && r.id !== data.id)
+    const next = others[0] ? { id: others[0].id, title: others[0].title } : null
+    return { config, ...detail, me: context.user.sub, waiting: { count: others.length, next } }
   })
-
-/** Documents signed together with one PIN, at most this many. */
-export const MAX_BATCH = 10
 
 /**
  * The documents waiting for the caller's signature, in inbox order, for signing them together; `first` (the request

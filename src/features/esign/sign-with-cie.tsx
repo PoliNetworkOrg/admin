@@ -175,6 +175,8 @@ export function SignWithCie({
   prepare,
   disabled,
   children,
+  className,
+  describedBy,
   onSigned,
   onStopped,
 }: (
@@ -190,6 +192,10 @@ export function SignWithCie({
 ) & {
   disabled?: boolean
   children?: ReactNode
+  /** For the trigger, e.g. `w-full` in a card. */
+  className?: string
+  /** The id of the text explaining why the trigger is disabled. */
+  describedBy?: string
   /** After the signatures are saved and the page data reloaded. */
   onSigned?: () => void
   /** After the dialog closes before every document is signed, or the signature couldn't start (with why). */
@@ -440,7 +446,8 @@ export function SignWithCie({
         pending={phase?.kind === "starting"}
         disabled={disabled || items?.length === 0}
         onClick={start}
-        className="h-10"
+        aria-describedby={describedBy}
+        className={cn("h-10", className)}
       >
         {children ?? (items && items.length > 1 ? `Sign ${items.length} documents` : "Sign with CIE")}
       </LoadingButton>

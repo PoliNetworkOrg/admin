@@ -2,36 +2,30 @@ import { Chip } from "@/components/primitives/chip"
 import { StatusBadge } from "@/components/primitives/status-badge"
 import type { EsignRequest, EsignSigner } from "@/lib/api/types"
 
+import { requestBadge } from "./request-card"
+
 export function RequestStatusBadge({ request }: { request: Pick<EsignRequest, "status" | "myTurn" | "delivery"> }) {
-  if (request.status === "in_progress")
-    return request.myTurn ? (
-      <StatusBadge tone="brand">Your turn</StatusBadge>
-    ) : (
-      <StatusBadge tone="warning">In progress</StatusBadge>
-    )
-  if (request.status === "completed")
-    return request.delivery?.status === "failed" ? (
-      <StatusBadge tone="danger">Delivery failed</StatusBadge>
-    ) : (
-      <StatusBadge tone="success">Signed</StatusBadge>
-    )
-  if (request.status === "declined") return <StatusBadge tone="danger">Declined</StatusBadge>
-  return <StatusBadge tone="neutral">Cancelled</StatusBadge>
+  const { tone, label } = requestBadge(request)
+  return <StatusBadge tone={tone}>{label}</StatusBadge>
 }
 
+/** A signer's state; the viewer's own turn has none, because the action card says "Your turn". */
 export function SignerStatusBadge({
   signer,
   turn,
+  mine,
   requestStatus,
 }: {
   signer: EsignSigner
   turn: boolean
+  mine: boolean
   requestStatus: EsignRequest["status"]
 }) {
   if (signer.status === "signed") return <StatusBadge tone="success">Signed</StatusBadge>
   if (signer.status === "declined") return <StatusBadge tone="danger">Declined</StatusBadge>
   if (requestStatus !== "in_progress") return <StatusBadge tone="neutral">Not signed</StatusBadge>
-  return turn ? <StatusBadge tone="brand">To sign</StatusBadge> : <StatusBadge tone="neutral">Waiting</StatusBadge>
+  if (!turn) return <StatusBadge tone="neutral">Waiting</StatusBadge>
+  return mine ? null : <StatusBadge tone="brand">Their turn</StatusBadge>
 }
 
 const STATUS_FILTERS = ["all", "in_progress", "completed", "closed"] as const

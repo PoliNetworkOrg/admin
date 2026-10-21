@@ -173,6 +173,13 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
 
 ## Log
 
+- 2026-10-21: decisions round, request and batch pages (admin `feat/esign-dec-signing`; not pushed): one action card
+  holds the title, the status, one sentence and the request's actions, and on desktop the right column stays put while
+  the cards under it scroll; "Move box" moved into the viewer's toolbar; phones and tablets only review; declined and
+  cancelled requests offer "Send again" (`/dashboard/esign/new?from=`, which the composer branch fills in); the upload
+  fallback is gone; the agent proxy forwards PoliNetwork eSign's User-Agent, so the backend can refuse versions too old
+  to sign.
+
 - 2026-10-21: UX pass (admin `feat/esign-ux-pass`, backend `fix/esign-ux`, agent `fix/sign-page-ux`; not pushed): the
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on
   errors a retry can't fix, plus composer, request, batch, setup and Overview polish. Admin follow-ups after the backend

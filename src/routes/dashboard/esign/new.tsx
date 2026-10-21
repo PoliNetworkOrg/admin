@@ -8,8 +8,9 @@ import { getEsignComposer } from "@/features/esign/requests.functions"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/esign/new")({
-  // `self`: "Sign a document", which starts with the viewer as the first signer.
-  validateSearch: z.object({ self: z.boolean().optional() }),
+  // `self`: "Sign a document", which starts with the viewer as the first signer. `from`: "Send again" on a declined
+  // or cancelled request, which the composer will start from.
+  validateSearch: z.object({ self: z.boolean().optional(), from: z.uuid().optional() }),
   beforeLoad: ({ context }) => {
     if (!hasPermission(context.permissions, "esign:requests:manage")) throw redirect({ to: "/unauthorized" })
   },

@@ -131,7 +131,7 @@ export function SignatureBox({
       onPointerCancel={end}
       data-focus-ring="none"
       className={cn(
-        "group/box absolute flex touch-none flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
+        "group/box absolute flex flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
         "outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
         state === "active" &&
           "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
@@ -140,7 +140,8 @@ export function SignatureBox({
         state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-solid)",
         kind === "mark" && state === "active" && "border-dashed",
         highlighted && "ring-4 ring-(--pn-accent)/35",
-        editable && "cursor-move"
+        // Only a box that moves takes the finger; on the others it scrolls the page.
+        editable && "cursor-move touch-none"
       )}
       style={{
         left: `${placement.x * 100}%`,

@@ -2,6 +2,9 @@
 export const AGENT_PORT = 47321
 export const AGENT_ORIGINS = [`http://127.0.0.1:${AGENT_PORT}`, `http://localhost:${AGENT_PORT}`]
 
+/** Documents one agent window signs with one PIN, at most. */
+export const MAX_BATCH = 10
+
 /**
  * Set in localStorage once PoliNetwork eSign has answered in this browser: `{"version": string | null, "at": ISO}`,
  * a null version for agents that don't announce themselves.

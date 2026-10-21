@@ -30,6 +30,8 @@ type PdfViewerProps = {
   status?: string | null
   /** A control after the status, e.g. Cancel while placing a box. */
   statusAction?: ReactNode
+  /** Controls after "Page n of total", e.g. Move box; hidden while `status` is set. */
+  toolbarStart?: ReactNode
 }
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -61,6 +63,7 @@ export function PdfViewer({
   focus,
   status,
   statusAction,
+  toolbarStart,
 }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const fill = useFillHeight<HTMLDivElement>()
@@ -155,6 +158,7 @@ export function PdfViewer({
             {status || `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}`}
           </span>
           {statusAction && <div className="shrink-0">{statusAction}</div>}
+          {!status && toolbarStart && <div className="flex shrink-0 items-center">{toolbarStart}</div>}
         </div>
         <div className={cn("flex shrink-0 items-center gap-0.5", status && "@max-md:hidden")}>
           <IconButton label="Zoom out" icon={Minus} onClick={() => step(-1)} disabled={scale <= ZOOMS[0] + 0.01} />

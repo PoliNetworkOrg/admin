@@ -461,12 +461,12 @@ for (const outcome of ["delivered", "failed", "throws"]) {
     env.reload.resolve()
     await pending
     assert.equal(env.state.retrying, false)
+    // The card's delivery lines and alert say how a retry that ran went; only a call that throws needs a toast.
     assert.deepEqual(
-      env.events.at(-1),
-      outcome === "delivered"
-        ? ["success", "Document delivered."]
-        : ["error", outcome === "failed" ? "Couldn't deliver the document. Mailbox refused" : "Delivery refused"]
+      env.events.filter((event) => Array.isArray(event) && event[0] !== "logged"),
+      outcome === "throws" ? [["error", "Delivery refused"]] : []
     )
+    assert.deepEqual(env.events.at(-1), outcome === "throws" ? ["error", "Delivery refused"] : "reload")
   })
 }
 
