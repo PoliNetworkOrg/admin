@@ -64,6 +64,8 @@ type FormDialogProps = {
   /** Immediate filters may replace Cancel/Submit with their clear action and count. */
   footer?: ReactNode
   trigger?: ReactElement
+  /** Element to focus on close instead of the trigger, e.g. the text that now states the outcome. */
+  finalFocus?: () => HTMLElement | null
   children: ReactNode
 }
 
@@ -85,6 +87,7 @@ export function FormDialog({
   footerStart,
   footer,
   trigger,
+  finalFocus,
   children,
 }: FormDialogProps) {
   const [pending, setPending] = useState(false)
@@ -145,6 +148,7 @@ export function FormDialog({
         <DialogPrimitive.Popup
           ref={popupRef}
           initialFocus={initialFocus}
+          finalFocus={finalFocus ? () => finalFocus() ?? true : undefined}
           className={cn(dialogPanel, dialogMotion, sizes[size])}
         >
           <header className="relative flex shrink-0 flex-col gap-1 px-5.5 pt-5 pr-14">
