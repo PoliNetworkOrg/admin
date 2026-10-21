@@ -157,8 +157,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   running and ready to sign", which fits both v0.3.0 ("The agent is running") and the readiness status page of the next
   agent release ("Ready to sign" once reader, card and software check out). Once that release is out, the step can
   quote "Ready to sign".
-- ☐ Setup page: its inline links (the ArchWiki guide, opencie) still differ from the text by color only; give them
-  `inlineLink`, like the request and batch pages (`feat/esign-dec-setup` rewrites that page, so at integration).
+- ☑ Setup page: its inline links (the ArchWiki guide, OpenCIE) are underlined at rest with `inlineLink`, like the
+  request and batch pages.
 
 ## Manual steps for the maintainer (cannot be automated here)
 

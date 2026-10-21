@@ -1,7 +1,7 @@
 import { CreditCard, Download, ExternalLink, MonitorCheck, Nfc, Play } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import { SectionCard } from "@/components/primitives"
+import { inlineLink, SectionCard } from "@/components/primitives"
 import { SegmentedControl } from "@/components/primitives/segmented-control"
 import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -15,8 +15,6 @@ const OS_ITEMS: { value: Os; label: string }[] = (["macos", "windows", "linux"] 
   value,
   label: OS_NAMES[value],
 }))
-
-const linkClass = "text-(--pn-accent) hover:underline"
 
 const CIE_ID = {
   macos: {
@@ -126,7 +124,7 @@ function PairStep({ os }: { os: Os }) {
               Arch: <code className={code}>sudo pacman -S pcsclite ccid</code>, then{" "}
               <code className={code}>sudo systemctl enable --now pcscd.service</code>. See the{" "}
               <a
-                className={linkClass}
+                className={inlineLink}
                 href="https://wiki.archlinux.org/title/Smartcards"
                 target="_blank"
                 rel="noreferrer"
@@ -139,7 +137,7 @@ function PairStep({ os }: { os: Os }) {
           <p className="text-[13px]">
             PoliNetwork eSign also works with the open-source{" "}
             <a
-              className={linkClass}
+              className={inlineLink}
               href="https://github.com/M0Rf30/opencie-pkcs11/releases/latest"
               target="_blank"
               rel="noreferrer"
@@ -181,7 +179,7 @@ function InstallStep({ os }: { os: Os }) {
           <Download aria-hidden /> Download for {OS_NAMES[os]}
         </Button>
         <a
-          className={`inline-flex min-h-9 items-center text-[13px] ${linkClass}`}
+          className="inline-flex min-h-9 items-center text-[13px] text-(--pn-accent) hover:underline"
           href={AGENT_RELEASES_URL}
           target="_blank"
           rel="noreferrer"
