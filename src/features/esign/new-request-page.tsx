@@ -21,6 +21,7 @@ import { type DragEvent, type ReactNode, useEffect, useId, useMemo, useRef, useS
 
 import {
   Autocomplete,
+  buttonMotion,
   checkboxControl,
   Combobox,
   ComboboxContent,
@@ -207,6 +208,19 @@ export function NewEsignRequestPage({
     return self ? [draftOf(self, 0, [])] : []
   })
   const [placing, setPlacing] = useState<Placing | null>(null)
+  const isPlacing = placing !== null
+  useEffect(() => {
+    if (!isPlacing) return
+    function cancel(event: KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return
+      // An open menu or dialog takes Escape for itself.
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
+      event.preventDefault()
+      setPlacing(null)
+    }
+    window.addEventListener("keydown", cancel)
+    return () => window.removeEventListener("keydown", cancel)
+  }, [isPlacing])
   const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
   /** The box whose menu is open, so it stands out among the same person's boxes. */
   const [highlight, setHighlight] = useState<{ signer: string; place: number } | null>(null)
@@ -346,13 +360,16 @@ export function NewEsignRequestPage({
     focusRole.current = person.sub
   }
 
+  // Placing refers to a signer by position, so it ends when the positions change.
   function removeSigner(index: number, button: HTMLElement) {
     if (signers.length === 1) searchRef.current?.focus()
     else signerList.capture(button, { restore: true })
     setSigners((current) => current.filter((_, i) => i !== index))
+    setPlacing(null)
   }
 
   function moveSigner(index: number, by: -1 | 1) {
+    setPlacing(null)
     setSigners((current) => {
       const next = [...current]
       const [item] = next.splice(index, 1)
@@ -586,47 +603,61 @@ export function NewEsignRequestPage({
         <div ref={form} className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">
             {staged ? (
-              <div className="flex flex-col gap-2">
-                {placing !== null && (
-                  <InlineAlert tone="info">
-                    {placing.place === null
+              <PdfViewer
+                data={bytes}
+                pages={pages}
+                status={
+                  placing === null
+                    ? null
+                    : placing.place === null
                       ? `Click where ${signers[placing.signer]?.name} signs again.`
-                      : `Click the new spot for ${signers[placing.signer]?.name}.`}{" "}
-                    <button type="button" className="text-(--pn-accent) underline" onClick={() => setPlacing(null)}>
+                      : `Click the new spot for ${signers[placing.signer]?.name}.`
+                }
+                statusAction={
+                  placing !== null && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(buttonMotion, "gap-2")}
+                      aria-keyshortcuts="Escape"
+                      onClick={() => setPlacing(null)}
+                    >
                       Cancel
-                    </button>
-                  </InlineAlert>
-                )}
-                <PdfViewer
-                  data={bytes}
-                  pages={pages}
-                  cursor={placing !== null ? "crosshair" : "default"}
-                  onPageClick={place}
-                  focus={focus}
-                  overlay={(page) =>
-                    signers.flatMap((s, index) =>
-                      s.places.map((p, at) =>
-                        p.page === page ? (
-                          <SignatureBox
-                            // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
-                            key={`${s.sub}-${at}`}
-                            placement={p}
-                            label={s.name}
-                            role={s.role || null}
-                            number={index + 1}
-                            kind={p.kind}
-                            state="active"
-                            editable
-                            highlighted={highlight?.signer === s.sub && highlight.place === at}
-                            onChange={(placement) => movePlace(index, at, placement)}
-                            onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
-                          />
-                        ) : null
-                      )
+                      <kbd
+                        aria-hidden
+                        className="rounded-[5px] border border-(--pn-line-strong) bg-(--pn-surface-raised) px-1.5 font-mono text-[11px] leading-4 text-(--pn-fg-muted) pointer-coarse:hidden"
+                      >
+                        Esc
+                      </kbd>
+                    </Button>
+                  )
+                }
+                cursor={placing !== null ? "crosshair" : "default"}
+                onPageClick={place}
+                focus={focus}
+                overlay={(page) =>
+                  signers.flatMap((s, index) =>
+                    s.places.map((p, at) =>
+                      p.page === page ? (
+                        <SignatureBox
+                          // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
+                          key={`${s.sub}-${at}`}
+                          placement={p}
+                          label={s.name}
+                          role={s.role || null}
+                          number={index + 1}
+                          kind={p.kind}
+                          state="active"
+                          editable
+                          highlighted={highlight?.signer === s.sub && highlight.place === at}
+                          onChange={(placement) => movePlace(index, at, placement)}
+                          onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
+                        />
+                      ) : null
                     )
-                  }
-                />
-              </div>
+                  )
+                }
+              />
             ) : (
               <section
                 aria-label="Choose the document"
