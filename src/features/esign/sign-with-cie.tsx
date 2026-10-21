@@ -692,15 +692,28 @@ function SigningDialog(props: DialogProps) {
   const secondaryRef = useRef<HTMLElement>(null)
   const view = mode && viewOf(mode, props, footerActions(props, primaryRef, secondaryRef))
 
-  // A state change that removed the focused button moves focus to the new primary, else to Cancel or Close.
-  const key = mode && [mode.kind, "state" in mode && mode.state, "variant" in mode && mode.variant].join(":")
+  // A state change that removed the focused button moves focus to the new primary, else to Cancel or Close. So does
+  // the first state with a primary after waiting for the agent, when Cancel was the only button to focus.
+  const kind = mode?.kind ?? null
+  const key =
+    mode &&
+    [
+      mode.kind,
+      "state" in mode && mode.state,
+      "variant" in mode && mode.variant,
+      "setupOpened" in mode && mode.setupOpened,
+    ].join(":")
+  const shown = useRef<Mode["kind"] | null>(null)
   useEffect(() => {
+    const waited = shown.current === "opening" || shown.current === "starting"
+    shown.current = kind
     const panel = panelRef.current
     if (!key || !panel) return
     const active = document.activeElement
-    if (active && active !== panel && panel.contains(active)) return
+    const kept = active !== null && active !== panel && panel.contains(active)
+    if (kept && !(waited && primaryRef.current)) return
     ;(primaryRef.current ?? secondaryRef.current)?.focus()
-  }, [key])
+  }, [key, kind])
 
   return (
     <Dialog
