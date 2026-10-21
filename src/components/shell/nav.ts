@@ -320,7 +320,7 @@ const audit: Service = {
   sections: [
     {
       id: "audit-log",
-      title: "Audit Log",
+      title: "Audit log",
       icon: ScrollText,
       path: "/dashboard/audit-log",
       permission: "audit:read",

@@ -175,6 +175,7 @@ test("WhatsApp group links require a real HTTPS invite code", () => {
 test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
     "src/features/dashboard/overview.functions.ts",
+    "src/features/audit-log/audit-log.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/azure/groups.functions.ts",
