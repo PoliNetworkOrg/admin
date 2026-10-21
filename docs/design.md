@@ -180,7 +180,8 @@ the selected range and a TanStack Charts line (3M per day, 1Y per week, All per 
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
 reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline, labelled "Groups" rather than "Telegram groups", and without the "To
 review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
-as a 44px button (two per row on mobile).
+as a 44px button (two per row on mobile). Reports › Open and Signatures › To sign carry the same accent count pill as the
+panel, from the shell's pending counts; nothing at zero or on a failed load.
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
@@ -447,6 +448,9 @@ Rules that the templates above don't imply.
   With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
   is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
   document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  The requests list names whom an in-progress request waits on ("Waiting for X"); To sign has no Status column (every
+  row is the viewer's turn); `?status=` keeps the status segment across Back. The request page shows when each signer
+  whose turn it is was emailed, or why they weren't.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may

@@ -133,6 +133,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Create the IdP permission `esign:drives:manage` and grant it to whoever sets drive access (master admins get it).
 - ☐ Real-card check that one PIN can make several signatures in a session (`cie-mw`, `opencie`, built-in `cie`).
 - ☐ Docs: user guide (install agent, pair CIE), ops (Graph permissions, IdP permissions, env).
+- ☐ Setup step 4 (`src/features/esign/setup-page.tsx`) says the status page "should show that PoliNetwork eSign is
+  running and ready to sign", which fits both v0.3.0 ("The agent is running") and the readiness status page of the next
+  agent release ("Ready to sign" once reader, card and software check out). Once that release is out, the step can
+  quote "Ready to sign".
 
 ## Manual steps for the maintainer (cannot be automated here)
 
@@ -148,8 +152,10 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☐ Code signing (pipeline ready, esign PR #4; steps in esign `docs/code-signing.md`):
   - macOS: upload `~/dev/polinetwork/.signing/esign/developer-id.csr` as a Developer ID Application certificate on
     the PoliNetwork APS Apple account (team 842636PS9J), create an App Store Connect API key, run
-    `scripts/setup-macos-signing.sh secrets …`, tag a release.
-  - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token.
+    `scripts/setup-macos-signing.sh secrets …`, tag a release, then drop the Open Anyway sentence from
+    AGENT_STEPS.macos in src/features/esign/setup-page.tsx.
+  - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token, then
+    drop the Run anyway sentence from AGENT_STEPS.windows.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 
 ## Local end-to-end

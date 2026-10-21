@@ -15,7 +15,7 @@ export const Route = createFileRoute("/dashboard/esign/inbox")({
     <>
       <PageBar />
       <PageContent>
-        <TableSkeleton columns={4} label="Loading documents to sign…" />
+        <TableSkeleton columns={3} label="Loading documents to sign…" />
       </PageContent>
     </>
   ),

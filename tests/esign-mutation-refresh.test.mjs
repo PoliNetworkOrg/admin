@@ -19,7 +19,7 @@ async function handler(path, name, dependencies) {
   }
   visit(source)
   assert.ok(found, `${name} not found in ${path}`)
-  const compiled = ts.transpileModule(`const handler = ${found.getText()}`, {
+  const compiled = ts.transpileModule(`const handler = ${found.getText().replace(/^export /, "")}`, {
     compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.None },
   }).outputText
   return runInNewContext(`${compiled}; handler`, { ...dependencies })
@@ -434,3 +434,52 @@ for (const outcome of ["delivered", "failed", "throws"]) {
     )
   })
 }
+
+void test("background reloads run one at a time, only while active and the tab is visible", async () => {
+  const timers = new Map()
+  const reloads = []
+  const logged = []
+  let cleanup
+  const dependencies = {
+    useRouter: () => ({
+      invalidate: () => {
+        const reload = deferred()
+        reloads.push(reload)
+        return reload.promise
+      },
+    }),
+    useEffect: (effect) => {
+      cleanup = effect()
+    },
+    window: {
+      setInterval: (tick, ms) => timers.set(timers.size + 1, { tick, ms }).size,
+      clearInterval: (id) => timers.delete(id),
+    },
+    document: { visibilityState: "visible" },
+    console: { error: (error) => logged.push(error.message) },
+  }
+  const useReloadWhile = await handler("src/features/esign/use-reload-while.ts", "useReloadWhile", dependencies)
+
+  useReloadWhile(false, 3000)
+  assert.equal(timers.size, 0)
+
+  useReloadWhile(true, 3000)
+  const [timer] = timers.values()
+  assert.equal(timer.ms, 3000)
+  timer.tick()
+  timer.tick()
+  assert.equal(reloads.length, 1)
+  reloads[0].reject(new Error("Reload failed"))
+  await setImmediate()
+  assert.deepEqual(logged, ["Reload failed"])
+
+  dependencies.document.visibilityState = "hidden"
+  timer.tick()
+  assert.equal(reloads.length, 1)
+  dependencies.document.visibilityState = "visible"
+  timer.tick()
+  assert.equal(reloads.length, 2)
+
+  cleanup()
+  assert.equal(timers.size, 0)
+})
