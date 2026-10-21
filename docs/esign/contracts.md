@@ -42,6 +42,12 @@ Listens on `127.0.0.1:47321` only. Every request: `Host` must be `127.0.0.1:4732
 
 Allowed origins: `https://admin.polinetwork.org` by default, `http://localhost:*` with `--dev`, or the config file.
 
+The signing page tells its opener what happened with `postMessage({type: "pn-esign", status, detail?}, origin)`, to the
+dashboard's origin only: `status` is `completed`, `error` or `cancelled`, `detail` the agent error code, or
+`agent_unreachable` when the page can no longer reach the agent behind it. The dashboard polls `esign.jobs.statuses`
+again on every message and acts on a message itself only for `agent_unreachable`, because the agent can't report its own
+death to the backend. Agents up to v0.1.x post type `pn-sign-agent`.
+
 Providers (tried in order, first with a card present; never falls back once a PIN reached a module or card —
 `token.Error.PINSent`):
 
@@ -63,7 +69,23 @@ Agent → backend (through the dashboard origin, `{origin}/api/esign/agent/…`,
 | `POST /api/esign/agent/jobs/{ticket}/fail`     | `{code, message?}`                                   | `{status}` — records cancellations / card errors for the dashboard                                                                                   |
 
 Errors: `{error: {code, message}}` with codes `ticket_invalid` (404), `job_expired` (410), `job_done` (409),
-`document_changed` (409), `certificate_invalid` (422), `signer_mismatch` (403), `signature_invalid` (422).
+`job_cancelled` (409: the message names who cancelled or declined the request, else "This signature was cancelled."),
+`job_failed` (409: the message of the error that ended the job), `document_changed` (409), `certificate_invalid` (422),
+`signer_mismatch` (403), `signature_invalid` (422).
+
+An error is terminal or retryable, the same in the agent, the backend and the dashboard. A terminal error ends the job:
+the backend moves it to `failed` with the code, whether the agent reported it through `/fail` or the backend raised it
+itself, and the agent shows it without a PIN form. A retryable error keeps the job open in the same agent window. An
+unknown code is retryable.
+
+- Terminal, reported by the agent: `pin_locked`, `card_untrusted`, `middleware_missing`, `not_paired`,
+  `certificate_not_found`.
+- Terminal, raised by the backend: `signer_mismatch`, `certificate_invalid`, `signature_invalid`, `document_changed`,
+  `pdf_invalid`, `job_done`, `agent_outdated`.
+- Retryable: `pin_incorrect`, `pin_invalid`, `pin_required`, `no_card`, `no_reader`, `card_removed`, `card_unsupported`,
+  `device_error`, `busy`, `backend_unreachable`.
+
+`/fail` on a job that already failed changes nothing and answers `{status: "failed"}`.
 
 ## Backend tRPC (`esign.*`)
 
@@ -80,7 +102,13 @@ browse OneDrive). Requests are visible to their signers and creator.
 - `esign.requests.create({title, documentId, signers: [{sub, role, places: [{...placement, kind}]}], ordered, output: {driveId, folderId, fileName}, email?: {to[], message?}})`.
   `kind` is `signature` (its own PDF signature) or `mark` (the first signature's mark, drawn in that signature's
   update); each signer has 1–20 places, at least one a signature, and appears once in the request.
-- `esign.requests.list({scope: "inbox"|"mine"|"all", status?})`, `esign.requests.get({id})`.
+- `esign.requests.list({scope: "inbox"|"mine"|"all", status?})` → request views. Each of a view's `signers[]` has
+  `lostAccess`: for a pending signer who may no longer sign the documents of one of the request's drives (its "sign"
+  rule changed, or the IdP took a role away), that drive's label; else null. `myTurn` is true when it is the caller's
+  turn and the caller's `lostAccess` is null (`turn` still lists every signer whose turn it is). `inbox` holds the
+  requests where `myTurn` is true, so a request the caller can no longer sign stays reachable under `mine`.
+- `esign.requests.get({id})` → `{request, events, versions, currentDocumentId, signingNow}`. `signingNow` is
+  `{sub, name, until}` while a signer has a signature open, `until` being when it expires at the latest; else null.
 - `esign.requests.cancel({id})`, `esign.requests.decline({id, reason})`, `esign.requests.retryDelivery({id})`.
 - `esign.drive.access()` (`esign:drives:manage`) → `{drives: [{id, label, request: {roles, permissions}, sign: {roles,
 permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permissions: [{key, name}]}}`;
@@ -88,9 +116,17 @@ permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permiss
   empty rule keeps the default (request: `esign:requests:manage`; sign: everyone who signs). `request` covers browsing
   the drive, using it in a request and seeing its requests; `sign` covers being chosen as signer and signing. Requests
   record `drives` (source and output); `esign.config().drives` and `esign.signers.list()[].drives` are filtered.
+  `esign.drive.accessImpact({driveId, sign})` (`esign:drives:manage`) → `[{id, title, signers: [name]}]`: the requests
+  in progress on that drive with pending signers who may sign under the current rule but not under the proposed `sign`
+  rule (the same empty-rule default); empty when the change strands nobody.
 - `esign.jobs.create({items: [{requestId, places?}]})` (1–10, all or none) → `[{requestId, jobId, ticket, expiresAt}]`,
   opened together in one agent window; `places` moves the caller's boxes (one position per place) before signing.
-  `esign.jobs.statuses({jobIds})`, `esign.jobs.cancel({jobIds})`.
+- `esign.jobs.statuses({jobIds})` → one entry per job:
+  `{jobId, requestId, status, errorCode, errorMessage, expiresAt, seen, signaturesLeft}`. `status` is `pending`,
+  `prepared`, `completed`, `failed` (a terminal error, its code in `errorCode`), `cancelled` or `expired`. A job
+  cancelled because its request was cancelled or declined has `errorCode` `request_cancelled` or `request_declined`,
+  and an `errorMessage` naming who did it (with the reason of a decline).
+- `esign.jobs.cancel({jobIds})`.
 
 Placement: `{page (0-based), x, y, width, height}` as fractions of the displayed page (crop box after rotation),
 origin top-left.

@@ -259,6 +259,154 @@ for (const refreshFails of [false, true]) {
   })
 }
 
+async function agentWindow(popup) {
+  const events = []
+  const dependencies = {
+    Date,
+    popupRef: { current: popup },
+    popupFeatures: () => "popup=yes",
+    window: {
+      open: (url, name) => {
+        events.push(["open", url, name])
+        return { closed: false }
+      },
+    },
+    setWindowClosed: (closed) => events.push(["closed", closed]),
+    setAgentLost: (lost) => events.push(["lost", lost]),
+  }
+  const path = "src/features/esign/sign-with-cie.tsx"
+  dependencies.showWindow = await handler(path, "showWindow", dependencies)
+  dependencies.openWindowAgain = await handler(path, "openWindowAgain", dependencies)
+  return { events, ...dependencies }
+}
+
+void test("showing the open agent window focuses it without reloading or duplicating it", async () => {
+  const popup = { closed: false, location: { href: "pin-form" }, focus: () => (popup.focused = true) }
+  const { events, showWindow } = await agentWindow(popup)
+  showWindow("sign-url")
+  assert.equal(popup.focused, true)
+  assert.equal(popup.location.href, "pin-form")
+  assert.deepEqual(events, [["closed", false]])
+})
+
+void test("a closed agent window opens again under a new name", async () => {
+  const { events, popupRef, showWindow } = await agentWindow({ closed: true })
+  showWindow("sign-url")
+  assert.equal(events[0][0], "open")
+  assert.equal(events[0][1], "sign-url")
+  assert.match(events[0][2], /^pn-esign-\d+$/)
+  assert.equal(popupRef.current.closed, false)
+})
+
+void test("opening the window again reloads the signing page in the open agent window", async () => {
+  const popup = { closed: false, location: { href: "error-page" }, focus: () => (popup.focused = true) }
+  const { events, openWindowAgain } = await agentWindow(popup)
+  openWindowAgain("sign-url")
+  assert.equal(popup.location.href, "sign-url")
+  assert.equal(popup.focused, true)
+  assert.deepEqual(events, [
+    ["closed", false],
+    ["lost", false],
+  ])
+})
+
+void test("the signer's own cancel closes the dialog once, without a reload", async () => {
+  const env = environment()
+  const popup = { close: () => env.events.push("popup closed") }
+  const dismiss = await handler("src/features/esign/sign-with-cie.tsx", "dismiss", {
+    ...env.dependencies,
+    finishing: { current: false },
+    setPhase: env.setter("phase"),
+    popupRef: { current: popup },
+    onStopped: (error) => env.events.push(["stopped", error]),
+  })
+  dismiss()
+  dismiss()
+  assert.equal(env.state.phase, null)
+  assert.deepEqual(env.events, ["popup closed", ["stopped", null]])
+})
+
+for (const refreshFails of [false, true]) {
+  void test(`closing an ended attempt shows it is busy until the refresh settles, failure=${refreshFails}`, async () => {
+    const env = environment()
+    const dependencies = {
+      ...env.dependencies,
+      finishing: { current: false },
+      phase: { kind: "ended", reason: "expired", code: null, message: "The link expired." },
+      states: new Map(),
+      setPhase: env.setter("phase"),
+      setClosing: env.setter("closing"),
+      popupRef: { current: { close: () => env.events.push("popup closed") } },
+      cancelFn: async () => env.events.push("cancel"),
+      onStopped: (error) => env.events.push(["stopped", error]),
+    }
+    dependencies.reload = await handler("src/features/esign/sign-with-cie.tsx", "reload", dependencies)
+    const close = await handler("src/features/esign/sign-with-cie.tsx", "close", dependencies)
+    const pending = close()
+    assert.equal(env.state.closing, true)
+    assert.equal(env.state.phase, undefined)
+    assert.deepEqual(env.events, ["popup closed", "reload"])
+    await close()
+    assert.deepEqual(env.events, ["popup closed", "reload"])
+    if (refreshFails) env.reload.reject(new Error("Refresh failed"))
+    else env.reload.resolve()
+    await pending
+    assert.equal(env.state.phase, null)
+    // Still busy while the dialog fades out, so the button doesn't flash back to idle.
+    assert.equal(env.state.closing, true)
+    assert.deepEqual(env.events.at(-1), ["stopped", null])
+    assert.ok(!env.events.includes("cancel"))
+  })
+}
+
+async function endingOf() {
+  const path = "src/features/esign/sign-with-cie.tsx"
+  const AGENT_ERRORS = await handler(path, "AGENT_ERRORS", {})
+  return handler(path, "endingOf", { AGENT_ERRORS })
+}
+
+function jobStatus(jobId, status, errorCode = null, errorMessage = null) {
+  return { jobId, status, errorCode, errorMessage, seen: true }
+}
+
+void test("an attempt ends quietly only when the signer cancelled every job", async () => {
+  const ending = await endingOf()
+  const jobs = [{ jobId: "a", requestId: "r", title: "Verbale" }]
+  assert.equal(ending([jobStatus("a", "cancelled", "pin_incorrect", "Wrong PIN.")], jobs, false), null)
+  const declined = ending(
+    [jobStatus("a", "cancelled", "request_declined", "Mario Rossi declined this request.")],
+    jobs,
+    false
+  )
+  assert.equal(declined.reason, "declined")
+  assert.equal(declined.message, "Mario Rossi declined this request.")
+  const failed = ending([jobStatus("a", "failed", "pin_locked", "PIN blocked")], jobs, false)
+  assert.equal(failed.reason, "failed")
+  assert.equal(failed.code, "pin_locked")
+  assert.match(failed.message, /^The PIN is blocked\./)
+})
+
+void test("an ended batch names the document, and an expired link points where to sign again", async () => {
+  const ending = await endingOf()
+  const jobs = [
+    { jobId: "a", requestId: "r1", title: "Verbale" },
+    { jobId: "b", requestId: "r2", title: "Contratto" },
+  ]
+  const cancelled = ending(
+    [
+      jobStatus("a", "cancelled"),
+      jobStatus("b", "cancelled", "request_cancelled", "Anna Bianchi cancelled this request."),
+    ],
+    jobs,
+    false
+  )
+  assert.equal(cancelled.reason, "cancelled")
+  assert.equal(cancelled.message, "Contratto: Anna Bianchi cancelled this request.")
+  const statuses = [jobStatus("a", "expired"), jobStatus("b", "cancelled")]
+  assert.match(ending(statuses, jobs, false).message, /Start again/)
+  assert.match(ending(statuses, jobs, true).message, /^Close to open the request/)
+})
+
 for (const outcome of ["delivered", "failed", "throws"]) {
   void test(`delivery retry waits for refresh before reporting ${outcome}`, async () => {
     const env = environment()
