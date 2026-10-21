@@ -355,6 +355,16 @@ tr:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-danger-solid) 25%, transparent);
 }
 
+/*
+ * The control a blocked submit moved the focus to (`data-problem-focus`, set until it blurs): ringed even when the
+ * submit was a click or a shortcut, which browsers don't count as keyboard focus. Invalid fields already ring on focus.
+ */
+
+[data-problem-focus]:focus:not(:is(input, textarea, [data-slot="combobox-input"])) {
+  outline: 2px solid var(--pn-focus);
+  outline-offset: -2px;
+}
+
 /* A dialog panel that takes focus itself (no focusable field) never shows a ring; its children keep theirs. */
 
 :is([role="dialog"], [role="alertdialog"]):focus-visible {

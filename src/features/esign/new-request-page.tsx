@@ -272,6 +272,9 @@ export function NewEsignRequestPage({
     const target = problem.matches("[data-folder-browser]")
       ? (problem.querySelector<HTMLElement>("li button") ?? problem)
       : problem
+    // Ringed even when the submit was a click or ⌘↵, which browsers don't count as moving the focus by keyboard.
+    target.dataset.problemFocus = ""
+    target.addEventListener("blur", () => delete target.dataset.problemFocus, { once: true })
     target.focus({ preventScroll: true })
     const reveal = () => {
       problem.scrollIntoView({ block: "nearest" })

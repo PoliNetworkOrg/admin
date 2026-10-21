@@ -236,7 +236,9 @@ Headings `text-wrap: balance`, body `pretty`. Truncate with an ellipsis plus a `
 are 16px on coarse pointers (no iOS zoom).
 
 **Focus.** One global ring (`:focus-visible`, `--pn-focus`) in `styles.css`; inputs swap it for a border plus soft ring;
-invalid fields show the danger border. Opt out only with `data-focus-ring="none"` when the element draws its own.
+invalid fields show the danger border. Opt out only with `data-focus-ring="none"` when the element draws its own. When
+a blocked submit moves the focus to a control that isn't a field (a list row), it sets `data-problem-focus` until the
+control blurs, which rings it on `:focus`: a click or ⌘↵ doesn't count as keyboard focus.
 
 ## 5. Components
 
