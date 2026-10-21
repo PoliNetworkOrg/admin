@@ -314,6 +314,22 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                       ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
                       : "Drag the blue box to adjust where your signature goes, then choose Sign with CIE at the top."}{" "}
                   You need the card, its PIN and the NFC reader.
+                  {myDone === 0 && (
+                    <>
+                      {" "}
+                      First time signing on this computer?{" "}
+                      {/* A new tab, because the boxes moved here aren't saved yet. */}
+                      <Link
+                        to="/dashboard/esign/setup"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-(--pn-accent) hover:underline"
+                      >
+                        Set it up first
+                      </Link>
+                      .
+                    </>
+                  )}
                 </p>
                 {detail.alsoWaiting > 0 && (
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2 text-[13px]">

@@ -208,7 +208,20 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                     ? `Check where you sign in each document, moving the blue boxes if needed. ${pluralize(unchecked.length, "document")} left to check.`
                     : included.length === 1
                       ? "Choose Sign with CIE at the top. You need the card, its PIN and the NFC reader."
-                      : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card and the NFC reader.`}
+                      : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card, its PIN and the NFC reader.`}
+                </p>
+                <p className="mt-2 text-[13px] text-(--pn-fg-muted)">
+                  First time signing on this computer?{" "}
+                  {/* A new tab, because the review progress and moved boxes live only in this page. */}
+                  <Link
+                    to="/dashboard/esign/setup"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-(--pn-accent) hover:underline"
+                  >
+                    Set it up first
+                  </Link>
+                  .
                 </p>
                 {active.signingNow && active.signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
