@@ -287,7 +287,11 @@ export function SignWithCie({
         {children ?? (items && items.length > 1 ? `Sign ${items.length} documents` : "Sign with CIE")}
       </LoadingButton>
       {error && <InlineAlert className="mt-2">{error}</InlineAlert>}
-      <Dialog open={phase !== null && phase.kind !== "starting"} onOpenChange={(open) => !open && void close()}>
+      <Dialog
+        open={phase !== null && phase.kind !== "starting"}
+        disablePointerDismissal
+        onOpenChange={(open) => !open && void close()}
+      >
         <DialogContent className={cn(dialogPanel, "max-w-[460px]")} showCloseButton={false}>
           {phase?.kind === "waiting" && !silent && (
             <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
