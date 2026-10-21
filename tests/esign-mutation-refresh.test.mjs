@@ -71,6 +71,11 @@ async function composer(env, overrides = {}) {
     creating: { current: false },
     setAttempted: env.setter("attempted"),
     setShown: env.setter("shown"),
+    setSaveView: env.setter("saveView"),
+    setEmailOpen: env.setter("emailOpen"),
+    saveView: "closed",
+    emailOpen: false,
+    problemsOpenRow: { current: false },
     setBlockedSubmits: (update) => {
       env.state.blockedSubmits = update(env.state.blockedSubmits ?? 0)
     },
@@ -83,6 +88,7 @@ async function composer(env, overrides = {}) {
     title: "Request",
     ordered: true,
     signers: [],
+    signsFirst: false,
     saveToDrive: false,
     folder: null,
     recipients: [],
@@ -115,7 +121,17 @@ void test("creation waits for loader refresh before navigation and notification"
   assert.equal(env.state.submitting, true)
   env.reload.resolve()
   await pending
-  assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"], ["success", "Request created."]])
+  assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"], ["success", "Request sent."]])
+})
+
+void test("a request whose first turn is the creator's, sent from a phone, is created rather than sent", async () => {
+  const env = environment()
+  const { submit } = await composer(env, { signsFirst: true })
+  const pending = submit()
+  await setImmediate()
+  env.reload.resolve()
+  await pending
+  assert.deepEqual(env.events.at(-1), ["success", "Request created."])
 })
 
 void test("a blocked submit shows every problem without creating or reloading", async () => {
@@ -128,6 +144,18 @@ void test("a blocked submit shows every problem without creating or reloading", 
   assert.equal(env.state.attempted, true)
   assert.deepEqual({ ...env.state.shown }, errors)
   assert.equal(env.state.blockedSubmits, 2)
+  // The email row opens by itself to show its problem; the save row has none and stays as it was.
+  assert.equal(env.state.emailOpen, true)
+  assert.equal(env.state.saveView, undefined)
+})
+
+void test("a missing folder opens the save row on the folder browser", async () => {
+  const env = environment()
+  const { submit } = await composer(env, { problems: true, errors: { folder: "Choose a folder." } })
+  await submit()
+  assert.equal(env.state.saveView, "browse")
+  assert.equal(env.state.emailOpen, undefined)
+  assert.deepEqual(env.events, [])
 })
 
 void test("a failed create stays retryable without navigation or a success notification", async () => {
@@ -163,7 +191,7 @@ void test("refresh and navigation failure preserve the created request without a
     "reload",
     ["logged", "Refresh failed"],
     ["logged", "Navigation failed"],
-    ["success", "Request created."],
+    ["success", "Request sent."],
   ])
   await submit()
   assert.equal(env.events.filter((event) => event === "create").length, 1)

@@ -138,6 +138,7 @@ does not move when data arrives.
 | Browser         | `wide`     | Categories root and nodes, tag page                            |
 | Tree            | `tree`     | Labels, Freshman guide                                         |
 | Record          | `record`   | Telegram user                                                  |
+| Workspace       | `record`   | New signature request (`PageContent fill`)                     |
 | Settings        | `settings` | Account                                                        |
 | Overview        | `overview` | Overview                                                       |
 
@@ -171,6 +172,12 @@ in session storage; search force-expands.
 **Record.** `RecordHeader` (64px avatar or label dot, 28px `h1` with an optional status badge, meta, description),
 then `SectionCard`s. The Telegram user puts recent messages and grants side by side from 1000px (1.55 : 1), with the
 audit log full width below; no summary tiles.
+
+**Workspace.** A page that fills the window instead of scrolling. `PageContent fill` makes its bottom padding the side
+gutter (24px), and `useFillHeight` sizes the workspace from its top down to it, at least 480px. From 900px of container
+width a document pane sits beside a 380px column (400px from 1040px); narrower, they stack and the page scrolls. The
+column scrolls inside and pins its primary action in a footer: the one page whose primary isn't in the page header,
+because the primary belongs under the last thing checked before it.
 
 **Settings.** `SectionCard`s in one column, each with a title and an action slot. The destructive card goes last,
 further apart, without a red border.
@@ -330,7 +337,10 @@ the language name over a field-like box that holds the `bare` input. Single-line
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
 keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` + `aria-describedby`. Read-only values
 are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
-limit.
+limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as text, shows
+the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an `aria-label` in
+place of the visible label. Use it only for a value edited in place inside a working surface, where a box around every
+value would be clutter; forms keep boxed fields.
 
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
@@ -460,8 +470,23 @@ Rules that the templates above don't imply.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
-  not sign the documents of the chosen drives are left out of the list, with a line saying why. The signer picker
-  lists people only once a search is typed, each with the email under the name; the viewer carries a blue "You" chip
-  here and in signer lists.
+  not sign the documents of the chosen drives are left out of the list, which says why when that leaves nobody. The
+  signer picker lists people only once a search is typed, each with the email under the name; the viewer is the
+  exception, listed as soon as the list opens, and carries a blue "You" chip here and in signer lists.
+  New request is a workspace (§3). Before there is a document it offers only ways to choose one: the drive browser
+  where the viewer will be and a dropzone where the column will be. Then the PDF fills the left ("Change PDF" in its
+  toolbar opens the same choice in a dialog) and the column holds the title as a quiet field, the signers and the
+  delivery, with no headings or hints. Signers are always open: one 40px row each (the order number while ordered
+  with two or more, the role, the name, and a "More actions" menu for moving, adding a place and removing); place
+  buttons show only with several places. Hovering a row rings its boxes and hovering a box tints its row. "Me" at the
+  end of the picker adds the viewer in one click. Delivery is two summary rows in the request page's words ("Will be
+  saved to OneDrive: Verbali/… - firmato.pdf", always in full, and "No email" or the recipients): each opens its fields
+  under it, and opens by itself when its check fails. After an upload the save row starts open on the folder browser
+  at the drive root ("Choose where to save the signed PDF", with "Save here" demoted to outline and "Don't save to
+  OneDrive"). A blocked submit shows each problem at its control, never in a banner, and focuses the first one (the
+  folder browser's first row for a missing folder). The primary reads "Sign with CIE" when the viewer is the only
+  signer and "Sign and send" when the viewer signs first, creating the request and opening PoliNetwork eSign in one
+  click; otherwise, and on phones and tablets, "Send request". It carries a `Kbd` hint: ⌘/Ctrl+Enter runs it from
+  anywhere on the page, and plain Enter never submits.
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.

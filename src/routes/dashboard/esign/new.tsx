@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 
-import { RecordSkeleton } from "@/components/primitives"
+import { WorkspaceSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { NewEsignRequestPage } from "@/features/esign/new-request-page"
 import { getEsignComposer } from "@/features/esign/requests.functions"
@@ -16,9 +16,13 @@ export const Route = createFileRoute("/dashboard/esign/new")({
   loader: () => getEsignComposer(),
   pendingComponent: () => (
     <>
-      <PageBar width="record" back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }} />
-      <PageContent width="record">
-        <RecordSkeleton label="Loading…" />
+      <PageBar
+        width="record"
+        back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
+        context="New request"
+      />
+      <PageContent width="record" fill>
+        <WorkspaceSkeleton label="Loading…" />
       </PageContent>
     </>
   ),
