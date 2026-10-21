@@ -92,12 +92,14 @@ export function EsignActionCard({
           {meta && <span className="min-w-0">{meta}</span>}
         </div>
       )}
+      {/* Focus lands here after an action, for screen readers; it is text, so it draws no ring. */}
       <div
         ref={bodyRef}
         id={bodyId}
         tabIndex={-1}
         aria-live="polite"
-        className="mt-3 text-[14px] leading-5 text-pretty break-words text-(--pn-fg) empty:hidden"
+        data-focus-ring="none"
+        className="mt-3 text-[14px] leading-5 text-pretty break-words text-(--pn-fg) outline-none empty:hidden"
       >
         {body && <p className={note ? signing : undefined}>{body}</p>}
         {note && (
