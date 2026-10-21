@@ -12,15 +12,25 @@ export const OPEN_STATUSES = new Set(["pending", "prepared"])
 export const READY_MS = 2500
 /** The same for a browser whose agent is too old to say it: such an agent only shows by fetching its job. */
 export const OLD_AGENT_READY_MS = 6000
+/**
+ * The same for a browser that has never run PoliNetwork eSign, or not since the dashboard started remembering it: its
+ * agent may be an old one, which needs its job fetched through the backend to show.
+ */
+export const FIRST_READY_MS = 4000
 
-/** The ready deadline for this browser: longer when the agent last seen here was an old one. */
+/** The ready deadline for this browser: longer when the agent last seen here, or possibly here, is an old one. */
 export function deadlineFor(flag: AgentFlag | null) {
-  return flag?.version === null ? OLD_AGENT_READY_MS : READY_MS
+  if (flag === null) return FIRST_READY_MS
+  return flag.version === null ? OLD_AGENT_READY_MS : READY_MS
 }
 
-/** "start" when PoliNetwork eSign has run in this browser and starting it hasn't just failed, else "install". */
-export function notRunningVariant(flag: AgentFlag | null, startFailed: boolean): "start" | "install" {
-  return flag !== null && !startFailed ? "start" : "install"
+/**
+ * "start" when PoliNetwork eSign has run in this browser, "install" when it hasn't, "failed" when Start was just
+ * pressed and nothing answered.
+ */
+export function notRunningVariant(flag: AgentFlag | null, startFailed: boolean): "start" | "install" | "failed" {
+  if (startFailed) return "failed"
+  return flag !== null ? "start" : "install"
 }
 
 /** What the dialog shows for an error that stops the agent window before or instead of the PIN form. */

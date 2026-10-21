@@ -7,6 +7,7 @@ import {
   closedWindowAction,
   deadlineFor,
   endingOf,
+  FIRST_READY_MS,
   jobFailure,
   notRunningVariant,
   OLD_AGENT_READY_MS,
@@ -25,19 +26,22 @@ function job(jobId, status, errorCode = null, errorMessage = null) {
 const ONE = [{ jobId: "a", requestId: "r1", title: "Verbale" }]
 const TWO = [...ONE, { jobId: "b", requestId: "r2", title: "Contratto" }]
 
-void test("a new agent has 2.5 s to say it is ready, a browser known for an old one 6 s", () => {
+void test("a new agent has 2.5 s to say it is ready, a browser new to it 4 s, a browser known for an old one 6 s", () => {
   assert.equal(READY_MS, 2500)
+  assert.equal(FIRST_READY_MS, 4000)
   assert.equal(OLD_AGENT_READY_MS, 6000)
-  assert.equal(deadlineFor(null), 2500)
   assert.equal(deadlineFor({ version: "0.4.0", at: "2026-10-21T10:00:00Z" }), 2500)
+  // Possibly an old agent, which shows only once the backend served its job.
+  assert.equal(deadlineFor(null), 4000)
   assert.equal(deadlineFor({ version: null, at: "2026-10-21T10:00:00Z" }), 6000)
 })
 
-void test("a browser that has run PoliNetwork eSign is offered Start, until starting it fails", () => {
+void test("a browser that has run PoliNetwork eSign is offered Start, and a Start that didn't work says so", () => {
   const flag = { version: null, at: "2026-10-21T10:00:00Z" }
   assert.equal(notRunningVariant(flag, false), "start")
-  assert.equal(notRunningVariant(flag, true), "install")
   assert.equal(notRunningVariant(null, false), "install")
+  assert.equal(notRunningVariant(flag, true), "failed")
+  assert.equal(notRunningVariant(null, true), "failed")
 })
 
 void test("the update is worded as the agent window words it, for packages on Linux", () => {

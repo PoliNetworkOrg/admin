@@ -62,7 +62,7 @@ type Mode =
   | { kind: "opening"; deadline: number | null }
   | { kind: "blocked" }
   | { kind: "signing" }
-  | { kind: "notRunning"; variant: "start" | "install"; setupOpened: boolean }
+  | { kind: "notRunning"; variant: "start" | "install" | "failed"; setupOpened: boolean }
   | { kind: "starting" }
   | { kind: "stopped" }
   | { kind: "fatal"; state: FatalState; message: string }
@@ -87,7 +87,7 @@ const SIGNED_MAX_MS = 4000
 const PROMPT_MS = 1200
 const PROMPT_MAX_MS = 8000
 /** Start: time for PoliNetwork eSign to come up before its page is loaded, then how long each load may take. */
-const LAUNCH_MS = 800
+const LAUNCH_MS = 2000
 const START_WAIT_MS = 3000
 
 /** What PoliNetwork eSign's page posts to its opener (docs/esign/contracts.md); up to v0.1.x as "pn-sign-agent". */
@@ -715,6 +715,8 @@ type View = {
   tone: "brand" | "success" | "warning" | "danger" | "neutral"
   title: string
   body?: ReactNode
+  /** A ghost button under the words, for the other way on: an action, not part of the description. */
+  quiet?: ReactNode
   /** The outline button, left of the primary. */
   secondary?: ReactNode
   primary?: ReactNode
@@ -783,14 +785,17 @@ function SigningDialog(props: DialogProps) {
                 >
                   {view.icon}
                 </span>
-                {/* One live region for both, so screen readers hear every new state. */}
-                <div className="min-w-0 flex-1" aria-live="polite" aria-atomic="true">
-                  <DialogTitle className={dialogTitleText}>{view.title}</DialogTitle>
-                  {view.body && (
-                    <DialogDescription render={<div />} className={cn(dialogDescriptionText, "mt-1")}>
-                      {view.body}
-                    </DialogDescription>
-                  )}
+                <div className="min-w-0 flex-1">
+                  {/* One live region for both, so screen readers hear every new state. */}
+                  <div aria-live="polite" aria-atomic="true">
+                    <DialogTitle className={dialogTitleText}>{view.title}</DialogTitle>
+                    {view.body && (
+                      <DialogDescription render={<div />} className={cn(dialogDescriptionText, "mt-1")}>
+                        {view.body}
+                      </DialogDescription>
+                    )}
+                  </div>
+                  {view.quiet && <div className="mt-2 -ml-2.5">{view.quiet}</div>}
                 </div>
               </div>
               {(view.secondary || view.primary) && (
@@ -855,7 +860,20 @@ function footerActions(
     start: (label: ReactNode, quiet = false) => {
       const anchor = <a href={AGENT_LAUNCH_URL} onClick={props.onStartAgent} />
       return quiet ? (
-        <Button variant="ghost" size="sm" className={buttonMotion} nativeButton={false} render={anchor}>
+        <Button variant="ghost" size="sm" className={quietButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      ) : (
+        <Button ref={setPrimary} className={dialogFooterButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      )
+    },
+    /** The setup guide in a new tab, where PoliNetwork eSign is installed; the dialog stays. */
+    install: (label: ReactNode, quiet = false) => {
+      const anchor = <a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" onClick={props.onSetupOpened} />
+      return quiet ? (
+        <Button variant="ghost" size="sm" className={quietButton} nativeButton={false} render={anchor}>
           {label}
         </Button>
       ) : (
@@ -865,6 +883,30 @@ function footerActions(
       )
     },
   }
+}
+
+/** A quiet action under a state's words: the text colour and an icon, so it reads as a button, not a caption. */
+const quietButton = cn(buttonMotion, "text-[13px] font-medium text-(--pn-fg)")
+
+/** A label as wide as the widest of `labels`, so a button that changes its words doesn't move its neighbours. */
+function SteadyLabel({ labels, index }: { labels: ReactNode[]; index: number }) {
+  return (
+    <span className="grid">
+      {labels.map((label, i) => (
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list, never reordered
+          key={i}
+          aria-hidden={i !== index || undefined}
+          className={cn(
+            "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5",
+            i !== index && "invisible"
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 function viewOf(mode: Mode, props: DialogProps, actions: Actions): View {
@@ -908,27 +950,52 @@ function viewOf(mode: Mode, props: DialogProps, actions: Actions): View {
         secondary: actions.cancel,
         primary: actions.primary("Show the window", props.onShowWindow),
       }
-    case "notRunning":
+    case "notRunning": {
+      if (mode.variant === "start")
+        return {
+          icon: warning,
+          tone: "warning",
+          title: "PoliNetwork eSign isn't running on this computer",
+          secondary: actions.cancel,
+          primary: start,
+        }
+      if (mode.variant === "failed")
+        return {
+          icon: warning,
+          tone: "warning",
+          title: "PoliNetwork eSign didn't start",
+          body: "If it's installed, open it yourself, then try again.",
+          quiet: actions.install(
+            <>
+              <Download aria-hidden /> Install PoliNetwork eSign
+            </>,
+            true
+          ),
+          secondary: actions.cancel,
+          primary: actions.primary("Try again", props.onRetry),
+        }
+      // Install turns into Try again once the guide is open, keeping its width so Cancel stays under the pointer.
+      const labels = [
+        <>
+          <Download aria-hidden /> Install PoliNetwork eSign
+        </>,
+        "Try again",
+      ]
+      const label = <SteadyLabel labels={labels} index={mode.setupOpened ? 1 : 0} />
       return {
         icon: warning,
         tone: "warning",
         title: "PoliNetwork eSign isn't running on this computer",
-        body: mode.variant === "install" && (
-          <div className="mt-2 -ml-2.5">{actions.start("It's already installed: start it", true)}</div>
+        quiet: actions.start(
+          <>
+            <Play aria-hidden /> It's already installed: start it
+          </>,
+          true
         ),
         secondary: actions.cancel,
-        primary:
-          mode.variant === "start"
-            ? start
-            : mode.setupOpened
-              ? actions.primary("Try again", props.onRetry)
-              : actions.link(
-                  <>
-                    <Download aria-hidden /> Install PoliNetwork eSign
-                  </>,
-                  <a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" onClick={props.onSetupOpened} />
-                ),
+        primary: mode.setupOpened ? actions.primary(label, props.onRetry) : actions.install(label),
       }
+    }
     case "starting":
       return {
         icon: spin,
@@ -1025,23 +1092,17 @@ function endedView(ending: Ending, preparing: boolean, actions: Actions, onSignA
     icon: <Icon className="size-5" />,
     tone: ending.reason === "failed" ? "danger" : "neutral",
     title: ending.title,
-    body: (
-      <>
-        <p>{ending.body}</p>
-        {ending.extra === "setup" && (
-          <div className="mt-2 -ml-2.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={buttonMotion}
-              nativeButton={false}
-              render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
-            >
-              <MonitorDown aria-hidden /> Setup guide
-            </Button>
-          </div>
-        )}
-      </>
+    body: ending.body,
+    quiet: ending.extra === "setup" && (
+      <Button
+        variant="ghost"
+        size="sm"
+        className={quietButton}
+        nativeButton={false}
+        render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
+      >
+        <MonitorDown aria-hidden /> Setup guide
+      </Button>
     ),
     secondary: again ? actions.close(false) : undefined,
     primary: again ? actions.primary("Sign again", onSignAgain) : actions.close(true),
