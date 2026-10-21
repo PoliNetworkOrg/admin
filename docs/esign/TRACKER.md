@@ -139,6 +139,8 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   running and ready to sign", which fits both v0.3.0 ("The agent is running") and the readiness status page of the next
   agent release ("Ready to sign" once reader, card and software check out). Once that release is out, the step can
   quote "Ready to sign".
+- ☐ Setup page: its inline links (the ArchWiki guide, opencie) still differ from the text by color only; give them
+  `inlineLink`, like the request and batch pages (`feat/esign-dec-setup` rewrites that page, so at integration).
 
 ## Manual steps for the maintainer (cannot be automated here)
 
@@ -158,6 +160,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
     AGENT_STEPS.macos in src/features/esign/setup-page.tsx.
   - Windows: apply to SignPath Foundation (free for open source), then set the SIGNPATH_* variables and token, then
     drop the Run anyway sentence from AGENT_STEPS.windows.
+- ☐ Before deploying the signing dialog's "Update PoliNetwork eSign" state (agents too old to sign): an agent release
+  tagged `vX.Y.Z` (not a pre-release) must ship `PoliNetwork-eSign-macos.dmg` and
+  `PoliNetwork-eSign-windows-amd64.zip`, so that
+  `curl -sL -o /dev/null -w '%{http_code}\n' https://github.com/PoliNetworkOrg/esign/releases/latest/download/<name>`
+  answers 200 for both. Its "Download for macOS" / "Download for Windows" opens in the same tab, which a real download
+  leaves in place; until then it replaces the dashboard, and the signing dialog with it, with GitHub's 404 page.
 - ☑ Backend released as @polinetwork/backend 1.7.0 (backend#73 merged); admin uses it (vendored copy removed).
 
 ## Local end-to-end
@@ -182,7 +190,12 @@ Open `http://localhost:10431/dashboard/esign/requests` (use `localhost`, not `12
   says within 2.5 s when PoliNetwork eSign isn't running (Start for a browser that has run it, Install otherwise), asks
   for an update with a direct download when the agent is too old, and hands off after signing: the page updates
   behind it, then the agent window and the dialog close and the box dissolves into the stamp. The `ready` and fatal
-  messages need the next agent release; until then the dashboard follows `seen`.
+  messages need the next agent release; until then the dashboard follows `seen`. Copy kept on purpose: a missing
+  CIE ID module reads "CIE ID isn't set up on this computer" / "Follow the setup guide, then sign again.", as the
+  agent window says it, not "isn't installed" (CIE ID can be installed with its module out of reach, e.g. without
+  Rosetta); the lock line is one line ("Mario Rossi is signing right now."), so the card keeps its height; the To sign
+  and requests lists keep "Requested by {name}", the only place a row says who asks (removed from the request and
+  batch pages only).
 
 - 2026-10-21: UX pass (admin `feat/esign-ux-pass`, backend `fix/esign-ux`, agent `fix/sign-page-ux`; not pushed): the
   signing dialog says how an attempt ended and notices a closed or silent eSign window, jobs and agent windows end on
