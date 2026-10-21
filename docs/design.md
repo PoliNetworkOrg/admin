@@ -180,7 +180,8 @@ the selected range and a TanStack Charts line (3M per day, 1Y per week, All per 
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
 reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline, labelled "Groups" rather than "Telegram groups", and without the "To
 review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
-as a 44px button (two per row on mobile).
+as a 44px button (two per row on mobile). Reports › Open and Signatures › To sign carry the same accent count pill as the
+panel, from the shell's pending counts; nothing at zero or on a failed load.
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
