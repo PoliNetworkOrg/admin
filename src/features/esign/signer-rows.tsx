@@ -18,7 +18,6 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from "rea
 import {
   Autocomplete,
   buttonMotion,
-  Combobox,
   ComboboxContent,
   ComboboxItem,
   ComboboxList,
@@ -468,7 +467,11 @@ type PersonPickerProps = {
 
 /**
  * Finds a person to sign. People are listed once something is typed, so the whole directory never shows at once; the
- * viewer is the one exception, listed as soon as the list opens.
+ * viewer is the one exception, listed as soon as the list opens. The first person listed is highlighted, so Enter picks
+ * them: the viewer, before anything is typed.
+ *
+ * It is an `Autocomplete` over the people already filtered here, since that root highlights the first item as soon as
+ * the list opens; a person is picked by pressing their item, by pointer or Enter.
  */
 function PersonPicker({
   people,
@@ -498,31 +501,34 @@ function PersonPicker({
       : people.filter((p) => `${p.name} ${p.email ?? ""}`.toLocaleLowerCase().includes(needle)).slice(0, 30)
   const empty = items.length === 0 ? emptyText(needle) : null
 
+  function pick(person: EsignProfile) {
+    setQuery("")
+    onPick(person)
+  }
+
+  // A picker mounted after its box was clicked, such as an emptied spot's, waits for the next click.
+  const seenActivation = useRef(activation)
   useEffect(() => {
-    if (activation === 0) return
+    if (activation === seenActivation.current) return
+    seenActivation.current = activation
     field.current?.focus()
     setOpen(true)
   }, [activation])
 
   return (
-    <Combobox
+    <Autocomplete
       items={items}
-      filter={null}
-      itemToStringLabel={(person: EsignProfile) => person.name}
-      value={null}
-      inputValue={query}
-      onInputValueChange={(value, { reason }) => {
+      mode="none"
+      itemToStringValue={(person: EsignProfile) => person.name}
+      value={query}
+      onValueChange={(value, { reason }) => {
         // Picking a person would otherwise put their name in the search.
         if (reason !== "item-press") setQuery(value)
       }}
-      onValueChange={(person) => {
-        if (!person) return
-        setQuery("")
-        onPick(person)
-      }}
       open={open && (items.length > 0 || empty !== null)}
       onOpenChange={setOpen}
-      autoHighlight
+      openOnInputClick
+      autoHighlight="always"
     >
       <div className="relative min-w-0">
         {search && (
@@ -556,7 +562,7 @@ function PersonPicker({
       <ComboboxContent className="min-w-64">
         <ComboboxList className="max-h-[284px]">
           {(person: EsignProfile) => (
-            <ComboboxItem key={person.sub} value={person} className="min-h-11 px-2 py-1.5">
+            <ComboboxItem key={person.sub} value={person} onClick={() => pick(person)} className="min-h-11 px-2 py-1.5">
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate text-[14px]">{person.name}</span>
@@ -571,7 +577,7 @@ function PersonPicker({
         </ComboboxList>
         {empty && <p className="px-3 py-2.5 text-[13px] text-pretty text-(--pn-fg-muted)">{empty}</p>}
       </ComboboxContent>
-    </Combobox>
+    </Autocomplete>
   )
 }
 
