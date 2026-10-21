@@ -88,7 +88,6 @@ async function composer(env, overrides = {}) {
     title: "Request",
     ordered: true,
     rows: [],
-    signsFirst: false,
     saveToDrive: false,
     folder: null,
     recipients: [],
@@ -112,7 +111,7 @@ async function composer(env, overrides = {}) {
   }
 }
 
-void test("creation waits for loader refresh before navigation and notification", async () => {
+void test("creation waits for loader refresh before navigation, and the request page says the rest", async () => {
   const env = environment()
   const { submit } = await composer(env)
   const pending = submit()
@@ -121,17 +120,8 @@ void test("creation waits for loader refresh before navigation and notification"
   assert.equal(env.state.submitting, true)
   env.reload.resolve()
   await pending
-  assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"], ["success", "Request sent."]])
-})
-
-void test("a request whose first turn is the creator's, sent from a phone, is created rather than sent", async () => {
-  const env = environment()
-  const { submit } = await composer(env, { signsFirst: true })
-  const pending = submit()
-  await setImmediate()
-  env.reload.resolve()
-  await pending
-  assert.deepEqual(env.events.at(-1), ["success", "Request created."])
+  // No toast: the card says whom the request waits for and when they were emailed.
+  assert.deepEqual(env.events, ["create", "reload", ["navigate", "request-1"]])
 })
 
 void test("a blocked submit shows every problem without creating or reloading", async () => {
@@ -186,13 +176,7 @@ void test("refresh and navigation failure preserve the created request without a
   assert.equal(env.state.createdRequest, "request-1")
   assert.equal(env.state.submitting, false)
   assert.equal(env.state.error, null)
-  assert.deepEqual(env.events, [
-    "create",
-    "reload",
-    ["logged", "Refresh failed"],
-    ["logged", "Navigation failed"],
-    ["success", "Request sent."],
-  ])
+  assert.deepEqual(env.events, ["create", "reload", ["logged", "Refresh failed"], ["logged", "Navigation failed"]])
   await submit()
   assert.equal(env.events.filter((event) => event === "create").length, 1)
 })

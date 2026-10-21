@@ -41,7 +41,6 @@ import {
   invalidRecipient,
   parseRecipients,
   prefillDraft,
-  signsFirst as creatorSignsFirst,
 } from "./composer"
 import { FieldError, quietField } from "./composer-fields"
 import { DeliveryRows, REVEAL_MS, type SaveView } from "./delivery-rows"
@@ -688,7 +687,6 @@ export function NewEsignRequestPage({
   // A creator whose turn comes first signs in the same click that creates the request.
   // An empty spot will hold someone, in its place in the order.
   const signerSubs = rows.map((r) => r.person?.sub ?? "")
-  const signsFirst = creatorSignsFirst(signerSubs, me, ordered)
   const primary = composerPrimary(signerSubs, me, ordered, canSignHere)
   const numbered = ordered && signers.length > 1
   /** Order numbers count the people, not the empty spots. */
@@ -766,10 +764,9 @@ export function NewEsignRequestPage({
     setSubmitting(true)
     const request = await create(staged.id)
     if (!request) return setSubmitting(false)
+    // No toast: the request's page says whom it waits for and that they were emailed.
     await openRequest(request.id)
     setSubmitting(false)
-    // Someone else was emailed about their turn; the creator's own turn waits for a computer that can sign.
-    appToast.success(signsFirst ? "Request created." : "Request sent.")
   }
 
   function createAndSign() {
