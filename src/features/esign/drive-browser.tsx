@@ -141,9 +141,12 @@ export function DriveBrowser({
           >
             <SelectTrigger
               aria-label="Drive"
-              className="h-8 max-w-[45%] shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
+              className="h-8 max-w-[45%] min-w-0 shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
             >
-              <SelectValue className="block min-w-0 truncate" />
+              {/* The trigger lays its value out as a flex box, which can't end in an ellipsis: the name's span does. */}
+              <SelectValue className="min-w-0">
+                {(value: string) => <span className="truncate">{drives.find((d) => d.id === value)?.label}</span>}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className={cn(raisedSurface, floatingMotion)}>
               {drives.map((d) => (
