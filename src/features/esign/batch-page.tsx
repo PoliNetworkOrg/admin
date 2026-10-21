@@ -427,7 +427,7 @@ function DocumentViewer({
                 placement={place}
                 label={signer.name}
                 role={signer.role}
-                number={request.signers.length > 1 ? index + 1 : undefined}
+                number={request.ordered && request.signers.length > 1 ? index + 1 : undefined}
                 kind={place.kind}
                 state={isMine ? "active" : "pending"}
                 editable={isMine && editable}

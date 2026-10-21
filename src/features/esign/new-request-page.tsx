@@ -689,6 +689,8 @@ export function NewEsignRequestPage({
   const signerSubs = rows.map((r) => r.person?.sub ?? "")
   const primary = composerPrimary(signerSubs, me, ordered, canSignHere)
   const numbered = ordered && signers.length > 1
+  /** The rows keep room for the numbers once a second row is there, so a second person doesn't move the first. */
+  const numberColumn = ordered && rows.length > 1
   /** Order numbers count the people, not the empty spots. */
   const numbers = new Map(rows.filter((r) => r.person).map((r, i) => [r.id, i + 1]))
 
@@ -1026,7 +1028,7 @@ export function NewEsignRequestPage({
                                     <SpotRow
                                       key={row.id}
                                       row={row}
-                                      numbered={numbered}
+                                      numbered={numberColumn}
                                       people={available}
                                       me={me}
                                       meAddable={meAddable}
@@ -1047,8 +1049,8 @@ export function NewEsignRequestPage({
                                     person={row.person}
                                     index={index}
                                     count={rows.length}
-                                    number={numbers.get(row.id)}
-                                    numbered={numbered}
+                                    number={numbered ? numbers.get(row.id) : undefined}
+                                    numbered={numberColumn}
                                     isMe={row.person.sub === me}
                                     cantSign={cantSign(row.person.sub)}
                                     attempted={attempted}

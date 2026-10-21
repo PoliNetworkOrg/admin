@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Ban, Download, Files, FolderUp, Mail, RotateCw, Send, Trash2, X } from "lucide-react"
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import {
   buttonMotion,
@@ -12,6 +12,7 @@ import {
   fieldControl,
   Hint,
   InlineAlert,
+  initialsOf,
   inlineLink,
   LoadingButton,
   SectionCard,
@@ -150,6 +151,10 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
   const myTurn = request.myTurn && mySigner !== undefined
+  // Order numbers only where the order holds, as in New request.
+  const numbered = request.ordered && request.signers.length > 1
+  const numberOf = (signerId: string) =>
+    numbered ? request.signers.findIndex((s) => s.id === signerId) + 1 : undefined
   // The viewer's boxes as they drag them; fixed once some of them are signed. Reloads bring the saved places as new
   // arrays, so the dragged ones reset only when the saved ones change.
   const savedPlaces = mySigner?.places ?? []
@@ -207,12 +212,11 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     const first = myLeft[0]
     let painted = Promise.resolve()
     if (first && mySigner) {
-      const index = request.signers.findIndex((s) => s.id === mySigner.id)
       setGhosts({
         places: myLeft,
         label: mySigner.name,
         role: mySigner.role,
-        number: request.signers.length > 1 ? index + 1 : undefined,
+        number: numberOf(mySigner.id),
         painted: false,
         released: false,
         afterDialog: false,
@@ -292,7 +296,6 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const canDelete = !inProgress && request.delivery?.status !== "pending" && canManage
   const pages = pdf?.pages ?? []
   const soleSigner = request.signers.length === 1 && request.signers[0].sub === me
-  const pendingCount = request.signers.filter((s) => s.status === "pending").length
   const details = useScrolls()
 
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -466,7 +469,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                   }
                   overlay={(page) => (
                     <>
-                      {request.signers.flatMap((signer, index) => {
+                      {request.signers.flatMap((signer) => {
                         if (!inProgress || signer.status !== "pending") return []
                         const mine = myTurn && signer.id === mySigner?.id
                         const left = mine
@@ -483,7 +486,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                               placement={place}
                               label={signer.name}
                               role={signer.role}
-                              number={request.signers.length > 1 ? index + 1 : undefined}
+                              number={numberOf(signer.id)}
                               kind={place.kind}
                               state={mine ? "active" : "pending"}
                               editable={mine && editable}
@@ -530,7 +533,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                 <div className="flex flex-col gap-4">
                   {!soleSigner && (
                     <SectionCard title="Signers" count={request.signers.length}>
-                      <ol className="flex flex-col gap-3">
+                      <SignerList numbered={numbered}>
                         {request.signers.map((signer, index) => {
                           const turn = request.turn.includes(signer.sub)
                           const turnNote = signer.sub === card.notedSub ? undefined : turnNotes.get(signer.sub)
@@ -542,9 +545,12 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                           ].filter(Boolean)
                           return (
                             <li key={signer.id} className="flex items-start gap-3">
+                              {/* The order number where the order holds, else the signer's initials. */}
                               <span
+                                aria-hidden={numbered ? undefined : true}
                                 className={cn(
-                                  "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
+                                  "grid size-7 shrink-0 place-items-center rounded-full font-semibold tabular-nums",
+                                  numbered ? "text-[12px]" : "text-[11px] tracking-[-0.01em]",
                                   signer.status === "signed"
                                     ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
                                     : turn
@@ -552,7 +558,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                                       : "bg-(--pn-muted) text-(--pn-fg-muted)"
                                 )}
                               >
-                                {index + 1}
+                                {numbered ? index + 1 : initialsOf(signer.name)}
                               </span>
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
@@ -587,10 +593,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                             </li>
                           )
                         })}
-                      </ol>
-                      {inProgress && !request.ordered && pendingCount > 1 && (
-                        <p className="mt-3 text-[12px] text-(--pn-fg-muted)">Signers can sign in any order.</p>
-                      )}
+                      </SignerList>
                     </SectionCard>
                   )}
 
@@ -734,6 +737,12 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       )}
     </>
   )
+}
+
+/** The Signers rows: an ordered list where the order holds. */
+function SignerList({ numbered, children }: { numbered: boolean; children: ReactNode }) {
+  const className = "flex flex-col gap-3"
+  return numbered ? <ol className={className}>{children}</ol> : <ul className={className}>{children}</ul>
 }
 
 /** The muted line under "Check the blue box": what signing needs, or the setup guide for a browser new to it. */

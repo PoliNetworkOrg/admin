@@ -48,7 +48,7 @@ import { YouChip } from "./request-status"
 /** Boxes one signer may have in a document (the backend's limit). */
 export const MAX_PLACES = 20
 
-/** Row columns: the order number (while numbers show), the role, the person and the row's action. */
+/** Row columns: the order number (while the order holds), the role, the person and the row's action. */
 function rowColumns(numbered: boolean) {
   return numbered
     ? "grid-cols-[20px_112px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[20px_124px_minmax(0,1fr)_36px]"
@@ -112,8 +112,9 @@ type SignerRowProps = {
   person: NonNullable<SignerDraft["person"]>
   index: number
   count: number
-  /** The row's order number, while numbers show. */
+  /** The row's order number, once two people are in order. */
   number?: number
+  /** The rows keep a column for the numbers. */
   numbered: boolean
   isMe: boolean
   /** Why this signer can't sign the request ("Can't sign documents of OneDrive."): a warning, an error once submitted. */
@@ -175,11 +176,15 @@ export function SignerRow({
       invalid={attempted && cantSign !== undefined}
       describedBy={cantSign === undefined ? undefined : blockedId}
     >
-      {numbered && (
-        <span className="grid size-5 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
-          {number}
-        </span>
-      )}
+      {numbered &&
+        (number === undefined ? (
+          <span aria-hidden />
+        ) : (
+          // Fades in where its room already was: the role and the name don't move.
+          <span className="grid size-5 animate-[pn-fade-in_150ms_var(--pn-ease-out)] place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums motion-reduce:animate-none">
+            {number}
+          </span>
+        ))}
       <div className="flex h-10 min-w-0 items-center">
         {row.spot ? (
           <SpotRole role={row.role} />
