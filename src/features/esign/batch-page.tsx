@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { EmptyState, IconButton, InlineAlert, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
@@ -27,6 +27,25 @@ const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" 
  */
 export function EsignBatchPage({ items, more, me }: { items: Item[]; more: number; me: string }) {
   const navigate = useNavigate()
+  const contentFn = useServerFn(getEsignDocumentContent)
+  /** PDF contents by document id (a version never changes), so Next opens a document fetched in advance. */
+  const pdfs = useRef(new Map<string, Promise<string>>())
+  const loadPdf = useCallback(
+    (documentId: string) => {
+      let pdf = pdfs.current.get(documentId)
+      if (!pdf) {
+        pdf = contentFn({ data: { documentId } }).then((result) => result.base64)
+        pdfs.current.set(documentId, pdf)
+        // Opening the document again tries again.
+        void pdf.catch((error) => {
+          console.error(error)
+          pdfs.current.delete(documentId)
+        })
+      }
+      return pdf
+    },
+    [contentFn]
+  )
   const [activeId, setActiveId] = useState(items[0]?.request.id ?? null)
   const [reviewed, setReviewed] = useState<Set<string>>(() => new Set(items[0] ? [items[0].request.id] : []))
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set())
@@ -39,6 +58,22 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
   const active = items.find((item) => item.request.id === activeId) ?? items[0]
   const included = items.filter((item) => !leftOut.has(item.request.id))
   const unchecked = included.filter((item) => !reviewed.has(item.request.id))
+
+  const activeDocument = active?.currentDocumentId
+  const nextDocument = unchecked[0]?.currentDocumentId
+  useEffect(() => {
+    if (!activeDocument || !nextDocument) return
+    let cancelled = false
+    // Once the open document has arrived, fetch the one Next opens.
+    loadPdf(activeDocument)
+      .then(() => {
+        if (!cancelled) void loadPdf(nextDocument)
+      })
+      .catch((error) => console.error(error))
+    return () => {
+      cancelled = true
+    }
+  }, [activeDocument, nextDocument, loadPdf])
 
   function open(id: string) {
     setActiveId(id)
@@ -157,6 +192,7 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
               key={active.request.id}
               item={active}
               me={me}
+              loadPdf={loadPdf}
               places={places}
               onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
               placing={placing}
@@ -246,6 +282,7 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
 function DocumentViewer({
   item,
   me,
+  loadPdf,
   places,
   onMove,
   placing,
@@ -254,6 +291,7 @@ function DocumentViewer({
 }: {
   item: Item
   me: string
+  loadPdf: (documentId: string) => Promise<string>
   places: Place[]
   onMove: (places: Place[]) => void
   /** The place waiting for a click on its new spot. */
@@ -261,7 +299,6 @@ function DocumentViewer({
   onPlace: (page: number, x: number, y: number) => void
   onCancelPlacing: () => void
 }) {
-  const contentFn = useServerFn(getEsignDocumentContent)
   const [base64, setBase64] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const bytes = usePdfBytes(base64)
@@ -270,9 +307,9 @@ function DocumentViewer({
   useEffect(() => {
     if (!item.currentDocumentId) return
     let cancelled = false
-    contentFn({ data: { documentId: item.currentDocumentId } })
-      .then((result) => {
-        if (!cancelled) setBase64(result.base64)
+    loadPdf(item.currentDocumentId)
+      .then((pdf) => {
+        if (!cancelled) setBase64(pdf)
       })
       .catch((cause) => {
         console.error(cause)
@@ -281,7 +318,7 @@ function DocumentViewer({
     return () => {
       cancelled = true
     }
-  }, [item.currentDocumentId, contentFn])
+  }, [item.currentDocumentId, loadPdf])
 
   const mine = request.signers.find((s) => s.sub === me && s.status === "pending")
   // Once per document (it remounts for each): following the box as it moves would scroll it away from the pointer.

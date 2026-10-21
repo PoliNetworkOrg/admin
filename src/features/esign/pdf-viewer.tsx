@@ -1,7 +1,7 @@
 import { Minus, Plus, ScanLine } from "lucide-react"
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist"
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
@@ -108,18 +108,27 @@ export function PdfViewer({
   const fitScale = containerWidth > 0 ? Math.min((containerWidth - 32) / maxWidth, 1.5) : 0
   const scale = zoom === "fit" ? fitScale : zoom
 
+  /** The point in the middle of the viewer, which stays there when the scale changes. */
+  const reading = useRef<{ page: number; y: number } | null>(null)
+  const previousScale = useRef(0)
+  useLayoutEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+    if (previousScale.current > 0 && reading.current) centerOn(container, reading.current.page, reading.current.y)
+    previousScale.current = scale
+    reading.current = middleOf(container)
+  }, [scale])
+
+  // After the scale's effect, so a focus that changes with the scale wins; zooming alone doesn't bring it back. Both
+  // are layout effects, so the first frame with the pages already shows the right spot.
+  const laidOut = scale > 0
   const focusPage = focus?.page
   const focusY = focus?.y ?? 0.5
-  useEffect(() => {
-    if (focusPage === undefined || scale <= 0) return
-    // Scroll the viewer only: scrollIntoView would also move the page around it.
+  useLayoutEffect(() => {
     const container = scrollRef.current
-    const element = container?.querySelector<HTMLElement>(`[data-page="${focusPage}"]`)
-    if (!container || !element) return
-    const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
-    const top = offset + element.offsetHeight * focusY - container.clientHeight / 2
-    container.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
-  }, [focusPage, focusY, scale])
+    if (focusPage === undefined || !laidOut || !container) return
+    centerOn(container, focusPage, focusY)
+  }, [focusPage, focusY, laidOut])
 
   function step(direction: 1 | -1) {
     const current = zoom === "fit" ? fitScale : zoom
@@ -161,7 +170,14 @@ export function PdfViewer({
           />
         </div>
       </div>
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken)" data-pdf-scroll>
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken)"
+        data-pdf-scroll
+        onScroll={(event) => {
+          reading.current = middleOf(event.currentTarget)
+        }}
+      >
         {error ? (
           <div className="p-4">
             <InlineAlert>{error}</InlineAlert>
@@ -190,6 +206,30 @@ export function PdfViewer({
       </div>
     </div>
   )
+}
+
+/**
+ * Scrolls the viewer, not the page around it as scrollIntoView would, so a point of a page (a fraction of its height)
+ * is in the middle. Never smoothly: like navigation, it doesn't animate.
+ */
+function centerOn(container: HTMLElement, page: number, y: number) {
+  const element = container.querySelector<HTMLElement>(`[data-page="${page}"]`)
+  if (!element) return
+  const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+  const top = offset + element.offsetHeight * y - container.clientHeight / 2
+  container.scrollTo({ top: Math.max(0, top), behavior: "instant" })
+}
+
+/** The point of a page in the middle of the viewer, the inverse of `centerOn`. */
+function middleOf(container: HTMLElement) {
+  const middle = container.getBoundingClientRect().top + container.clientHeight / 2
+  let point: { page: number; y: number } | null = null
+  for (const element of container.querySelectorAll<HTMLElement>("[data-page]")) {
+    const box = element.getBoundingClientRect()
+    point = { page: Number(element.dataset.page), y: (middle - box.top) / box.height }
+    if (middle < box.bottom + PAGE_GAP / 2) break
+  }
+  return point
 }
 
 type PdfPageProps = {
