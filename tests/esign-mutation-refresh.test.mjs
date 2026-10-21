@@ -326,6 +326,39 @@ void test("the signer's own cancel closes the dialog once, without a reload", as
   assert.deepEqual(env.events, ["popup closed", ["stopped", null]])
 })
 
+for (const refreshFails of [false, true]) {
+  void test(`closing an ended attempt shows it is busy until the refresh settles, failure=${refreshFails}`, async () => {
+    const env = environment()
+    const dependencies = {
+      ...env.dependencies,
+      finishing: { current: false },
+      phase: { kind: "ended", reason: "expired", code: null, message: "The link expired." },
+      states: new Map(),
+      setPhase: env.setter("phase"),
+      setClosing: env.setter("closing"),
+      popupRef: { current: { close: () => env.events.push("popup closed") } },
+      cancelFn: async () => env.events.push("cancel"),
+      onStopped: (error) => env.events.push(["stopped", error]),
+    }
+    dependencies.reload = await handler("src/features/esign/sign-with-cie.tsx", "reload", dependencies)
+    const close = await handler("src/features/esign/sign-with-cie.tsx", "close", dependencies)
+    const pending = close()
+    assert.equal(env.state.closing, true)
+    assert.equal(env.state.phase, undefined)
+    assert.deepEqual(env.events, ["popup closed", "reload"])
+    await close()
+    assert.deepEqual(env.events, ["popup closed", "reload"])
+    if (refreshFails) env.reload.reject(new Error("Refresh failed"))
+    else env.reload.resolve()
+    await pending
+    assert.equal(env.state.phase, null)
+    // Still busy while the dialog fades out, so the button doesn't flash back to idle.
+    assert.equal(env.state.closing, true)
+    assert.deepEqual(env.events.at(-1), ["stopped", null])
+    assert.ok(!env.events.includes("cancel"))
+  })
+}
+
 async function endingOf() {
   const path = "src/features/esign/sign-with-cie.tsx"
   const AGENT_ERRORS = await handler(path, "AGENT_ERRORS", {})

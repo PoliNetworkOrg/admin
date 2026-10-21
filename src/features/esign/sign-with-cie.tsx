@@ -195,6 +195,8 @@ export function SignWithCie({
   const [error, setError] = useState<string | null>(null)
   const [windowClosed, setWindowClosed] = useState(false)
   const [agentLost, setAgentLost] = useState(false)
+  // An ended attempt's Close is reloading the page before the dialog closes; stays set while it fades out.
+  const [closing, setClosing] = useState(false)
   const popupRef = useRef<Window | null>(null)
   const finishing = useRef(false)
 
@@ -286,6 +288,7 @@ export function SignWithCie({
     setStates(new Map())
     setWindowClosed(false)
     setAgentLost(false)
+    setClosing(false)
     finishing.current = false
     popupRef.current?.close()
     let popup: Window | null = null
@@ -334,6 +337,7 @@ export function SignWithCie({
     popupRef.current?.close()
     if (current?.kind === "ended") {
       // Reloaded while the dialog is still open, as finish() does: the request may have been cancelled meanwhile.
+      setClosing(true)
       await reload()
       setPhase(null)
       return onStopped?.(null)
@@ -369,6 +373,8 @@ export function SignWithCie({
   }
 
   if (phase && phase.kind !== "starting" && phase !== shown) setShown(phase)
+  // An expired link can start again from the dialog; a prepared document is signed from its request page instead.
+  const restartable = shown?.kind === "ended" && shown.reason === "expired" && !preparing
   const active = shown && shown.kind !== "ended" ? shown : null
   const batch = (active?.jobs ?? items ?? []).length > 1
   const silent = active?.kind === "waiting" && now - active.since > AGENT_TIMEOUT_MS
@@ -496,18 +502,17 @@ export function SignWithCie({
             ) : null}
             {shown?.kind === "ended" ? (
               <div className={dialogFooter}>
-                {shown.reason === "expired" && !preparing ? (
-                  <>
-                    <Button variant="outline" className={dialogFooterButton} onClick={() => void close()}>
-                      Close
-                    </Button>
-                    <Button className={dialogFooterButton} disabled={disabled} onClick={start}>
-                      Start again
-                    </Button>
-                  </>
-                ) : (
-                  <Button className={dialogFooterButton} onClick={() => void close()}>
-                    Close
+                <LoadingButton
+                  size="default"
+                  variant={restartable ? "outline" : "default"}
+                  pending={closing}
+                  onClick={() => void close()}
+                >
+                  Close
+                </LoadingButton>
+                {restartable && (
+                  <Button className={dialogFooterButton} disabled={disabled || closing} onClick={start}>
+                    Start again
                   </Button>
                 )}
               </div>
