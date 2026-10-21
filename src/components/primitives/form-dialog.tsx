@@ -2,6 +2,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
 import { type KeyboardEvent, type ReactElement, type ReactNode, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -91,7 +92,7 @@ export function FormDialog({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
-  const bodyRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLElement>(null)
   const shownError = error ?? submitError
 
   function requestClose() {
@@ -161,9 +162,13 @@ export function FormDialog({
             onKeyDown={onFormKeyDown}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div ref={bodyRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5.5 py-4.5">
+            <CustomScrollbar
+              scrollRef={bodyRef}
+              className="min-h-0 flex-1"
+              viewportClassName="flex flex-col gap-4 px-5.5 py-4.5"
+            >
               {children}
-            </div>
+            </CustomScrollbar>
             {(shownError || notice) && (
               <div className="flex shrink-0 flex-col gap-2 px-5.5 pb-4">
                 {notice}

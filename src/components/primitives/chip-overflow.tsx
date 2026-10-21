@@ -1,6 +1,7 @@
 import type * as React from "react"
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
@@ -99,14 +100,14 @@ export function ChipOverflow<T>({
             )}
           >
             <PopoverTitle className="sr-only">Additional items</PopoverTitle>
-            <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto text-[13px] leading-5">
+            <CustomScrollbar as="ul" className="max-h-72" viewportClassName="flex flex-col gap-2 text-[13px] leading-5">
               {rest.map((label, index) => (
                 <li key={index} className="flex items-start gap-2 [overflow-wrap:anywhere]">
                   <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-(--pn-accent)" />
                   {label}
                 </li>
               ))}
-            </ul>
+            </CustomScrollbar>
           </PopoverContent>
         </Popover>
       )}

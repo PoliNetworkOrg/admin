@@ -235,7 +235,8 @@ invalid fields show the danger border. Opt out only with `data-focus-ring="none"
 Every hover is the same faint brand tint: fills use `--pn-hover`, borders `--pn-hover-line`; never `--pn-muted`, the
 solid accent or a status color. Selected and active states keep their own fills (`--pn-accent-soft`,
 `--pn-nav-active`). Destructive colors identify actions at rest and validation errors; their hover is the same blue.
-Scrollable surfaces use thin, rounded scrollbars with the theme's line color on a transparent track, including portals.
+Native browser scrollbars are hidden. Long scrollable surfaces use `CustomScrollbar`: a narrow, rounded thumb in the
+theme's line color on a transparent track, with pointer dragging, track clicks and keyboard navigation.
 Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
 keyboard users open it with Enter or Space and dismiss it with Escape.
 Tooltips use the same raised surface, foreground, border and corner radius as overflow popovers. Both open below

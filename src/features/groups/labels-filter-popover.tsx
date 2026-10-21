@@ -17,6 +17,7 @@ import {
   type TablePagination,
   type TableSort,
 } from "@/components/primitives"
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { GroupLabel } from "@/features/group-labels/types"
@@ -326,10 +327,12 @@ export function LabelsFilterPopover({ labels, value, onChange, groupCount }: Lab
         className={cn(
           raisedSurface,
           floatingMotion,
-          "max-h-(--available-height) w-80 gap-3 overflow-y-auto rounded-(--pn-r-4) p-3 max-lg:max-w-[calc(100vw-2rem)]"
+          "max-h-(--available-height) w-80 overflow-hidden rounded-(--pn-r-4) p-0 max-lg:max-w-[calc(100vw-2rem)]"
         )}
       >
-        {content}
+        <CustomScrollbar className="max-h-(--available-height) p-3" viewportClassName="flex flex-col gap-3">
+          {content}
+        </CustomScrollbar>
       </PopoverContent>
     </Popover>
   )

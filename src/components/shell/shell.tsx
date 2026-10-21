@@ -2,6 +2,7 @@ import { Outlet } from "@tanstack/react-router"
 import { animate, AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { TOOLTIP_DELAY } from "@/components/primitives/hint"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import type { DashboardUser } from "@/lib/auth"
@@ -194,11 +195,13 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
           <div ref={columnRef} className="flex min-w-0 flex-1 flex-col">
             <MobileTopBar match={match} onOpenPalette={openPalette} user={user} className="shell:hidden" />
             {/* One scroll container per page: keyed so each page starts at the top, and back/forward restore it. */}
-            <div
+            <CustomScrollbar
               key={pathname}
-              ref={setMain}
+              scrollRef={setMain}
+              scrollLabel="Page content"
               data-scroll-restoration-id={`dashboard-main:${pathname}`}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
+              className="min-h-0 flex-1"
+              viewportClassName="overscroll-contain"
             >
               {hasPanel ? (
                 <SectionPills service={service} match={match} pending={pending} className="shell:hidden" />
@@ -206,7 +209,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
               <main className="flex min-h-full flex-col">
                 <Outlet />
               </main>
-            </div>
+            </CustomScrollbar>
             <MobileBottomNav match={match} serviceHref={serviceHref} pending={pending} className="shell:hidden" />
           </div>
 

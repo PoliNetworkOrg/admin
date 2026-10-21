@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, useRef } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { cn } from "@/lib/utils"
 
 import {
@@ -124,13 +125,16 @@ export function Panel({ service, match, pending, className }: PanelProps) {
         <ServiceGlyph service={service} className="size-4.5 text-(--pn-fg)" />
         <span className="truncate text-[15px] font-semibold text-(--pn-fg)">{service.title}</span>
       </div>
-      <nav
+      <CustomScrollbar
+        as="nav"
         aria-label={`${service.title} sections`}
+        scrollLabel={`${service.title} sections`}
         onKeyDown={onSectionListKeyDown}
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
+        className="min-h-0 flex-1"
+        viewportClassName="flex flex-col gap-0.5 p-3"
       >
         <SectionItems service={service} match={match} pending={pending} />
-      </nav>
+      </CustomScrollbar>
     </aside>
   )
 }
