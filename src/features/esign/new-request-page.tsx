@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { flushSync } from "react-dom"
 
 import {
   BarSkeleton,
@@ -786,13 +787,15 @@ export function NewEsignRequestPage({
     function run(event: globalThis.KeyboardEvent) {
       if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.repeat || event.isComposing) return
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
-      const button = primaryRef.current?.querySelector<HTMLButtonElement>("button")
-      if (!button || button.disabled) return
+      const primary = () => primaryRef.current?.querySelector<HTMLButtonElement>("button")
+      if (primary()?.disabled !== false) return
       event.preventDefault()
-      // An open signer or role list closes first.
+      // An open signer or role list closes first, and what its field does on blur (a typed role taking its spot) is
+      // on screen before the primary runs, which may then be another button.
       const active = document.activeElement
-      if (active instanceof HTMLElement && active.getAttribute("role") === "combobox") active.blur()
-      button.click()
+      if (active instanceof HTMLElement && active.getAttribute("role") === "combobox") flushSync(() => active.blur())
+      const button = primary()
+      if (button && !button.disabled) button.click()
     }
     window.addEventListener("keydown", run)
     return () => window.removeEventListener("keydown", run)
