@@ -230,6 +230,14 @@ export const azureMembersCreateMiddleware = createMiddleware({ type: "function" 
     return next()
   })
 
+/** Microsoft 365: change the member number of an existing user, optionally emailing them. */
+export const azureMembersWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "azure:members:write")
+    return next()
+  })
+
 /** Microsoft 365: list the groups and their members. */
 export const azureGroupsReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])

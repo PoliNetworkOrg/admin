@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router"
-import { Plus, UsersRound } from "lucide-react"
-import { useDeferredValue, useState } from "react"
+import { Hash, Plus, UsersRound } from "lucide-react"
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
   buttonMotion,
@@ -9,7 +9,9 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  IconButton,
   initialsOf,
+  RowActions,
   type TableSort,
   ToggleFilter,
   Unset,
@@ -21,6 +23,8 @@ import type { AzureMember } from "@/lib/api/types"
 import { formatLicense, pluralize } from "@/lib/format"
 
 import { MemberDialog } from "./member-dialog"
+import { reconcileMemberNumbers } from "./member-number"
+import { MemberNumberDialog } from "./member-number-dialog"
 
 const DEFAULT_SORT: TableSort = { column: "employeeId", direction: "asc" }
 
@@ -133,6 +137,7 @@ const columns: DataTableColumn<AzureMember>[] = [
 export function AzureMembersPage({ members }: { members: AzureMember[] | null }) {
   const router = useRouter()
   const canCreate = useCan("azure:members:create")
+  const canWrite = useCan("azure:members:write")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [membersOnly, setMembersOnly] = useState(false)
@@ -141,7 +146,22 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const [pageSize, setPageSize] = useState(20)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogKey, setDialogKey] = useState(0)
-  const shown = members ?? []
+  /** Kept after closing so the dialog's content survives the exit animation. */
+  const [numberTarget, setNumberTarget] = useState<AzureMember | null>(null)
+  const [numberOpen, setNumberOpen] = useState(false)
+  /** Member IDs saved in this session, shown until the reloaded directory has them. */
+  const [optimisticIds, setOptimisticIds] = useState<ReadonlyMap<string, string>>(new Map())
+  useEffect(() => {
+    setOptimisticIds((current) => reconcileMemberNumbers(current, members))
+  }, [members])
+  const shown = useMemo(
+    () =>
+      (members ?? []).map((member) => {
+        const employeeId = optimisticIds.get(member.id)
+        return employeeId === undefined ? member : { ...member, employeeId }
+      }),
+    [members, optimisticIds]
+  )
   const filtered = shown.filter((member) => (!membersOnly || member.isMember) && matches(member, deferredQuery))
   const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
@@ -149,14 +169,48 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const allLicenses = shown.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
   const filteredView = deferredQuery !== "" || membersOnly
 
-  async function onSaved() {
+  async function onSaved(welcomeMailSent: boolean) {
     try {
       await router.invalidate({ sync: true })
     } catch (caught) {
       console.error(caught)
       appToast.warning("The member was created, but the latest directory data could not be refreshed.")
     }
-    appToast.success("Member created.")
+    if (welcomeMailSent) appToast.success("Member created and welcome email sent.")
+    else appToast.warning("Member created, but the welcome email couldn't be sent.")
+  }
+
+  const applyOptimistic = useCallback(
+    (memberId: string, employeeId: string) => {
+      const previous = optimisticIds.get(memberId)
+      setOptimisticIds((current) => new Map(current).set(memberId, employeeId))
+      return () =>
+        setOptimisticIds((current) => {
+          const next = new Map(current)
+          if (previous === undefined) next.delete(memberId)
+          else next.set(memberId, previous)
+          return next
+        })
+    },
+    [optimisticIds]
+  )
+
+  async function onNumberSaved(notified: boolean | null) {
+    try {
+      await router.invalidate({ sync: true })
+    } catch (caught) {
+      // The saved member ID stays on screen; only the rest of the directory is stale.
+      console.error(caught)
+      appToast.warning("The member ID was changed, but the latest directory data could not be refreshed.")
+    }
+    if (notified === false) appToast.warning("Member ID changed, but the email to the member couldn't be sent.")
+    else appToast.success(notified ? "Member ID changed and email sent." : "Member ID changed.")
+  }
+
+  function openNumberDialog(member: AzureMember) {
+    setNumberTarget(member)
+    setDialogKey((key) => key + 1)
+    setNumberOpen(true)
   }
 
   function openDialog() {
@@ -232,6 +286,21 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
             columns={columns}
             rows={rows}
             getRowId={(member) => member.id}
+            actions={
+              canWrite
+                ? (member) => (
+                    <RowActions>
+                      <IconButton
+                        label="Change member ID"
+                        ariaLabel={`Change member ID of ${memberName(member)}`}
+                        icon={Hash}
+                        onClick={() => openNumberDialog(member)}
+                      />
+                    </RowActions>
+                  )
+                : undefined
+            }
+            actionsWidth={60}
             sort={sort}
             onSort={(next) => {
               setSort(next)
@@ -273,6 +342,16 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
       </PageContent>
       {canCreate ? (
         <MemberDialog key={dialogKey} open={dialogOpen} onOpenChange={setDialogOpen} onSaved={onSaved} />
+      ) : null}
+      {canWrite && numberTarget ? (
+        <MemberNumberDialog
+          key={`number-${dialogKey}`}
+          member={numberTarget}
+          open={numberOpen}
+          onOpenChange={setNumberOpen}
+          onOptimisticUpdate={applyOptimistic}
+          onSaved={onNumberSaved}
+        />
       ) : null}
     </>
   )
