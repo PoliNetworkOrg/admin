@@ -8,6 +8,9 @@ import {
   isRailService,
   PageBar,
   PageContent,
+  PendingCount,
+  type PendingCounts,
+  sectionPending,
   type Service,
   ServiceGlyph,
   useShellFrame,
@@ -34,10 +37,12 @@ export type OverviewPageProps = {
   counts: OverviewCounts
   /** Streams in after the counts; the chart area holds its height meanwhile. */
   userHistory: Promise<TelegramUserHistory>
+  /** The shell's streamed counts, shown on the sections that have one. */
+  pending: PendingCounts
 }
 
 /** Overview: the search, the Telegram users hero with its chart and side stats, then every service's sections. */
-export function DashboardOverviewPage({ counts, userHistory }: OverviewPageProps) {
+export function DashboardOverviewPage({ counts, userHistory, pending }: OverviewPageProps) {
   const router = useRouter()
   const [retrying, setRetrying] = useState(false)
   const someFailed = Object.values(counts).some((count) => count === null)
@@ -74,7 +79,7 @@ export function DashboardOverviewPage({ counts, userHistory }: OverviewPageProps
           ) : null}
 
           <Hero counts={counts} userHistory={userHistory} />
-          <Areas openReports={counts.openReports} />
+          <Areas pending={pending} />
         </div>
       </PageContent>
     </>
@@ -102,7 +107,7 @@ function OverviewSearch() {
 }
 
 /** Stream user growth and service counts into the overview hero, with shorter statistic labels on phones. */
-function Hero({ counts, userHistory }: OverviewPageProps) {
+function Hero({ counts, userHistory }: Pick<OverviewPageProps, "counts" | "userHistory">) {
   // `short` is the phone label: the hero already sits under "Telegram users", so "Groups" is unambiguous there.
   const stats: { label: string; short?: string; value: OverviewCount; to: DashboardPath; flag?: ReactNode }[] = [
     { label: "Telegram groups", short: "Groups", value: counts.telegramGroups, to: "/dashboard/telegram/groups" },
@@ -275,7 +280,7 @@ function chartDescription(points: ReturnType<typeof growthSeries>["points"], ran
 }
 
 /** Every service the user can open: the whole card leads where its rail icon does, each section is a 44px button. */
-function Areas({ openReports }: { openReports: OverviewCount }) {
+function Areas({ pending }: { pending: PendingCounts }) {
   const services = useVisibleServices().filter(isRailService)
   return (
     <section aria-labelledby="overview-areas" className="flex flex-col gap-4">
@@ -284,15 +289,15 @@ function Areas({ openReports }: { openReports: OverviewCount }) {
       </h2>
       <ul className="grid gap-4 min-[760px]:grid-cols-2 min-[980px]:grid-cols-3">
         {services.map((service) => (
-          <AreaCard key={service.id} service={service} openReports={openReports} />
+          <AreaCard key={service.id} service={service} pending={pending} />
         ))}
       </ul>
     </section>
   )
 }
 
-/** Link to a service and its sections, including the open-report count when the service is Reports. */
-function AreaCard({ service, openReports }: { service: Service; openReports: OverviewCount }) {
+/** Link to a service and its sections, including the pending count on Reports › Open and Signatures › To sign. */
+function AreaCard({ service, pending }: { service: Service; pending: PendingCounts }) {
   const { serviceHref } = useShellFrame()
   const wide = service.sections.length > 3
   return (
@@ -333,12 +338,9 @@ function AreaCard({ service, openReports }: { service: Service; openReports: Ove
               className="size-4.5 shrink-0 text-(--pn-fg-muted) group-hover/section:text-(--pn-fg)"
             />
             <span className="line-clamp-2 min-w-0 flex-1 leading-4.5">{section.title}</span>
-            {service.id === "reports" && section.id === "open" && openReports ? (
-              <span className="rounded-full bg-(--pn-accent-soft) px-1.75 font-mono text-[11px] leading-4.5 font-medium text-(--pn-accent) tabular-nums">
-                {formatNumber(openReports)}
-                <span className="sr-only"> open</span>
-              </span>
-            ) : null}
+            <Suspense fallback={null}>
+              <PendingCount count={sectionPending(service.id, section.id, pending)} />
+            </Suspense>
           </Link>
         ))}
       </div>

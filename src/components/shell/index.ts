@@ -14,6 +14,7 @@ export {
   type PendingCounts,
   type Section,
   sectionFor,
+  sectionPending,
   type Service,
   serviceById,
   type ServiceId,
@@ -37,6 +38,7 @@ export {
   useInShell,
   useShellFrame,
 } from "./page-bar"
+export { PendingCount } from "./panel"
 export { ServiceGlyph } from "./service-glyph"
 export { DashboardShell, type DashboardShellProps } from "./shell"
 export { type Theme, themeToggleLabel, useTheme } from "./theme"

@@ -141,7 +141,7 @@ Newest last. One line per commit or session: date, what was done, what is next.
   `people:members:read` comes with `people:read` (true for every role in decisions.md). Dialogs now reload before
   closing. Next: phase 4 (Admins).
 - 2026-10-14: phase 4 done: Admins (Active/Former, campus/year, four quick filters that scroll sideways on phones,
-  truncating chips), End admin role (reason required, danger submit via the new `FormDialog` `submitTone`), Capo Admin
+  truncating chips), End admin role (reason required, danger submit via `FormDialog` `tone="danger"`), Capo Admin
   of reference (`people.admins.setCapoOfReference`, added to the contract and fake), appoint / change / end Capo
   Admin (`people-appoint.functions.ts`, `people:appoint`). Same actions on the record's Admin card. Next: phase 5
   (Teams).
