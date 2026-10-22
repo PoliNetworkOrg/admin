@@ -8,8 +8,8 @@ const MIN_HEIGHT = 480
 /**
  * A height that fills the page's scroll container from the element's top down to the page's bottom padding, so the
  * area ends at the bottom of the viewport whatever sits above it (header, alerts, the phone's top bar and bottom nav).
- * Pass `ref` to the element and `style` to its `style`; keep a CSS height on it for the server render, before the
- * first measurement.
+ * Pass `ref` to the element and `style` to its `style` (or use `height`, null until measured); keep a CSS height on it
+ * for the server render, before the first measurement.
  */
 export function useFillHeight<T extends HTMLElement>() {
   const { main } = useShellFrame()
@@ -33,5 +33,5 @@ export function useFillHeight<T extends HTMLElement>() {
     return () => observer.disconnect()
   }, [main, element])
 
-  return { ref: setElement, style: height === null ? undefined : { height } }
+  return { ref: setElement, height, style: height === null ? undefined : { height } }
 }

@@ -21,6 +21,17 @@ type SignatureBoxProps = {
   highlighted?: boolean
   onChange?: (placement: BoxPlacement) => void
   onRemove?: () => void
+  /**
+   * The box of a place just signed, over the stamp that replaces it: hidden from assistive tech and the pointer.
+   * "fading" dissolves it in 200 ms (after the dialog's 150 ms exit with `afterDialog`), then calls `onLeft`.
+   */
+  leaving?: "waiting" | "fading"
+  afterDialog?: boolean
+  onLeft?: () => void
+  /** The pointer entered (true) or left (false) the box, e.g. to point out its signer elsewhere on the page. */
+  onHover?: (hovering: boolean) => void
+  /** A click on a box that isn't editable, e.g. an empty spot opening its signer picker. */
+  onActivate?: () => void
 }
 
 const MIN = 0.04
@@ -58,6 +69,11 @@ export function SignatureBox({
   highlighted,
   onChange,
   onRemove,
+  leaving,
+  afterDialog,
+  onLeft,
+  onHover,
+  onActivate,
 }: SignatureBoxProps) {
   const ref = useRef<HTMLDivElement>(null)
   const detail = kind === "mark" ? (role ? `Mark · ${role}` : "Mark") : role
@@ -118,6 +134,9 @@ export function SignatureBox({
     <div
       ref={ref}
       role="group"
+      aria-hidden={leaving ? true : undefined}
+      inert={leaving !== undefined}
+      onAnimationEnd={leaving === "fading" ? onLeft : undefined}
       tabIndex={editable ? 0 : -1}
       aria-label={
         editable
@@ -129,18 +148,32 @@ export function SignatureBox({
       onPointerMove={move}
       onPointerUp={end}
       onPointerCancel={end}
+      onPointerEnter={onHover && (() => onHover(true))}
+      onPointerLeave={onHover && (() => onHover(false))}
+      onClick={editable ? undefined : onActivate}
       data-focus-ring="none"
       className={cn(
-        "group/box absolute flex touch-none flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
+        "group/box absolute flex flex-col justify-center overflow-hidden rounded-(--pn-r-2) border-2 px-2 text-left select-none",
         "outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40",
+        // An empty spot turning into its signer's box changes colour; the dashed border snaps.
+        "transition-[box-shadow,border-color,background-color,color] duration-[120ms,150ms,150ms,150ms] ease-(--pn-ease-out)",
         state === "active" &&
           "border-(--pn-brand-600) bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,transparent)] text-(--pn-brand-700)",
+        // The same colour on the white sheet, but opaque: the stamp drawn under a leaving box shows only as it fades.
+        state === "active" && leaving && "bg-[color-mix(in_oklab,var(--pn-brand-100)_85%,white)]",
         state === "pending" &&
           "border-dashed border-(--pn-n-500) bg-[color-mix(in_oklab,white_70%,transparent)] text-(--pn-n-600)",
         state === "signed" && "border-(--pn-success-solid) bg-transparent text-(--pn-success-solid)",
         kind === "mark" && state === "active" && "border-dashed",
         highlighted && "ring-4 ring-(--pn-accent)/35",
-        editable && "cursor-move"
+        // Only a box that moves takes the finger; on the others it scrolls the page.
+        editable && "cursor-move touch-none",
+        !editable && onActivate && "cursor-pointer hover:border-(--pn-brand-600)",
+        leaving && "pointer-events-none",
+        leaving === "fading" &&
+          (afterDialog
+            ? "animate-[pn-fade-out_200ms_var(--pn-ease-move)_150ms_forwards]"
+            : "animate-[pn-fade-out_200ms_var(--pn-ease-move)_forwards]")
       )}
       style={{
         left: `${placement.x * 100}%`,
