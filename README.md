@@ -1,9 +1,11 @@
 # PoliNetwork Admin
 
 The dashboard manages Telegram and WhatsApp groups, labels, Telegram users and grants, website content and reports.
-Microsoft 365 supports a read-only member directory, creating a new association member through the backend's fixed
-workflow, and group membership management. Directory access requires `azure:members:read`; creation independently
-requires `azure:members:create`. Groups require `azure:groups:read`; adding and removing members `azure:groups:write`.
+Microsoft 365 supports a member directory, creating a new association member through the backend's fixed workflow
+(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and
+group membership management. Directory access requires `azure:members:read`; creation independently requires
+`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`; adding and
+removing members `azure:groups:write`.
 
 **People** keeps one record per volunteer and member (Overview, Member register, Admins, Teams, Census, Linking), plus
 Telegram › Capo Admin and Account › My area for volunteers themselves. The dashboard talks to a typed `people.*`
