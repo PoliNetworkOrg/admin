@@ -21,7 +21,7 @@ type ChipOverflowProps<T> = Omit<React.ComponentProps<"div">, "children"> & {
 }
 
 /** Estimated chip geometry (12px DM Sans): padding and dot, average glyph width, the chip's max width. */
-const CHIP_CHROME = 26
+const CHIP_CHROME = 30
 const CHIP_GLYPH = 6.4
 const CHIP_MAX = 224
 /** The narrowest a chip may truncate to and still show a readable start of its name. */
@@ -29,12 +29,16 @@ const CHIP_MIN = 72
 const GAP = 4
 const BADGE = 30
 
+function chipWidth(label: string) {
+  return Math.min(CHIP_MAX, Math.ceil(CHIP_CHROME + label.length * CHIP_GLYPH))
+}
+
 /** How many chips fit `width` before the "+n" badge, never truncating one below `CHIP_MIN`; at least one. */
 function fittingCount(labels: string[], max: number, width: number) {
   let used = 0
   let count = 0
   for (const label of labels.slice(0, max)) {
-    const natural = Math.min(CHIP_MAX, CHIP_CHROME + label.length * CHIP_GLYPH)
+    const natural = chipWidth(label)
     const reserve = count + 1 < labels.length ? GAP + BADGE : 0
     const room = width - used - (count > 0 ? GAP : 0) - reserve
     if (room < Math.min(natural, CHIP_MIN)) break
@@ -72,13 +76,31 @@ export function ChipOverflow<T>({
   const count = width === null ? max : Math.min(max, fittingCount(items.map(chipText), max, width))
   const shown = items.slice(0, count)
   const rest = items.slice(count).map(itemLabel)
+  // Reserve readable short chips first; a long label should consume the remaining space, not squeeze "Member".
+  const natural = shown.map((item) => chipWidth(chipText(item)))
+  const minimum = natural.map((size) => Math.min(size, CHIP_MIN))
+  const available =
+    width === null ? null : Math.max(0, width - GAP * (shown.length - 1) - (rest.length ? GAP + BADGE : 0))
+  const growth = natural.reduce((sum, size, index) => sum + size - minimum[index], 0)
+  const extra = available === null ? growth : Math.max(0, available - minimum.reduce((sum, size) => sum + size, 0))
+  const ratio = growth ? Math.min(1, extra / growth) : 0
   return (
     <div
       ref={ref}
       className={cn("flex w-full min-w-0 flex-nowrap items-center gap-1 [&>*]:min-w-0", className)}
       {...props}
     >
-      {shown.map(renderItem)}
+      {shown.map((item, index) => (
+        <div
+          key={index}
+          className="flex min-w-0 shrink items-center [&>*]:max-w-full"
+          style={{
+            maxWidth: Math.min(available ?? CHIP_MAX, minimum[index] + (natural[index] - minimum[index]) * ratio),
+          }}
+        >
+          {renderItem(item)}
+        </div>
+      ))}
       {rest.length > 0 && (
         <Popover>
           <PopoverTrigger
