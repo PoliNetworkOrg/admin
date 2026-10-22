@@ -136,7 +136,7 @@ export function ReceiptsPage({
     } finally {
       setRetrying(null)
     }
-    await refresh(`Receipt ${receipt.number} sent to ${receipt.person.name}.`)
+    await refresh(`Delivery retried for receipt ${receipt.number}. Check its status.`)
   }
 
   function openVoid(receipt: Receipt) {
