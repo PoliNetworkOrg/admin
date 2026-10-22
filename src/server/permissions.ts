@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   "esign:sign",
   "esign:requests:manage",
   "esign:drives:manage",
+  "audit:read",
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
