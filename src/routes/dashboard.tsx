@@ -4,6 +4,7 @@ import { RouteNotFound } from "@/components/route-error"
 import { DashboardShell, documentTitle, matchPath } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { getEsignPendingCount } from "@/features/esign/esign.functions"
+import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
@@ -55,5 +56,10 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardLayout() {
   const { user } = Route.useRouteContext()
   const { pending } = Route.useLoaderData()
-  return <DashboardShell user={user} pending={pending} />
+  // A signature from New request or a batch keeps its dialog while the page it lands on loads.
+  return (
+    <EsignSigningHost>
+      <DashboardShell user={user} pending={pending} />
+    </EsignSigningHost>
+  )
 }
