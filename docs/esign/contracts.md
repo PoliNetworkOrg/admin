@@ -71,6 +71,9 @@ poll wins over a message. Messages the dashboard acts on by themselves:
   (`seen` is set after the agent's job request went agent → dashboard → backend). The trade-off: a running old agent
   whose job takes longer than that to load is still closed, as "isn't running"; Start or "It's already installed"
   then stores the flag, and the next attempts wait 6 s. A window closed before any answer means the same, at once.
+  A dashboard origin the agent doesn't sign for gets no message at all, not even `ready`, and its job is never
+  fetched, so it reads as "isn't running" too: the agent logs `refused dashboard origin`, and the fix is the agent's
+  `allowedOrigins` setting (`esign doctor` shows it).
 - **Fatal errors.** `agent_outdated` shows the update (a direct download of the newest version, the release page on
   Linux), `backend_unreachable` "can't connect" and `job_expired` the timed-out state at once; any other code waits
   for the poll the message starts, in case the job ended with words of its own, then shows the message. The window
