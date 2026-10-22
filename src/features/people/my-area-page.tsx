@@ -264,7 +264,7 @@ function CensusCard({ area }: { area: Linked }) {
   if (!campaign) return null
   const answer = { course, year, campus, keepGroups, keepTeams }
 
-  // An answer is final: the backend applies it at once, ending the roles not kept.
+  // Team roles update immediately; Telegram removals wait for confirmation.
   if (entry?.answer) {
     return (
       <SectionCard padding="flush">
@@ -282,6 +282,11 @@ function CensusCard({ area }: { area: Linked }) {
             meta={`Answered ${entry.answeredOn ? formatDay(entry.answeredOn) : ""}${entry.source ? ` · ${CENSUS_SOURCE[entry.source]}` : ""}`}
           />
         </Rows>
+        {person.discrepancies.some((item) => item.message.startsWith("Telegram admin removal pending:")) && (
+          <InlineAlert tone="info" className="mx-4 mb-4">
+            Your Telegram group changes are waiting for HR to remove the admin rights.
+          </InlineAlert>
+        )}
       </SectionCard>
     )
   }
@@ -360,7 +365,11 @@ function CensusCard({ area }: { area: Linked }) {
           </FormField>
         </div>
         {groups.length ? (
-          <FormField label="Groups you'll keep administering" htmlFor="census-groups">
+          <FormField
+            label="Groups you'll keep administering"
+            htmlFor="census-groups"
+            hint="HR processes groups you deselect. Your admin rights stay active until the removal is confirmed."
+          >
             <ChoiceChips
               id="census-groups"
               label="Groups you'll keep administering"

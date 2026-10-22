@@ -29,6 +29,7 @@ export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember"> & {
   censusTelegram: string | null
   /** Whether the person is expected to answer the 2026/27 census. */
   expected: boolean
+  pendingGroupRemovals?: { chatId: string; message: string }[]
 }
 
 export type JoinRequest = { id: string; personId: string; group: string; requestedOn: string }
