@@ -1,18 +1,20 @@
 import { Link, useNavigate } from "@tanstack/react-router"
-import { FileSignature, Files, PenLine, Plus } from "lucide-react"
+import { FileSignature, Files, Plus } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
-import { AvatarGroup, DataTable, type DataTableColumn, EmptyState } from "@/components/primitives"
+import { AvatarGroup, DataTable, type DataTableColumn, EmptyState, Hint, InlineAlert } from "@/components/primitives"
 import { SegmentedControl } from "@/components/primitives/segmented-control"
 import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { EsignRequest } from "@/lib/api/types"
 import { formatDate, pluralize } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
+import { computerOnly, phoneOnly } from "./action-card"
+import { MAX_BATCH } from "./agent"
 import { ReceiptRequestLink } from "./receipt-request-link"
-import { RequestStatusBadge, signedProgress } from "./request-status"
-
-type StatusFilter = "all" | "in_progress" | "completed" | "closed"
+import { RequestStatusBadge, type StatusFilter, signedProgress } from "./request-status"
+import { useSigningDevice } from "./signing-device"
 
 const SCOPE_ITEMS: { value: "mine" | "all"; label: string }[] = [
   { value: "mine", label: "Mine" },
@@ -32,18 +34,22 @@ function inFilter(request: EsignRequest, filter: StatusFilter) {
   return request.status === filter
 }
 
-/** In To sign it starts with the viewer as the first signer, who may then add others. */
-function NewRequestButton({ variant = "default", self }: { variant?: "default" | "outline"; self: boolean }) {
+function NewRequestButton({ variant = "default" }: { variant?: "default" | "outline" }) {
   return (
-    <Button
-      variant={variant}
-      className="h-10"
-      nativeButton={false}
-      render={<Link to="/dashboard/esign/new" search={self ? { self: true } : {}} />}
-    >
-      {self ? <PenLine aria-hidden /> : <Plus aria-hidden />} {self ? "Sign a document" : "New request"}
+    <Button variant={variant} className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/new" />}>
+      <Plus aria-hidden /> New request
     </Button>
   )
+}
+
+/**
+ * Whom a request in progress waits on; the viewer's own turn shows as a badge, so it keeps the progress. A lone signer
+ * has no progress to show: the avatar stands alone.
+ */
+function turnText(request: EsignRequest) {
+  const name = request.signers.find((s) => s.sub === request.turn[0])?.name
+  if (request.myTurn || !name) return request.signers.length > 1 ? signedProgress(request) : null
+  return request.turn.length > 1 ? `Waiting for ${name} and ${request.turn.length - 1} more` : `Waiting for ${name}`
 }
 
 const columns: DataTableColumn<EsignRequest>[] = [
@@ -67,18 +73,25 @@ const columns: DataTableColumn<EsignRequest>[] = [
   {
     id: "signers",
     label: "Signers",
-    width: 220,
+    width: 260,
     priority: 1,
-    cell: (r) => (
-      <span className="flex items-center gap-2">
-        <AvatarGroup
-          people={r.signers.map((s) => ({ id: s.id, name: s.name }))}
-          max={4}
-          listLabel={`Signers of ${r.title}`}
-        />
-        <span className="text-[13px] text-(--pn-fg-muted) tabular-nums">{signedProgress(r)}</span>
-      </span>
-    ),
+    cell: (r) => {
+      const text = r.status === "in_progress" ? turnText(r) : null
+      return (
+        <span className="flex min-w-0 items-center gap-2">
+          <AvatarGroup
+            people={r.signers.map((s) => ({ id: s.id, name: s.name }))}
+            max={4}
+            listLabel={`Signers of ${r.title}`}
+          />
+          {text && (
+            <Hint overflowOnly label={text}>
+              <span className="min-w-0 truncate text-[13px] text-(--pn-fg-muted) tabular-nums">{text}</span>
+            </Hint>
+          )}
+        </span>
+      )
+    },
   },
   {
     id: "created",
@@ -89,13 +102,27 @@ const columns: DataTableColumn<EsignRequest>[] = [
   },
 ]
 
-/** The signatures inbox ("To sign") and the requests list share this page. */
-export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[]; scope: "inbox" | "mine" | "all" }) {
+// Every document in To sign is the viewer's turn.
+const inboxColumns = columns.filter((column) => column.id !== "status")
+
+/** The signatures inbox ("To sign") and the requests list share this page; the list's status lives in the URL. */
+export function EsignRequestsPage({
+  requests,
+  scope,
+  status = "all",
+  onStatusChange,
+}: {
+  requests: EsignRequest[]
+  scope: "inbox" | "mine" | "all"
+  status?: StatusFilter
+  onStatusChange?: (status: StatusFilter) => void
+}) {
   const canManage = useCan("esign:requests:manage")
   const canSignReceipts = useCan("people:receipts:sign")
+  // Until hydration a Mac may be an iPad: both the button and the note render, and CSS shows one.
+  const device = useSigningDevice()
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<StatusFilter>("all")
   const deferred = useDeferredValue(query.trim().toLocaleLowerCase())
   const inbox = scope === "inbox"
 
@@ -103,13 +130,13 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
     () =>
       requests.filter(
         (r) =>
-          inFilter(r, inbox ? "all" : filter) &&
+          inFilter(r, status) &&
           (deferred === "" ||
             `${r.title} ${r.createdByName} ${r.signers.map((s) => s.name).join(" ")}`
               .toLocaleLowerCase()
               .includes(deferred))
       ),
-    [requests, filter, deferred, inbox]
+    [requests, status, deferred]
   )
   const narrowed = visible.length !== requests.length
   const waiting = inbox ? requests.filter((r) => r.myTurn && (!r.peopleReceipt || canSignReceipts)).length : 0
@@ -125,16 +152,19 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
       <PageBar
         description={description}
         right={
-          canManage || waiting > 1 ? (
-            <>
-              {canManage && <NewRequestButton variant={waiting > 1 ? "outline" : "default"} self={inbox} />}
-              {waiting > 1 && (
-                <Button className="h-10" nativeButton={false} render={<Link to="/dashboard/esign/sign" />}>
-                  <Files aria-hidden /> Sign {waiting} together
+          inbox
+            ? waiting > 1 &&
+              device !== "phone" && (
+                <Button
+                  className={cn("h-10", device === "unknown" && computerOnly)}
+                  nativeButton={false}
+                  render={<Link to="/dashboard/esign/sign" />}
+                >
+                  {/* What the batch it opens holds: the first ten, which it says. */}
+                  <Files aria-hidden /> Sign {Math.min(waiting, MAX_BATCH)} together
                 </Button>
-              )}
-            </>
-          ) : undefined
+              )
+            : canManage && <NewRequestButton />
         }
         left={
           // Managers keep the Mine/Everyone switch even when they have no requests of their own.
@@ -147,7 +177,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     items={SCOPE_ITEMS}
                     value={scope}
                     onValueChange={(value) =>
-                      void navigate({ to: "/dashboard/esign/requests", search: { scope: value } })
+                      void navigate({ to: "/dashboard/esign/requests", search: (prev) => ({ ...prev, scope: value }) })
                     }
                   />
                 ) : undefined
@@ -161,8 +191,8 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                       ...item,
                       count: requests.filter((r) => inFilter(r, item.value)).length,
                     }))}
-                    value={filter}
-                    onValueChange={setFilter}
+                    value={status}
+                    onValueChange={(next) => onStatusChange?.(next)}
                   />
                 )
               }
@@ -172,9 +202,17 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
         }
       />
       <PageContent>
+        {waiting > 1 && device !== "computer" && (
+          <div className={cn("mb-4", device === "unknown" && phoneOnly)}>
+            <InlineAlert tone="info">
+              Signing needs your computer with the card reader and PoliNetwork eSign. These documents will be waiting
+              here.
+            </InlineAlert>
+          </div>
+        )}
         <DataTable
           label={inbox ? "Documents to sign" : "Signature requests"}
-          columns={columns}
+          columns={inbox ? inboxColumns : columns}
           rows={visible}
           getRowId={(r) => r.id}
           rowHref={(r) => `/dashboard/esign/requests/${r.id}`}
@@ -190,7 +228,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     ? "When someone asks for your signature, the document shows up here."
                     : "Start a request from a PDF in OneDrive or on your computer, choose who signs and where."
                 }
-                action={canManage ? <NewRequestButton variant="outline" self={inbox} /> : undefined}
+                action={!inbox && canManage ? <NewRequestButton variant="outline" /> : undefined}
               />
             ) : (
               <EmptyState
@@ -202,7 +240,7 @@ export function EsignRequestsPage({ requests, scope }: { requests: EsignRequest[
                     variant="ghost"
                     onClick={() => {
                       setQuery("")
-                      setFilter("all")
+                      onStatusChange?.("all")
                     }}
                   >
                     Clear filters

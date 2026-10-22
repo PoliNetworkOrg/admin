@@ -328,7 +328,7 @@ export function EndTeamMembershipDialog({
       noun="change"
       dirty={reason !== null || note.trim() !== ""}
       submitLabel="End membership"
-      submitTone="danger"
+      tone="danger"
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">

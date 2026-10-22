@@ -191,7 +191,7 @@ export function ReviewReceiptDialog({
       noun="review"
       dirty={reason.trim() !== ""}
       submitLabel={mode === "review" ? "Approve" : "Reject receipt"}
-      submitTone={mode === "review" ? "primary" : "danger"}
+      tone={mode === "review" ? undefined : "danger"}
       canSubmit={review !== null && upload !== null}
       onSubmit={submit}
       footerStart={

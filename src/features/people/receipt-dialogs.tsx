@@ -285,7 +285,7 @@ export function VoidReceiptDialog({
       noun="void"
       dirty={reason.trim() !== ""}
       submitLabel="Void receipt"
-      submitTone="danger"
+      tone="danger"
       onSubmit={submit}
     >
       <FormField

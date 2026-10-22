@@ -31,15 +31,20 @@ function deferred() {
 function start(loadPdfjs, inferPages = true) {
   const documents = []
   const errors = []
+  // The viewer's refs: the shown document's task, and the one it replaced until the pages have moved on.
+  const loaded = { current: null }
+  const retired = { current: null }
   const run = runInNewContext(`${compiled}; effect`, {
     data: new Uint8Array([1, 2, 3]),
     inferPages,
     loadPdfjs,
+    loaded,
+    retired,
     setDoc: (doc) => documents.push(doc),
     setError: (error) => errors.push(error),
     console: { error: (error) => errors.push(error) },
   })
-  return { cleanup: run(), documents, errors }
+  return { cleanup: run(), documents, errors, loaded }
 }
 
 void test("closing a PDF before pdf.js loads starts no document or worker", async () => {
@@ -55,7 +60,7 @@ void test("closing a PDF before pdf.js loads starts no document or worker", asyn
   })
   await setImmediate()
   assert.equal(created, 0)
-  assert.ok(state.documents.every((doc) => doc === null))
+  assert.equal(state.documents.length, 0)
 })
 
 void test("closing while a document loads destroys its task and ignores its late result", async () => {
@@ -79,27 +84,29 @@ void test("closing while a document loads destroys its task and ignores its late
   })
   await setImmediate()
   assert.equal(destroyed, 1)
-  assert.ok(state.documents.every((doc) => doc === null))
+  assert.equal(state.documents.length, 0)
+  assert.equal(state.loaded.current, null)
 })
 
-void test("receipt previews infer every page size and release the document after viewing", async () => {
+void test("receipt previews infer every page size and keep the shown document for the viewer to release", async () => {
   let destroyed = 0
   const pdf = {
     numPages: 6,
     getPage: async (number) => ({ getViewport: () => ({ width: 595, height: number * 100 }) }),
   }
-  const state = start(async () => ({
-    getDocument: () => ({
-      promise: Promise.resolve(pdf),
-      destroy: () => {
-        destroyed++
-      },
-    }),
-  }))
+  const task = {
+    promise: Promise.resolve(pdf),
+    destroy: () => {
+      destroyed++
+    },
+  }
+  const state = start(async () => ({ getDocument: () => task }))
   await setImmediate()
+  assert.equal(state.documents.length, 1)
   assert.equal(state.documents[0].pages.length, 6)
   assert.equal(state.documents[0].pages[5].height, 600)
+  // The shown document stays until new bytes replace it or the viewer unmounts, which destroy `loaded`.
   state.cleanup()
-  assert.equal(destroyed, 1)
-  assert.equal(state.documents.at(-1), null)
+  assert.equal(state.loaded.current, task)
+  assert.equal(destroyed, 0)
 })

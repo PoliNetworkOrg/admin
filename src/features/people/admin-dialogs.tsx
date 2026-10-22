@@ -68,7 +68,7 @@ export function EndAdminDialog({
       noun="change"
       dirty={reason !== null || details.trim() !== ""}
       submitLabel="End admin role"
-      submitTone="danger"
+      tone="danger"
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">

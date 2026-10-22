@@ -28,6 +28,8 @@ export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number] & {
   peopleReceipt?: ReceiptRequestSource | null
 }
 export type EsignRequestDetail = ApiOutput["esign"]["requests"]["get"]
+/** A version of a request's PDF, or a PDF staged for a new request. */
+export type EsignDocumentMeta = EsignRequestDetail["versions"][number]
 export type EsignSigner = EsignRequest["signers"][number]
 export type EsignProfile = ApiOutput["esign"]["signers"]["list"][number]
 export type EsignPdfInfo = ApiOutput["esign"]["documents"]["get"]["pdf"]

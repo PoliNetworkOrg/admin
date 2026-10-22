@@ -61,7 +61,7 @@ export function LeavingDialog({
       noun="answer"
       dirty={reason !== null || note.trim() !== ""}
       submitLabel="Confirm I'm leaving"
-      submitTone="danger"
+      tone="danger"
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">
