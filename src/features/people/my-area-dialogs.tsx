@@ -19,7 +19,7 @@ import {
 const LEAVING_REASONS = ["Graduating", "No longer have time", "Going abroad", "Other"] as const
 type LeavingReason = (typeof LEAVING_REASONS)[number]
 
-/** The census "No": the reason goes with the answer, and the backend ends the roles at once. */
+/** The census "No": team roles end immediately; HR completes Telegram removals. */
 export function LeavingDialog({
   open,
   onOpenChange,
@@ -57,7 +57,7 @@ export function LeavingDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Leave PoliNetwork for ${year}?`}
-      description="Your roles end today. Your history stays, and you can come back any year."
+      description="Your team roles end today. HR completes Telegram admin removals. Your history stays, and you can come back any year."
       noun="answer"
       dirty={reason !== null || note.trim() !== ""}
       submitLabel="Confirm I'm leaving"

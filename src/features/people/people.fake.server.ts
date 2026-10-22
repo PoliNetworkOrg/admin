@@ -98,6 +98,8 @@ function log(person: StoredPerson, actor: string, text: string) {
 
 function discrepancies(person: StoredPerson): Discrepancy[] {
   const out: Discrepancy[] = []
+  for (const pending of person.pendingGroupRemovals ?? [])
+    out.push({ kind: "needs-review", message: pending.message, suggestedTelegram: null })
   const current = person.census.find((entry) => entry.year === "2026/27")
   const isMember = person.member !== null && person.member.status !== "former"
   if (current?.declaredMember && !isMember) {
@@ -1237,6 +1239,18 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         declaredMember: me.member !== null && me.member.status !== "former",
         reminders: 0,
       })
+      for (const group of me.admin?.groups ?? []) {
+        if (input.answer === "continues" && input.keepGroups.includes(group.chatId)) continue
+        const message = `Telegram admin removal pending: ${group.title} (${group.chatId}). HR must remove the admin rights; requested in census 2026/27.`
+        me.pendingGroupRemovals ??= []
+        if (!me.pendingGroupRemovals.some((item) => item.chatId === group.chatId))
+          me.pendingGroupRemovals.push({ chatId: group.chatId, message })
+      }
+      for (const membership of me.teams)
+        if (!membership.endedOn && (input.answer === "leaving" || !input.keepTeams.includes(membership.team)))
+          Object.assign(membership, { endedOn: today(), endReason: input.reason || "Census 2026/27" })
+      if (input.answer === "leaving" && me.admin)
+        Object.assign(me.admin, { status: "former", endedOn: today(), endReason: input.reason })
       Object.assign(me.profile, { course: input.course, year: input.year, campus: input.campus })
       log(me, fullName(me), `answered the 2026/27 census: ${input.answer === "continues" ? "continues" : "leaving"}`)
     },

@@ -34,6 +34,7 @@ export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember" | "fe
   censusTelegram: string | null
   /** Whether the person is expected to answer the 2026/27 census. */
   expected: boolean
+  pendingGroupRemovals?: { chatId: string; message: string }[]
 }
 
 /** What the fake keeps about a member's current fee year; `member.fee` is its status. */
