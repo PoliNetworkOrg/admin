@@ -35,6 +35,10 @@ export const dialogDescriptionText = "text-[14px] leading-5 text-pretty text-(--
 
 export const FALLBACK_ERROR = "Something went wrong. Try again."
 
+/** The icon tile before a destructive confirmation's title. */
+export const dangerTile =
+  "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border border-[color-mix(in_oklab,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
+
 type ConfirmDialogProps = {
   /** Omit with `trigger` to let the dialog manage its own open state. */
   open?: boolean
@@ -120,12 +124,11 @@ export function ConfirmDialog({
             {Icon ? (
               <span
                 aria-hidden
-                className={cn(
-                  "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border",
+                className={
                   tone === "danger"
-                    ? "border-[color-mix(in_oklab,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
-                    : "border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)"
-                )}
+                    ? dangerTile
+                    : "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)"
+                }
               >
                 <Icon strokeWidth={1.75} className="size-4.5" />
               </span>

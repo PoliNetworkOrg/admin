@@ -26,5 +26,6 @@ export const Route = createFileRoute("/dashboard/esign/requests/$requestId")({
 
 function RequestRoute() {
   const detail = Route.useLoaderData()
-  return <EsignRequestPage detail={detail} />
+  // A new instance per request, so state such as where the viewer opens starts over after "Next to sign".
+  return <EsignRequestPage key={detail.request.id} detail={detail} />
 }

@@ -1,21 +1,24 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
 
-import { EmptyState, IconButton, InlineAlert, SectionCard } from "@/components/primitives"
-import { PageBar, PageContent } from "@/components/shell"
+import { buttonMotion, EmptyState, IconButton, InlineAlert, inlineLink } from "@/components/primitives"
+import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
-import { formatDateTime, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+import { computerOnly, EsignActionCard } from "./action-card"
 import { getEsignDocumentContent } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
-import { kindsLabel, type Place, pagesLabel, placeAt, placesLeft } from "./places"
-import { MovePlaceButtons, PlacingCancel, placingStatus } from "./placing"
-import { SignWithCie } from "./sign-with-cie"
+import { type Place, pagesShort, placeAt, placesLeft } from "./places"
+import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
+import { PHONE_NOTE } from "./request-card"
+import { SignTrigger } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
+import { useKnownBrowser, useSigningDevice } from "./signing-device"
+import { useHostedSignWithCie } from "./signing-host"
 import { useReloadWhile } from "./use-reload-while"
 
 type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
@@ -26,9 +29,25 @@ const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" 
  * Signs the documents waiting for the viewer together: a strip of documents to check one by one, where the viewer's
  * boxes can still be moved, then one "Sign" that opens a single agent window and one PIN for all of them.
  */
-export function EsignBatchPage({ items, more, me }: { items: Item[]; more: number; me: string }) {
+export function EsignBatchPage({
+  items,
+  more,
+  me,
+  moved: carried,
+}: {
+  items: Item[]
+  more: number
+  me: string
+  /** Boxes already moved on the request page the viewer came from, by request id. */
+  moved?: Record<string, Place[]>
+}) {
+  const router = useRouter()
   const navigate = useNavigate()
+  const device = useSigningDevice()
+  const knownBrowser = useKnownBrowser()
   const contentFn = useServerFn(getEsignDocumentContent)
+  const bodyId = useId()
+  const lockId = useId()
   /** PDF contents by document id (a version never changes), so Next opens a document fetched in advance. */
   const pdfs = useRef(new Map<string, Promise<string>>())
   const loadPdf = useCallback(
@@ -51,9 +70,20 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
   const [reviewed, setReviewed] = useState<Set<string>>(() => new Set(items[0] ? [items[0].request.id] : []))
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set())
   /** The viewer's boxes per request, as they drag them. */
-  const [moved, setMoved] = useState<Map<string, Place[]>>(new Map())
+  const [moved, setMoved] = useState<Map<string, Place[]>>(() => new Map(Object.entries(carried ?? {})))
   /** The open document's place waiting for a click on its new spot. */
   const [placing, setPlacing] = useState<number | null>(null)
+
+  // After placing, by a click on a page or Esc, focus returns to Move box.
+  const moveRef = useRef<HTMLButtonElement>(null)
+  const wasPlacing = useRef(false)
+  useEffect(() => {
+    if (placing !== null) wasPlacing.current = true
+    else if (wasPlacing.current) {
+      wasPlacing.current = false
+      moveRef.current?.focus({ preventScroll: true })
+    }
+  }, [placing])
 
   // Signed documents leave the batch when the page reloads.
   const active = items.find((item) => item.request.id === activeId) ?? items[0]
@@ -64,6 +94,36 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
     included.some((item) => item.signingNow && item.signingNow.sub !== me),
     3000
   )
+
+  /**
+   * To sign opens behind the dialog, so it is there when the dialog lets go; the dialog lives above the routes. Then
+   * every loader reloads, so the shell's To sign count agrees with the page.
+   */
+  async function handOff() {
+    await navigate({ to: "/dashboard/esign/inbox" })
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  // Above the routes: To sign opens under the dialog once every document is signed. Closing a batch that signed only
+  // some reloads this page, which may leave nothing to sign and no card.
+  const signing = useHostedSignWithCie({
+    items: included.map((item) => {
+      const mine = item.request.signers.find((s) => s.sub === me && s.status === "pending")
+      return {
+        requestId: item.request.id,
+        title: item.request.title,
+        places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
+      }
+    }),
+    handOff,
+    // To sign only loses the documents: the toast says they were signed.
+    onSigned: () =>
+      appToast.success(included.length === 1 ? "Document signed." : `${included.length} documents signed.`),
+  })
 
   const activeDocument = active?.currentDocumentId
   const nextDocument = unchecked[0]?.currentDocumentId
@@ -118,26 +178,30 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
 
   const signer = active.request.signers.find((s) => s.sub === me && s.status === "pending")
   const places = moved.get(active.request.id) ?? signer?.places ?? []
+  // Phones review only: the box stays where it is.
+  const editable = signer?.signaturesDone === 0 && device !== "phone"
+  const out = leftOut.has(active.request.id)
+  const lockedBy = active.signingNow && active.signingNow.sub !== me ? active.signingNow : null
+  const signs = device !== "phone"
+  const gate = device === "unknown" ? computerOnly : undefined
+  const boxes = places.length > 1 ? "boxes" : "box"
+  const body = out
+    ? "Left out: it won't be signed now."
+    : unchecked.length > 0
+      ? `Check the blue ${boxes}, then open the next one.`
+      : included.length === 1
+        ? `Check the blue ${boxes}, then sign with CIE.`
+        : `All checked. One PIN signs all ${included.length}.`
 
-  const action =
-    unchecked.length > 0 ? (
-      <Button className="h-10" onClick={() => open(unchecked[0].request.id)}>
+  const primary =
+    included.length === 0 ? null : unchecked.length > 0 ? (
+      <Button className={cn(buttonMotion, "h-10 w-full")} onClick={() => open(unchecked[0].request.id)}>
         Next document <ArrowRight aria-hidden />
       </Button>
     ) : (
-      <SignWithCie
-        items={included.map((item) => {
-          const mine = item.request.signers.find((s) => s.sub === me && s.status === "pending")
-          return {
-            requestId: item.request.id,
-            title: item.request.title,
-            places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
-          }
-        })}
-        onSigned={() => void navigate({ to: "/dashboard/esign/inbox" })}
-      >
+      <SignTrigger signing={signing} className="w-full">
         {included.length === 1 ? "Sign with CIE" : `Sign ${included.length} documents`}
-      </SignWithCie>
+      </SignTrigger>
     )
 
   return (
@@ -146,12 +210,11 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
         width="record"
         back={BACK}
         context="Sign together"
-        right={included.length > 0 ? action : undefined}
         left={
           <nav aria-label="Documents to sign" className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 pb-1">
             {items.map((item, index) => {
               const id = item.request.id
-              const out = leftOut.has(id)
+              const skipped = leftOut.has(id)
               const current = id === active.request.id
               return (
                 <div
@@ -159,7 +222,7 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                   className={cn(
                     "flex h-10 max-w-[260px] shrink-0 items-center rounded-(--pn-r-3) border pl-1",
                     current ? "border-(--pn-accent) bg-(--pn-accent-soft)" : "border-(--pn-line) bg-(--pn-surface)",
-                    out && "opacity-60"
+                    skipped && "opacity-60"
                   )}
                 >
                   <button
@@ -168,19 +231,19 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                     onClick={() => open(id)}
                     className="flex h-full min-w-0 items-center gap-2 rounded-(--pn-r-2) px-2 text-left text-[13px] font-medium outline-none focus-visible:ring-3 focus-visible:ring-(--pn-focus)/40"
                   >
-                    {reviewed.has(id) && !out ? (
+                    {reviewed.has(id) && !skipped ? (
                       <Check aria-label="Checked" className="size-4 shrink-0 text-(--pn-accent)" />
                     ) : (
                       <span className="grid size-4 shrink-0 place-items-center text-[11px] text-(--pn-fg-muted) tabular-nums">
                         {index + 1}
                       </span>
                     )}
-                    <span className={cn("truncate", out && "line-through")}>{item.request.title}</span>
+                    <span className={cn("truncate", skipped && "line-through")}>{item.request.title}</span>
                   </button>
                   {items.length > 1 && (
                     <IconButton
-                      label={out ? `Sign ${item.request.title} too` : `Leave ${item.request.title} out`}
-                      icon={out ? Plus : X}
+                      label={skipped ? `Sign ${item.request.title} too` : `Leave ${item.request.title} out`}
+                      icon={skipped ? Plus : X}
                       className="size-8"
                       onClick={() => toggle(id)}
                     />
@@ -192,109 +255,103 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
         }
       />
       <PageContent width="record">
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0">
-            <DocumentViewer
-              key={active.request.id}
-              item={active}
-              me={me}
-              loadPdf={loadPdf}
-              places={places}
-              onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
-              placing={placing}
-              onPlace={(page, x, y) => {
-                const next = places.map((p, at) =>
-                  at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
-                )
-                setMoved((current) => new Map(current).set(active.request.id, next))
-                setPlacing(null)
-              }}
-              onCancelPlacing={() => setPlacing(null)}
-            />
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
-            {more > 0 && (
-              <InlineAlert tone="info">
-                {pluralize(more, "more document")} {more === 1 ? "is" : "are"} waiting: sign these first, then come back
-                for the rest.
-              </InlineAlert>
-            )}
-            <SectionCard>
-              <div className="flex flex-col gap-2">
-                <h1 className="text-[20px] leading-7 font-semibold tracking-[-0.01em] text-balance">
-                  {active.request.title}
-                </h1>
-                <p className="text-[13px] text-(--pn-fg-muted)">
-                  Requested by {active.request.createdByName} on {formatDateTime(new Date(active.request.createdAt))}
-                </p>
-                {signer && (
-                  <p className="text-[14px] text-pretty">
-                    {signer.role ? `As ${signer.role}, you sign` : "You sign"}{" "}
-                    {places.length > 1
-                      ? `in ${places.length} places: ${kindsLabel(places)} on ${pagesLabel(places)}.`
-                      : `on ${pagesLabel(places)}.`}
-                  </p>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="-ml-2 self-start"
-                  nativeButton={false}
-                  render={<Link to="/dashboard/esign/requests/$requestId" params={{ requestId: active.request.id }} />}
-                >
-                  <ExternalLink aria-hidden /> Open the request
-                </Button>
-              </div>
-            </SectionCard>
-            {leftOut.has(active.request.id) ? (
-              <InlineAlert
-                tone="warning"
-                action={
-                  <Button variant="outline" size="sm" onClick={() => toggle(active.request.id)}>
+        {/* The request page's layout: two columns once the content leaves the viewer about 520px. */}
+        <div className="@container">
+          <div className="grid gap-4 @min-[896px]:grid-cols-[minmax(0,1fr)_360px] @min-[896px]:grid-rows-[auto_1fr]">
+            <div className="min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-1">
+              <EsignActionCard
+                title={active.request.title}
+                titleAction={
+                  // A new tab: the review progress and the moved boxes live only in this page.
+                  <IconButton
+                    label="Open the request"
+                    icon={ExternalLink}
+                    className="-mt-1 -mr-2"
+                    nativeButton={false}
+                    render={
+                      <Link
+                        to="/dashboard/esign/requests/$requestId"
+                        params={{ requestId: active.request.id }}
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  />
+                }
+                meta={[signer?.role, places.length > 0 && pagesShort(places)].filter(Boolean).join(" · ") || null}
+                body={signs ? body : null}
+                bodyId={bodyId}
+                note={device === "computer" ? null : PHONE_NOTE}
+                muted={signs && !out && !lockedBy && <ReadyLine known={knownBrowser} />}
+                lock={
+                  signs && !out && lockedBy
+                    ? `${lockedBy.name} is signing this right now. Wait, or leave it out.`
+                    : null
+                }
+                lockId={lockId}
+                primary={signs && primary}
+                primarySigns
+                after={signs && more > 0 && `${more} more ${more === 1 ? "is" : "are"} waiting after these.`}
+                device={device}
+              >
+                {signs && out && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(buttonMotion, "mt-2", gate)}
+                    onClick={() => toggle(active.request.id)}
+                  >
                     <Plus aria-hidden /> Sign it too
                   </Button>
+                )}
+              </EsignActionCard>
+            </div>
+            <div className="min-w-0 @min-[896px]:col-start-1 @min-[896px]:row-span-2 @min-[896px]:row-start-1">
+              <DocumentViewer
+                key={active.request.id}
+                item={active}
+                me={me}
+                loadPdf={loadPdf}
+                places={places}
+                editable={editable}
+                onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
+                placing={placing}
+                onPlace={(page, x, y) => {
+                  const next = places.map((p, at) =>
+                    at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
+                  )
+                  setMoved((current) => new Map(current).set(active.request.id, next))
+                  setPlacing(null)
+                }}
+                onCancelPlacing={() => setPlacing(null)}
+                toolbarStart={
+                  editable &&
+                  places.length > 0 && (
+                    <div className={gate}>
+                      <MoveBoxButton ref={moveRef} places={places} onPlacing={setPlacing} />
+                    </div>
+                  )
                 }
-              >
-                Left out: this document isn't signed now.
-              </InlineAlert>
-            ) : (
-              <SectionCard title="Before you sign">
-                <p className="text-[14px] text-pretty text-(--pn-fg-muted)">
-                  {unchecked.length > 0
-                    ? `Check where you sign in each document, moving the blue boxes if needed. ${pluralize(unchecked.length, "document")} left to check.`
-                    : included.length === 1
-                      ? "Choose Sign with CIE at the top. You need the card, its PIN and the NFC reader."
-                      : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card, its PIN and the NFC reader.`}
-                </p>
-                <p className="mt-2 text-[13px] text-(--pn-fg-muted)">
-                  First time signing on this computer?{" "}
-                  {/* A new tab, because the review progress and moved boxes live only in this page. */}
-                  <Link
-                    to="/dashboard/esign/setup"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-(--pn-accent) hover:underline"
-                  >
-                    Set it up first
-                  </Link>
-                  .
-                </p>
-                {signer && signer.signaturesDone === 0 && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <MovePlaceButtons places={places} placing={placing} onPlacing={setPlacing} />
-                  </div>
-                )}
-                {active.signingNow && active.signingNow.sub !== me && (
-                  <InlineAlert tone="warning" className="mt-3">
-                    {active.signingNow.name} is signing this document right now. Leave it out, or wait: it's ready as
-                    soon as they finish.
-                  </InlineAlert>
-                )}
-              </SectionCard>
-            )}
+              />
+            </div>
           </div>
         </div>
       </PageContent>
+    </>
+  )
+}
+
+/** What signing needs, or the setup guide for a browser new to it. */
+function ReadyLine({ known }: { known: boolean }) {
+  if (known) return "You need the card, its PIN and the reader."
+  return (
+    <>
+      First time on this computer?{" "}
+      {/* A new tab, because the review progress and moved boxes live only in this page. */}
+      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className={inlineLink}>
+        Set it up first
+      </Link>
+      .
     </>
   )
 }
@@ -304,20 +361,25 @@ function DocumentViewer({
   me,
   loadPdf,
   places,
+  editable,
   onMove,
   placing,
   onPlace,
   onCancelPlacing,
+  toolbarStart,
 }: {
   item: Item
   me: string
   loadPdf: (documentId: string) => Promise<string>
   places: Place[]
+  /** The viewer's boxes may still move. */
+  editable: boolean
   onMove: (places: Place[]) => void
   /** The place waiting for a click on its new spot. */
   placing: number | null
   onPlace: (page: number, x: number, y: number) => void
   onCancelPlacing: () => void
+  toolbarStart?: ReactNode
 }) {
   const [base64, setBase64] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -356,6 +418,7 @@ function DocumentViewer({
       onPageClick={placing !== null ? onPlace : undefined}
       status={placing !== null ? placingStatus(places, placing) : null}
       statusAction={placing !== null && <PlacingCancel onCancel={onCancelPlacing} />}
+      toolbarStart={toolbarStart}
       overlay={(page) =>
         request.signers.flatMap((signer, index) => {
           if (signer.status !== "pending") return []
@@ -372,10 +435,10 @@ function DocumentViewer({
                 placement={place}
                 label={signer.name}
                 role={signer.role}
-                number={request.signers.length > 1 ? index + 1 : undefined}
+                number={request.ordered && request.signers.length > 1 ? index + 1 : undefined}
                 kind={place.kind}
                 state={isMine ? "active" : "pending"}
-                editable={isMine && signer.signaturesDone === 0}
+                editable={isMine && editable}
                 onChange={(next) => onMove(places.map((p, at) => (at === place.at ? { ...next, kind: p.kind } : p)))}
               />
             ))

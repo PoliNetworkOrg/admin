@@ -8,13 +8,24 @@ function Block({ className }: { className?: string }) {
 }
 
 /** One region-wide pulse (1 → .6 → 1 over 1.4s); static under reduced motion. */
-function Pulse({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+function Pulse({
+  label,
+  className,
+  bodyClassName,
+  children,
+}: {
+  label: string
+  className?: string
+  bodyClassName?: string
+  children: ReactNode
+}) {
   const reduceMotion = useReducedMotion()
   return (
     <div role="status" aria-busy="true" className={className}>
       <span className="sr-only">{label}</span>
       <motion.div
         aria-hidden
+        className={bodyClassName}
         animate={reduceMotion ? undefined : { opacity: [1, 0.6, 1] }}
         transition={{ duration: 1.4, ease: "easeInOut", repeat: Infinity }}
       >
@@ -149,6 +160,80 @@ export function SettingsListSkeleton({ rows = 2, label = "Loading…", className
           </div>
           <Block className="size-9 rounded-(--pn-r-3)" />
         </div>
+      ))}
+    </Pulse>
+  )
+}
+
+/**
+ * A workspace that fills the window, as the signature request composer does: a document surface and, from 900px of
+ * width, a column beside it. Without `document` it is still to be chosen (a file list and a drop zone); with it, a page
+ * and the request's column, as when the composer starts from an earlier request.
+ */
+export function WorkspaceSkeleton({
+  label = "Loading…",
+  document = false,
+  className,
+}: {
+  label?: string
+  document?: boolean
+  className?: string
+}) {
+  return (
+    <Pulse
+      label={label}
+      className={cn("@container/skeleton", className)}
+      bodyClassName="flex flex-col gap-4 @min-[900px]/skeleton:grid @min-[900px]/skeleton:h-[max(480px,calc(100dvh-112px))] @min-[900px]/skeleton:grid-cols-[minmax(0,1fr)_380px] @min-[1040px]/skeleton:grid-cols-[minmax(0,1fr)_400px]"
+    >
+      <div className="flex h-[60dvh] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) @min-[900px]/skeleton:h-auto">
+        <div className="flex h-11 shrink-0 items-center border-b border-(--pn-line) px-3">
+          <Block className={cn("h-3", document ? "w-20" : "w-40")} />
+        </div>
+        {document ? (
+          <div className="flex min-h-0 flex-1 justify-center bg-(--pn-sunken) px-4 pt-4">
+            <div className="aspect-[1/1.414] w-full max-w-[560px] bg-white shadow-[0_0_0_1px_var(--pn-line)]" />
+          </div>
+        ) : (
+          ["w-1/3", "w-1/4", "w-2/5"].map((width) => (
+            <div key={width} className="flex h-11 items-center gap-3 px-3">
+              <Block className="size-4" />
+              <Block className={cn("h-3", width)} />
+            </div>
+          ))
+        )}
+      </div>
+      {document ? (
+        <div className="flex min-h-40 flex-col gap-4 rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-surface) p-4 @min-[900px]/skeleton:self-start">
+          <Block className="h-4 w-3/5" />
+          {["w-1/2", "w-2/5"].map((width) => (
+            <div key={width} className="flex items-center gap-3">
+              <Block className="h-3 w-20" />
+              <Block className={cn("h-3", width)} />
+            </div>
+          ))}
+          <Block className="h-3 w-4/5" />
+        </div>
+      ) : (
+        <div className="min-h-40 rounded-(--pn-r-5) border border-dashed border-(--pn-line-strong)" />
+      )}
+    </Pulse>
+  )
+}
+
+/** Bars in place of lines still being worked out, e.g. a list read from a document; they share the height, 4px apart. */
+export function BarSkeleton({
+  label = "Loading…",
+  bars = 1,
+  className,
+}: {
+  label?: string
+  bars?: number
+  className?: string
+}) {
+  return (
+    <Pulse label={label} className={className} bodyClassName="flex h-full flex-col gap-1">
+      {Array.from({ length: bars }, (_, bar) => (
+        <Block key={bar} className="min-h-0 flex-1" />
       ))}
     </Pulse>
   )

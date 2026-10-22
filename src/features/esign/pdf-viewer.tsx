@@ -1,17 +1,24 @@
 import { Minus, Plus, ScanLine } from "lucide-react"
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist"
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
-import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
 
+import type { TextAnchor } from "./places"
 import { useFillHeight } from "./use-fill-height"
 
 export type PageSize = { width: number; height: number }
 
+/** A page and a fraction of its height; with `ifHidden`, only brought into view when `y ± height / 2` isn't. */
+export type PdfFocus = { page: number; y: number; height?: number; ifHidden?: boolean }
+
 type PdfViewerProps = {
-  /** The PDF bytes; while null the pages show as blank sheets of the right size. */
+  /**
+   * The PDF bytes; while null the pages show as blank sheets of the right size. New bytes replace each page once it's
+   * drawn again, without blank sheets in between.
+   */
   data: Uint8Array | null
   /** Displayed page sizes in points (crop box after rotation), so the layout is right before rendering. */
   pages: PageSize[]
@@ -21,8 +28,8 @@ type PdfViewerProps = {
   onPageClick?: (page: number, x: number, y: number) => void
   /** Pointer style over pages, e.g. "crosshair" while placing a signature. */
   cursor?: "default" | "crosshair"
-  /** A point to bring to the middle of the viewer when it changes: a page and a fraction of its height. */
-  focus?: { page: number; y: number } | null
+  /** A point to bring to the middle of the viewer whenever a new one is passed. */
+  focus?: PdfFocus | null
   /**
    * Replaces "Page n of total" in the toolbar while set, e.g. what the next click on a page does; announced politely.
    * Below 448px of toolbar the zoom controls hide meanwhile.
@@ -30,12 +37,24 @@ type PdfViewerProps = {
   status?: string | null
   /** A control after the status, e.g. Cancel while placing a box. */
   statusAction?: ReactNode
+  /** Controls after "Page n of total", e.g. Move box or Change PDF; hidden while `status` is set. */
+  toolbarStart?: ReactNode
+  /** A page of the current `data` has been drawn (0-based). */
+  onPainted?: (page: number) => void
+  /**
+   * Fills the page's scroll container down to its bottom padding (default). Off, the viewer takes the full height of
+   * its parent, which sizes it.
+   */
+  fill?: boolean
 }
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 const PAGE_GAP = 16
 
 type Pdfjs = typeof import("pdfjs-dist")
+type LoadingTask = ReturnType<Pdfjs["getDocument"]>
+/** A loaded document and the bytes it came from. */
+type Doc = { pdf: PDFDocumentProxy; pdfjs: Pdfjs; data: Uint8Array }
 
 let pdfjsPromise: Promise<Pdfjs> | null = null
 
@@ -61,19 +80,26 @@ export function PdfViewer({
   focus,
   status,
   statusAction,
+  toolbarStart,
+  onPainted,
+  fill = true,
 }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const fill = useFillHeight<HTMLDivElement>()
+  const fillHeight = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
   const [zoom, setZoom] = useState<number | "fit">("fit")
-  const [doc, setDoc] = useState<{ pdf: PDFDocumentProxy; pdfjs: Pdfjs } | null>(null)
+  const [doc, setDoc] = useState<Doc | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
 
+  // A new version replaces the shown one page by page (see PdfPage), so the previous document stays until then.
+  const loaded = useRef<LoadingTask | null>(null)
+  /** Shown until the pages have moved to the next document. */
+  const retired = useRef<LoadingTask | null>(null)
   useEffect(() => {
     if (!data) return
     let cancelled = false
-    let task: ReturnType<Pdfjs["getDocument"]> | null = null
+    let task: LoadingTask | null = null
     setError(null)
     loadPdfjs()
       .then(async (pdfjs) => {
@@ -81,8 +107,11 @@ export function PdfViewer({
         if (cancelled) return
         // pdf.js takes ownership of the buffer: give it a copy.
         task = pdfjs.getDocument({ data: data.slice() })
-        const loaded = await task.promise
-        if (!cancelled) setDoc({ pdf: loaded, pdfjs })
+        const pdf = await task.promise
+        if (cancelled) return
+        retired.current = loaded.current
+        loaded.current = task
+        setDoc({ pdf, pdfjs, data })
       })
       .catch((cause) => {
         console.error(cause)
@@ -90,10 +119,32 @@ export function PdfViewer({
       })
     return () => {
       cancelled = true
-      setDoc(null)
-      void task?.destroy()
+      // Still loading, or loaded for data that has already changed again: it will never be shown.
+      if (task !== loaded.current) void task?.destroy()
     }
   }, [data])
+
+  // The pages have moved to the new document (their effects ran before this one): the old one can go.
+  useEffect(() => {
+    void retired.current?.destroy()
+    retired.current = null
+  }, [doc])
+  useEffect(
+    () => () => {
+      void retired.current?.destroy()
+      void loaded.current?.destroy()
+    },
+    []
+  )
+
+  // A page of the previous document may still finish drawing while the next one loads: only the current data counts.
+  const latest = useRef({ data, onPainted })
+  useLayoutEffect(() => {
+    latest.current = { data, onPainted }
+  })
+  const painted = useCallback((page: number, drawn: Doc) => {
+    if (drawn.data === latest.current.data) latest.current.onPainted?.(page)
+  }, [])
 
   useEffect(() => {
     const element = scrollRef.current
@@ -122,13 +173,12 @@ export function PdfViewer({
   // After the scale's effect, so a focus that changes with the scale wins; zooming alone doesn't bring it back. Both
   // are layout effects, so the first frame with the pages already shows the right spot.
   const laidOut = scale > 0
-  const focusPage = focus?.page
-  const focusY = focus?.y ?? 0.5
   useLayoutEffect(() => {
     const container = scrollRef.current
-    if (focusPage === undefined || !laidOut || !container) return
-    centerOn(container, focusPage, focusY)
-  }, [focusPage, focusY, laidOut])
+    if (!focus || !laidOut || !container) return
+    if (focus.ifHidden && inView(container, focus.page, focus.y, focus.height ?? 0)) return
+    centerOn(container, focus.page, focus.y)
+  }, [focus, laidOut])
 
   function step(direction: 1 | -1) {
     const current = zoom === "fit" ? fitScale : zoom
@@ -139,9 +189,12 @@ export function PdfViewer({
 
   return (
     <div
-      ref={fill.ref}
-      style={fill.style}
-      className="flex h-[calc(100dvh-210px)] min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)"
+      ref={fill ? fillHeight.ref : undefined}
+      style={fill ? fillHeight.style : undefined}
+      className={cn(
+        "flex min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
+        fill ? "h-[calc(100dvh-210px)]" : "h-full"
+      )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -155,6 +208,7 @@ export function PdfViewer({
             {status || `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}`}
           </span>
           {statusAction && <div className="shrink-0">{statusAction}</div>}
+          {!status && toolbarStart && <div className="flex shrink-0 items-center">{toolbarStart}</div>}
         </div>
         <div className={cn("flex shrink-0 items-center gap-0.5", status && "@max-md:hidden")}>
           <IconButton label="Zoom out" icon={Minus} onClick={() => step(-1)} disabled={scale <= ZOOMS[0] + 0.01} />
@@ -196,6 +250,7 @@ export function PdfViewer({
                   root={scrollRef}
                   cursor={cursor}
                   onVisible={setCurrentPage}
+                  onPainted={painted}
                   onClick={onPageClick}
                 >
                   {overlay?.(index)}
@@ -220,6 +275,17 @@ function centerOn(container: HTMLElement, page: number, y: number) {
   container.scrollTo({ top: Math.max(0, top), behavior: "instant" })
 }
 
+/** Whether the band of a page `y ± height / 2` (fractions of its height) is entirely inside the viewer. */
+function inView(container: HTMLElement, page: number, y: number, height: number) {
+  const element = container.querySelector<HTMLElement>(`[data-page="${page}"]`)
+  if (!element) return false
+  const box = element.getBoundingClientRect()
+  const view = container.getBoundingClientRect()
+  const top = box.top + box.height * (y - height / 2)
+  const bottom = box.top + box.height * (y + height / 2)
+  return top >= view.top && bottom <= view.top + container.clientHeight
+}
+
 /** The point of a page in the middle of the viewer, the inverse of `centerOn`. */
 function middleOf(container: HTMLElement) {
   const middle = container.getBoundingClientRect().top + container.clientHeight / 2
@@ -236,15 +302,16 @@ type PdfPageProps = {
   index: number
   size: PageSize
   scale: number
-  doc: { pdf: PDFDocumentProxy; pdfjs: Pdfjs } | null
+  doc: Doc | null
   root: React.RefObject<HTMLDivElement | null>
   cursor: "default" | "crosshair"
   onVisible: (index: number) => void
+  onPainted: (index: number, doc: Doc) => void
   onClick?: (page: number, x: number, y: number) => void
   children?: ReactNode
 }
 
-function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onClick, children }: PdfPageProps) {
+function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onPainted, onClick, children }: PdfPageProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [near, setNear] = useState(false)
@@ -273,45 +340,67 @@ function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onClick, ch
     }
   }, [index, onVisible, root])
 
+  /** The page size whose drawing the canvas holds: another size would show the old drawing stretched. */
+  const drawn = useRef<string | null>(null)
+  const sizeKey = `${size.width}x${size.height}`
   useEffect(() => {
-    if (!doc || !near) {
-      // Far from the viewport, or the document is changing: free the bitmap (width × height × 4 bytes at the device
-      // pixel ratio). The previous run's cleanup has already cancelled its render, so nothing is still drawing here.
-      const canvas = canvasRef.current
-      if (canvas) {
-        canvas.width = 0
-        canvas.height = 0
-      }
+    const canvas = canvasRef.current
+    const free = () => {
+      if (!canvas) return
+      // Width × height × 4 bytes at the device pixel ratio.
+      canvas.width = 0
+      canvas.height = 0
+      drawn.current = null
       setRendered(false)
-      return
     }
+    // Far from the viewport, or nothing to draw yet. The previous run's cleanup has already cancelled its render, so
+    // nothing is still drawing here.
+    if (!doc || !near) return free()
+    if (drawn.current !== null && drawn.current !== sizeKey) free()
     let task: RenderTask | null = null
     let cancelled = false
+    // Drawn off screen, then copied in one go: a new version or zoom replaces the page without a blank frame.
+    let offscreen: HTMLCanvasElement | null = null
+    const release = () => {
+      if (!offscreen) return
+      offscreen.width = 0
+      offscreen.height = 0
+      offscreen = null
+    }
     const timer = window.setTimeout(() => {
       doc.pdf
         .getPage(index + 1)
         .then((page: PDFPageProxy) => {
-          const canvas = canvasRef.current
-          if (cancelled || !canvas) return
+          if (cancelled) return
           const ratio = window.devicePixelRatio || 1
           const viewport = page.getViewport({ scale: scale * ratio })
-          canvas.width = Math.floor(viewport.width)
-          canvas.height = Math.floor(viewport.height)
-          task = page.render({ canvas, viewport, annotationMode: doc.pdfjs.AnnotationMode.ENABLE })
+          offscreen = document.createElement("canvas")
+          offscreen.width = Math.floor(viewport.width)
+          offscreen.height = Math.floor(viewport.height)
+          task = page.render({ canvas: offscreen, viewport, annotationMode: doc.pdfjs.AnnotationMode.ENABLE })
           return task.promise.then(() => {
-            if (!cancelled) setRendered(true)
+            const target = canvasRef.current
+            if (cancelled || !target || !offscreen) return
+            target.width = offscreen.width
+            target.height = offscreen.height
+            target.getContext("2d")?.drawImage(offscreen, 0, 0)
+            release()
+            drawn.current = sizeKey
+            setRendered(true)
+            onPainted(index, doc)
           })
         })
         .catch((error) => {
           if (!(error instanceof Error && error.name === "RenderingCancelledException")) console.error(error)
         })
+        .finally(release)
     }, 60)
     return () => {
       cancelled = true
       window.clearTimeout(timer)
       task?.cancel()
     }
-  }, [doc, near, index, scale])
+  }, [doc, near, index, scale, sizeKey, onPainted])
 
   function handleClick(event: React.MouseEvent<HTMLDivElement>) {
     if (!onClick || event.target !== event.currentTarget) return
@@ -362,36 +451,70 @@ export function usePdfBytes(base64: string | null) {
   }, [base64])
 }
 
-/** A run of text on a page, in fractions of the displayed page (origin top-left). */
-export type TextAnchor = { page: number; text: string; x: number; y: number; width: number; height: number }
-
-/** The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario". */
-export async function extractTextAnchors(data: Uint8Array, maxPages = 50): Promise<TextAnchor[]> {
+/**
+ * The text runs of a PDF with their places, to put signature boxes next to labels such as "Il Segretario", and the
+ * signatures already on it, which boxes keep off. Long documents are read on their first 40 and last 10 pages, where
+ * signature labels are. Text that doesn't run left to right on screen, such as a note printed up the margin, only
+ * counts as something to keep off.
+ */
+export async function extractTextAnchors(data: Uint8Array): Promise<TextAnchor[]> {
   const pdfjs = await loadPdfjs()
   const task = pdfjs.getDocument({ data: data.slice() })
   try {
     const pdf = await task.promise
     const anchors: TextAnchor[] = []
-    for (let index = 0; index < Math.min(pdf.numPages, maxPages); index++) {
+    const pages = [...Array(pdf.numPages).keys()].filter((i) => i < 40 || i >= pdf.numPages - 10)
+    for (const index of pages) {
       const page = await pdf.getPage(index + 1)
       const viewport = page.getViewport({ scale: 1 })
+      /** The rectangle around points of the page's user space, in fractions of the displayed page. */
+      const around = (points: [number, number][]) => {
+        const xs: number[] = []
+        const ys: number[] = []
+        for (const [x, y] of points) {
+          const [screenX, screenY] = viewport.convertToViewportPoint(x, y)
+          xs.push(screenX)
+          ys.push(screenY)
+        }
+        const left = Math.min(...xs)
+        const top = Math.min(...ys)
+        return {
+          page: index,
+          x: left / viewport.width,
+          y: top / viewport.height,
+          width: (Math.max(...xs) - left) / viewport.width,
+          height: (Math.max(...ys) - top) / viewport.height,
+        }
+      }
       const content = await page.getTextContent()
       for (const item of content.items) {
         if (!("str" in item) || item.str.trim() === "") continue
-        const [, , , , x, y] = item.transform
-        const corners = [
-          viewport.convertToViewportPoint(x, y),
-          viewport.convertToViewportPoint(x + item.width, y + item.height),
+        // The run goes `width` along its baseline and `height` up from it, whichever way the page and text turn.
+        const [a, b, c, d, e, f]: number[] = item.transform
+        const along = Math.hypot(a, b) || 1
+        const up = Math.hypot(c, d) || 1
+        const at = (length: number, rise: number): [number, number] => [
+          e + (a / along) * length + (c / up) * rise,
+          f + (b / along) * length + (d / up) * rise,
         ]
-        const left = Math.min(corners[0][0], corners[1][0])
-        const top = Math.min(corners[0][1], corners[1][1])
+        const [startX, startY] = viewport.convertToViewportPoint(e, f)
+        const [stepX, stepY] = viewport.convertToViewportPoint(...at(1, 0))
+        const leftToRight = stepX - startX > 0 && Math.abs(stepY - startY) < 0.05 * (stepX - startX)
+        const rect = around([at(0, 0), at(item.width, 0), at(0, item.height), at(item.width, item.height)])
+        anchors.push(leftToRight ? { ...rect, text: item.str } : { ...rect, text: "", kind: "sideways" })
+      }
+      for (const annotation of await page.getAnnotations()) {
+        if (annotation.fieldType !== "Sig" || !Array.isArray(annotation.rect)) continue
+        const [x1, y1, x2, y2]: number[] = annotation.rect
+        // An invisible signature has no rectangle on the page.
+        if (Math.abs(x2 - x1) < 1 || Math.abs(y2 - y1) < 1) continue
         anchors.push({
-          page: index,
-          text: item.str,
-          x: left / viewport.width,
-          y: top / viewport.height,
-          width: Math.abs(corners[1][0] - corners[0][0]) / viewport.width,
-          height: Math.abs(corners[1][1] - corners[0][1]) / viewport.height,
+          ...around([
+            [x1, y1],
+            [x2, y2],
+          ]),
+          text: "",
+          kind: "signature",
         })
       }
     }

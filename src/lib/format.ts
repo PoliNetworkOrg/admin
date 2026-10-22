@@ -54,6 +54,19 @@ export function formatDateTime(date: Date): string {
   return fixedMonthDate(dateTimeFormat, date)
 }
 
+const timeFormat = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Europe/Rome",
+})
+
+/** "at 10:25" on the same Europe/Rome day as `now`, else "on 21 Oct 2026": the end of "You signed …". */
+export function formatWhen(date: Date, now: Date): string {
+  const day = formatDate(date)
+  return day === formatDate(now) ? `at ${timeFormat.format(date)}` : `on ${day}`
+}
+
 export function formatRange(start: Date, end: Date): string {
   return `${formatDateTime(start)} → ${formatDateTime(end)}`
 }

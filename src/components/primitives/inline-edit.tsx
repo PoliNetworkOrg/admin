@@ -11,6 +11,7 @@ import { RowActions } from "./data-table"
 import { FieldCounter, isCounterVisible } from "./field-counter"
 import { IconButton } from "./icon-button"
 import { InlineAlert } from "./inline-alert"
+import { Kbd } from "./kbd"
 import { LoadingButton } from "./loading-button"
 import { buttonMotion } from "./motion"
 import { useModifierKey } from "./use-modifier-key"
@@ -131,23 +132,6 @@ function EditFooter({ onCancel, onSave, dirty, valid, saving, error, message }: 
         </LoadingButton>
       </div>
     </div>
-  )
-}
-
-/** A shortcut hint inside a footer button; hidden on coarse pointers, where there is no keyboard. */
-function Kbd({ children, onSolid = false }: { children: ReactNode; onSolid?: boolean }) {
-  return (
-    <kbd
-      aria-hidden
-      className={cn(
-        "rounded-[5px] border px-1.5 font-mono text-[11px] leading-4 pointer-coarse:hidden",
-        onSolid
-          ? "border-current bg-transparent text-inherit opacity-70"
-          : "border-(--pn-line-strong) bg-(--pn-surface-raised) text-(--pn-fg-muted)"
-      )}
-    >
-      {children}
-    </kbd>
   )
 }
 

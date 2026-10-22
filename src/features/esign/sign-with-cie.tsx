@@ -2,18 +2,21 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
+  Ban,
   Circle,
   CircleAlert,
   CircleCheck,
-  ExternalLink,
+  Download,
   KeyRound,
   LoaderCircle,
   MonitorDown,
   PenLine,
   Play,
   TriangleAlert,
+  X,
 } from "lucide-react"
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import { type ReactElement, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { z } from "zod"
 
 import { buttonMotion, dialogMotion, InlineAlert, LoadingButton, scrimClasses } from "@/components/primitives"
 import {
@@ -26,115 +29,78 @@ import {
 import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
-import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AGENT_LAUNCH_URL, agentSignUrl, isAgentOrigin } from "./agent"
 import { cancelEsignSignature, getEsignJobStatus, startEsignSignature } from "./esign.functions"
 import type { BoxPlacement } from "./signature-box"
+import { detectOs, readAgentFlag, writeAgentFlag } from "./signing-device"
+import {
+  agentDownload,
+  closedWindowAction,
+  deadlineFor,
+  type Ending,
+  type FatalState,
+  type Job,
+  type JobState,
+  type JobStatus,
+  jobFailure,
+  notRunningVariant,
+  OPEN_STATUSES,
+  outcomeOf,
+  outdatedCopy,
+  stateForFatal,
+} from "./signing-state"
 
 /** A document to sign; `places` are the signer's boxes as they dragged them, one per place, in order. */
 export type SignItem = { requestId: string; title: string; places?: BoxPlacement[] }
 
-type Job = { jobId: string; requestId: string; title: string }
-type JobState = { status: string; errorCode: string | null; errorMessage: string | null; seen: boolean }
+type Session = { jobs: Job[]; url: string }
 
-/** Nothing was signed and the attempt can't go on; `code` is the job's error code. */
-type Ending = { kind: "ended"; reason: keyof typeof ENDED_TITLES; code: string | null; message: string }
-type Phase =
+type Mode =
+  /** Waiting for PoliNetwork eSign to answer; `deadline` is null while the jobs are still being created. */
+  | { kind: "opening"; deadline: number | null }
+  | { kind: "blocked" }
+  | { kind: "signing" }
+  | { kind: "notRunning"; variant: "start" | "install" | "failed"; setupOpened: boolean }
   | { kind: "starting" }
-  | { kind: "waiting"; jobs: Job[]; url: string; since: number }
-  | { kind: "signing"; jobs: Job[]; url: string }
-  | Ending
-type Shown = Exclude<Phase, { kind: "starting" }>
+  | { kind: "stopped" }
+  | { kind: "fatal"; state: FatalState; message: string }
+  | { kind: "ended"; ending: Ending }
+  /** `total`: the documents signed, kept while the dialog closes without its jobs. */
+  | { kind: "signed"; total: number }
+  | { kind: "partial" }
+
+/** States after which nothing is followed anymore: the dialog waits for Close, or closes by itself. */
+const SETTLED = new Set<Mode["kind"]>(["ended", "signed", "partial"])
 
 const POLL_MS = 1200
-/** After this long without the agent fetching the job, it is probably not running. */
-const AGENT_TIMEOUT_MS = 7000
-const OPEN = new Set(["pending", "prepared"])
+/** The agent window must read closed on this many polls in a row before the dialog acts on it… */
+const CLOSED_READS = 2
+/** …the next of which comes this soon after the first. */
+const CLOSED_RECHECK_MS = 400
+/** The agent's "Signed" stays up at least this long before the dashboard closes its window. */
+const SIGNED_MIN_MS = 1000
+/** The agent closes its own window this long after success: the hand-off never waits longer. */
+const SIGNED_MAX_MS = 4000
+/** Start: without a prompt taking the focus, the window opens again after this long; with one, when it's answered. */
+const PROMPT_MS = 1200
+const PROMPT_MAX_MS = 8000
+/** Start: time for PoliNetwork eSign to come up before its page is loaded, then how long each load may take. */
+const LAUNCH_MS = 2000
+const START_WAIT_MS = 3000
 
-const ENDED_TITLES = {
-  cancelled: "Request cancelled",
-  declined: "Request declined",
-  expired: "The link expired",
-  failed: "Signature failed",
-}
+/** What PoliNetwork eSign's page posts to its opener (docs/esign/contracts.md); up to v0.1.x as "pn-sign-agent". */
+const agentMessage = z.object({
+  type: z.enum(["pn-esign", "pn-sign-agent"]),
+  status: z.string(),
+  detail: z.string().max(64).optional(),
+  message: z.string().max(1000).optional(),
+  fatal: z.boolean().optional(),
+})
+type AgentMessage = z.infer<typeof agentMessage>
 
-/**
- * What the agent or the backend reported, by its error code (esign `internal/token`; the backend's `agent_outdated`,
- * `document_changed` and `job_done`, whose own messages are written for the agent window).
- */
-const AGENT_ERRORS = new Map([
-  ["pin_incorrect", "Wrong PIN. Type it again in the PoliNetwork eSign window."],
-  [
-    "pin_locked",
-    "The PIN is blocked. Unblock it with your PUK in the CieID app on your phone or in CIE ID on this computer, then sign again. The PUK's first half is on the receipt from the Comune, the second half in the letter that came with the card.",
-  ],
-  ["pin_invalid", "The PIN must be the 8 digits of your CIE PIN."],
-  ["no_card", "PoliNetwork eSign can't see the card. Place the CIE on the reader."],
-  ["no_reader", "PoliNetwork eSign can't find an NFC reader. Connect it and try again."],
-  ["card_removed", "The card moved away from the reader. Keep it still and try again."],
-  ["middleware_missing", "PoliNetwork eSign found no CIE software on this computer."],
-  ["not_paired", "This CIE isn't set up on this computer yet."],
-  ["card_unsupported", "This card isn't a supported CIE."],
-  ["card_untrusted", "The card couldn't be verified as a genuine CIE, so the PIN wasn't sent to it."],
-  ["device_error", "The card couldn't complete the signature. Try again."],
-  ["signature_invalid", "The card's signature didn't match. Sign again."],
-  [
-    "agent_outdated",
-    "This version of the signing app is too old. Install the latest PoliNetwork eSign from the setup guide.",
-  ],
-  ["document_changed", "Someone else signed in the meantime, so the document changed. Sign it again."],
-  ["job_done", "This request changed while you were signing and no longer needs your signature."],
-])
-
-/** Errors the setup guide resolves; the dialog links it next to them. */
-const SETUP_ERRORS = new Set(["middleware_missing", "not_paired", "card_untrusted", "agent_outdated"])
-
-function errorText(state: JobState | undefined) {
-  if (!state?.errorCode || state.errorCode === "cancelled") return null
-  return AGENT_ERRORS.get(state.errorCode) ?? state.errorMessage ?? "The signature failed. Try again."
-}
-
-/**
- * How an attempt that signed nothing ended, once none of its jobs is open: someone else cancelled or declined the
- * request, the link expired, or a job failed for good. Null when every job was cancelled, which is the signer's own
- * cancel (in the agent window or another tab) and needs no message.
- */
-function endingOf(statuses: (JobState & { jobId: string })[], jobs: Job[], preparing: boolean): Ending | null {
-  const titled = (status: { jobId: string }, message: string) => {
-    const title = jobs.length > 1 && jobs.find((j) => j.jobId === status.jobId)?.title
-    return title ? `${title}: ${message}` : message
-  }
-  const foreign = statuses.find(
-    (s) => s.status === "cancelled" && (s.errorCode === "request_cancelled" || s.errorCode === "request_declined")
-  )
-  if (foreign)
-    return {
-      kind: "ended",
-      reason: foreign.errorCode === "request_declined" ? "declined" : "cancelled",
-      code: foreign.errorCode,
-      message: titled(foreign, foreign.errorMessage ?? "Nothing was signed."),
-    }
-  if (statuses.some((s) => s.status === "expired"))
-    return {
-      kind: "ended",
-      reason: "expired",
-      code: null,
-      message: preparing
-        ? "Close to open the request and sign it from there."
-        : "The PoliNetwork eSign window waited too long for the PIN. Start again to open a new one.",
-    }
-  const failed = statuses.find((s) => s.status === "failed")
-  if (!failed) return null
-  const known = failed.errorCode && AGENT_ERRORS.get(failed.errorCode)
-  return {
-    kind: "ended",
-    reason: "failed",
-    code: failed.errorCode,
-    message: titled(failed, known || failed.errorMessage || "The signature failed."),
-  }
-}
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 /** The agent window's size, centered horizontally over the dashboard window. */
 function popupFeatures() {
@@ -145,7 +111,8 @@ function popupFeatures() {
   return `popup=yes,width=${width},height=${height},left=${left},top=${top}`
 }
 
-function openPopup(): Window | null {
+/** A blank window saying `text`, until it is sent to the agent's page. */
+function openPopup(text: string): Window | null {
   // A new name each time: a window still showing the agent's page is cross-origin, and writing to it would throw.
   const popup = window.open("", `pn-esign-${Date.now()}`, popupFeatures())
   if (popup) {
@@ -155,24 +122,34 @@ function openPopup(): Window | null {
     popup.document.documentElement.style.colorScheme = "light dark"
     popup.document.body.style.cssText =
       "font:15px system-ui,sans-serif;background:#f6f7f9;background:light-dark(#f6f7f9,#060e16);color:#58626c;color:light-dark(#58626c,#9da6ae);display:grid;place-items:center;height:90vh;margin:0"
-    popup.document.body.textContent = "Opening PoliNetwork eSign…"
+    popup.document.body.textContent = text
   }
   return popup
 }
 
-/**
- * "Sign with CIE": starts the signature of one or more documents, opens the agent's page in a popup (where one PIN
- * signs them all) and follows the jobs until every signature is saved. The dashboard never talks to the agent:
- * browsers block HTTPS pages from fetching loopback addresses, but they allow opening a window there.
- */
-export function SignWithCie({
-  items,
-  prepare,
-  disabled,
-  children,
-  onSigned,
-  onStopped,
-}: (
+/** Resolves once the browser's "Open PoliNetwork eSign?" prompt has been answered, or plainly didn't show. */
+function promptAnswered() {
+  return new Promise<void>((resolve) => {
+    let blurred = false
+    const quiet = window.setTimeout(() => !blurred && done(), PROMPT_MS)
+    const cap = window.setTimeout(done, PROMPT_MAX_MS)
+    const onBlur = () => {
+      blurred = true
+    }
+    const onFocus = () => blurred && done()
+    function done() {
+      window.clearTimeout(quiet)
+      window.clearTimeout(cap)
+      window.removeEventListener("blur", onBlur)
+      window.removeEventListener("focus", onFocus)
+      resolve()
+    }
+    window.addEventListener("blur", onBlur)
+    window.addEventListener("focus", onFocus)
+  })
+}
+
+export type SignOptions = (
   | { items: SignItem[]; prepare?: never }
   | {
       items?: never
@@ -183,178 +160,341 @@ export function SignWithCie({
       prepare: () => Promise<SignItem[]> | null
     }
 ) & {
-  disabled?: boolean
-  children?: ReactNode
-  /** After the signatures are saved and the page data reloaded. */
+  /**
+   * Called once every document is signed, with the agent's "Signed" on screen: the page updates behind the dialog
+   * meanwhile (at least 1 s, at most 4 s), then the agent window and the dialog close. Without it the dialog reloads
+   * the page's data and toasts the outcome.
+   */
+  handOff?: (requestIds: string[]) => Promise<void>
+  /** After the signatures are saved: when the dialog starts closing after a hand-off, else once the data reloaded. */
   onSigned?: () => void
   /** After the dialog closes before every document is signed, or the signature couldn't start (with why). */
   onStopped?: (error: string | null) => void
-}) {
+  /** Where focus goes after a hand-off or an ended attempt, whose trigger is usually gone; otherwise the trigger. */
+  finalFocus?: () => HTMLElement | null
+}
+
+/**
+ * Signs one or more documents with PoliNetwork eSign: `start` (called in a click) opens the agent's page in a popup,
+ * where one PIN signs them all, and `dialog` follows the jobs until every signature is saved. The dashboard never
+ * talks to the agent: browsers block HTTPS pages from fetching loopback addresses, but they allow opening a window
+ * there. Render `dialog` where it outlives the trigger, which the page may replace while the signatures land.
+ */
+export function useSignWithCie(options: SignOptions) {
+  return useSigning(() => options)
+}
+
+/**
+ * `useSignWithCie` with its options read whenever one is needed: the signing host passes the options of the page that
+ * started, which may be gone by the time its hand-off ends.
+ */
+export function useSigning(read: () => SignOptions) {
   const router = useRouter()
   const startFn = useServerFn(startEsignSignature)
   const cancelFn = useServerFn(cancelEsignSignature)
   const statusFn = useServerFn(getEsignJobStatus)
-  const [phase, setPhase] = useState<Phase | null>(null)
-  // The last phase the dialog showed: its content stays while the dialog animates out.
-  const [shown, setShown] = useState<Shown | null>(null)
-  const [states, setStates] = useState<Map<string, JobState>>(new Map())
-  const [now, setNow] = useState(Date.now())
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [windowClosed, setWindowClosed] = useState(false)
-  const [agentLost, setAgentLost] = useState(false)
+  const [session, setSession] = useState<Session | null>(null)
+  const [mode, setMode] = useState<Mode | null>(null)
+  const [states, setStates] = useState<Map<string, JobState>>(new Map())
   // An ended attempt's Close is reloading the page before the dialog closes; stays set while it fades out.
   const [closing, setClosing] = useState(false)
   const popupRef = useRef<Window | null>(null)
+  // Handlers outside React's render (timers, messages, polls) read the current state from these.
+  const sessionRef = useRef<Session | null>(null)
+  const modeRef = useRef<Mode | null>(null)
+  const statesRef = useRef<Map<string, JobState>>(new Map())
   const finishing = useRef(false)
+  /** PoliNetwork eSign answered the window's current page: with `ready`, an error, or by fetching a job. */
+  const answered = useRef(false)
+  /** Whether a job being fetched counts as an answer: not when it was already fetched before this load. */
+  const seenCounts = useRef(true)
+  /** A fatal error waiting for the next poll, which may show that the job ended by itself. */
+  const fatal = useRef<{ message: string; at: number } | null>(null)
+  /** The agent window explained an error itself, so it stays open. */
+  const fatalShown = useRef(false)
+  const startFailed = useRef(false)
+  const closedReads = useRef(0)
+  /** Bumped by every start and close, so a Start still waiting on the browser stops. */
+  const attempt = useRef(0)
+  const focusAfter = useRef<(() => HTMLElement | null) | null>(null)
+  /**
+   * Where focus returns otherwise. Set explicitly: the trigger is disabled while the jobs are created, which drops its
+   * focus before the dialog opens.
+   */
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  /** The documents of this attempt are created in its click (New request), so they are signed from their page later. */
+  const [preparing, setPreparing] = useState(false)
+  const preparingRef = useRef(false)
+  /** PoliNetwork eSign said `ready`: from then on the dashboard never closes its window by itself. */
+  const readySeen = useRef(false)
 
-  const reload = useCallback(async () => {
+  function show(next: Session | null) {
+    sessionRef.current = next
+    setSession(next)
+  }
+
+  function go(next: Mode) {
+    modeRef.current = next
+    setMode(next)
+  }
+
+  async function reload() {
     try {
       await router.invalidate({ sync: true })
     } catch (cause) {
       console.error(cause)
     }
-  }, [router])
+  }
 
-  const finish = useCallback(
-    async (count: number, total: number) => {
-      if (finishing.current) return
-      finishing.current = true
-      await reload()
-      setPhase(null)
-      popupRef.current = null
-      if (count === total) appToast.success(count === 1 ? "Document signed." : `${count} documents signed.`)
-      else appToast.warning(`${count} of ${total} documents signed.`)
-      onSigned?.()
-    },
-    [reload, onSigned]
-  )
-
-  /** Closes the dialog after the signer's own cancel: no message, no reload, nothing left to cancel. */
-  const dismiss = useCallback(() => {
+  /** Every document is signed and nothing hands off: reloads the page's data, then closes and says so. */
+  async function finish(count: number) {
     if (finishing.current) return
     finishing.current = true
-    setPhase(null)
+    await reload()
+    show(null)
+    popupRef.current = null
+    appToast.success(count === 1 ? "Document signed." : `${count} documents signed.`)
+    read().onSigned?.()
+  }
+
+  /**
+   * Every document is signed: the page behind updates while the agent says "Signed", then its window and the dialog
+   * close together, at least 1 s and at most 4 s after the signatures were saved.
+   */
+  async function handOver(jobs: Job[], update: (requestIds: string[]) => Promise<void>) {
+    if (finishing.current) return
+    finishing.current = true
+    const updated = update(jobs.map((j) => j.requestId)).catch((cause) => console.error(cause))
+    await Promise.race([Promise.all([updated, sleep(SIGNED_MIN_MS)]), sleep(SIGNED_MAX_MS)])
     popupRef.current?.close()
     popupRef.current = null
-    onStopped?.(null)
-  }, [onStopped])
+    focusAfter.current = read().finalFocus ?? null
+    show(null)
+    read().onSigned?.()
+  }
 
-  const jobs = phase && "jobs" in phase ? phase.jobs : null
-  const preparing = prepare !== undefined
+  /** Closes the dialog after the signer's own cancel: no message, no reload, nothing left to cancel. */
+  function dismiss() {
+    if (finishing.current) return
+    finishing.current = true
+    show(null)
+    popupRef.current?.close()
+    popupRef.current = null
+    read().onStopped?.(null)
+  }
 
-  useEffect(() => {
-    if (!jobs) return
-    let stopped = false
-    const poll = async () => {
-      // Readable only while the dashboard keeps its opener relationship with the window: the agent sends no COOP
-      // header, and the dashboard must not send `Cross-Origin-Opener-Policy: same-origin`.
-      const closedBefore = popupRef.current?.closed === true
-      try {
-        const statuses = await statusFn({ data: { jobIds: jobs.map((j) => j.jobId) } })
-        if (stopped) return
-        setStates(new Map(statuses.map((s) => [s.jobId, s])))
-        if (statuses.every((s) => !OPEN.has(s.status))) {
-          const done = statuses.filter((s) => s.status === "completed").length
-          if (done > 0) return void finish(done, jobs.length)
-          const ending = endingOf(statuses, jobs, preparing)
-          if (!ending) return dismiss()
-          // Someone else ended the request: the agent window would keep asking for a PIN that can sign nothing.
-          if (ending.reason === "cancelled" || ending.reason === "declined") popupRef.current?.close()
-          return setPhase(ending)
-        }
-        // Closed before and after the request, so a window opened again meanwhile counts as open. The agent closes
-        // its window on cancel or success only after the backend recorded it, so those end above.
-        setWindowClosed(closedBefore && popupRef.current?.closed === true)
-        if (statuses.some((s) => s.seen))
-          setPhase((current) => (current?.kind === "waiting" ? { kind: "signing", jobs, url: current.url } : current))
-      } catch (cause) {
-        console.error(cause)
+  /**
+   * Remembers that PoliNetwork eSign answered in this browser, and stops waiting for it. A job fetch answers only while
+   * waiting, so it never overwrites the version a `ready` just stored.
+   */
+  function answer(version: string | null) {
+    writeAgentFlag(version)
+    answered.current = true
+    const kind = modeRef.current?.kind
+    if (kind === "opening" || kind === "starting") go({ kind: "signing" })
+  }
+
+  /** Sends the agent window to the signing page, waiting for PoliNetwork eSign to answer it. */
+  function load(popup: Window, url: string, next: "opening" | "starting") {
+    popup.location.href = url
+    answered.current = false
+    closedReads.current = 0
+    fatal.current = null
+    const flag = readAgentFlag()
+    // A job fetched before this load says nothing about the agent now, except for agents that never say "ready".
+    seenCounts.current = flag?.version === null || ![...statesRef.current.values()].some((s) => s.seen)
+    if (next === "opening") go({ kind: "opening", deadline: Date.now() + deadlineFor(flag) })
+  }
+
+  function notRunning() {
+    // The attempt is over (Cancel while waiting for the agent): the dialog keeps its last state while it fades out.
+    if (finishing.current || !sessionRef.current) return
+    popupRef.current?.close()
+    popupRef.current = null
+    go({ kind: "notRunning", variant: notRunningVariant(readAgentFlag(), startFailed.current), setupOpened: false })
+  }
+
+  /** The ready deadline passed: one more look at the jobs, then the agent counts as not running. */
+  async function deadlinePassed() {
+    const waiting = modeRef.current
+    const current = sessionRef.current
+    if (current) await poll(current)
+    if (modeRef.current === waiting) notRunning()
+  }
+
+  async function poll(current: Session) {
+    const startedAt = Date.now()
+    // Readable only while the dashboard keeps its opener relationship with the window: the agent sends no COOP
+    // header, and the dashboard must not send `Cross-Origin-Opener-Policy: same-origin`.
+    const closedBefore = popupRef.current?.closed !== false
+    try {
+      const statuses = await statusFn({ data: { jobIds: current.jobs.map((j) => j.jobId) } })
+      if (sessionRef.current !== current) return
+      track(statuses, closedBefore && popupRef.current?.closed !== false, startedAt)
+    } catch (cause) {
+      console.error(cause)
+    }
+  }
+
+  function track(statuses: JobStatus[], closed: boolean, startedAt: number) {
+    const current = sessionRef.current
+    const now = modeRef.current
+    if (!current || !now || finishing.current || SETTLED.has(now.kind)) return
+    statesRef.current = new Map(statuses.map((s) => [s.jobId, s]))
+    setStates(statesRef.current)
+    const outcome = outcomeOf(statuses, current.jobs, preparingRef.current)
+    switch (outcome.kind) {
+      case "signed": {
+        go({ kind: "signed", total: current.jobs.length })
+        const { handOff } = read()
+        return void (handOff ? handOver(current.jobs, handOff) : finish(current.jobs.length))
+      }
+      case "partial":
+        return go({ kind: "partial" })
+      case "dismissed":
+        return dismiss()
+      case "ended": {
+        const { reason } = outcome.ending
+        // Someone else ended the request: the agent window would keep asking for a PIN that can sign nothing. An
+        // agent too old to explain itself shows only plain text; one that said `ready` is about to show the update.
+        const silent = !readySeen.current && !fatalShown.current
+        if (reason === "cancelled" || reason === "declined" || (reason === "outdated" && silent))
+          popupRef.current?.close()
+        return go({ kind: "ended", ending: outcome.ending })
       }
     }
-    const timer = window.setInterval(poll, POLL_MS)
-    const tick = window.setInterval(() => setNow(Date.now()), 1000)
-    function onMessage(event: MessageEvent) {
-      // Agents up to v0.1.x, named PoliNetwork Sign Agent, post "pn-sign-agent".
-      if (!isAgentOrigin(event.origin) || !["pn-esign", "pn-sign-agent"].includes(event.data?.type)) return
-      // The page lost the agent behind it: the one outcome the backend can't know about.
-      setAgentLost(event.data?.status === "error" && event.data?.detail === "agent_unreachable")
-      void poll()
+    if ((now.kind === "opening" || now.kind === "starting") && seenCounts.current && statuses.some((s) => s.seen))
+      answer(null)
+    if (fatal.current && fatal.current.at <= startedAt) {
+      go({ kind: "fatal", state: "continue", message: fatal.current.message })
+      fatal.current = null
+      return
     }
-    window.addEventListener("message", onMessage)
-    return () => {
-      stopped = true
-      window.clearInterval(timer)
-      window.clearInterval(tick)
-      window.removeEventListener("message", onMessage)
+    if (modeRef.current?.kind !== "signing") return
+    closedReads.current = closed ? closedReads.current + 1 : 0
+    if (closedReads.current === 1) void sleep(CLOSED_RECHECK_MS).then(() => poll(current))
+    if (closedReads.current < CLOSED_READS) return
+    const action = closedWindowAction(answered.current, statuses)
+    if (action === "partial") go({ kind: "partial" })
+    else if (action === "dismiss") void close()
+  }
+
+  function onMessage(data: AgentMessage) {
+    if (!modeRef.current || finishing.current) return
+    if (data.status === "ready") {
+      readySeen.current = true
+      return answer(data.detail || "unknown")
     }
-  }, [jobs, preparing, statusFn, finish, dismiss])
+    if (data.status !== "error") return
+    // The page lost the agent behind it, the one outcome the backend can't know about: it stopped, fatal or not (the
+    // page served by it can't load its job either).
+    if (data.detail === "agent_unreachable") {
+      if (!data.fatal && !answered.current) return
+      answered.current = true
+      return go({ kind: "stopped" })
+    }
+    if (data.fatal) {
+      answered.current = true
+      fatalShown.current = true
+      const state = stateForFatal(data.detail ?? "")
+      const message = data.message || "Nothing was signed."
+      // Other errors wait for the poll this message starts: the job may have ended with words of its own.
+      if (state === "continue") fatal.current = { message, at: Date.now() }
+      else go({ kind: "fatal", state, message })
+    }
+  }
 
   async function start() {
-    // The dialog is on its way out: its Close is reloading the page.
-    if (finishing.current && phase) return
+    if (creating || (finishing.current && sessionRef.current)) return
+    const { items, prepare } = read()
     const prepared = prepare ? prepare() : Promise.resolve(items ?? [])
     if (!prepared) return
-    setError(null)
-    setStates(new Map())
-    setWindowClosed(false)
-    setAgentLost(false)
-    setClosing(false)
+    const mine = ++attempt.current
+    preparingRef.current = prepare !== undefined
+    setPreparing(preparingRef.current)
     finishing.current = false
+    fatal.current = null
+    fatalShown.current = false
+    readySeen.current = false
+    startFailed.current = false
+    focusAfter.current = null
+    statesRef.current = new Map()
+    setStates(statesRef.current)
+    setError(null)
+    setClosing(false)
     popupRef.current?.close()
-    let popup: Window | null = null
+    // Opened synchronously in the click, so the browser doesn't block it.
+    const popup = openPopup("Opening PoliNetwork eSign…")
+    popupRef.current = popup
+    // Sign again, from the dialog: it stays open, and the old jobs are no longer followed.
+    if (sessionRef.current) {
+      sessionRef.current = null
+      go({ kind: "opening", deadline: null })
+    }
+    setCreating(true)
     try {
-      // Opened synchronously in the click, so the browser doesn't block it.
-      popup = openPopup()
-      popupRef.current = popup
-      setPhase({ kind: "starting" })
       const toSign = await prepared
       if (toSign.length === 0) {
         popup?.close()
-        setPhase(null)
+        show(null)
         return
       }
       const started = await startFn({
         data: { items: toSign.map((item) => ({ requestId: item.requestId, places: item.places })) },
       })
+      // Cancelled while the jobs were created (Sign again keeps the dialog open meanwhile).
+      if (mine !== attempt.current) {
+        popup?.close()
+        await cancelFn({ data: { jobIds: started.map((s) => s.jobId) } })
+        return
+      }
       const url = agentSignUrl(
         started.map((s) => s.ticket),
         window.location.origin
       )
-      if (popup && !popup.closed) popup.location.href = url
       const titles = new Map(toSign.map((item) => [item.requestId, item.title]))
-      setPhase({
-        kind: "waiting",
+      show({
         jobs: started.map((s) => ({ jobId: s.jobId, requestId: s.requestId, title: titles.get(s.requestId) ?? "" })),
         url,
-        since: Date.now(),
       })
-      setNow(Date.now())
+      if (!popup) go({ kind: "blocked" })
+      else if (popup.closed) notRunning()
+      else load(popup, url, "opening")
     } catch (cause) {
       console.error(cause)
       popup?.close()
-      setPhase(null)
+      show(null)
       const message = cause instanceof Error ? cause.message : "Couldn't start the signature."
       setError(message)
-      onStopped?.(message)
+      read().onStopped?.(message)
+    } finally {
+      setCreating(false)
     }
   }
 
-  /** Closes the dialog, cancelling what isn't signed yet; reloads when part of a batch was signed or it ended. */
+  /** Closes the dialog, cancelling what isn't signed yet; reloads when something was signed or the attempt ended. */
   async function close() {
     if (finishing.current) return
     finishing.current = true
-    const current = phase
+    attempt.current++
+    const current = sessionRef.current
+    const now = modeRef.current
+    const ended =
+      now?.kind === "ended" ||
+      now?.kind === "partial" ||
+      (now?.kind === "fatal" && (now.state === "expired" || now.state === "outdated"))
     popupRef.current?.close()
-    if (current?.kind === "ended") {
-      // Reloaded while the dialog is still open, as finish() does: the request may have been cancelled meanwhile.
+    popupRef.current = null
+    const status = (job: Job) => statesRef.current.get(job.jobId)?.status ?? "pending"
+    const open = current?.jobs.filter((j) => OPEN_STATUSES.has(status(j))) ?? []
+    const signed = current?.jobs.some((j) => status(j) === "completed") ?? false
+    if (ended) {
+      // Reloaded while the dialog is still open, as a hand-off does: the request may have changed meanwhile.
       setClosing(true)
-      await reload()
-      setPhase(null)
-      return onStopped?.(null)
-    }
-    setPhase(null)
-    if (!current || !("jobs" in current)) return onStopped?.(null)
-    const open = current.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending"))
+      focusAfter.current = read().finalFocus ?? null
+    } else show(null)
     if (open.length > 0) {
       try {
         await cancelFn({ data: { jobIds: open.map((j) => j.jobId) } })
@@ -362,8 +502,9 @@ export function SignWithCie({
         console.error(cause)
       }
     }
-    if (open.length < current.jobs.length) await reload()
-    onStopped?.(null)
+    if (ended || signed) await reload()
+    show(null)
+    read().onStopped?.(null)
   }
 
   /** Brings the agent window to the front without reloading it (the PIN may be half typed), or opens it again. */
@@ -371,274 +512,628 @@ export function SignWithCie({
     const popup = popupRef.current
     if (popup && !popup.closed) popup.focus()
     else popupRef.current = window.open(url, `pn-esign-${Date.now()}`, popupFeatures())
-    setWindowClosed(false)
+    closedReads.current = 0
   }
 
-  /** Loads the signing page again in the agent window, opening a new one if it was closed. */
-  function openWindowAgain(url: string) {
-    const popup = popupRef.current
-    if (popup && !popup.closed) popup.location.href = url
-    showWindow(url)
-    setAgentLost(false)
+  /** Loads the signing page again with the same links, opening the agent window if it was closed. */
+  function retry() {
+    const current = sessionRef.current
+    if (!current) return
+    const popup =
+      popupRef.current && !popupRef.current.closed ? popupRef.current : openPopup("Opening PoliNetwork eSign…")
+    popupRef.current = popup
+    if (!popup) return go({ kind: "blocked" })
+    load(popup, current.url, "opening")
+    popup.focus()
   }
 
-  if (phase && phase.kind !== "starting" && phase !== shown) setShown(phase)
-  // An expired link can start again from the dialog; a prepared document is signed from its request page instead.
-  const restartable = shown?.kind === "ended" && shown.reason === "expired" && !preparing
-  const active = shown && shown.kind !== "ended" ? shown : null
-  const batch = (active?.jobs ?? items ?? []).length > 1
-  const silent = active?.kind === "waiting" && now - active.since > AGENT_TIMEOUT_MS
-  const notAnswering = active !== null && (silent || agentLost)
-  const signed = active?.jobs.filter((j) => states.get(j.jobId)?.status === "completed").length ?? 0
-  const openJobs = active?.jobs.filter((j) => OPEN.has(states.get(j.jobId)?.status ?? "pending")) ?? []
-  // Every document is signed or ended: the poll is finishing and the page reloads.
-  const settled = active !== null && signed > 0 && openJobs.length === 0
-  // A failure every open document shares (a wrong PIN, no card) is shown once, above the list.
-  const firstCode = openJobs[0] && states.get(openJobs[0].jobId)?.errorCode
-  const sharedCode = firstCode && openJobs.every((j) => states.get(j.jobId)?.errorCode === firstCode) ? firstCode : null
-  const sharedError = sharedCode && openJobs[0] ? errorText(states.get(openJobs[0].jobId)) : null
-  const needsSetup = sharedCode !== null && SETUP_ERRORS.has(sharedCode)
-  const total = active?.jobs.length ?? 0
-  const jobList = active && (
-    <ul className="mt-2 flex flex-col gap-2" aria-live="polite">
-      {active.jobs.map((job) => (
-        <JobRow key={job.jobId} job={job} state={states.get(job.jobId)} hideError={sharedCode !== null} />
-      ))}
-    </ul>
-  )
-  const progress = batch && (
-    <>
-      <p className="mt-3 text-[13px] font-medium text-(--pn-fg) tabular-nums">
-        {signed} of {pluralize(total, "document")} signed
-      </p>
-      {jobList}
-    </>
+  /**
+   * "Start PoliNetwork eSign" is a link to the agent's own scheme: the browser asks whether to open it, and no window
+   * may cover that question. Once it's answered the signing window opens again, and the page loads twice at most.
+   */
+  async function startAgent() {
+    const current = sessionRef.current
+    if (!current) return
+    const mine = ++attempt.current
+    const starting = () => mine === attempt.current && modeRef.current?.kind === "starting"
+    go({ kind: "starting" })
+    await promptAnswered()
+    if (!starting()) return
+    const open = popupRef.current && !popupRef.current.closed
+    const popup = open ? popupRef.current : openPopup("Starting PoliNetwork eSign…")
+    popupRef.current = popup
+    if (!popup) return go({ kind: "blocked" })
+    await sleep(LAUNCH_MS)
+    for (let tries = 0; tries < 2; tries++) {
+      if (!starting()) return
+      if (popup.closed) return notRunning()
+      load(popup, current.url, "starting")
+      popup.focus()
+      await sleep(START_WAIT_MS)
+    }
+    if (!starting()) return
+    startFailed.current = true
+    notRunning()
+  }
+
+  // The latest handlers, for the timers and listeners below, which outlive a render.
+  const latest = useRef({ poll, onMessage, deadlinePassed, notRunning })
+  useLayoutEffect(() => {
+    latest.current = { poll, onMessage, deadlinePassed, notRunning }
+  })
+
+  const following =
+    session !== null && mode !== null && !SETTLED.has(mode.kind) && !(mode.kind === "opening" && !mode.deadline)
+  useEffect(() => {
+    if (!following || !session) return
+    const run = () => void latest.current.poll(session)
+    const timer = window.setInterval(run, POLL_MS)
+    function listen(event: MessageEvent) {
+      if (!isAgentOrigin(event.origin)) return
+      const message = agentMessage.safeParse(event.data)
+      if (!message.success) return
+      latest.current.onMessage(message.data)
+      run()
+    }
+    window.addEventListener("message", listen)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("message", listen)
+    }
+  }, [following, session])
+
+  const deadline = session && mode?.kind === "opening" ? mode.deadline : null
+  useEffect(() => {
+    if (deadline === null) return
+    // Closed before PoliNetwork eSign answered: most likely on the browser's "can't be reached" page.
+    const watch = window.setInterval(() => {
+      if (popupRef.current?.closed !== false) latest.current.notRunning()
+    }, 250)
+    const timer = window.setTimeout(() => void latest.current.deadlinePassed(), Math.max(0, deadline - Date.now()))
+    return () => {
+      window.clearInterval(watch)
+      window.clearTimeout(timer)
+    }
+  }, [deadline])
+
+  const dialog = (
+    <SigningDialog
+      open={session !== null}
+      mode={mode}
+      jobs={session?.jobs ?? []}
+      states={states}
+      preparing={preparing}
+      closing={closing}
+      onClose={() => void close()}
+      onSignAgain={() => void start()}
+      onShowWindow={() => session && showWindow(session.url)}
+      onRetry={retry}
+      onStartAgent={() => void startAgent()}
+      onSetupOpened={() => {
+        const now = modeRef.current
+        if (now?.kind === "notRunning") go({ ...now, setupOpened: true })
+      }}
+      finalFocus={() => focusAfter.current?.() ?? (triggerRef.current?.isConnected ? triggerRef.current : null)}
+    />
   )
 
-  return (
-    <>
-      <LoadingButton
-        icon={PenLine}
-        pending={phase?.kind === "starting"}
-        disabled={disabled || items?.length === 0}
-        onClick={start}
-        className="h-10"
-      >
-        {children ?? (items && items.length > 1 ? `Sign ${items.length} documents` : "Sign with CIE")}
-      </LoadingButton>
-      {error && <InlineAlert className="mt-2">{error}</InlineAlert>}
-      <Dialog
-        open={phase !== null && phase.kind !== "starting"}
-        disablePointerDismissal
-        onOpenChange={(open) => !open && void close()}
-      >
-        <DialogPortal>
-          <DialogOverlay className={scrimClasses} />
-          <DialogPrimitive.Popup className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}>
-            {shown?.kind === "ended" ? (
-              <Status
-                icon={<TriangleAlert className="size-5" />}
-                tone={shown.reason === "failed" ? "danger" : "neutral"}
-                title={ENDED_TITLES[shown.reason]}
-              >
-                <p>{shown.message}</p>
-                {shown.code && SETUP_ERRORS.has(shown.code) && (
-                  <div className="mt-2 -ml-2">
-                    <SetupGuideButton />
-                  </div>
-                )}
-              </Status>
-            ) : settled ? (
-              <Status
-                icon={signed === total ? <CircleCheck className="size-5" /> : <TriangleAlert className="size-5" />}
-                tone={signed === total ? "success" : "warning"}
-                title={
-                  signed < total
-                    ? `${signed} of ${pluralize(total, "document")} signed`
-                    : total === 1
-                      ? "Document signed"
-                      : `${pluralize(total, "document")} signed`
-                }
-              >
-                {batch ? jobList : "Updating the page…"}
-              </Status>
-            ) : notAnswering ? (
-              <NotAnswering
-                title={silent ? "PoliNetwork eSign isn't answering" : "PoliNetwork eSign stopped answering"}
-              >
-                {silent
-                  ? "Start PoliNetwork eSign, then open its window again. First time here? Install it from the setup guide."
-                  : "Start PoliNetwork eSign, then open its window again."}
-              </NotAnswering>
-            ) : active && windowClosed ? (
-              <Status
-                icon={<TriangleAlert className="size-5" />}
-                tone="warning"
-                title="The PoliNetwork eSign window was closed"
-              >
-                <p>
-                  {signed === 0
-                    ? "Nothing was signed. Open the window again to type your PIN, or cancel."
-                    : `${signed} of ${pluralize(total, "document")} are signed. Open the window again to sign the others, or stop here.`}
-                </p>
-                {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
-                {batch && jobList}
-                {needsSetup && (
-                  <div className="mt-2 -ml-2">
-                    <SetupGuideButton />
-                  </div>
-                )}
-              </Status>
-            ) : active?.kind === "waiting" ? (
-              <Status icon={<LoaderCircle className="size-5 animate-spin" />} title="Opening PoliNetwork eSign">
-                A PoliNetwork eSign window opens on this computer.
-              </Status>
-            ) : active ? (
-              <Status icon={<KeyRound className="size-5" />} title="Type your PIN in PoliNetwork eSign">
-                <p>
-                  Keep the CIE on the reader. {batch ? `One PIN signs all ${total} documents. ` : ""}
-                  The PIN goes only to the card, never to PoliNetwork.
-                </p>
-                {sharedError && <InlineAlert className="mt-3">{sharedError}</InlineAlert>}
-                {progress}
-                <div className="mt-2 -ml-2 flex flex-wrap gap-2">
-                  <Button variant="ghost" size="sm" className={buttonMotion} onClick={() => showWindow(active.url)}>
-                    <ExternalLink aria-hidden /> Show the PoliNetwork eSign window
-                  </Button>
-                  {needsSetup && <SetupGuideButton />}
-                </div>
-              </Status>
-            ) : null}
-            {shown?.kind === "ended" ? (
-              <div className={dialogFooter}>
-                <LoadingButton
-                  size="default"
-                  variant={restartable ? "outline" : "default"}
-                  pending={closing}
-                  onClick={() => void close()}
-                >
-                  Close
-                </LoadingButton>
-                {restartable && (
-                  <Button className={dialogFooterButton} disabled={disabled || closing} onClick={start}>
-                    Start again
-                  </Button>
-                )}
-              </div>
-            ) : (
-              !settled && (
-                <div className={dialogFooter}>
-                  <Button variant="outline" className={dialogFooterButton} onClick={() => void close()}>
-                    {signed > 0 ? "Stop here" : "Cancel signature"}
-                  </Button>
-                  {active && (notAnswering || windowClosed) && (
-                    <Button
-                      className={dialogFooterButton}
-                      onClick={() => (notAnswering ? openWindowAgain(active.url) : showWindow(active.url))}
-                    >
-                      Open the window again
-                    </Button>
-                  )}
-                </div>
-              )
-            )}
-          </DialogPrimitive.Popup>
-        </DialogPortal>
-      </Dialog>
-    </>
-  )
+  return { start: () => void start(), creating, error, dialog, triggerRef }
 }
 
 /**
- * PoliNetwork eSign doesn't answer: start it (or set it up) here, then open its window again, the footer's primary
- * action, so the buttons read in the order of the steps.
+ * "Sign with CIE": the trigger, its start error and the signing dialog together, for pages where the trigger stays
+ * while the signatures land.
  */
-function NotAnswering({ title, children }: { title: string; children: string }) {
-  return (
-    <Status icon={<TriangleAlert className="size-5" />} tone="warning" title={title}>
-      <p>{children}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={buttonMotion}
-          nativeButton={false}
-          render={<a href={AGENT_LAUNCH_URL} />}
-        >
-          <Play aria-hidden /> Start PoliNetwork eSign
-        </Button>
-        <SetupGuideButton />
-      </div>
-    </Status>
-  )
-}
-
-function SetupGuideButton() {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={buttonMotion}
-      nativeButton={false}
-      render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
-    >
-      <MonitorDown aria-hidden /> Setup guide
-    </Button>
-  )
-}
-
-function JobRow({ job, state, hideError }: { job: Job; state: JobState | undefined; hideError: boolean }) {
-  const done = state?.status === "completed"
-  const failure = done || hideError ? null : errorText(state)
-  const notSigned = failure !== null || (state !== undefined && !done && !OPEN.has(state.status))
-  return (
-    <li className="flex items-start gap-2 text-[13px]">
-      {done ? (
-        <CircleCheck aria-label="Signed" className="mt-0.5 size-4 shrink-0 text-(--pn-success-fg)" />
-      ) : notSigned ? (
-        <CircleAlert aria-label="Not signed" className="mt-0.5 size-4 shrink-0 text-(--pn-danger-fg)" />
-      ) : (
-        <Circle aria-label="Waiting" className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-      )}
-      <span className="min-w-0">
-        <span className="block truncate text-(--pn-fg)">{job.title}</span>
-        {failure && <span className="block text-pretty text-(--pn-danger-fg)">{failure}</span>}
-      </span>
-    </li>
-  )
-}
-
-function Status({
-  icon,
-  title,
-  tone = "brand",
+export function SignWithCie({
+  disabled,
   children,
+  className,
+  describedBy,
+  "aria-keyshortcuts": keyShortcuts,
+  ...options
+}: SignOptions & {
+  disabled?: boolean
+  children?: ReactNode
+  /** For the trigger, e.g. `w-full` in a card. */
+  className?: string
+  /** The id of the text explaining why the trigger is disabled. */
+  describedBy?: string
+  /** The shortcut that clicks the trigger, e.g. ⌘↵ in New request. */
+  "aria-keyshortcuts"?: string
+}) {
+  const signing = useSignWithCie(options)
+  const count = options.items?.length
+  return (
+    <>
+      <SignTrigger
+        signing={signing}
+        disabled={disabled || count === 0}
+        className={className}
+        describedBy={describedBy}
+        aria-keyshortcuts={keyShortcuts}
+      >
+        {children ?? (count && count > 1 ? `Sign ${count} documents` : "Sign with CIE")}
+      </SignTrigger>
+      {signing.dialog}
+    </>
+  )
+}
+
+/** The button that starts a signature, with why it couldn't start under it. */
+export function SignTrigger({
+  signing,
+  disabled,
+  className,
+  describedBy,
+  "aria-keyshortcuts": keyShortcuts,
+  children = "Sign with CIE",
 }: {
-  icon: ReactNode
-  title: string
-  tone?: "brand" | "success" | "warning" | "danger" | "neutral"
-  children: ReactNode
+  signing: Pick<ReturnType<typeof useSignWithCie>, "start" | "creating" | "error" | "triggerRef">
+  disabled?: boolean
+  className?: string
+  describedBy?: string
+  "aria-keyshortcuts"?: string
+  children?: ReactNode
 }) {
   return (
-    <div className="flex min-h-0 items-start gap-3.5 overflow-y-auto px-5.5 pt-5 pb-5">
-      <span
-        className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4)",
-          tone === "brand" && "bg-(--pn-accent-soft) text-(--pn-accent)",
-          tone === "success" && "bg-(--pn-success-bg) text-(--pn-success-fg)",
-          tone === "warning" && "bg-(--pn-warning-bg) text-(--pn-warning-fg)",
-          tone === "danger" && "bg-(--pn-danger-bg) text-(--pn-danger-fg)",
-          tone === "neutral" && "bg-(--pn-muted) text-(--pn-fg-muted)"
-        )}
+    <>
+      <LoadingButton
+        ref={signing.triggerRef}
+        icon={PenLine}
+        pending={signing.creating}
+        disabled={disabled}
+        onClick={signing.start}
+        aria-describedby={describedBy}
+        aria-keyshortcuts={keyShortcuts}
+        className={cn("h-10", className)}
       >
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <DialogTitle className={dialogTitleText}>{title}</DialogTitle>
-        <DialogDescription render={<div />} className={cn(dialogDescriptionText, "mt-1")}>
-          {children}
-        </DialogDescription>
-      </div>
-    </div>
+        {children}
+      </LoadingButton>
+      {signing.error && <InlineAlert className="mt-2">{signing.error}</InlineAlert>}
+    </>
+  )
+}
+
+type DialogProps = {
+  open: boolean
+  mode: Mode | null
+  jobs: Job[]
+  states: Map<string, JobState>
+  preparing: boolean
+  closing: boolean
+  onClose: () => void
+  onSignAgain: () => void
+  onShowWindow: () => void
+  onRetry: () => void
+  onStartAgent: () => void
+  onSetupOpened: () => void
+  finalFocus: () => HTMLElement | null
+}
+
+type View = {
+  icon: ReactNode
+  tone: "brand" | "success" | "warning" | "danger" | "neutral"
+  title: string
+  body?: ReactNode
+  /** A ghost button under the words, for the other way on: an action, not part of the description. */
+  quiet?: ReactNode
+  /** The outline button, left of the primary. */
+  secondary?: ReactNode
+  primary?: ReactNode
+}
+
+/** The footer's buttons, holding the refs that initial focus and state changes move focus to. */
+type Actions = ReturnType<typeof footerActions>
+
+function SigningDialog(props: DialogProps) {
+  const { open, mode, closing, onClose } = props
+  const panelRef = useRef<HTMLDivElement>(null)
+  const primaryRef = useRef<HTMLElement>(null)
+  const secondaryRef = useRef<HTMLElement>(null)
+  const view = mode && viewOf(mode, props, footerActions(props, primaryRef, secondaryRef))
+
+  // A state change that removed the focused button moves focus to the new primary, else to Cancel or Close. So does
+  // the first state with a primary after waiting for the agent, when Cancel was the only button to focus.
+  const kind = mode?.kind ?? null
+  const key =
+    mode &&
+    [
+      mode.kind,
+      "state" in mode && mode.state,
+      "variant" in mode && mode.variant,
+      "setupOpened" in mode && mode.setupOpened,
+    ].join(":")
+  const shown = useRef<Mode["kind"] | null>(null)
+  useEffect(() => {
+    const waited = shown.current === "opening" || shown.current === "starting"
+    shown.current = kind
+    const panel = panelRef.current
+    if (!key || !panel) return
+    const active = document.activeElement
+    const kept = active !== null && active !== panel && panel.contains(active)
+    if (kept && !(waited && primaryRef.current)) return
+    ;(primaryRef.current ?? secondaryRef.current)?.focus()
+  }, [key, kind])
+
+  return (
+    <Dialog
+      open={open}
+      disablePointerDismissal
+      // "Document signed" closes by itself.
+      onOpenChange={(next) => !next && mode?.kind !== "signed" && !closing && onClose()}
+    >
+      <DialogPortal>
+        <DialogOverlay className={scrimClasses} />
+        <DialogPrimitive.Popup
+          ref={panelRef}
+          initialFocus={() => primaryRef.current ?? secondaryRef.current ?? true}
+          finalFocus={() => props.finalFocus() ?? true}
+          // Wider than a confirmation, so every state's title holds one line.
+          className={cn(dialogPanel, dialogMotion, "max-w-[520px]")}
+        >
+          {view && (
+            <>
+              <div className="flex min-h-0 items-start gap-3.5 overflow-y-auto px-5.5 pt-5 pb-5">
+                <span
+                  className={cn(
+                    "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4)",
+                    view.tone === "brand" && "bg-(--pn-accent-soft) text-(--pn-accent)",
+                    view.tone === "success" && "bg-(--pn-success-bg) text-(--pn-success-fg)",
+                    view.tone === "warning" && "bg-(--pn-warning-bg) text-(--pn-warning-fg)",
+                    view.tone === "danger" && "bg-(--pn-danger-bg) text-(--pn-danger-fg)",
+                    view.tone === "neutral" && "bg-(--pn-muted) text-(--pn-fg-muted)"
+                  )}
+                >
+                  {view.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  {/* One live region for both, so screen readers hear every new state. */}
+                  <div aria-live="polite" aria-atomic="true">
+                    <DialogTitle className={dialogTitleText}>{view.title}</DialogTitle>
+                    {view.body && (
+                      <DialogDescription render={<div />} className={cn(dialogDescriptionText, "mt-1")}>
+                        {view.body}
+                      </DialogDescription>
+                    )}
+                  </div>
+                  {view.quiet && <div className="mt-2 -ml-2.5">{view.quiet}</div>}
+                </div>
+              </div>
+              {(view.secondary || view.primary) && (
+                <div className={dialogFooter}>
+                  {view.secondary}
+                  {view.primary}
+                </div>
+              )}
+            </>
+          )}
+        </DialogPrimitive.Popup>
+      </DialogPortal>
+    </Dialog>
+  )
+}
+
+function footerActions(
+  props: DialogProps,
+  primaryRef: RefObject<HTMLElement | null>,
+  secondaryRef: RefObject<HTMLElement | null>
+) {
+  const { closing, onClose } = props
+  const signed = props.jobs.some((j) => props.states.get(j.jobId)?.status === "completed")
+  // Callback refs: a link primary is an anchor, not the button the type expects.
+  const setPrimary = (element: HTMLElement | null) => {
+    primaryRef.current = element
+  }
+  const secondary = (element: HTMLElement | null) => {
+    secondaryRef.current = element
+  }
+  return {
+    /** Cancel signature, or Stop here once something is signed. */
+    cancel: (
+      <Button ref={secondary} variant="outline" className={dialogFooterButton} onClick={onClose}>
+        {signed ? "Stop here" : "Cancel signature"}
+      </Button>
+    ),
+    /** Close for an attempt that ended: it reloads the page first. */
+    close: (primary: boolean) => (
+      <LoadingButton
+        ref={primary ? setPrimary : secondary}
+        size="default"
+        variant={primary ? "default" : "outline"}
+        pending={closing}
+        onClick={onClose}
+      >
+        Close
+      </LoadingButton>
+    ),
+    primary: (label: ReactNode, onClick: () => void) => (
+      <Button ref={setPrimary} className={dialogFooterButton} disabled={closing} onClick={onClick}>
+        {label}
+      </Button>
+    ),
+    /** A primary that is a link: the agent's own scheme, a download, a page in a new tab. */
+    link: (label: ReactNode, anchor: ReactElement) => (
+      <Button ref={setPrimary} className={dialogFooterButton} nativeButton={false} render={anchor}>
+        {label}
+      </Button>
+    ),
+    /** "Start PoliNetwork eSign" opens the agent's scheme; the window opens again once the browser has asked. */
+    start: (label: ReactNode, quiet = false) => {
+      const anchor = <a href={AGENT_LAUNCH_URL} onClick={props.onStartAgent} />
+      return quiet ? (
+        <Button variant="ghost" size="sm" className={quietButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      ) : (
+        <Button ref={setPrimary} className={dialogFooterButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      )
+    },
+    /** The setup guide in a new tab, where PoliNetwork eSign is installed; the dialog stays. */
+    install: (label: ReactNode, quiet = false) => {
+      const anchor = <a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" onClick={props.onSetupOpened} />
+      return quiet ? (
+        <Button variant="ghost" size="sm" className={quietButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      ) : (
+        <Button ref={setPrimary} className={dialogFooterButton} nativeButton={false} render={anchor}>
+          {label}
+        </Button>
+      )
+    },
+  }
+}
+
+/** A quiet action under a state's words: the text colour and an icon, so it reads as a button, not a caption. */
+const quietButton = cn(buttonMotion, "text-[13px] font-medium text-(--pn-fg)")
+
+/** A label as wide as the widest of `labels`, so a button that changes its words doesn't move its neighbours. */
+function SteadyLabel({ labels, index }: { labels: ReactNode[]; index: number }) {
+  return (
+    <span className="grid">
+      {labels.map((label, i) => (
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list, never reordered
+          key={i}
+          aria-hidden={i !== index || undefined}
+          className={cn(
+            "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5",
+            i !== index && "invisible"
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function viewOf(mode: Mode, props: DialogProps, actions: Actions): View {
+  const { jobs, states, preparing } = props
+  const total = jobs.length
+  const signed = jobs.filter((j) => states.get(j.jobId)?.status === "completed").length
+  const spin = <LoaderCircle className="size-5 animate-spin" />
+  const warning = <TriangleAlert className="size-5" />
+  const start = actions.start(
+    <>
+      <Play aria-hidden /> Start PoliNetwork eSign
+    </>
+  )
+
+  switch (mode.kind) {
+    case "opening":
+      return { icon: spin, tone: "brand", title: "Opening PoliNetwork eSign…", secondary: actions.cancel }
+    case "blocked":
+      return {
+        icon: warning,
+        tone: "warning",
+        title: "Your browser blocked the signing window",
+        body: "If nothing opens, allow pop-ups for this site.",
+        secondary: actions.cancel,
+        primary: actions.primary("Open the signing window", props.onRetry),
+      }
+    case "signing":
+      return {
+        icon: <KeyRound className="size-5" />,
+        tone: "brand",
+        title: "Type your PIN in PoliNetwork eSign",
+        body: total > 1 && (
+          <>
+            <p>One PIN signs all {total}.</p>
+            <p className="mt-3 text-[13px] font-medium text-(--pn-fg) tabular-nums">
+              {signed} of {total} signed
+            </p>
+            <JobRows jobs={jobs} states={states} />
+          </>
+        ),
+        secondary: actions.cancel,
+        primary: actions.primary("Show the window", props.onShowWindow),
+      }
+    case "notRunning": {
+      if (mode.variant === "start")
+        return {
+          icon: warning,
+          tone: "warning",
+          title: "PoliNetwork eSign isn't running on this computer",
+          secondary: actions.cancel,
+          primary: start,
+        }
+      if (mode.variant === "failed")
+        return {
+          icon: warning,
+          tone: "warning",
+          title: "PoliNetwork eSign didn't start",
+          body: "If it's installed, open it yourself, then try again.",
+          quiet: actions.install(
+            <>
+              <Download aria-hidden /> Install PoliNetwork eSign
+            </>,
+            true
+          ),
+          secondary: actions.cancel,
+          primary: actions.primary("Try again", props.onRetry),
+        }
+      // Install turns into Try again once the guide is open, keeping its width so Cancel stays under the pointer.
+      const labels = [
+        <>
+          <Download aria-hidden /> Install PoliNetwork eSign
+        </>,
+        "Try again",
+      ]
+      const label = <SteadyLabel labels={labels} index={mode.setupOpened ? 1 : 0} />
+      return {
+        icon: warning,
+        tone: "warning",
+        title: "PoliNetwork eSign isn't running on this computer",
+        quiet: actions.start(
+          <>
+            <Play aria-hidden /> It's already installed: start it
+          </>,
+          true
+        ),
+        secondary: actions.cancel,
+        primary: mode.setupOpened ? actions.primary(label, props.onRetry) : actions.install(label),
+      }
+    }
+    case "starting":
+      return {
+        icon: spin,
+        tone: "brand",
+        title: "Starting PoliNetwork eSign…",
+        body: "If your browser asks, allow it.",
+        secondary: actions.cancel,
+      }
+    case "stopped":
+      return {
+        icon: warning,
+        tone: "warning",
+        title: "PoliNetwork eSign stopped",
+        body: signed > 0 ? `${signed} of ${total} signed.` : "Nothing was signed.",
+        secondary: actions.cancel,
+        primary: start,
+      }
+    case "fatal":
+      if (mode.state === "outdated") return outdatedView(actions)
+      if (mode.state === "expired") return expiredView(preparing, actions, props.onSignAgain)
+      if (mode.state === "connect")
+        return {
+          icon: warning,
+          tone: "warning",
+          title: "PoliNetwork eSign can't connect",
+          body: "Check the internet connection, then try again.",
+          secondary: actions.cancel,
+          primary: actions.primary("Try again", props.onRetry),
+        }
+      return {
+        icon: <CircleAlert className="size-5" />,
+        tone: "danger",
+        title: "PoliNetwork eSign can't continue",
+        body: mode.message,
+        secondary: actions.cancel,
+        primary: actions.primary("Try again", props.onRetry),
+      }
+    case "ended":
+      return endedView(mode.ending, preparing, actions, props.onSignAgain)
+    case "signed":
+      return {
+        icon: <CircleCheck className="size-5" />,
+        tone: "success",
+        title: mode.total > 1 ? `${mode.total} documents signed` : "Document signed",
+      }
+    case "partial":
+      return {
+        icon: warning,
+        tone: "warning",
+        title: `${signed} of ${total} signed`,
+        body: <JobRows jobs={jobs} states={states} stopped />,
+        primary: actions.close(true),
+      }
+  }
+}
+
+function outdatedView(actions: Actions): View {
+  const os = detectOs(navigator.userAgent)
+  const download = agentDownload(os)
+  return {
+    icon: <MonitorDown className="size-5" />,
+    tone: "warning",
+    ...outdatedCopy(os),
+    secondary: actions.close(false),
+    primary: download.direct
+      ? actions.link(
+          <>
+            <Download aria-hidden /> {download.label}
+          </>,
+          <a href={download.href} />
+        )
+      : actions.link(download.label, <a href={download.href} target="_blank" rel="noreferrer" />),
+  }
+}
+
+function expiredView(preparing: boolean, actions: Actions, onSignAgain: () => void): View {
+  return {
+    icon: <TriangleAlert className="size-5" />,
+    tone: "neutral",
+    title: "The signing window timed out",
+    // A document created in the composer is signed from its request page.
+    body: preparing ? "Nothing was signed. Close to open the request and sign it from there." : "Nothing was signed.",
+    secondary: preparing ? undefined : actions.close(false),
+    primary: preparing ? actions.close(true) : actions.primary("Sign again", onSignAgain),
+  }
+}
+
+function endedView(ending: Ending, preparing: boolean, actions: Actions, onSignAgain: () => void): View {
+  if (ending.reason === "outdated") return outdatedView(actions)
+  if (ending.reason === "expired") return expiredView(preparing, actions, onSignAgain)
+  const again = ending.extra === "again" && !preparing
+  const Icon = ending.reason === "cancelled" ? Ban : ending.reason === "declined" ? X : TriangleAlert
+  return {
+    icon: <Icon className="size-5" />,
+    tone: ending.reason === "failed" ? "danger" : "neutral",
+    title: ending.title,
+    body: ending.body,
+    quiet: ending.extra === "setup" && (
+      <Button
+        variant="ghost"
+        size="sm"
+        className={quietButton}
+        nativeButton={false}
+        render={<a href="/dashboard/esign/setup" target="_blank" rel="noreferrer" />}
+      >
+        <MonitorDown aria-hidden /> Setup guide
+      </Button>
+    ),
+    secondary: again ? actions.close(false) : undefined,
+    primary: again ? actions.primary("Sign again", onSignAgain) : actions.close(true),
+  }
+}
+
+/** A batch's documents: signed, still waiting, or why one wasn't signed. `stopped`: nothing is waiting anymore. */
+function JobRows({ jobs, states, stopped }: { jobs: Job[]; states: Map<string, JobState>; stopped?: boolean }) {
+  return (
+    <ul className="mt-2 flex flex-col gap-2">
+      {jobs.map((job) => {
+        const state = states.get(job.jobId)
+        const done = state?.status === "completed"
+        const failure = done ? null : (jobFailure(state) ?? (stopped ? "Not signed." : null))
+        return (
+          <li key={job.jobId} className="flex items-start gap-2 text-[13px]">
+            {done ? (
+              <CircleCheck aria-label="Signed" className="mt-0.5 size-4 shrink-0 text-(--pn-success-fg)" />
+            ) : failure ? (
+              <CircleAlert aria-label="Not signed" className="mt-0.5 size-4 shrink-0 text-(--pn-danger-fg)" />
+            ) : (
+              <Circle aria-label="Waiting" className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+            )}
+            <span className="min-w-0">
+              <span className="block truncate text-(--pn-fg)">{job.title}</span>
+              {failure && <span className="block text-pretty text-(--pn-danger-fg)">{failure}</span>}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

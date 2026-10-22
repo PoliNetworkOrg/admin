@@ -1,17 +1,23 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Ban, Download, Files, FolderUp, Mail, RotateCw, Trash2, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { ArrowRight, Ban, Download, Files, FolderUp, Mail, RotateCw, Send, Trash2, X } from "lucide-react"
+import { type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import {
+  buttonMotion,
+  buttonTones,
   ConfirmDialog,
   FormDialog,
   FormField,
   fieldControl,
+  Hint,
   InlineAlert,
+  initialsOf,
+  inlineLink,
   LoadingButton,
   SectionCard,
   Spinner,
+  StatusBadge,
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -21,17 +27,36 @@ import { errorHasCode } from "@/lib/errors"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { declineEsignRequest, getEsignDocumentContent, uploadSignedEsignDocument } from "./esign.functions"
-import { PdfViewer, usePdfBytes } from "./pdf-viewer"
-import { kindsLabel, type Place, pagesLabel, placeAt, placesLeft } from "./places"
-import { MovePlaceButtons, PlacingCancel, placingStatus } from "./placing"
-import { RequestStatusBadge, SignerStatusBadge, signedProgress, YouChip } from "./request-status"
+import { computerOnly, EsignActionCard } from "./action-card"
+import { declineEsignRequest, getEsignDocumentContent } from "./esign.functions"
+import { landingFor } from "./landing"
+import { type PdfFocus, PdfViewer, usePdfBytes } from "./pdf-viewer"
+import { kindsLabel, type Place, placeAt, placesLeft } from "./places"
+import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
+import { isDelivering, openPoint, type RequestCard, requestCardState } from "./request-card"
+import { SignerStatusBadge, YouChip } from "./request-status"
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
-import { SignWithCie } from "./sign-with-cie"
+import { SignTrigger, useSignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
+import { useKnownBrowser, useSigningDevice } from "./signing-device"
 import { useReloadWhile } from "./use-reload-while"
 
 type EventData = { sub?: string; name?: string; path?: string; to?: string[]; error?: string; reason?: string | null }
+
+/**
+ * The boxes the viewer just signed, kept over their spots until the new version is drawn there (`painted`) and the
+ * signing dialog has closed (`released`); then they dissolve into the stamps.
+ */
+type Ghosts = {
+  places: (Place & { at: number })[]
+  label: string
+  role: string | null
+  number?: number
+  painted: boolean
+  released: boolean
+  /** Painted before the dialog closed, so the fade waits for the dialog's exit. */
+  afterDialog: boolean
+}
 
 type Detail = Omit<EsignRequestDetail, "events"> & {
   events: (Omit<EsignRequestDetail["events"][number], "data"> & { data: EventData })[]
@@ -39,8 +64,11 @@ type Detail = Omit<EsignRequestDetail, "events"> & {
   me: string
   config: { drives: EsignDrive[]; canManage: boolean }
   /** Other documents waiting for the viewer's signature. */
-  alsoWaiting: number
+  waiting: { count: number; next: { id: string; title: string } | null }
 }
+
+/** What the action card and the Signers rows already say: the emails and the saved copy. */
+const CARD_EVENTS = new Set(["uploaded", "emailed", "notified", "notify_failed"])
 
 function eventText(event: Detail["events"][number], names: Map<string, string>) {
   const who = event.actorSub ? (names.get(event.actorSub) ?? "Someone") : null
@@ -48,28 +76,16 @@ function eventText(event: Detail["events"][number], names: Map<string, string>) 
   switch (event.type) {
     case "created":
       return `${who} created the request`
-    case "notified":
-      return `Emailed ${(data.sub && names.get(data.sub)) ?? "a signer"} that it's their turn`
-    case "notify_failed": {
-      const name = (data.sub && names.get(data.sub)) ?? "a signer"
-      return data.reason === "no_email"
-        ? `Couldn't email ${name} that it's their turn: no email address`
-        : `Couldn't email ${name} that it's their turn`
-    }
     case "signed":
       return `${data.name ?? who} signed with CIE`
     case "completed":
       return "All signatures collected"
-    case "uploaded":
-      return `Saved to ${data.path ? `${data.path}/` : ""}${data.name ?? ""}`
-    case "emailed":
-      return `Emailed to ${data.to?.join(", ") ?? "the recipients"}`
     case "delivery_failed":
       return `Delivery failed: ${data.error ?? "unknown error"}`
     case "cancelled":
       return `${who} cancelled the request`
     case "declined":
-      return `${who} declined${data.reason ? `: “${data.reason}”` : ""}`
+      return `${who} declined`
     default:
       return event.type
   }
@@ -84,31 +100,53 @@ function downloadBytes(bytes: Uint8Array, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
+/** "Verbali/Verbale.pdf", or the bare file name at the drive's root. */
+function outputPath(output: { folderPath: string }, name: string) {
+  return output.folderPath ? `${output.folderPath}/${name}` : name
+}
+
 export function EsignRequestPage({ detail }: { detail: Detail }) {
   const router = useRouter()
   const navigate = useNavigate()
   const canManage = useCan("esign:requests:manage")
+  const device = useSigningDevice()
+  const knownBrowser = useKnownBrowser()
   const contentFn = useServerFn(getEsignDocumentContent)
   const declineFn = useServerFn(declineEsignRequest)
   const cancelFn = useServerFn(cancelEsignRequest)
   const deleteFn = useServerFn(deleteEsignRequest)
   const retryFn = useServerFn(retryEsignDelivery)
-  const uploadSignedFn = useServerFn(uploadSignedEsignDocument)
-  const [uploadingSigned, setUploadingSigned] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
   const { request, events, currentDocumentId, signingNow, pdf, me } = detail
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const bodyId = useId()
+  const lockId = useId()
+  // After a decline or cancel the card's sentence says what happened, and the button that did it is gone: focus goes
+  // there. A dialog closed without acting returns focus to its trigger.
+  const acted = useRef(false)
+  const focusOutcome = () => {
+    const target = acted.current ? bodyRef.current : null
+    acted.current = false
+    return target
+  }
 
-  const [content, setContent] = useState<{ base64: string; fileName: string } | null>(null)
+  // A signature from New request landing here: the signing dialog is still open above the page, which draws the new
+  // version under the boxes it signed before the dialog closes.
+  const [landing] = useState(() => landingFor(request.id))
+  const [content, setContent] = useState<{ base64: string; fileName: string; documentId: string } | null>(
+    () => landing?.pdf ?? null
+  )
   const [loadError, setLoadError] = useState<string | null>(null)
   const bytes = usePdfBytes(content?.base64 ?? null)
 
+  // A landing brought the PDF along.
+  const brought = useRef(landing?.pdf?.documentId ?? null)
   useEffect(() => {
-    if (!currentDocumentId) return
+    if (!currentDocumentId || currentDocumentId === brought.current) return
     let cancelled = false
     setLoadError(null)
     contentFn({ data: { documentId: currentDocumentId } })
       .then((result) => {
-        if (!cancelled) setContent(result)
+        if (!cancelled) setContent({ ...result, documentId: currentDocumentId })
       })
       .catch((error) => {
         console.error(error)
@@ -121,6 +159,10 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
   const myTurn = request.myTurn && mySigner !== undefined
+  // Order numbers only where the order holds, as in New request.
+  const numbered = request.ordered && request.signers.length > 1
+  const numberOf = (signerId: string) =>
+    numbered ? request.signers.findIndex((s) => s.id === signerId) + 1 : undefined
   // The viewer's boxes as they drag them; fixed once some of them are signed. Reloads bring the saved places as new
   // arrays, so the dragged ones reset only when the saved ones change.
   const savedPlaces = mySigner?.places ?? []
@@ -132,25 +174,126 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     setMyPlaces(savedPlaces)
   }
   const myDone = mySigner?.signaturesDone ?? 0
+  // Phones review only: the box stays where it is.
+  const editable = myTurn && myDone === 0 && device !== "phone"
   /** The place waiting for a click on its new spot; placing ends by itself once the boxes are fixed. */
   const [placing, setPlacing] = useState<number | null>(null)
-  const placingAt = myTurn && myDone === 0 ? placing : null
+  const placingAt = editable ? placing : null
   const myLeft = placesLeft(
     myPlaces.map((place, at) => ({ ...place, at })),
     myDone
   )
-  const [focus, setFocus] = useState<{ page: number; y: number } | null>(null)
+
+  // From the first data only: following the box as it moves would scroll it away from the pointer. After signing it
+  // moves to the signed spot, if that isn't in view.
+  const [focus, setFocus] = useState<PdfFocus | null>(() => openPoint(request, me, new Date()))
+
+  // After placing, by a click on a page or Esc, focus returns to Move box.
+  const moveRef = useRef<HTMLButtonElement>(null)
+  const wasPlacing = useRef(false)
   useEffect(() => {
-    const first = mySigner && placesLeft(mySigner.places, mySigner.signaturesDone)[0]
-    if (myTurn && first) setFocus({ page: first.page, y: first.y + first.height / 2 })
-  }, [myTurn, mySigner])
+    if (placingAt !== null) wasPlacing.current = true
+    else if (wasPlacing.current) {
+      wasPlacing.current = false
+      moveRef.current?.focus({ preventScroll: true })
+    }
+  }, [placingAt])
+
+  const card = requestCardState(detail, {
+    me,
+    canManage,
+    device,
+    knownBrowser,
+    now: new Date(),
+    places: myTurn ? myPlaces : undefined,
+  })
+
+  const [ghosts, setGhosts] = useState<Ghosts | null>(() => {
+    const landed = landing && request.signers.find((s) => s.sub === me && s.signaturesDone > 0)
+    if (!landed) return null
+    return {
+      places: landed.places.map((place, at) => ({ ...place, at })),
+      label: landed.name,
+      role: landed.role,
+      number: numberOf(landed.id),
+      painted: false,
+      released: false,
+      afterDialog: false,
+    }
+  })
+  /** The hand-off waits for this page of a version other than `from` to be drawn. */
+  const awaitedPaint = useRef<{ from: string | null; page: number; resolve: () => void } | null>(
+    landing ? { from: null, page: ghosts?.places[0]?.page ?? focus?.page ?? 0, resolve: landing.painted } : null
+  )
+  useEffect(() => {
+    if (!landing) return
+    landing.release = released
+    landing.focus = () => bodyRef.current
+  })
+
+  /**
+   * Runs behind the signing dialog once the signature is saved: the boxes stay where they were signed, the page
+   * reloads into its outcome, and the new version is drawn under them before the dialog lets go.
+   */
+  async function handOff() {
+    const first = myLeft[0]
+    let painted = Promise.resolve()
+    if (first && mySigner) {
+      setGhosts({
+        places: myLeft,
+        label: mySigner.name,
+        role: mySigner.role,
+        number: numberOf(mySigner.id),
+        painted: false,
+        released: false,
+        afterDialog: false,
+      })
+      setFocus({ page: first.page, y: first.y + first.height / 2, height: first.height, ifHidden: true })
+      painted = new Promise((resolve) => {
+        awaitedPaint.current = { from: currentDocumentId, page: first.page, resolve }
+      })
+    }
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+    await painted
+  }
+
+  function onPainted(page: number) {
+    const awaited = awaitedPaint.current
+    if (!awaited || page !== awaited.page || content?.documentId === awaited.from) return
+    awaitedPaint.current = null
+    // Painted before the dialog let go, `released` makes the fade wait for its exit; painted after it (the hand-off
+    // stopped waiting), the fade starts at once.
+    setGhosts((current) => current && { ...current, painted: true, afterDialog: false })
+    awaited.resolve()
+  }
+
+  /** The dialog is closing: the boxes dissolve into the stamps, or go at once without motion. */
+  function released() {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    setGhosts((current) => {
+      if (!current || (reduced && current.painted)) return null
+      return { ...current, released: true, afterDialog: current.painted }
+    })
+  }
+
+  const signing = useSignWithCie({
+    items: [{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }],
+    handOff,
+    onSigned: released,
+    finalFocus: () => bodyRef.current,
+  })
 
   // Delivery (OneDrive, email) runs after the last signature: follow it until it settles.
-  const delivering = request.status === "completed" && request.delivery?.status === "pending"
-  useReloadWhile(delivering, 2000)
+  useReloadWhile(isDelivering(request), 2000)
   // Another signer holds the request: follow it until they finish, so Sign with CIE turns on by itself.
   const lockedBy = myTurn && signingNow && signingNow.sub !== me ? signingNow : null
   useReloadWhile(lockedBy !== null, 3000)
+  // The next signer's email is on its way: follow it until the card can say it was sent.
+  useReloadWhile(card.emailing, 2000)
 
   const names = useMemo(() => {
     const map = new Map(request.signers.map((s) => [s.sub, s.name]))
@@ -158,91 +301,56 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     return map
   }, [request])
 
-  // For each signer whose turn it is, other than the viewer: when they were emailed, why they couldn't be, or else
-  // since when it has been their turn.
+  // For each signer whose turn it is, other than the viewer: when they were emailed, or why they couldn't be.
   const turnNotes = useMemo(() => {
-    const emailed = new Map<string, Date>()
-    const failed = new Map<string, string | null | undefined>()
-    for (const event of events) {
-      if (!event.data.sub) continue
-      if (event.type === "notified") emailed.set(event.data.sub, new Date(event.at))
-      if (event.type === "notify_failed") failed.set(event.data.sub, event.data.reason)
-    }
-    const signedTimes = request.signers.flatMap((s) => (s.signedAt ? [new Date(s.signedAt).getTime()] : []))
-    const since = new Date(request.ordered && signedTimes.length > 0 ? Math.max(...signedTimes) : request.createdAt)
     const notes = new Map<string, { note?: string; warning?: string }>()
-    for (const sub of request.turn) {
-      if (sub === me) continue
-      const at = emailed.get(sub)
-      if (at) notes.set(sub, { note: `Emailed ${formatDateTime(at)}` })
-      else if (failed.has(sub))
+    for (const event of events) {
+      const sub = event.data.sub
+      if (!sub || sub === me || !request.turn.includes(sub)) continue
+      if (event.type === "notified") notes.set(sub, { note: `Emailed ${formatDateTime(new Date(event.at))}` })
+      if (event.type === "notify_failed")
         notes.set(sub, {
-          warning: failed.get(sub) === "no_email" ? "Couldn't email them: no email address" : "Couldn't email them",
+          warning: event.data.reason === "no_email" ? "Couldn't email them: no email address" : "Couldn't email them",
         })
-      else notes.set(sub, { note: `Their turn since ${formatDateTime(since)}` })
     }
     return notes
   }, [events, request, me])
 
-  const stopped = request.status === "cancelled" || request.status === "declined"
-  // A stopped request without an output folder or an email had nothing to deliver: it has no Delivery card.
+  const inProgress = request.status === "in_progress"
   const deliveryPlanned = request.output !== null || (request.email?.to.length ?? 0) > 0
-  const savedItem = request.delivery?.driveItem ?? null
-  // Recorded right after the upload, before the delivery itself is saved: Activity may say "Saved" first.
-  const uploaded = events.findLast((e) => e.type === "uploaded")
-  const saving = delivering && request.output !== null && !savedItem && !uploaded
-  const emailed = (request.delivery?.emailedTo.length ?? 0) > 0
-  const sending = delivering && (request.email?.to.length ?? 0) > 0 && !emailed
-
-  const canCancel = request.status === "in_progress" && canManage
+  const drive = detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"
   // A request in progress is cancelled first; a pending delivery still needs the request.
-  const canDelete = request.status !== "in_progress" && request.delivery?.status !== "pending" && canManage
+  const canDelete = !inProgress && request.delivery?.status !== "pending" && canManage
   const pages = pdf?.pages ?? []
+  const soleSigner = request.signers.length === 1 && request.signers[0].sub === me
+  const details = useScrolls()
 
   const [declineOpen, setDeclineOpen] = useState(false)
+  // Cancel and Delete live outside the card: confirming changes the card's red button, and the dialog has to keep its
+  // words while it closes.
+  const [cancelOpen, setCancelOpen] = useState(false)
+  /** Who was signing when Cancel request opened. */
+  const [cancelHolder, setCancelHolder] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [retrying, setRetrying] = useState(false)
 
   async function decline() {
     await declineFn({ data: { id: request.id, reason: reason.trim() || null } })
+    acted.current = true
     try {
       await router.invalidate({ sync: true })
     } catch (error) {
       console.error(error)
     }
     setDeclineOpen(false)
-    appToast.success("Request declined.")
-  }
-
-  async function uploadSigned(file: File) {
-    setUploadingSigned(true)
-    setUploadError(null)
-    try {
-      const form = new FormData()
-      form.set("requestId", request.id)
-      form.set("file", file)
-      await uploadSignedFn({ data: form })
-    } catch (error) {
-      console.error(error)
-      setUploadError(error instanceof Error ? error.message : "Couldn't upload the signed PDF.")
-      setUploadingSigned(false)
-      return
-    }
-    try {
-      await router.invalidate({ sync: true })
-    } catch (error) {
-      console.error(error)
-    }
-    setUploadingSigned(false)
-    appToast.success("Document signed.")
   }
 
   async function retry() {
     setRetrying(true)
-    let delivery: Awaited<ReturnType<typeof retryFn>> | undefined
     let failure: string | null = null
     try {
-      delivery = await retryFn({ data: { id: request.id } })
+      await retryFn({ data: { id: request.id } })
     } catch (error) {
       console.error(error)
       failure = error instanceof Error ? error.message : "Couldn't deliver the document."
@@ -253,415 +361,313 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
       console.error(error)
     }
     setRetrying(false)
+    // A retry that ran and failed again shows in the card's alert instead.
     if (failure !== null) appToast.error(failure)
-    else if (delivery?.status === "failed")
-      appToast.error(`Couldn't deliver the document. ${delivery.error ?? ""}`.trim())
-    else appToast.success("Document delivered.")
   }
 
-  const actions = (
-    <>
+  const dangerClass = cn(buttonMotion, buttonTones.dangerOutline, "self-start")
+  const deleteButton = (
+    <Button variant="outline" size="sm" className={dangerClass} onClick={() => setDeleteOpen(true)}>
+      <Trash2 aria-hidden /> Delete request
+    </Button>
+  )
+  const danger =
+    card.danger === "decline" ? (
+      <Button variant="outline" size="sm" className={dangerClass} onClick={() => setDeclineOpen(true)}>
+        <X aria-hidden /> Decline
+      </Button>
+    ) : card.danger === "cancel" ? (
       <Button
         variant="outline"
-        className="h-10"
-        disabled={!bytes || !content}
-        onClick={() => bytes && content && downloadBytes(bytes, content.fileName)}
+        size="sm"
+        className={dangerClass}
+        onClick={() => {
+          setCancelHolder(signingNow && signingNow.sub !== me ? signingNow.name : null)
+          setCancelOpen(true)
+        }}
       >
-        <Download aria-hidden /> Download PDF
+        <Ban aria-hidden /> Cancel request
       </Button>
-      {myTurn && (
-        <SignWithCie
-          items={[{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }]}
-          disabled={lockedBy !== null}
-        />
-      )}
-    </>
-  )
+    ) : card.danger === "delete" ? (
+      deleteButton
+    ) : null
 
   return (
     <>
       <PageBar
         width="record"
         back={{ label: "requests", link: { to: "/dashboard/esign/requests" } }}
-        context={request.title}
-        right={actions}
+        right={
+          <Button
+            variant="outline"
+            className="h-10"
+            disabled={!bytes || !content}
+            onClick={() => bytes && content && downloadBytes(bytes, content.fileName)}
+          >
+            <Download aria-hidden /> Download PDF
+          </Button>
+        }
       />
       <PageContent width="record">
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0">
-            {loadError ? (
-              <InlineAlert>{loadError}</InlineAlert>
-            ) : (
-              <PdfViewer
-                data={bytes}
-                pages={pages}
-                focus={focus}
-                cursor={placingAt !== null ? "crosshair" : "default"}
-                onPageClick={(page, x, y) => {
-                  if (placingAt === null) return
-                  setMyPlaces((current) =>
-                    current.map((p, at) => (at === placingAt ? placeAt(p, pages, page, x, y) : p))
+        {/* Two columns once the content is 896px wide, leaving the viewer about 520px beside the 360px column: the
+            viewer sets the height, and the rest scrolls by itself under the card, which stays put. */}
+        <div className="@container">
+          <div className="grid gap-4 @min-[896px]:grid-cols-[minmax(0,1fr)_360px] @min-[896px]:grid-rows-[auto_minmax(160px,1fr)]">
+            <div className="min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-1">
+              <EsignActionCard
+                title={request.title}
+                badge={<StatusBadge tone={card.badge.tone}>{card.badge.label}</StatusBadge>}
+                meta={card.meta}
+                body={card.body}
+                bodyId={bodyId}
+                bodyRef={bodyRef}
+                note={card.note}
+                muted={card.muted && <ReadyLine muted={card.muted} />}
+                lock={card.lock}
+                lockId={lockId}
+                primary={
+                  card.primary && (
+                    <CardPrimary
+                      card={card}
+                      requestId={request.id}
+                      signing={signing}
+                      describedBy={card.lock ? lockId : undefined}
+                    />
                   )
-                  setPlacing(null)
-                }}
-                status={placingAt !== null ? placingStatus(myPlaces, placingAt) : null}
-                statusAction={placingAt !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
-                overlay={(page) =>
-                  request.signers.flatMap((signer, index) => {
-                    if (request.status !== "in_progress" || signer.status !== "pending") return []
-                    const mine = myTurn && signer.id === mySigner?.id
-                    const left = mine
-                      ? myLeft
-                      : placesLeft(
-                          signer.places.map((place, at) => ({ ...place, at })),
-                          signer.signaturesDone
-                        )
-                    return left
-                      .filter((place) => place.page === page)
-                      .map((place) => (
-                        <SignatureBox
-                          key={`${signer.id}-${place.at}`}
-                          placement={place}
-                          label={signer.name}
-                          role={signer.role}
-                          number={request.signers.length > 1 ? index + 1 : undefined}
-                          kind={place.kind}
-                          state={mine ? "active" : "pending"}
-                          editable={mine && myDone === 0}
-                          onChange={(moved) =>
-                            setMyPlaces((current) =>
-                              current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
-                            )
+                }
+                primarySigns={card.primary?.kind !== "sendAgain"}
+                footerStart={
+                  card.signTogether !== null && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(buttonMotion, "-ml-2.5")}
+                      nativeButton={false}
+                      render={
+                        <Link
+                          to="/dashboard/esign/sign"
+                          search={{ first: request.id }}
+                          // Boxes moved here would otherwise snap back in a document the batch counts as checked.
+                          state={
+                            editable && savedKey !== JSON.stringify(myPlaces)
+                              ? { esignMoved: { [request.id]: myPlaces } }
+                              : {}
                           }
                         />
-                      ))
-                  })
+                      }
+                    >
+                      <Files aria-hidden /> Sign {card.signTogether} together
+                    </Button>
+                  )
                 }
-              />
-            )}
-          </div>
+                footerEnd={danger}
+                device={device}
+              >
+                <CardOutcome card={card} retrying={retrying} onRetry={retry} />
+              </EsignActionCard>
+            </div>
 
-          <div className="flex min-w-0 flex-col gap-4">
-            <SectionCard>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-3">
-                  <h1 className="text-[22px] leading-7 font-semibold tracking-[-0.01em] text-balance">
-                    {request.title}
-                  </h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[13px] text-(--pn-fg-muted)">
-                  <RequestStatusBadge request={request} />
-                  <span className="tabular-nums">{signedProgress(request)}</span>
-                </div>
-                <p className="text-[13px] text-(--pn-fg-muted)">
-                  Requested by {request.createdByName} on {formatDateTime(new Date(request.createdAt))}
-                </p>
-              </div>
-            </SectionCard>
-
-            {myTurn && (
-              <SectionCard title="Your signature">
-                <p className="text-[14px] text-pretty text-(--pn-fg-muted)">
-                  {myDone > 0
-                    ? `${myDone} of ${kindsLabel(myPlaces.filter((p) => p.kind === "signature"))} done. Choose Sign with CIE at the top to finish.`
-                    : myPlaces.length > 1
-                      ? `You sign in ${myPlaces.length} places: ${kindsLabel(myPlaces)} on ${pagesLabel(myPlaces)}. Drag the blue boxes to adjust them, then choose Sign with CIE at the top: one PIN signs them all.`
-                      : `Your signature goes on ${pagesLabel(myPlaces)}. Drag the blue box to adjust it, then choose Sign with CIE at the top.`}{" "}
-                  You need the card, its PIN and the NFC reader.
-                  {myDone === 0 && (
+            <div className="min-w-0 @min-[896px]:col-start-1 @min-[896px]:row-span-2 @min-[896px]:row-start-1">
+              {loadError ? (
+                <InlineAlert>{loadError}</InlineAlert>
+              ) : (
+                <PdfViewer
+                  data={bytes}
+                  pages={pages}
+                  focus={focus}
+                  onPainted={onPainted}
+                  cursor={placingAt !== null ? "crosshair" : "default"}
+                  onPageClick={(page, x, y) => {
+                    if (placingAt === null) return
+                    setMyPlaces((current) =>
+                      current.map((p, at) => (at === placingAt ? placeAt(p, pages, page, x, y) : p))
+                    )
+                    setPlacing(null)
+                  }}
+                  status={placingAt !== null ? placingStatus(myPlaces, placingAt) : null}
+                  statusAction={placingAt !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
+                  toolbarStart={
+                    editable &&
+                    myPlaces.length > 0 && (
+                      <div className={device === "unknown" ? computerOnly : undefined}>
+                        <MoveBoxButton ref={moveRef} places={myPlaces} onPlacing={setPlacing} />
+                      </div>
+                    )
+                  }
+                  overlay={(page) => (
                     <>
-                      {" "}
-                      First time signing on this computer?{" "}
-                      {/* A new tab, because the boxes moved here aren't saved yet. */}
-                      <Link
-                        to="/dashboard/esign/setup"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-(--pn-accent) hover:underline"
-                      >
-                        Set it up first
-                      </Link>
-                      .
+                      {request.signers.flatMap((signer) => {
+                        if (!inProgress || signer.status !== "pending") return []
+                        const mine = myTurn && signer.id === mySigner?.id
+                        const left = mine
+                          ? myLeft
+                          : placesLeft(
+                              signer.places.map((place, at) => ({ ...place, at })),
+                              signer.signaturesDone
+                            )
+                        return left
+                          .filter((place) => place.page === page)
+                          .map((place) => (
+                            <SignatureBox
+                              key={`${signer.id}-${place.at}`}
+                              placement={place}
+                              label={signer.name}
+                              role={signer.role}
+                              number={numberOf(signer.id)}
+                              kind={place.kind}
+                              state={mine ? "active" : "pending"}
+                              editable={mine && editable}
+                              onChange={(moved) =>
+                                setMyPlaces((current) =>
+                                  current.map((p, at) => (at === place.at ? { ...moved, kind: p.kind } : p))
+                                )
+                              }
+                            />
+                          ))
+                      })}
+                      {ghosts?.places
+                        .filter((place) => place.page === page)
+                        .map((place) => (
+                          <SignatureBox
+                            key={`signed-${place.at}`}
+                            placement={place}
+                            label={ghosts.label}
+                            role={ghosts.role}
+                            number={ghosts.number}
+                            kind={place.kind}
+                            state="active"
+                            leaving={ghosts.released && ghosts.painted ? "fading" : "waiting"}
+                            afterDialog={ghosts.afterDialog}
+                            onLeft={() => setGhosts(null)}
+                          />
+                        ))}
                     </>
                   )}
-                </p>
-                {detail.alsoWaiting > 0 && (
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2 text-[13px]">
-                    <span className="text-(--pn-fg-muted)">
-                      {detail.alsoWaiting === 1
-                        ? "1 more document is waiting for you."
-                        : `${detail.alsoWaiting} more documents are waiting for you.`}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      nativeButton={false}
-                      render={<Link to="/dashboard/esign/sign" />}
-                    >
-                      <Files aria-hidden /> Sign them together
-                    </Button>
-                  </div>
-                )}
-                {lockedBy && (
-                  <InlineAlert tone="warning" className="mt-3">
-                    {lockedBy.name} is signing right now. Sign with CIE turns on as soon as they finish.
-                  </InlineAlert>
-                )}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {myDone === 0 && <MovePlaceButtons places={myPlaces} placing={placingAt} onPlacing={setPlacing} />}
-                  <Button variant="outline" className="h-10 text-(--pn-danger-fg)" onClick={() => setDeclineOpen(true)}>
-                    <X aria-hidden /> Decline
-                  </Button>
-                </div>
-                <details className="mt-4 text-[13px] text-(--pn-fg-muted)">
-                  <summary className="cursor-pointer text-(--pn-accent) select-none">
-                    Can't use PoliNetwork eSign?
-                  </summary>
-                  <p className="mt-2 text-pretty">
-                    Download the PDF, sign it with the official Software CIE or CieSign app, then upload the signed
-                    file. It must be this exact version with your signature added.
-                  </p>
-                  {myPlaces.length > 1 && (
-                    <InlineAlert tone="warning" className="mt-2">
-                      The official app adds a single signature, and uploading it completes your part: your other{" "}
-                      {myPlaces.length - 1 === 1 ? "place stays" : "places stay"} empty. Use PoliNetwork eSign to sign
-                      in every place.
-                    </InlineAlert>
-                  )}
-                  <label className="mt-2 inline-flex">
-                    <span className="sr-only">Signed PDF</span>
-                    <input
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      disabled={uploadingSigned}
-                      className="text-[13px] file:mr-3 file:h-9 file:rounded-(--pn-r-3) file:border file:border-(--pn-line-strong) file:bg-(--pn-surface) file:px-3 file:text-(--pn-fg)"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        event.target.value = ""
-                        if (file) void uploadSigned(file)
-                      }}
-                    />
-                  </label>
-                  {uploadError && <InlineAlert className="mt-2">{uploadError}</InlineAlert>}
-                </details>
-              </SectionCard>
-            )}
-
-            <SectionCard title="Signers" count={request.signers.length}>
-              <ol className="flex flex-col gap-3">
-                {request.signers.map((signer, index) => {
-                  const turnNote = turnNotes.get(signer.sub)
-                  const meta = [
-                    signer.role,
-                    signer.places.length > 1 && kindsLabel(signer.places),
-                    signer.signedAt && formatDateTime(new Date(signer.signedAt)),
-                    turnNote?.note,
-                  ].filter(Boolean)
-                  return (
-                    <li key={signer.id} className="flex items-start gap-3">
-                      <span
-                        className={cn(
-                          "grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums",
-                          signer.status === "signed"
-                            ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
-                            : request.turn.includes(signer.sub)
-                              ? "bg-(--pn-accent-soft) text-(--pn-accent)"
-                              : "bg-(--pn-muted) text-(--pn-fg-muted)"
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                          <span className="flex min-w-0 items-center gap-1.5">
-                            <span className="truncate text-[14px] font-medium">{signer.name}</span>
-                            {signer.sub === me && <YouChip />}
-                          </span>
-                          <SignerStatusBadge
-                            signer={signer}
-                            turn={request.turn.includes(signer.sub)}
-                            requestStatus={request.status}
-                          />
-                        </div>
-                        {meta.length > 0 && <div className="text-[13px] text-(--pn-fg-muted)">{meta.join(" · ")}</div>}
-                        {turnNote?.warning && (
-                          <div className="text-[12px] text-(--pn-warning-fg)">{turnNote.warning}</div>
-                        )}
-                        {signer.status === "signed" && signer.certificateIssuer && (
-                          <div
-                            className="truncate text-[12px] text-(--pn-fg-muted)"
-                            title={signer.certificateSubject ?? undefined}
-                          >
-                            CIE · {signer.fiscalCode ?? signer.certificateIssuer}
-                          </div>
-                        )}
-                        {signer.declineReason && (
-                          <div className="text-[13px] text-pretty">“{signer.declineReason}”</div>
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-              {!request.ordered && request.signers.length > 1 && (
-                <p className="mt-3 text-[12px] text-(--pn-fg-muted)">Signers can sign in any order.</p>
+                />
               )}
-            </SectionCard>
+            </div>
 
-            {(!stopped || deliveryPlanned) && (
-              <SectionCard title="Delivery">
-                {stopped ? (
-                  <p className="text-[14px] text-(--pn-fg-muted)">Not delivered: the request was {request.status}.</p>
-                ) : (
-                  <ul className="flex flex-col gap-3 text-[14px]">
-                    <li className="flex items-start gap-2.5">
-                      {saving ? (
-                        <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
-                      ) : (
-                        <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                      )}
-                      <span className="min-w-0">
-                        {request.output ? (
-                          savedItem?.webUrl ? (
-                            <a
-                              className="break-words text-(--pn-accent) hover:underline"
-                              href={savedItem.webUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {request.output.folderPath ? `${request.output.folderPath}/` : ""}
-                              {savedItem.name}
-                            </a>
-                          ) : (
-                            <span className="break-words">
-                              {savedItem || uploaded ? "Saved to " : saving ? "Saving to " : "Will be saved to "}
-                              {detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"}:{" "}
-                              {request.output.folderPath || "/"}
-                              {request.output.folderPath ? "/" : ""}
-                              {savedItem?.name ?? uploaded?.data.name ?? request.output.fileName}
-                            </span>
+            <div className="relative min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-2 @min-[896px]:min-h-40">
+              {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area of its own, which Safari doesn't focus */}
+              <div
+                ref={details.ref}
+                // A tab stop only while it scrolls: in one column, or with little to show, it would do nothing.
+                tabIndex={details.scrolls ? 0 : undefined}
+                role="region"
+                aria-label="Request details"
+                className="@min-[896px]:absolute @min-[896px]:inset-0 @min-[896px]:overflow-y-auto"
+              >
+                <div className="flex flex-col gap-4">
+                  {!soleSigner && (
+                    <SectionCard title="Signers" count={request.signers.length}>
+                      <SignerList numbered={numbered}>
+                        {request.signers.map((signer, index) => {
+                          const turn = request.turn.includes(signer.sub)
+                          const turnNote = signer.sub === card.notedSub ? undefined : turnNotes.get(signer.sub)
+                          const meta = [
+                            signer.role,
+                            signer.places.length > 1 && kindsLabel(signer.places),
+                            signer.signedAt && formatDateTime(new Date(signer.signedAt)),
+                            turnNote?.note,
+                          ].filter(Boolean)
+                          return (
+                            <li key={signer.id} className="flex items-start gap-3">
+                              {/* The order number where the order holds, else the signer's initials. */}
+                              <span
+                                aria-hidden={numbered ? undefined : true}
+                                className={cn(
+                                  "grid size-7 shrink-0 place-items-center rounded-full font-semibold tabular-nums",
+                                  numbered ? "text-[12px]" : "text-[11px] tracking-[-0.01em]",
+                                  signer.status === "signed"
+                                    ? "bg-(--pn-success-bg) text-(--pn-success-fg)"
+                                    : turn
+                                      ? "bg-(--pn-accent-soft) text-(--pn-accent)"
+                                      : "bg-(--pn-muted) text-(--pn-fg-muted)"
+                                )}
+                              >
+                                {numbered ? index + 1 : initialsOf(signer.name)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <span className="truncate text-[14px] font-medium">{signer.name}</span>
+                                    {signer.sub === me && <YouChip />}
+                                  </span>
+                                  <SignerStatusBadge
+                                    signer={signer}
+                                    turn={turn}
+                                    mine={signer.sub === me}
+                                    requestStatus={request.status}
+                                  />
+                                </div>
+                                {meta.length > 0 && (
+                                  <div className="text-[13px] text-(--pn-fg-muted) tabular-nums">
+                                    {meta.join(" · ")}
+                                  </div>
+                                )}
+                                {turnNote?.warning && (
+                                  <div className="text-[12px] text-(--pn-warning-fg)">{turnNote.warning}</div>
+                                )}
+                                {signer.status === "signed" && signer.certificateIssuer && (
+                                  <div
+                                    className="truncate text-[12px] text-(--pn-fg-muted)"
+                                    title={signer.certificateSubject ?? undefined}
+                                  >
+                                    CIE · {signer.fiscalCode ?? signer.certificateIssuer}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
                           )
-                        ) : (
-                          <span className="text-(--pn-fg-muted)">Kept in the dashboard only</span>
+                        })}
+                      </SignerList>
+                    </SectionCard>
+                  )}
+
+                  {inProgress && deliveryPlanned && (
+                    <SectionCard title="Delivery">
+                      <ul className="flex flex-col gap-3 text-[14px]">
+                        {request.output && (
+                          <li className="flex items-start gap-2.5">
+                            <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                            <span className="min-w-0 break-words">
+                              Will be saved to {drive}: {outputPath(request.output, request.output.fileName)}
+                            </span>
+                          </li>
                         )}
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      {sending ? (
-                        <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
-                      ) : (
-                        <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
-                      )}
-                      <span className="min-w-0 break-words">
                         {request.email?.to.length ? (
-                          <>
-                            {emailed ? "Emailed to " : sending ? "Sending to " : "Will be emailed to "}
-                            {request.email.to.join(", ")}
-                          </>
-                        ) : (
-                          <span className="text-(--pn-fg-muted)">No email</span>
-                        )}
-                      </span>
-                    </li>
-                  </ul>
-                )}
-                {request.delivery?.status === "failed" && (
-                  <InlineAlert
-                    className="mt-3"
-                    action={
-                      canManage ? (
-                        <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={retry}>
-                          Retry
-                        </LoadingButton>
-                      ) : undefined
-                    }
-                  >
-                    {request.delivery.error ?? "The document couldn't be delivered."}
-                  </InlineAlert>
-                )}
-              </SectionCard>
-            )}
+                          <li className="flex items-start gap-2.5">
+                            <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+                            <span className="min-w-0 break-words">
+                              Will be emailed to {request.email.to.join(", ")}
+                            </span>
+                          </li>
+                        ) : null}
+                      </ul>
+                    </SectionCard>
+                  )}
 
-            <SectionCard title="Activity">
-              <ol className="flex flex-col gap-2.5">
-                {[...events].reverse().map((event) => (
-                  <li key={event.id} className="flex flex-col">
-                    <span className="text-[14px] text-pretty">{eventText(event, names)}</span>
-                    <span className="text-[12px] text-(--pn-fg-muted) tabular-nums">
-                      {formatDateTime(new Date(event.at))}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </SectionCard>
+                  <SectionCard title="Activity">
+                    <ol className="flex flex-col gap-2.5">
+                      {events
+                        .filter((event) => !CARD_EVENTS.has(event.type))
+                        .reverse()
+                        .map((event) => (
+                          <li key={event.id} className="flex flex-col">
+                            <span className="text-[14px] text-pretty">{eventText(event, names)}</span>
+                            <span className="text-[12px] text-(--pn-fg-muted) tabular-nums">
+                              {formatDateTime(new Date(event.at))}
+                            </span>
+                          </li>
+                        ))}
+                    </ol>
+                  </SectionCard>
 
-            {canCancel && (
-              <ConfirmDialog
-                title="Cancel request?"
-                description={
-                  <>
-                    Nobody will be able to sign it anymore. Signatures already added stay in the document.
-                    {signingNow &&
-                      signingNow.sub !== me &&
-                      ` ${signingNow.name} is signing it right now and won't be able to finish.`}
-                  </>
-                }
-                confirmLabel="Cancel request"
-                cancelLabel="Keep request"
-                tone="danger"
-                icon={Ban}
-                trigger={
-                  <Button variant="outline" className="h-10 self-start text-(--pn-danger-fg)">
-                    <Ban aria-hidden /> Cancel request
-                  </Button>
-                }
-                onConfirm={async () => {
-                  await cancelFn({ data: { id: request.id } })
-                  try {
-                    await router.invalidate({ sync: true })
-                  } catch (error) {
-                    console.error(error)
-                  }
-                  appToast.success("Request cancelled.")
-                }}
-              />
-            )}
-
-            {canDelete && (
-              <ConfirmDialog
-                title="Delete request?"
-                description={
-                  request.delivery?.driveItem
-                    ? "Its signers, activity and every version of the document are deleted. The copy saved to OneDrive stays."
-                    : "Its signers, activity and every version of the document are deleted. Download the PDF first if you need it."
-                }
-                confirmLabel="Delete request"
-                tone="danger"
-                icon={Trash2}
-                trigger={
-                  <Button variant="outline" className="h-10 self-start text-(--pn-danger-fg)">
-                    <Trash2 aria-hidden /> Delete request
-                  </Button>
-                }
-                onConfirm={async () => {
-                  try {
-                    await deleteFn({ data: { id: request.id } })
-                  } catch (error) {
-                    console.error(error)
-                    // Already gone: the outcome the user asked for.
-                    if (!errorHasCode(error, "NOT_FOUND")) throw error
-                  }
-                  try {
-                    // Leave first: reloading this page would look the deleted request up again.
-                    await navigate({ to: "/dashboard/esign/requests" })
-                    await router.invalidate({ sync: true })
-                  } catch (error) {
-                    console.error(error)
-                  }
-                  appToast.success("Request deleted.")
-                }}
-              />
-            )}
+                  {/* Declined and cancelled requests have it in the card; there a red button doesn't read as an alarm. */}
+                  {request.status === "completed" && canDelete && deleteButton}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </PageContent>
@@ -670,13 +676,20 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
         open={declineOpen}
         onOpenChange={setDeclineOpen}
         title="Decline request?"
-        description="The request stops and its creator sees your reason."
+        description={
+          request.createdBySub === me
+            ? "The request stops."
+            : `The request stops. ${request.createdByName} gets an email with your reason.`
+        }
         noun="reason"
         dirty={reason.trim() !== ""}
-        submitLabel="Decline"
+        tone="danger"
+        icon={X}
+        submitLabel="Decline request"
         onSubmit={decline}
+        finalFocus={focusOutcome}
       >
-        <FormField label="Reason" htmlFor="esign-decline-reason" optional>
+        <FormField label="Reason" htmlFor="esign-decline-reason" optional counter={{ length: reason.length, max: 500 }}>
           <Textarea
             id="esign-decline-reason"
             className={fieldControl}
@@ -686,6 +699,189 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
           />
         </FormField>
       </FormDialog>
+
+      {signing.dialog}
+
+      {canManage && (
+        <ConfirmDialog
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          title="Cancel request?"
+          description={
+            <>
+              Nobody will be able to sign it anymore. Signatures already added stay in the document.
+              {cancelHolder && ` ${cancelHolder} is signing it right now and won't be able to finish.`}
+            </>
+          }
+          confirmLabel="Cancel request"
+          cancelLabel="Keep request"
+          tone="danger"
+          icon={Ban}
+          finalFocus={focusOutcome}
+          onConfirm={async () => {
+            await cancelFn({ data: { id: request.id } })
+            acted.current = true
+            try {
+              await router.invalidate({ sync: true })
+            } catch (error) {
+              console.error(error)
+            }
+          }}
+        />
+      )}
+
+      {canManage && (
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Delete request?"
+          description={
+            request.delivery?.driveItem
+              ? "Its signers, activity and every version of the document are deleted. The copy saved to OneDrive stays."
+              : "Its signers, activity and every version of the document are deleted. Download the PDF first if you need it."
+          }
+          confirmLabel="Delete request"
+          tone="danger"
+          icon={Trash2}
+          onConfirm={async () => {
+            try {
+              await deleteFn({ data: { id: request.id } })
+            } catch (error) {
+              console.error(error)
+              // Already gone: the outcome the user asked for.
+              if (!errorHasCode(error, "NOT_FOUND")) throw error
+            }
+            try {
+              // Leave first: reloading this page would look the deleted request up again.
+              await navigate({ to: "/dashboard/esign/requests" })
+              await router.invalidate({ sync: true })
+            } catch (error) {
+              console.error(error)
+            }
+            appToast.success("Request deleted.")
+          }}
+        />
+      )}
     </>
   )
+}
+
+/** The Signers rows: an ordered list where the order holds. */
+function SignerList({ numbered, children }: { numbered: boolean; children: ReactNode }) {
+  const className = "flex flex-col gap-3"
+  return numbered ? <ol className={className}>{children}</ol> : <ul className={className}>{children}</ul>
+}
+
+/** The muted line under "Check the blue box": what signing needs, or the setup guide for a browser new to it. */
+function ReadyLine({ muted }: { muted: NonNullable<RequestCard["muted"]> }) {
+  if (muted === "ready") return "You need the card, its PIN and the reader."
+  return (
+    <>
+      First time on this computer? {/* A new tab, because the boxes moved here aren't saved yet. */}
+      <Link to="/dashboard/esign/setup" target="_blank" rel="noreferrer" className={inlineLink}>
+        Set it up first
+      </Link>
+      .
+    </>
+  )
+}
+
+function CardPrimary({
+  card,
+  requestId,
+  signing,
+  describedBy,
+}: {
+  card: RequestCard
+  requestId: string
+  signing: ReturnType<typeof useSignWithCie>
+  describedBy: string | undefined
+}) {
+  const primary = card.primary
+  if (!primary) return null
+  if (primary.kind === "sign")
+    return <SignTrigger signing={signing} disabled={card.lock !== null} describedBy={describedBy} className="w-full" />
+  if (primary.kind === "next")
+    return (
+      <Hint label={`Next to sign: ${primary.title}`} overflowOnly>
+        <Button
+          className={cn(buttonMotion, "h-10 w-full")}
+          nativeButton={false}
+          render={<Link to="/dashboard/esign/requests/$requestId" params={{ requestId: primary.id }} />}
+        >
+          <span className="min-w-0 truncate">Next to sign: {primary.title}</span>
+          <ArrowRight aria-hidden />
+        </Button>
+      </Hint>
+    )
+  return (
+    <Button
+      className={cn(buttonMotion, "h-10 w-full")}
+      nativeButton={false}
+      render={<Link to="/dashboard/esign/new" search={{ from: requestId }} />}
+    >
+      <Send aria-hidden /> Send again
+    </Button>
+  )
+}
+
+/** A completed request's delivery, line by line, or why it failed. */
+function CardOutcome({ card, retrying, onRetry }: { card: RequestCard; retrying: boolean; onRetry: () => void }) {
+  if (card.failure)
+    return (
+      <InlineAlert
+        className="mt-3"
+        action={
+          card.retry ? (
+            <LoadingButton variant="outline" size="sm" icon={RotateCw} pending={retrying} onClick={onRetry}>
+              Retry
+            </LoadingButton>
+          ) : undefined
+        }
+      >
+        {card.failure}
+      </InlineAlert>
+    )
+  if (card.delivery.length === 0) return null
+  return (
+    <ul className="mt-2 flex flex-col gap-2">
+      {card.delivery.map((line) => (
+        <li key={line.kind} className="flex items-start gap-2">
+          {line.pending ? (
+            <Spinner className="mt-0.5 shrink-0 text-(--pn-fg-muted)" />
+          ) : line.kind === "folder" ? (
+            <FolderUp aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+          ) : (
+            <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-(--pn-fg-muted)" />
+          )}
+          <span className="min-w-0 break-words">
+            {line.text}
+            {line.kind === "folder" &&
+              (line.href ? (
+                <a className={inlineLink} href={line.href} target="_blank" rel="noreferrer">
+                  {line.file}
+                </a>
+              ) : (
+                line.file
+              ))}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Whether the element given to `ref` scrolls: its content is taller than it. */
+function useScrolls() {
+  const [element, setElement] = useState<HTMLElement | null>(null)
+  const [scrolls, setScrolls] = useState(false)
+  useLayoutEffect(() => {
+    if (!element) return
+    // The element resizes with the layout, its content with every reload.
+    const observer = new ResizeObserver(() => setScrolls(element.scrollHeight > element.clientHeight + 1))
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    return () => observer.disconnect()
+  }, [element])
+  return { ref: setElement, scrolls }
 }

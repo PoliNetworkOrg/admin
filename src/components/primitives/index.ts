@@ -24,7 +24,9 @@ export { GroupLabelBadges } from "./group-label-badges"
 export { Hint } from "./hint"
 export { IconButton } from "./icon-button"
 export { InlineAlert, type AlertTone } from "./inline-alert"
+export { inlineLink } from "./inline-link"
 export { InlineEditCard, InlineEditInput, InlineEditRow, InlineEditTextarea } from "./inline-edit"
+export { Kbd } from "./kbd"
 export { CopyableText } from "./copyable-text"
 export { InviteLinkActions } from "./invite-link-actions"
 export { KeyValueList, type KeyValueItem } from "./key-value-list"
@@ -52,7 +54,15 @@ export { SectionCard } from "./section-card"
 export { SectionEmpty } from "./section-empty"
 export { SectionHeading } from "./section-heading"
 export { SegmentedControl, type SegmentedItem } from "./segmented-control"
-export { CardsSkeleton, RecordSkeleton, SettingsListSkeleton, SkeletonRows, TableSkeleton } from "./skeletons"
+export {
+  BarSkeleton,
+  CardsSkeleton,
+  RecordSkeleton,
+  SettingsListSkeleton,
+  SkeletonRows,
+  TableSkeleton,
+  WorkspaceSkeleton,
+} from "./skeletons"
 export { Spinner } from "./spinner"
 export { StatusBadge, type StatusTone } from "./status-badge"
 export { PAGE_SIZES, TablePaginationBar, type TablePagination } from "./table-pagination"
