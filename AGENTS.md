@@ -25,7 +25,11 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   backend's `people.*` responses with `people.contract.ts` and, in agent mode, uses the in-memory fake
   (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). `/dashboard` admits `people:self` without `admin:access`;
   Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and only open their
-  sections. Handoff notes, decisions and the plan: `docs/people/`.
+  sections. Fees and receipts (`docs/people/fees.md`): `people:fees:write` reviews, marks paid and reminds;
+  `people:receipts:sign` downloads and uploads signed receipts for the officer on the caller's record.
+  Preparing CIE requests additionally requires `esign:sign` and reuses the existing eSign UI and agent; the backend
+  owns the durable receipt/request association and completion (the People backend contract is still pending). Handoff notes,
+  decisions and the plan: `docs/people/`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

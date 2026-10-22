@@ -5,6 +5,7 @@ import { esignReadMiddleware, esignSignWriteMiddleware } from "@/server/auth.mid
 import type { BackendClient } from "@/server/backend.server"
 
 import { MAX_BATCH } from "./agent"
+import { withReceiptSource } from "./receipt-source"
 
 /** The audit payloads the backend writes; anything else is dropped. */
 const eventData = z
@@ -39,7 +40,7 @@ export const getEsignHome = createServerFn()
       context.backend.esign.config.query(),
       context.backend.esign.requests.list.query({ scope: data.scope }),
     ])
-    return { config, requests }
+    return { config, requests: requests.map(withReceiptSource) }
   })
 
 /** How many requests wait for the caller's signature, for the navigation badge. */
@@ -57,7 +58,7 @@ async function requestDetail(backend: BackendClient, id: string) {
     const parsed = eventData.safeParse(event.data ?? {})
     return { ...event, data: parsed.success ? parsed.data : {} }
   })
-  return { ...detail, events, pdf: document?.pdf ?? null }
+  return { ...detail, request: withReceiptSource(detail.request), events, pdf: document?.pdf ?? null }
 }
 
 export const getEsignRequest = createServerFn()
@@ -84,7 +85,9 @@ export const getEsignBatch = createServerFn()
   .validator(z.object({ first: z.uuid().optional() }))
   .handler(async ({ data, context }) => {
     const inbox = await context.backend.esign.requests.list.query({ scope: "inbox" })
-    const mine = inbox.filter((r) => r.myTurn)
+    const mine = inbox
+      .map(withReceiptSource)
+      .filter((r) => r.myTurn && (!r.peopleReceipt || context.permissions.includes("people:receipts:sign")))
     const waiting = [...mine.filter((r) => r.id === data.first), ...mine.filter((r) => r.id !== data.first)]
     const items = await Promise.all(waiting.slice(0, MAX_BATCH).map((r) => requestDetail(context.backend, r.id)))
     return { items, more: Math.max(waiting.length - MAX_BATCH, 0), me: context.user.sub }

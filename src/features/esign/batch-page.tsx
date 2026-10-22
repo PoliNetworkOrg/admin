@@ -6,7 +6,7 @@ import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 
 import { buttonMotion, EmptyState, IconButton, InlineAlert, inlineLink } from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import type { EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import type { EsignPdfInfo, EsignRequest, EsignRequestDetail } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
 import { computerOnly, EsignActionCard } from "./action-card"
@@ -21,7 +21,10 @@ import { useKnownBrowser, useSigningDevice } from "./signing-device"
 import { useHostedSignWithCie } from "./signing-host"
 import { useReloadWhile } from "./use-reload-while"
 
-type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
+type Item = Pick<EsignRequestDetail, "currentDocumentId" | "signingNow"> & {
+  request: EsignRequest
+  pdf: EsignPdfInfo | null
+}
 
 const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" } } as const
 
@@ -116,7 +119,8 @@ export function EsignBatchPage({
       return {
         requestId: item.request.id,
         title: item.request.title,
-        places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
+        // A receipt's box is fixed: its placement is part of the receipt.
+        places: mine?.signaturesDone === 0 && !item.request.peopleReceipt ? moved.get(item.request.id) : undefined,
       }
     }),
     handOff,
@@ -178,8 +182,8 @@ export function EsignBatchPage({
 
   const signer = active.request.signers.find((s) => s.sub === me && s.status === "pending")
   const places = moved.get(active.request.id) ?? signer?.places ?? []
-  // Phones review only: the box stays where it is.
-  const editable = signer?.signaturesDone === 0 && device !== "phone"
+  // Phones review only, and a receipt's box is fixed: the box stays where it is.
+  const editable = signer?.signaturesDone === 0 && !active.request.peopleReceipt && device !== "phone"
   const out = leftOut.has(active.request.id)
   const lockedBy = active.signingNow && active.signingNow.sub !== me ? active.signingNow : null
   const signs = device !== "phone"

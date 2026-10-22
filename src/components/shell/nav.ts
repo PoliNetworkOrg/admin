@@ -18,6 +18,7 @@ import {
   LayoutList,
   Link2,
   LayoutDashboard,
+  Receipt,
   type LucideIcon,
   MessageCircle,
   MessagesSquare,
@@ -102,6 +103,7 @@ export type PageMatch =
   | { kind: "people-overview" }
   | { kind: "people-person"; personId: string }
   | { kind: "people-members" }
+  | { kind: "people-receipts" }
   | { kind: "people-admins" }
   | { kind: "people-teams" }
   | { kind: "people-team"; teamId: string }
@@ -186,6 +188,14 @@ const people: Service = {
       path: "/dashboard/people/members",
       permission: "people:members:read",
       searchPlaceholder: "Search by name, number or email…",
+    },
+    {
+      id: "receipts",
+      title: "Receipts",
+      icon: Receipt,
+      path: "/dashboard/people/receipts",
+      permission: "people:members:read",
+      searchPlaceholder: "Search by name or receipt number…",
     },
     {
       id: "admins",
@@ -483,6 +493,7 @@ export function matchPath(pathname: string): PageMatch {
     if (second === undefined) return { kind: "people-overview" }
     if (third === undefined) {
       if (second === "members") return { kind: "people-members" }
+      if (second === "receipts") return { kind: "people-receipts" }
       if (second === "admins") return { kind: "people-admins" }
       if (second === "teams") return { kind: "people-teams" }
       if (second === "census") return { kind: "people-census" }
@@ -555,6 +566,7 @@ export function serviceFor(match: PageMatch): Service {
     case "people-overview":
     case "people-person":
     case "people-members":
+    case "people-receipts":
     case "people-admins":
     case "people-teams":
     case "people-team":
@@ -611,6 +623,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(people, "overview")
     case "people-members":
       return section(people, "members")
+    case "people-receipts":
+      return section(people, "receipts")
     case "people-admins":
       return section(people, "admins")
     case "people-teams":
@@ -695,6 +709,7 @@ export function documentTitle(match: PageMatch): string {
 export type PendingCounts = {
   reports: Promise<number | null>
   signatures: Promise<number | null>
+  receipts: Promise<number | null>
   linking: Promise<number | null>
 }
 
@@ -719,5 +734,6 @@ export function sectionPending(
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
   if (serviceId === "people" && sectionId === "linking") return pending.linking
+  if (serviceId === "people" && sectionId === "receipts") return pending.receipts
   return NO_COUNT
 }

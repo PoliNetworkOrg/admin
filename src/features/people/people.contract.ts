@@ -32,10 +32,13 @@ export const MEMBER_STATUSES = ["active", "suspended", "expired", "former"] as c
 export const FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
 export const ACCOUNT_STATUSES = ["none", "invite", "linked", "review"] as const
 export const CENSUS_ANSWERS = ["continues", "leaving"] as const
-export const PHOTO_CONSENTS = ["granted", "denied", "revoked"] as const
-export type PhotoConsent = (typeof PHOTO_CONSENTS)[number]
-
 export const REVIEW_KINDS = ["telegram-conflict", "ask-to-be-added", "two-records", "not-me", "name-only"] as const
+/** A receipt's pipeline: issued unsigned, signed by an officer, emailed to the member; or the email failed, or voided. */
+export const RECEIPT_STATUSES = ["toSign", "signed", "sent", "failed", "voided"] as const
+export const PAYMENT_METHODS = ["transfer", "cash"] as const
+export const PHOTO_CONSENTS = ["granted", "denied", "revoked"] as const
+/** Who signs a receipt: the President, or the Vice-president for the President's own. */
+export const SIGNERS = ["president", "vicePresident"] as const
 
 export const teamIdSchema = z.enum(TEAM_IDS)
 export const campusSchema = z.enum(CAMPUSES)
@@ -50,6 +53,10 @@ export type FeeStatus = z.infer<typeof feeStatusSchema>
 export type CensusAnswer = z.infer<typeof censusAnswerSchema>
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number]
 export type ReviewKind = (typeof REVIEW_KINDS)[number]
+export type ReceiptStatus = (typeof RECEIPT_STATUSES)[number]
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+export type PhotoConsent = (typeof PHOTO_CONSENTS)[number]
+export type Signer = (typeof SIGNERS)[number]
 
 const personRefSchema = z.object({ id: z.string(), name: z.string() })
 const groupSchema = z.object({ chatId: z.string(), title: z.string() })
@@ -133,7 +140,7 @@ export const accountSchema = z.discriminatedUnion("status", [
 
 export const consentsSchema = z.object({
   privacy: z.object({ version: z.string(), acceptedOn: z.string() }).nullable(),
-  photo: z.object({ status: z.enum(["granted", "denied", "revoked"]), on: z.string() }).nullable(),
+  photo: z.object({ status: z.enum(PHOTO_CONSENTS), on: z.string() }).nullable(),
 })
 
 /** One row of the People lists: everything but notes, activity and discrepancies. */
@@ -159,11 +166,83 @@ export const discrepancySchema = z.object({
 
 export const activitySchema = z.object({ actor: z.string(), text: z.string(), at: z.string() })
 
+/** A transfer receipt the member uploaded, waiting for an admin. */
+export const feeUploadSchema = z.object({
+  fileName: z.string(),
+  size: z.number().int(),
+  uploadedAt: z.string(),
+  /** As the member declared it. */
+  transferDate: z.string(),
+  amountCents: z.number().int(),
+})
+
+/** The current fee year of one member: what is due, what was uploaded, rejected or paid. */
+export const feeDetailSchema = z.object({
+  year: z.string(),
+  status: feeStatusSchema,
+  amountCents: z.number().int(),
+  dueOn: z.string(),
+  upload: feeUploadSchema.nullable(),
+  /** The last rejection, kept until the member uploads again. */
+  rejection: z.object({ reason: z.string(), by: z.string(), at: z.string() }).nullable(),
+  payment: z
+    .object({
+      paidOn: z.string(),
+      method: z.enum(PAYMENT_METHODS),
+      amountCents: z.number().int(),
+      transferDate: z.string().nullable(),
+    })
+    .nullable(),
+  /** The last reminder email, automatic or sent by hand. */
+  lastReminder: z.string().nullable(),
+})
+
+/** Returned as `request.peopleReceipt` by eSign list/get for a system-owned fee receipt. */
+export const receiptRequestSourceSchema = z.object({
+  receiptId: z.string().min(1).max(128),
+  number: z.string().min(1).max(40),
+  year: z.string().regex(/^\d{4}\/\d{2}$/),
+})
+export type ReceiptRequestSource = z.infer<typeof receiptRequestSourceSchema>
+
+export const receiptSchema = z.object({
+  id: z.string(),
+  /** "2026/042": the fee year's first calendar year and a sequence never reused. */
+  number: z.string(),
+  /** The fee year, "2026/27". */
+  year: z.string(),
+  person: personRefSchema,
+  memberNumber: z.string(),
+  amountCents: z.number().int(),
+  issuedOn: z.string(),
+  paidOn: z.string(),
+  method: z.enum(PAYMENT_METHODS),
+  transferDate: z.string().nullable(),
+  status: z.enum(RECEIPT_STATUSES),
+  signer: z.enum(SIGNERS),
+  signedBy: z.string().nullable(),
+  signedOn: z.string().nullable(),
+  sentAt: z.string().nullable(),
+  sentTo: z.string().nullable(),
+  /** Why the last email failed, while `failed`. */
+  failure: z.string().nullable(),
+  voided: z.object({ reason: z.string(), by: z.string(), on: z.string() }).nullable(),
+})
+
+export const feesSchema = z.object({
+  /** The current fee year; `null` for former members. */
+  current: feeDetailSchema.nullable(),
+  /** Every receipt issued to the person, newest first. Receipts are never deleted, only voided. */
+  receipts: z.array(receiptSchema),
+})
+
 export const personRecordSchema = personRowSchema.extend({
   /** `null` without `people:read`. */
   notes: z.string().nullable(),
   discrepancies: z.array(discrepancySchema),
   activity: z.array(activitySchema),
+  /** `null` when the person was never a member, or without `people:members:read` (except on their own record). */
+  fees: feesSchema.nullable(),
 })
 
 export type Profile = z.infer<typeof profileSchema>
@@ -177,6 +256,10 @@ export type Consents = z.infer<typeof consentsSchema>
 export type PersonRow = z.infer<typeof personRowSchema>
 export type PersonRecord = z.infer<typeof personRecordSchema>
 export type Discrepancy = z.infer<typeof discrepancySchema>
+export type FeeUpload = z.infer<typeof feeUploadSchema>
+export type FeeDetail = z.infer<typeof feeDetailSchema>
+export type Receipt = z.infer<typeof receiptSchema>
+export type Fees = z.infer<typeof feesSchema>
 
 /** Register rows and admission candidates, without volunteer, census or account-link details. */
 export const memberRegisterRowSchema = z.object({
@@ -326,10 +409,20 @@ const contactSchema = z.object({
   team: teamIdSchema.nullable(),
 })
 
+/** How a member pays: the bank details and the reference to write on the transfer. */
+export const feeInstructionsSchema = z.object({
+  beneficiary: z.string(),
+  iban: z.string(),
+  reference: z.string(),
+})
+export type FeeInstructions = z.infer<typeof feeInstructionsSchema>
+
 export const myAreaSchema = z.discriminatedUnion("state", [
   z.object({
     state: z.literal("linked"),
     person: personRecordSchema,
+    /** Set while the signed-in person is a current member. */
+    feeInstructions: feeInstructionsSchema.nullable(),
     campaign: z.object({ id: z.string(), year: z.string(), closesOn: z.string() }).nullable(),
     contacts: z.array(contactSchema),
     roster: z
@@ -362,6 +455,55 @@ export const myAreaSchema = z.discriminatedUnion("state", [
   z.object({ state: z.literal("none"), request: z.object({ sentOn: z.string() }).nullable() }),
 ])
 export type MyArea = z.infer<typeof myAreaSchema>
+
+/** People › Receipts: one fee year's receipts and who signs them. */
+export const receiptsPageSchema = z.object({
+  year: z.string(),
+  /** Fee years with receipts, newest first. */
+  years: z.array(z.string()),
+  /** The signed-in person's office, when they hold `people:receipts:sign`; `null` otherwise. */
+  viewerSigner: z.enum(SIGNERS).nullable(),
+  officers: z.object({ president: personRefSchema.nullable(), vicePresident: personRefSchema.nullable() }),
+  receipts: z.array(receiptSchema),
+})
+export type ReceiptsPage = z.infer<typeof receiptsPageSchema>
+
+/** What Review receipt shows: the member and their current fee year. */
+export const feeReviewSchema = z.object({
+  person: personRefSchema,
+  memberNumber: z.string(),
+  m365Email: z.string(),
+  fee: feeDetailSchema,
+  /** Earlier rejections this fee year, newest first. */
+  rejections: z.array(z.object({ reason: z.string(), by: z.string(), at: z.string() })),
+  /** The number approving would issue. */
+  nextReceipt: z.string(),
+})
+export type FeeReview = z.infer<typeof feeReviewSchema>
+
+/** A file passed through JSON: an uploaded transfer receipt, a receipt PDF or a ZIP of them. */
+export const fileSchema = z.object({ fileName: z.string(), contentType: z.string(), base64: z.string() })
+export type FilePayload = z.infer<typeof fileSchema>
+
+/** Signed files read by the backend, before anything is saved or sent. */
+export const signedUploadSchema = z.object({
+  uploadId: z.string(),
+  files: z.array(
+    z.object({
+      fileId: z.string(),
+      fileName: z.string(),
+      size: z.number().int(),
+      /** Matched by the receipt number in the file name; `null` when there is none, or no such receipt. */
+      receiptId: z.string().nullable(),
+      /** A valid digital signature (PAdES in the PDF, or a CAdES .p7m envelope) and the name on its certificate. */
+      signature: z.object({ valid: z.boolean(), signer: z.string().nullable() }),
+    })
+  ),
+})
+export type SignedUpload = z.infer<typeof signedUploadSchema>
+
+export const sendResultSchema = z.object({ sent: z.number().int(), failed: z.number().int() })
+export const issuedSchema = z.object({ receipt: z.string() })
 
 /** The team-specific fields, in display order. */
 export type TeamField = { key: string; label: string; kind: "text" | "multi"; mono?: boolean; options?: string[] }
@@ -560,6 +702,76 @@ export const correctionInputSchema = z.object({
   note: z.string().trim().max(500),
 })
 
+export const feePersonInputSchema = z.object({ personId: personIdSchema })
+export const rejectFeeInputSchema = z.object({ personId: personIdSchema, reason: reasonSchema })
+/** Amounts in cents: the fee is small, so anything above €1,000 is a typo. */
+const amountCentsSchema = z.number().int().min(1).max(100_000)
+export const markPaidInputSchema = z.object({
+  personId: personIdSchema,
+  paidOn: dateSchema,
+  amountCents: amountCentsSchema,
+  method: z.enum(PAYMENT_METHODS),
+  note: z.string().trim().max(500),
+})
+export const feeRemindInputSchema = z.object({ personId: personIdSchema.nullable() })
+const receiptIdSchema = z.string().min(1).max(40)
+/** The existing eSign agent accepts at most ten documents with one PIN. */
+export const RECEIPT_SIGN_BATCH = 10
+export const prepareReceiptSignaturesInputSchema = z.object({
+  receiptIds: z
+    .array(receiptIdSchema)
+    .min(1)
+    .max(RECEIPT_SIGN_BATCH)
+    .refine((ids) => new Set(ids).size === ids.length, "Choose each receipt once."),
+})
+export const receiptSignaturesSchema = z
+  .array(
+    z.object({
+      receiptId: receiptIdSchema,
+      requestId: z.uuid(),
+      title: z.string().min(1).max(300),
+    })
+  )
+  .min(1)
+  .max(RECEIPT_SIGN_BATCH)
+  .refine(
+    (items) =>
+      new Set(items.map((item) => item.receiptId)).size === items.length &&
+      new Set(items.map((item) => item.requestId)).size === items.length,
+    "Each receipt must have its own signature request."
+  )
+export type PrepareReceiptSignaturesInput = z.infer<typeof prepareReceiptSignaturesInputSchema>
+export type ReceiptSignature = z.infer<typeof receiptSignaturesSchema>[number]
+
+/** A backend batch must preserve every selected receipt's position and cannot return extra work. */
+export function receiptSignaturesMatchSelection(
+  receiptIds: readonly string[],
+  signatures: readonly { receiptId: string }[]
+) {
+  return (
+    signatures.length === receiptIds.length && signatures.every((item, index) => item.receiptId === receiptIds[index])
+  )
+}
+
+export const receiptInputSchema = z.object({ receiptId: receiptIdSchema })
+export const voidReceiptInputSchema = z.object({ receiptId: receiptIdSchema, reason: reasonSchema })
+export const receiptsInputSchema = z.object({
+  year: z
+    .string()
+    .regex(/^\d{4}\/\d{2}$/)
+    .nullable(),
+})
+/** At most one batch of signed files per upload. */
+export const MAX_SIGNED_FILES = 100
+export const sendSignedInputSchema = z.object({
+  uploadId: z.string().min(1).max(64),
+  /** File → receipt, after the matches were checked and corrected. */
+  assignments: z
+    .record(z.string().min(1).max(64), receiptIdSchema)
+    .refine((choices) => Object.keys(choices).length <= MAX_SIGNED_FILES, "Too many files."),
+})
+export const transferInputSchema = z.object({ transferDate: dateSchema, amountCents: amountCentsSchema })
+
 export type CreatePersonInput = z.infer<typeof createPersonInputSchema>
 export type UpdatePersonInput = z.infer<typeof updatePersonInputSchema>
 export type SetNoteInput = z.infer<typeof setNoteInputSchema>
@@ -582,6 +794,12 @@ export type LinkAccountInput = z.infer<typeof linkAccountInputSchema>
 export type AskToBeAddedInput = z.infer<typeof askToBeAddedInputSchema>
 export type AnswerCensusInput = z.infer<typeof answerCensusInputSchema>
 export type CorrectionInput = z.infer<typeof correctionInputSchema>
+export type RejectFeeInput = z.infer<typeof rejectFeeInputSchema>
+export type MarkPaidInput = z.infer<typeof markPaidInputSchema>
+export type FeeRemindInput = z.infer<typeof feeRemindInputSchema>
+export type VoidReceiptInput = z.infer<typeof voidReceiptInputSchema>
+export type SendSignedInput = z.infer<typeof sendSignedInputSchema>
+export type TransferInput = z.infer<typeof transferInputSchema>
 
 export const remindResultSchema = z.object({ sent: z.number().int(), skipped: z.number().int() })
 export const exportResultSchema = z.object({ filename: z.string(), csv: z.string() })
