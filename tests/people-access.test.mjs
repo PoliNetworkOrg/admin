@@ -150,6 +150,23 @@ void test("member details need people:members:read, except on the viewer's own r
   assert.deepEqual((await self.getPerson(member.id)).member, member.member)
 })
 
+void test("a census answer that drops a group leaves an admin-removal item, not a Linking review", async () => {
+  const admin = records.find(
+    (person) =>
+      person.admin?.status === "active" &&
+      person.admin.groups.length &&
+      person.account.status === "linked" &&
+      !person.census.some((entry) => entry.year === "2026/27" && entry.answer)
+  )
+  assert.ok(admin, "the fixtures hold a linked admin who hasn't answered")
+  const self = fakePeopleApi({ permissions: SELF, personId: admin.id })
+  const { course, campus } = admin.profile
+  await self.answerCensus({ answer: "continues", course, year: "1st year MSc", campus, keepGroups: [], keepTeams: [] })
+  const kinds = (await hr.getPerson(admin.id)).discrepancies.map((discrepancy) => discrepancy.kind)
+  assert.ok(kinds.includes("admin-removal"))
+  assert.ok(!kinds.includes("needs-review"))
+})
+
 void test("a Lead sees contacts of current team members only", async () => {
   // Earlier tests may end memberships, so pick the team from the current state.
   const inTeam = (person, id) => person.teams.some((membership) => membership.team === id && !membership.endedOn)

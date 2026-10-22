@@ -152,7 +152,7 @@ export const personRowSchema = z.object({
 })
 
 export const discrepancySchema = z.object({
-  kind: z.enum(["declared-member", "telegram-mismatch", "needs-review"]),
+  kind: z.enum(["declared-member", "telegram-mismatch", "needs-review", "admin-removal"]),
   message: z.string(),
   suggestedTelegram: z.string().nullable(),
 })
