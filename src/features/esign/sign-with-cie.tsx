@@ -768,7 +768,8 @@ function SigningDialog(props: DialogProps) {
           ref={panelRef}
           initialFocus={() => primaryRef.current ?? secondaryRef.current ?? true}
           finalFocus={() => props.finalFocus() ?? true}
-          className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}
+          // Wider than a confirmation, so every state's title holds one line.
+          className={cn(dialogPanel, dialogMotion, "max-w-[520px]")}
         >
           {view && (
             <>

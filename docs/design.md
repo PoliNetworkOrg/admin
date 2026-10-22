@@ -512,6 +512,7 @@ Rules that the templates above don't imply.
   routes (`EsignSigningHost`): the batch opens To sign under it and toasts once it closes; New request opens the new
   request's page under it, with the request and its signed PDF fetched first, and closes once that page has drawn the
   signed spot, where the box then dissolves as above, with no toast and focus on the card's sentence.
+  The signing dialog is 520px wide, wider than a confirmation, so every title holds one line.
   A person appears once however many places they sign: their places are buttons under their name
   ("Signature · p. 2", "Mark · p. 1") whose menu switches the kind, moves or removes the place and rings its box on
   the page; marks have a dashed border.
