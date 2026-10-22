@@ -536,7 +536,7 @@ Rules that the templates above don't imply.
   status segment across Back. Phones and tablets can't sign (`useCanSignHere`): on them an info note takes the place of
   "Sign N together". Setup preselects the computer's system. Its install step opens with the primary, which downloads
   that system's installer at once ("Download for macOS", release page for Linux), and a quiet "Other systems and
-  versions" link on the same row; what to do with the file follows. On a phone an info alert leads: open the page on
+  versions" link under it; what to do with the file follows. On a phone an info alert leads: open the page on
   the computer, or choose its system to read the steps; no system is preselected and the download is an outline
   button. A Mac's User-Agent may be an iPad's, so the server renders both until hydration, as the request page does.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
