@@ -318,8 +318,13 @@ export function NewEsignRequestPage({
         content.base64
       )
       const last = { driveId: from.driveId, id: from.id }
-      window.localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify(last))
       setLastFolder(last)
+      try {
+        window.localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify(last))
+      } catch (error) {
+        // Remembering the folder is best-effort: the document is already staged.
+        console.error(error)
+      }
     } catch (error) {
       console.error(error)
       setDocError(error instanceof Error ? error.message : "Couldn't open the PDF.")
