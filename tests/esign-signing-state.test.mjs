@@ -45,8 +45,8 @@ void test("a browser that has run PoliNetwork eSign is offered Start, and a Star
 })
 
 void test("the update is worded as the agent window words it, for packages on Linux", () => {
-  assert.match(outdatedCopy("macos").body, /Download the new one and open it: it replaces this one\.$/)
-  assert.equal(outdatedCopy("windows").body, outdatedCopy("macos").body)
+  assert.match(outdatedCopy("macos").body, /open PoliNetwork eSign inside: it replaces this one\.$/)
+  assert.match(outdatedCopy("windows").body, /extract it and open esign\.exe: it replaces this one\.$/)
   assert.match(outdatedCopy("linux").body, /Update the polinetwork-esign package, or install the new one/)
   for (const os of ["macos", "windows", "linux"]) assert.equal(outdatedCopy(os).title, "Update PoliNetwork eSign")
 })

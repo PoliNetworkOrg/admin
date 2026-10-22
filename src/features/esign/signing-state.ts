@@ -82,6 +82,12 @@ export function terminalCopy(code: string | null, message: string | null) {
   return { title: copy.title, body: copy.body ?? message ?? "Nothing was signed.", extra: copy.extra ?? null }
 }
 
+const UPDATE_STEPS = {
+  macos: "Download the new one, open it and open PoliNetwork eSign inside: it replaces this one.",
+  windows: "Download the new one, extract it and open esign.exe: it replaces this one.",
+  linux: "Update the polinetwork-esign package, or install the new one from the download page.",
+} satisfies Record<Os, string>
+
 /**
  * The Update state: the agent is older than the backend accepts. Worded as the agent window says it, whose page is
  * open beside it; on Linux PoliNetwork eSign may come from a package manager.
@@ -89,10 +95,7 @@ export function terminalCopy(code: string | null, message: string | null) {
 export function outdatedCopy(os: Os) {
   return {
     title: "Update PoliNetwork eSign",
-    body:
-      os === "linux"
-        ? "This version is too old to sign. Update the polinetwork-esign package, or install the new one from the download page."
-        : "This version is too old to sign. Download the new one and open it: it replaces this one.",
+    body: `This version is too old to sign. ${UPDATE_STEPS[os]}`,
   }
 }
 
