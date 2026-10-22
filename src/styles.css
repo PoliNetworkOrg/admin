@@ -5,17 +5,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Hide native scrollbars. Scrollable dashboard surfaces use the custom component below. */
-* {
-  scrollbar-width: none;
-}
-
-*::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
 .custom-scroll-area {
   position: relative;
   display: grid;
@@ -31,6 +20,12 @@
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
+}
+
+.custom-scroll-area__viewport::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .custom-scroll-area__track {

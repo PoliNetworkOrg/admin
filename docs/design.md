@@ -247,8 +247,9 @@ control blurs, which rings it on `:focus`: a click or ⌘↵ doesn't count as ke
 Every hover is the same faint brand tint: fills use `--pn-hover`, borders `--pn-hover-line`; never `--pn-muted`, the
 solid accent or a status color. Selected and active states keep their own fills (`--pn-accent-soft`,
 `--pn-nav-active`). Destructive colors identify actions at rest and validation errors; their hover is the same blue.
-Native browser scrollbars are hidden. Long scrollable surfaces use `CustomScrollbar`: a narrow, rounded thumb in the
-theme's line color on a transparent track, with pointer dragging, track clicks and keyboard navigation.
+Converted scrollable surfaces use `CustomScrollbar`: a narrow, rounded thumb in the theme's line color on a transparent
+track, with pointer dragging, track clicks and keyboard navigation. Only those viewports hide native scrollbars;
+other scroll regions retain their native controls, including horizontal controls in zoomed PDF viewers.
 Chip overflow counts open a themed popover on hover or click, listing full names on separate lines without truncation;
 keyboard users open it with Enter or Space and dismiss it with Escape.
 Tooltips use the same raised surface, foreground, border and corner radius as overflow popovers. Both open below
