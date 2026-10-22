@@ -16,6 +16,7 @@ import {
   SectionEmpty,
   SegmentedControl,
 } from "@/components/primitives"
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Hint } from "@/components/primitives/hint"
 import { appToast, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
@@ -356,9 +357,11 @@ export function AddGroupToLabelDialog({
             </div>
 
             {selected.length > 0 && (
-              <section
+              <CustomScrollbar
+                as="section"
                 aria-label={pluralize(selected.length, "selected group")}
-                className="flex max-h-[76px] min-w-0 items-start gap-2 overflow-y-auto"
+                className="max-h-[76px] min-w-0"
+                viewportClassName="flex items-start gap-2"
               >
                 <span className="pt-0.5 text-xs font-medium whitespace-nowrap text-(--pn-fg-muted) tabular-nums">
                   {selected.length} selected
@@ -380,13 +383,14 @@ export function AddGroupToLabelDialog({
                     </Hint>
                   ))}
                 </div>
-              </section>
+              </CustomScrollbar>
             )}
 
-            <div
+            <CustomScrollbar
               role="group"
               aria-label={`${platformName[platform]} groups`}
-              className="h-64 min-w-0 shrink-0 overflow-y-auto rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-surface) p-1"
+              className="h-64 min-w-0 shrink-0"
+              viewportClassName="rounded-(--pn-r-3) border border-(--pn-line) bg-(--pn-surface) p-1"
             >
               {pickable.length > 0 ? (
                 pickable.map((group) => {
@@ -414,7 +418,7 @@ export function AddGroupToLabelDialog({
               ) : (
                 <SectionEmpty title="No matching groups" className="px-3" />
               )}
-            </div>
+            </CustomScrollbar>
           </>
         )}
       </fieldset>

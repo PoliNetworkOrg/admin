@@ -2,6 +2,7 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { type LucideIcon, TriangleAlert } from "lucide-react"
 import { type ReactElement, type ReactNode, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -120,7 +121,7 @@ export function ConfirmDialog({
           finalFocus={finalFocus ? () => finalFocus() ?? true : undefined}
           className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}
         >
-          <div className="flex min-h-0 items-start gap-3.5 overflow-y-auto px-5.5 pt-5 pb-5">
+          <CustomScrollbar className="min-h-0 flex-1" viewportClassName="flex items-start gap-3.5 px-5.5 pt-5 pb-5">
             {Icon ? (
               <span
                 aria-hidden
@@ -138,7 +139,7 @@ export function ConfirmDialog({
               <AlertDialogDescription className={dialogDescriptionText}>{description}</AlertDialogDescription>
               {error && <InlineAlert className="mt-3">{error}</InlineAlert>}
             </div>
-          </div>
+          </CustomScrollbar>
           <div className={dialogFooter}>
             <AlertDialogCancel ref={cancelRef} disabled={pending} className={dialogFooterButton}>
               {cancelLabel}
