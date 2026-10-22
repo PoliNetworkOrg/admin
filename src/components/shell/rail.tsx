@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
 import {
+  isRailService,
   type DashboardPath,
   type PageMatch,
   type PendingCounts,
@@ -31,7 +32,7 @@ import {
 } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
-import { useVisibleServices } from "./use-can"
+import { useHasAdminAccess, useVisibleServices } from "./use-can"
 
 const railItemClass =
   "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
@@ -159,7 +160,9 @@ export function ServiceDot({
 
 /** The 64px service rail. One tab stop; ↑/↓, Home and End move between items. */
 export function Rail({ match, serviceHref, onOpenPalette, user, pending, className }: RailProps) {
-  const panelServices = useVisibleServices().filter((service) => service.sections.length > 0)
+  const visibleServices = useVisibleServices()
+  const panelServices = visibleServices.filter(isRailService)
+  const hasAdminAccess = useHasAdminAccess()
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const { theme, toggleTheme } = useTheme()
@@ -167,7 +170,7 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
 
   const activeId = serviceFor(match).id
   const overview = serviceById("overview")
-  const account = serviceById("account")
+  const account = visibleServices.find((service) => service.id === "account") ?? serviceById("account")
 
   // Item order: logo (Overview), search, services…, theme, account.
   const serviceStart = 2
@@ -229,10 +232,10 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
     >
       {/* The logo uses the same active fill and left indicator as every other rail item. */}
       <RailItem
-        label={overview.title}
+        label={hasAdminAccess ? overview.title : "My area"}
         active={activeId === "overview"}
         focusable={tabStop === 0}
-        target={{ kind: "link", to: overview.path }}
+        target={{ kind: "link", to: hasAdminAccess ? overview.path : "/dashboard/account/me" }}
         className="[&>img]:transition-transform [&>img]:duration-120 [&>img]:ease-(--pn-ease-out) hover:[&>img]:scale-106"
       >
         <img src={logoUrl} alt="" width={32} height={32} className="size-8 rounded-full" />
@@ -286,7 +289,7 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
         tooltip={user.name || user.email}
         active={activeId === "account"}
         focusable={tabStop === accountIndex}
-        target={{ kind: "link", to: account.path }}
+        target={{ kind: "link", to: serviceHref(account) }}
       >
         <AccountAvatar user={user} className="size-7.5" />
       </RailItem>

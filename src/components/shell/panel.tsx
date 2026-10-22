@@ -25,7 +25,7 @@ const itemActiveClass = "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-
 const itemCurrentClass =
   "before:absolute before:inset-y-2.5 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
 
-/** Pending items (open reports, documents to sign) as a small accent pill; zero, loading or a failed load renders nothing. */
+/** Pending items (open reports, documents to sign, accounts to link) as a small accent pill; zero, loading or a failed load renders nothing. */
 export function PendingCount({ count: countPromise }: { count: Promise<number | null> }) {
   const count = use(useDeferredValue(countPromise))
   if (!count) return null

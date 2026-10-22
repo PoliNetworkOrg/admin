@@ -1,24 +1,11 @@
 import { useServerFn } from "@tanstack/react-start"
 import { isSameDay } from "date-fns"
-import { CalendarDays, ChevronDown } from "lucide-react"
 import { useId, useState } from "react"
 
-import {
-  buttonMotion,
-  fieldControl,
-  fieldHintId,
-  FileButton,
-  floatingMotion,
-  FormDialog,
-  FormField,
-  raisedSurface,
-} from "@/components/primitives"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { DateField, fieldControl, fieldHintId, FileButton, FormDialog, FormField } from "@/components/primitives"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { dateOnlyValue, parseDateOnly } from "@/lib/date-only"
 import { errorHasCode } from "@/lib/errors"
-import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { createGuide } from "./guides.functions"
@@ -62,7 +49,6 @@ export function PublishEditionDialog({
   const [version, setVersion] = useState(suggestedVersion)
   const [date, setDate] = useState(initialDate)
   const [file, setFile] = useState<File | null>(null)
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [shown, setShown] = useState<Errors>({})
   const versionId = useId()
   const dateId = useId()
@@ -137,42 +123,11 @@ export function PublishEditionDialog({
         />
       </FormField>
       <FormField label="Date" htmlFor={dateId}>
-        <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-          <PopoverTrigger
-            render={
-              <Button
-                id={dateId}
-                variant="outline"
-                size="sm"
-                className={cn(
-                  buttonMotion,
-                  "w-full justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-hover) dark:bg-(--pn-surface)"
-                )}
-              />
-            }
-          >
-            <CalendarDays aria-hidden className="text-(--pn-fg-muted)" />
-            <span className="tabular-nums">{formatDate(date, "local")}</span>
-            <ChevronDown aria-hidden className="ml-auto text-(--pn-fg-muted)" />
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            className={cn(raisedSurface, floatingMotion, "w-auto overflow-hidden rounded-(--pn-r-4) p-0")}
-          >
-            <Calendar
-              mode="single"
-              selected={date}
-              defaultMonth={date}
-              captionLayout="dropdown"
-              weekStartsOn={1}
-              required
-              onSelect={(selected) => {
-                setDate(selected)
-                setDatePickerOpen(false)
-              }}
-            />
-          </PopoverContent>
-        </Popover>
+        <DateField
+          id={dateId}
+          value={dateOnlyValue(date)}
+          onChange={(value) => setDate(parseDateOnly(value) ?? date)}
+        />
       </FormField>
       <FormField label="PDF file" htmlFor={fileId} hint="PDF only, up to 2 MB." error={shown.file}>
         <FileButton

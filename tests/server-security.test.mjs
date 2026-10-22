@@ -215,6 +215,14 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/telegram/groups.functions.ts",
     "src/features/telegram/users.functions.ts",
     "src/features/whatsapp/groups.functions.ts",
+    "src/features/people/people.functions.ts",
+    "src/features/people/people-write.functions.ts",
+    "src/features/people/people-members.functions.ts",
+    "src/features/people/people-appoint.functions.ts",
+    "src/features/people/people-teams.functions.ts",
+    "src/features/people/people-census.functions.ts",
+    "src/features/people/people-capo.functions.ts",
+    "src/features/people/people-self.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -225,7 +233,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create)Middleware$/.test(name)),
+          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create|Self|Appoint)Middleware$/.test(name)),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
@@ -254,6 +262,17 @@ test("dashboard mutations enforce their exact write scope", async () => {
       ],
     ],
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
+    [
+      "peopleWriteMiddleware",
+      ["src/features/people/people-write.functions.ts", "src/features/people/people-census.functions.ts"],
+    ],
+    ["peopleMembersWriteMiddleware", ["src/features/people/people-members.functions.ts"]],
+    ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
+    ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
+    [
+      "peopleSelfMiddleware",
+      ["src/features/people/people-capo.functions.ts", "src/features/people/people-self.functions.ts"],
+    ],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -306,6 +325,19 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/group-link-reports/reports-page.tsx": "web:reports:manage",
     "src/features/guides/guides-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
+    "src/features/people/overview-page.tsx": "people:write",
+    "src/features/people/person-page.tsx": [
+      "people:write",
+      "people:read",
+      "people:members:read",
+      "people:members:write",
+      "people:appoint",
+    ],
+    "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
+    "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
+    "src/features/people/census-page.tsx": ["people:write", "people:read"],
+    "src/features/people/linking-page.tsx": "people:write",
+    "src/features/people/members-page.tsx": ["people:read", "people:members:write"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -346,6 +378,26 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
     "src/features/azure/member-number-dialog.tsx": ["setAzureMemberNumber"],
+    "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],
+    "src/features/people/person-page.tsx": ["updatePerson"],
+    "src/features/people/notes-dialog.tsx": ["setPersonNote"],
+    "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite", "unlinkPersonAccount"],
+    "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
+    "src/features/people/census-page.tsx": ["sendCensusReminders", "closeCampaign"],
+    "src/features/people/linking-page.tsx": ["resolveLinkingReview", "dismissLinkingReview"],
+    "src/features/people/capo-page.tsx": ["approveJoinRequest", "declineJoinRequest"],
+    "src/features/people/my-area-page.tsx": [
+      "acceptMyInvite",
+      "answerMyCensus",
+      "confirmMyMatch",
+      "rejectMyMatch",
+      "revokePhotoConsent",
+    ],
+    "src/features/people/my-area-dialogs.tsx": ["answerMyCensus", "requestCorrection", "askToBeAdded"],
+    "src/features/people/import-wizard.tsx": ["previewCensusImport", "commitCensusImport"],
+    "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
+    "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],
+    "src/features/people/member-dialogs.tsx": ["createMember", "setMemberStatus", "setMemberNumber", "exportMembers"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",
