@@ -48,11 +48,14 @@ import { YouChip } from "./request-status"
 /** Boxes one signer may have in a document (the backend's limit). */
 export const MAX_PLACES = 20
 
-/** Row columns: the order number (while the order holds), the role, the person and the row's action. */
+/**
+ * Row columns: the order number (while the order holds), the role, the person and the row's action. The role fits
+ * "Vicepresidente", and leaves the picker room for "Choose signer…" beside "Me".
+ */
 function rowColumns(numbered: boolean) {
   return numbered
-    ? "grid-cols-[20px_112px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[20px_124px_minmax(0,1fr)_36px]"
-    : "grid-cols-[112px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[124px_minmax(0,1fr)_36px]"
+    ? "grid-cols-[20px_108px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[20px_124px_minmax(0,1fr)_36px]"
+    : "grid-cols-[108px_minmax(0,1fr)_36px] @min-[1040px]/composer:grid-cols-[124px_minmax(0,1fr)_36px]"
 }
 
 /** A line under a row's 40px line, from the person column on. */
@@ -551,7 +554,7 @@ function PersonPicker({
           render={
             <Input
               data-row-picker
-              className={cn(fieldControl, "h-9 scroll-m-3", search && "pl-9", meLabel !== null && "pr-14")}
+              className={cn(fieldControl, "h-9 scroll-m-3", search && "pl-9", meLabel !== null && "pr-10")}
             />
           }
           aria-label={ariaLabel}
@@ -642,7 +645,7 @@ function MeButton({ label, onClick }: { label: string; onClick: () => void }) {
         type="button"
         aria-label={label}
         onClick={onClick}
-        className="absolute inset-y-px right-px rounded-[7px] px-3 text-[13px] font-medium text-(--pn-accent) transition-[background-color] duration-120 hover:bg-(--pn-hover)"
+        className="absolute inset-y-px right-px rounded-[7px] px-2.5 text-[13px] font-medium text-(--pn-accent) transition-[background-color] duration-120 hover:bg-(--pn-hover)"
       >
         Me
       </button>
