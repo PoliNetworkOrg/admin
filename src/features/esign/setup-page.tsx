@@ -150,7 +150,13 @@ function PairStep({ os }: { os: Os }) {
           </p>
         </>
       )}
-      <p className="text-[13px]">Card won't pair? Ask whoever sent you the request.</p>
+      <p className="text-[13px]">
+        Card won't pair? Write to{" "}
+        <a className={inlineLink} href="mailto:it@polinetwork.org">
+          it@polinetwork.org
+        </a>
+        .
+      </p>
     </Step>
   )
 }
@@ -179,7 +185,7 @@ function InstallStep({ os, here }: { os: Os; here: boolean }) {
   }
   return (
     <Step number={3} icon={Download} title="Install PoliNetwork eSign">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="flex flex-col items-start gap-1">
         {/* Same tab: the release asset downloads without leaving the page. */}
         <Button
           size="sm"
@@ -190,7 +196,7 @@ function InstallStep({ os, here }: { os: Os; here: boolean }) {
           <Download aria-hidden /> Download for {OS_NAMES[os]}
         </Button>
         <a
-          className="inline-flex min-h-9 items-center text-[13px] text-(--pn-accent) hover:underline"
+          className="inline-flex min-h-8 items-center text-[13px] text-(--pn-accent) hover:underline"
           href={AGENT_RELEASES_URL}
           target="_blank"
           rel="noreferrer"
