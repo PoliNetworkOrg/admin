@@ -110,7 +110,7 @@ type PersonRecord = {
   account: Account
   notes: string | null // null without people:read
   discrepancies: {
-    kind: "declared-member" | "telegram-mismatch" | "needs-review"
+    kind: "declared-member" | "telegram-mismatch" | "needs-review" | "admin-removal"
     message: string
     suggestedTelegram?: string
   }[]
@@ -442,6 +442,6 @@ also needs `people:fees:write`; without it the dashboard admits with the fee due
 
 Team roles deselected in `people.me.answerCensus` end immediately. Telegram admin rights require HR to remove them
 and the bot to confirm the result. The backend persists each deselected group's chat ID as pending HR work, adds a
-`needs-review` discrepancy to the record, and records the request in Activity. My area shows the pending state.
+`admin-removal` discrepancy to the record, and records the request in Activity. My area shows the pending state.
 Reading the record or People list reconciles pending removals with the bot's current group assignments; confirmed
 removals clear their discrepancy and add a completion event. A leaving answer requests removal from every group.

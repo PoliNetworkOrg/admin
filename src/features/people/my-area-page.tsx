@@ -283,7 +283,7 @@ function CensusCard({ area }: { area: Linked }) {
             meta={`Answered ${entry.answeredOn ? formatDay(entry.answeredOn) : ""}${entry.source ? ` · ${CENSUS_SOURCE[entry.source]}` : ""}`}
           />
         </Rows>
-        {person.discrepancies.some((item) => item.message.startsWith("Telegram admin removal pending:")) && (
+        {person.discrepancies.some((item) => item.kind === "admin-removal") && (
           <InlineAlert tone="info" className="mx-4 mb-4">
             Your Telegram group changes are waiting for HR to remove the admin rights.
           </InlineAlert>

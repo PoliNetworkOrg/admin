@@ -99,7 +99,7 @@ function log(person: StoredPerson, actor: string, text: string) {
 function discrepancies(person: StoredPerson): Discrepancy[] {
   const out: Discrepancy[] = []
   for (const pending of person.pendingGroupRemovals ?? [])
-    out.push({ kind: "needs-review", message: pending.message, suggestedTelegram: null })
+    out.push({ kind: "admin-removal", message: pending.message, suggestedTelegram: null })
   const current = person.census.find((entry) => entry.year === "2026/27")
   const isMember = person.member !== null && person.member.status !== "former"
   if (current?.declaredMember && !isMember) {
