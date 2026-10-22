@@ -133,7 +133,11 @@ function record(person: StoredPerson, viewer: PeopleViewer): PersonRecord {
   return {
     ...row(person, viewer, canRead || linkedRecord(viewer)?.id === person.id),
     notes: canRead ? person.notes : null,
-    discrepancies: discrepancies(person),
+    discrepancies: canRead
+      ? discrepancies(person)
+      : discrepancies(person).filter((item) =>
+          person.pendingGroupRemovals?.some((pending) => pending.message === item.message)
+        ),
     activity: [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)),
   }
 }
