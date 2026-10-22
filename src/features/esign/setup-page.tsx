@@ -59,8 +59,8 @@ const AGENT_STEPS = {
   macos: (
     <>
       Download the macOS .dmg, open it and double-click <strong>PoliNetwork eSign</strong>. The first time, macOS says
-      it can't verify the app: choose Done, open System Settings › Privacy & Security, choose Open Anyway next to
-      “PoliNetwork eSign” was blocked, and confirm with your password. It then installs itself and starts whenever you
+      it can't verify the app: choose Done, open System Settings › Privacy & Security, choose Open Anyway next to the
+      message about PoliNetwork eSign, and confirm with your password. It then installs itself and starts whenever you
       log in.
     </>
   ),
