@@ -3,15 +3,20 @@ import {
   CircleCheck,
   CircleQuestionMark,
   Cloud,
+  FilePenLine,
+  Files,
   Flag,
   FolderKanban,
   FolderTree,
   Globe,
+  HardDrive,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
   MessageCircle,
   MessagesSquare,
+  MonitorDown,
+  PenLine,
   Send,
   ShieldCheck,
   Tags,
@@ -30,7 +35,7 @@ import type { Permission } from "@/server/permissions"
 /** Every navigable dashboard route path, as TanStack `Link`'s `to` accepts it. */
 export type DashboardPath = Extract<keyof FileRoutesByTo, `/dashboard${string}`>
 
-export type ServiceId = "overview" | "telegram" | "whatsapp" | "m365" | "web" | "reports" | "account"
+export type ServiceId = "overview" | "telegram" | "whatsapp" | "m365" | "web" | "esign" | "reports" | "account"
 
 export type Section = {
   id: string
@@ -77,6 +82,13 @@ export type PageMatch =
   | { kind: "web-categories" }
   | { kind: "web-category"; path: string }
   | { kind: "web-tag"; tag: string }
+  | { kind: "esign-inbox" }
+  | { kind: "esign-requests" }
+  | { kind: "esign-request"; id: string }
+  | { kind: "esign-new" }
+  | { kind: "esign-sign" }
+  | { kind: "esign-drives" }
+  | { kind: "esign-setup" }
   | { kind: "reports-open" }
   | { kind: "reports-closed" }
   | { kind: "not-found" }
@@ -228,6 +240,40 @@ const web: Service = {
   ],
 }
 
+const esign: Service = {
+  id: "esign",
+  title: "Signatures",
+  short: "Sign",
+  icon: FilePenLine,
+  path: "/dashboard/esign/inbox",
+  sections: [
+    {
+      id: "inbox",
+      title: "To sign",
+      icon: PenLine,
+      path: "/dashboard/esign/inbox",
+      permission: "esign:sign",
+      searchPlaceholder: "Search documents…",
+    },
+    {
+      id: "requests",
+      title: "Requests",
+      icon: Files,
+      path: "/dashboard/esign/requests",
+      permission: "esign:sign",
+      searchPlaceholder: "Search by title or signer…",
+    },
+    {
+      id: "drives",
+      title: "Drives",
+      icon: HardDrive,
+      path: "/dashboard/esign/drives",
+      permission: "esign:drives:manage",
+    },
+    { id: "setup", title: "Setup", icon: MonitorDown, path: "/dashboard/esign/setup", permission: "esign:sign" },
+  ],
+}
+
 const reports: Service = {
   id: "reports",
   title: "Reports",
@@ -254,8 +300,8 @@ const reports: Service = {
   ],
 }
 
-/** Rail order: Overview (the logo), then the five services with sections, then Account. */
-export const services: Service[] = [overview, telegram, whatsapp, m365, web, reports, account]
+/** Rail order: Overview (the logo), then the services with sections, then Account. */
+export const services: Service[] = [overview, telegram, whatsapp, m365, web, esign, reports, account]
 
 /** The services that own a panel, in rail order. */
 export const panelServices: Service[] = services.filter((service) => service.sections.length > 0)
@@ -314,6 +360,20 @@ export function matchPath(pathname: string): PageMatch {
     if (second === "tags" && third !== undefined) return { kind: "web-tag", tag: third }
   }
 
+  if (head === "esign") {
+    if (third === undefined) {
+      if (second === "inbox") return { kind: "esign-inbox" }
+      if (second === "requests") return { kind: "esign-requests" }
+      if (second === "new") return { kind: "esign-new" }
+      if (second === "sign") return { kind: "esign-sign" }
+      if (second === "drives") return { kind: "esign-drives" }
+      if (second === "setup") return { kind: "esign-setup" }
+    }
+    if (second === "requests" && third !== undefined && /^[0-9a-f-]{36}$/i.test(third)) {
+      return { kind: "esign-request", id: third }
+    }
+  }
+
   if (head === "reports" && third === undefined) {
     if (second === "group-links") return { kind: "reports-open" }
     if (second === "resolved") return { kind: "reports-closed" }
@@ -348,6 +408,14 @@ export function serviceFor(match: PageMatch): Service {
     case "web-category":
     case "web-tag":
       return web
+    case "esign-inbox":
+    case "esign-requests":
+    case "esign-request":
+    case "esign-new":
+    case "esign-sign":
+    case "esign-drives":
+    case "esign-setup":
+      return esign
     case "reports-open":
     case "reports-closed":
       return reports
@@ -388,6 +456,17 @@ export function sectionFor(match: PageMatch): Section | null {
     case "web-categories":
     case "web-category":
       return section(web, "categories")
+    case "esign-inbox":
+    case "esign-sign":
+      return section(esign, "inbox")
+    case "esign-requests":
+    case "esign-request":
+    case "esign-new":
+      return section(esign, "requests")
+    case "esign-drives":
+      return section(esign, "drives")
+    case "esign-setup":
+      return section(esign, "setup")
     case "reports-open":
       return section(reports, "open")
     case "reports-closed":
@@ -397,7 +476,14 @@ export function sectionFor(match: PageMatch): Section | null {
 
 /** Deep pages are reached from a section but are not themselves in the panel. */
 export function isDeepPage(match: PageMatch): boolean {
-  return match.kind === "telegram-user" || match.kind === "web-category" || match.kind === "web-tag"
+  return (
+    match.kind === "telegram-user" ||
+    match.kind === "web-category" ||
+    match.kind === "web-tag" ||
+    match.kind === "esign-request" ||
+    match.kind === "esign-new" ||
+    match.kind === "esign-sign"
+  )
 }
 
 /** `document.title`: "{Section} - {Service} - PoliNetwork Admin", or "{Service} - PoliNetwork Admin". */
@@ -406,4 +492,30 @@ export function documentTitle(match: PageMatch): string {
   const service = serviceFor(match)
   const current = sectionFor(match)
   return current ? `${current.title} - ${service.title} - PoliNetwork Admin` : `${service.title} - PoliNetwork Admin`
+}
+
+/** Counts that mark a service and one of its sections: open reports, documents waiting for the user's signature. */
+export type PendingCounts = { reports: Promise<number | null>; signatures: Promise<number | null> }
+
+const NO_COUNT: Promise<number | null> = Promise.resolve(null)
+
+/** The count behind a service's dot in the rail and bottom nav, if it has one. */
+export function servicePending(
+  id: ServiceId,
+  pending: PendingCounts
+): { count: Promise<number | null>; label: string } | null {
+  if (id === "reports") return { count: pending.reports, label: "open reports" }
+  if (id === "esign") return { count: pending.signatures, label: "documents to sign" }
+  return null
+}
+
+/** The count next to a section in the panel, if it has one. */
+export function sectionPending(
+  serviceId: ServiceId,
+  sectionId: string,
+  pending: PendingCounts
+): Promise<number | null> {
+  if (serviceId === "reports" && sectionId === "open") return pending.reports
+  if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
+  return NO_COUNT
 }

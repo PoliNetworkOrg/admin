@@ -107,6 +107,7 @@
   --pn-danger-fg: #8c2d28;
   --pn-danger-bg: #ffefed;
   --pn-danger-solid: #a43b35;
+  --pn-danger-solid-hover: #8c2d28;
   --pn-info-fg: var(--pn-brand-700);
   --pn-info-bg: var(--pn-brand-50);
   --pn-scrim: oklch(0.16 0.02 250 / 0.4);
@@ -206,6 +207,7 @@
   --pn-danger-fg: #ffa196;
   --pn-danger-bg: #3b1c19;
   --pn-danger-solid: #c9524a;
+  --pn-danger-solid-hover: #a83e37;
   --pn-info-fg: var(--pn-brand-300);
   --pn-info-bg: var(--pn-brand-900);
   --pn-scrim: oklch(0 0 0 / 0.6);
@@ -353,6 +355,16 @@ tr:focus-visible {
   outline: none;
   border-color: var(--pn-danger-solid);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--pn-danger-solid) 25%, transparent);
+}
+
+/*
+ * The control a blocked submit moved the focus to (`data-problem-focus`, set until it blurs): ringed even when the
+ * submit was a click or a shortcut, which browsers don't count as keyboard focus. Invalid fields already ring on focus.
+ */
+
+[data-problem-focus]:focus:not(:is(input, textarea, [data-slot="combobox-input"])) {
+  outline: 2px solid var(--pn-focus);
+  outline-offset: -2px;
 }
 
 /* A dialog panel that takes focus itself (no focusable field) never shows a ring; its children keep theirs. */
@@ -525,6 +537,20 @@ tr:focus-visible {
 
 @utility animate-spin-slow {
   animation: spin 1s linear infinite;
+}
+
+/* A signature box dissolving into the stamp drawn under it (signature-box.tsx). */
+@keyframes pn-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Content appearing in room kept for it, e.g. a signer's order number (signer-rows.tsx). */
+@keyframes pn-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Touch focus keeps the chart tooltip; only keyboard focus draws the app ring. */
