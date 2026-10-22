@@ -2,7 +2,15 @@ export { AvatarGroup, initialsOf, type AvatarPerson } from "./avatar-group"
 export { Chip } from "./chip"
 export { ChipOverflow } from "./chip-overflow"
 export { ColorSwatchSelect } from "./color-swatch-select"
-export { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "./combobox"
+export {
+  Autocomplete,
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "./combobox"
 export { ConfirmDialog, dialogFooter, dialogFooterButton, dialogPanel } from "./confirm-dialog"
 export { CountBadge } from "./count-badge"
 export { DataTable, RowActions, type DataTableColumn, type DataTableError, type TableSort } from "./data-table"

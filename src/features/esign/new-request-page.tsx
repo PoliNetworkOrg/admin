@@ -1,9 +1,11 @@
-import { useNavigate, useRouter } from "@tanstack/react-router"
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
+import { useBlocker, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  CircleAlert,
   Cloud,
   FileUp,
   MapPin,
@@ -15,16 +17,26 @@ import {
   TriangleAlert,
   UserPlus,
 } from "lucide-react"
-import { type DragEvent, useEffect, useId, useMemo, useRef, useState } from "react"
+import { type DragEvent, type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import {
+  Autocomplete,
   checkboxControl,
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ConfirmDialog,
   FormField,
   fieldControl,
+  fieldHintId,
+  Hint,
   IconButton,
   InlineAlert,
   LoadingButton,
   SectionCard,
+  useFocusAfterRemoval,
 } from "@/components/primitives"
 import {
   Menu,
@@ -50,6 +62,7 @@ import { DriveBrowser, type DriveFolder } from "./drive-browser"
 import { getEsignDocumentContent } from "./esign.functions"
 import { extractTextAnchors, type PageSize, PdfViewer, sizeOnPage, type TextAnchor, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, pagesLabel, withSignature } from "./places"
+import { PlacingCancel } from "./placing"
 import { YouChip } from "./request-status"
 import { createEsignRequest, importEsignDriveDocument, uploadEsignDocument } from "./requests.functions"
 import { SignWithCie } from "./sign-with-cie"
@@ -57,8 +70,9 @@ import { type BoxPlacement, SignatureBox } from "./signature-box"
 import { useFillHeight } from "./use-fill-height"
 
 type Staged = { id: string; fileName: string; pdf: EsignPdfInfo; folder: DriveFolder | null }
-/** `manual`: the user moved the first box, so a role no longer places it. */
-type SignerDraft = { sub: string; name: string; role: string; places: Place[]; manual: boolean }
+/** `byRole`: the box the signer's role places under its label, until the user moves it. */
+type DraftPlace = Place & { byRole?: true }
+type SignerDraft = { sub: string; name: string; role: string; places: DraftPlace[] }
 /** Where the next click on a page puts a box: a signer's existing place, or a new one when `place` is null. */
 type Placing = { signer: number; place: number | null }
 
@@ -69,6 +83,8 @@ const ROLES = ["Presidente", "Vicepresidente", "Segretario", "Tesoriere", "Consi
 /** A signature box of 190 × 62 pt, the size of a typical handwritten-signature space. */
 const BOX_PT = { width: 190, height: 62 }
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/** The folder the last PDF was picked from, `{ driveId, id }`, where the drive browser opens next time. */
+const LAST_FOLDER_KEY = "pn-admin:esign-last-folder"
 
 /** Default places: the last page's bottom, two per row, from the bottom-right corner. */
 function defaultPlacement(index: number, pages: PageSize[]): BoxPlacement {
@@ -101,13 +117,38 @@ function placementForRole(role: string, anchors: TextAnchor[], pages: PageSize[]
   return { page: anchor.page, x, y, ...size }
 }
 
+/** A folder's name and where it is: "2026" in "OneDrive / Segreteria / Verbali"; a drive's top folder by its drive. */
+function folderLines(folder: DriveFolder, drive: string) {
+  const segments = folder.path.split("/").filter(Boolean)
+  const name = segments.pop()
+  return {
+    name: name ?? drive,
+    place: name === undefined ? "Top folder" : [drive, ...segments].join(" / "),
+    full: `${drive}: /${folder.path}`,
+  }
+}
+
 function baseName(fileName: string) {
   return fileName.replace(/\.pdf$/i, "")
 }
 
+/**
+ * Moves the signer's role box under the label naming their role. The same signer when there is nothing to move: no
+ * role box, a role the document doesn't name (the box stays where it is), or a box already there.
+ */
+function placeByRole(signer: SignerDraft, anchors: TextAnchor[], pages: PageSize[]): SignerDraft {
+  const at = signer.places.findIndex((p) => p.byRole)
+  const box = signer.places[at]
+  const placed = box ? placementForRole(signer.role, anchors, pages) : null
+  if (!box || !placed) return signer
+  const keys = ["page", "x", "y", "width", "height"] as const
+  if (keys.every((key) => placed[key] === box[key])) return signer
+  return { ...signer, places: signer.places.map((p, i) => (i === at ? { ...placed, kind: p.kind, byRole: true } : p)) }
+}
+
 function draftOf(person: EsignProfile, index: number, pages: PageSize[]): SignerDraft {
   const where = defaultPlacement(index, pages)
-  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature" }], manual: false }
+  return { sub: person.sub, name: person.name, role: "", places: [{ ...where, kind: "signature", byRole: true }] }
 }
 
 export function NewEsignRequestPage({
@@ -129,7 +170,16 @@ export function NewEsignRequestPage({
   const contentFn = useServerFn(getEsignDocumentContent)
   const createFn = useServerFn(createEsignRequest)
   const dropFill = useFillHeight<HTMLElement>()
-  const ids = { title: useId(), file: useId(), emails: useId(), message: useId(), search: useId(), roles: useId() }
+  const ids = {
+    title: useId(),
+    file: useId(),
+    fileName: useId(),
+    folderError: useId(),
+    emails: useId(),
+    message: useId(),
+    search: useId(),
+    signersError: useId(),
+  }
 
   const [source, setSource] = useState<"drive" | "upload">(config.drives.length > 0 ? "drive" : "upload")
   const [staged, setStaged] = useState<Staged | null>(null)
@@ -165,30 +215,74 @@ export function NewEsignRequestPage({
   const [search, setSearch] = useState("")
 
   const [title, setTitle] = useState("")
+  const [titleTouched, setTitleTouched] = useState(false)
   const [saveToDrive, setSaveToDrive] = useState(config.drives.length > 0)
   const [folder, setFolder] = useState<DriveFolder | null>(null)
   const [choosingFolder, setChoosingFolder] = useState(false)
+  /** Undefined until local storage is read after mount, so the server and the first client render agree. */
+  const [lastFolder, setLastFolder] = useState<Pick<DriveFolder, "driveId" | "id"> | null>()
+  useEffect(() => {
+    let stored: Pick<DriveFolder, "driveId" | "id"> | null = null
+    try {
+      stored = JSON.parse(window.localStorage.getItem(LAST_FOLDER_KEY) ?? "null")
+    } catch (error) {
+      console.error(error)
+    }
+    setLastFolder(stored)
+  }, [])
   const [fileName, setFileName] = useState("")
+  const [fileNameTouched, setFileNameTouched] = useState(false)
+  const [folderTouched, setFolderTouched] = useState(false)
   const [emails, setEmails] = useState("")
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdRequest, setCreatedRequest] = useState<string | null>(null)
+  /** A submit was blocked: problems fixed with a click (document, signers, folder) show from then on. */
   const [attempted, setAttempted] = useState(false)
+  /** Text-field errors on screen: set by a blocked submit, then re-checked when the field loses focus. */
+  const [shown, setShown] = useState<{ title?: string; fileName?: string; email?: string }>({})
+  /** Each blocked submit focuses the first problem once its message has rendered. */
+  const [blockedSubmits, setBlockedSubmits] = useState(0)
+  const form = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (blockedSubmits > 0) form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid]')?.focus()
+  }, [blockedSubmits])
+  const submitAlert = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (submitError) submitAlert.current?.scrollIntoView({ block: "nearest" })
+  }, [submitError])
 
   const pages = staged?.pdf.pages ?? []
   // One drive goes by its own name; several are browsed together under "OneDrive".
   const drivesName = config.drives.length === 1 ? config.drives[0].label : "OneDrive"
   const driveLabel = (id: string) => config.drives.find((d) => d.id === id)?.label ?? "OneDrive"
+  const output = folder && folderLines(folder, driveLabel(folder.driveId))
+
+  // The labels of the document on screen place the role boxes, including roles typed before they were read.
+  useEffect(() => {
+    if (!staged || anchors.length === 0) return
+    setSigners((current) => {
+      const next = current.map((s) => placeByRole(s, anchors, staged.pdf.pages))
+      return next.some((s, i) => s !== current[i]) ? next : current
+    })
+  }, [anchors, staged])
 
   function adopt(next: Staged, content: string) {
     setStaged(next)
     setBase64(content)
-    setTitle(baseName(next.fileName))
-    setFileName(`${baseName(next.fileName)} - firmato.pdf`)
-    if (next.folder) setFolder(next.folder)
+    // The same PDF picked again keeps its labels: its bytes aren't read again.
+    if (content !== base64) setAnchors([])
+    const name = baseName(next.fileName)
+    if (!titleTouched || title.trim() === "") setTitle(name)
+    if (!fileNameTouched || fileName.trim() === "") setFileName(`${name} - firmato.pdf`)
+    if (next.folder && (!folderTouched || !folder)) setFolder(next.folder)
+    setShown(({ email }) => ({ email }))
     setSigners((current) =>
-      current.map((s, i) => ({ ...s, places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature" }] }))
+      current.map((s, i) => ({
+        ...s,
+        places: [{ ...defaultPlacement(i, next.pdf.pages), kind: "signature", byRole: true }],
+      }))
     )
   }
 
@@ -223,6 +317,14 @@ export function NewEsignRequestPage({
         { id: result.document.id, fileName: result.document.fileName, pdf: result.pdf, folder: from },
         content.base64
       )
+      const last = { driveId: from.driveId, id: from.id }
+      setLastFolder(last)
+      try {
+        window.localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify(last))
+      } catch (error) {
+        // Remembering the folder is best-effort: the document is already staged.
+        console.error(error)
+      }
     } catch (error) {
       console.error(error)
       setDocError(error instanceof Error ? error.message : "Couldn't open the PDF.")
@@ -231,18 +333,57 @@ export function NewEsignRequestPage({
     }
   }
 
+  const signerList = useFocusAfterRemoval<HTMLOListElement>("[data-signer-row]")
+  const searchRef = useRef<HTMLInputElement>(null)
+  const roleInputs = useRef(new Map<string, HTMLInputElement>())
+  /** The signer just added, whose role takes the focus once their row renders. */
+  const focusRole = useRef<string | null>(null)
+  useEffect(() => {
+    if (focusRole.current === null) return
+    roleInputs.current.get(focusRole.current)?.focus()
+    focusRole.current = null
+  }, [signers])
+
   function addSigner(person: EsignProfile) {
     const draft = draftOf(person, signers.length, pages)
     setSigners((current) => [...current, draft])
     setFocus({ page: draft.places[0].page, y: draft.places[0].y })
     setSearch("")
+    focusRole.current = person.sub
   }
 
-  function updateSigner(index: number, patch: Partial<SignerDraft>) {
-    setSigners((current) => current.map((s, i) => (i === index ? { ...s, ...patch } : s)))
+  // Placing refers to a signer by position, so it ends when the positions change.
+  function removeSigner(index: number, button: HTMLElement) {
+    if (signers.length === 1) searchRef.current?.focus()
+    else signerList.capture(button, { restore: true })
+    setSigners((current) => current.filter((_, i) => i !== index))
+    setPlacing(null)
   }
 
-  function moveSigner(index: number, by: -1 | 1) {
+  const moveButtons = useRef(new Map<string, HTMLButtonElement>())
+  function moveButtonRef(key: string) {
+    return (button: HTMLButtonElement | null) => {
+      if (button) moveButtons.current.set(key, button)
+      else moveButtons.current.delete(key)
+    }
+  }
+  /** The signer just moved by the arrow that had the focus, which keeps it once the row lands. */
+  const focusMove = useRef<{ sub: string; by: -1 | 1 } | null>(null)
+  // A layout effect, so the focus is back before the browser drops it from the moved row or the disabled arrow.
+  useLayoutEffect(() => {
+    const moved = focusMove.current
+    if (moved === null) return
+    focusMove.current = null
+    const index = signers.findIndex((s) => s.sub === moved.sub)
+    // The arrow that just disabled itself (first row going up, last going down) hands the focus to the other one.
+    const atEnd = moved.by === -1 ? index === 0 : index === signers.length - 1
+    const up = moved.by === -1 ? !atEnd : atEnd
+    moveButtons.current.get(`${moved.sub}:${up ? "up" : "down"}`)?.focus()
+  }, [signers])
+
+  function moveSigner(index: number, by: -1 | 1, button: HTMLElement) {
+    if (button === document.activeElement) focusMove.current = { sub: signers[index].sub, by }
+    setPlacing(null)
     setSigners((current) => {
       const next = [...current]
       const [item] = next.splice(index, 1)
@@ -251,20 +392,27 @@ export function NewEsignRequestPage({
     })
   }
 
-  function updatePlaces(index: number, update: (places: Place[]) => Place[], manual = true) {
+  function setRole(index: number, role: string) {
+    const s = signers[index]
+    const next = placeByRole({ ...s, role }, anchors, pages)
+    const placed = next.places.find((p) => p.byRole)
+    if (next.places !== s.places && placed) setFocus({ page: placed.page, y: placed.y })
+    setSigners((current) => current.map((c, i) => (i === index ? next : c)))
+  }
+
+  function updatePlaces(index: number, update: (places: DraftPlace[]) => DraftPlace[]) {
     setSigners((current) =>
-      current.map((s, i) =>
-        i === index ? { ...s, places: withSignature(update(s.places)), manual: s.manual || manual } : s
-      )
+      current.map((s, i) => (i === index ? { ...s, places: withSignature(update(s.places)) } : s))
     )
   }
 
-  function movePlace(index: number, at: number, placement: BoxPlacement) {
-    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p)), at === 0)
+  // The box comes back with every field it was given: rebuilt without `byRole`, it no longer follows the role.
+  function movePlace(index: number, at: number, { page, x, y, width, height }: BoxPlacement) {
+    updatePlaces(index, (places) => places.map((p, i) => (i === at ? { page, x, y, width, height, kind: p.kind } : p)))
   }
 
   function removePlace(index: number, at: number) {
-    updatePlaces(index, (places) => places.filter((_, i) => i !== at), false)
+    updatePlaces(index, (places) => places.filter((_, i) => i !== at))
   }
 
   function place(page: number, x: number, y: number) {
@@ -279,14 +427,11 @@ export function NewEsignRequestPage({
     }
     const at = placing.place
     // Clicked places keep reading order (page, then top to bottom), which is also the order they are signed in.
-    updatePlaces(
-      placing.signer,
-      (places) =>
-        (at === null
-          ? [...places, { ...placement, kind: "signature" as const }]
-          : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
-        ).sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x),
-      at === 0
+    updatePlaces(placing.signer, (places) =>
+      (at === null
+        ? [...places, { ...placement, kind: "signature" as const }]
+        : places.map((p, i) => (i === at ? { ...placement, kind: p.kind } : p))
+      ).sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x)
     )
     setPlacing(null)
   }
@@ -317,15 +462,26 @@ export function NewEsignRequestPage({
     .map((e) => e.trim())
     .filter(Boolean)
   const badEmail = recipients.find((e) => !EMAIL.test(e))
-  const problems = [
-    !staged && "Choose the document.",
-    signers.length === 0 && "Add at least one signer.",
-    title.trim() === "" && "Give the request a title.",
-    saveToDrive && !folder && "Choose the OneDrive folder.",
-    saveToDrive && fileName.trim() === "" && "Name the signed file.",
-    badEmail && `“${badEmail}” isn't an email address.`,
-    ...outsiders.map((s) => `${s.name} can't sign documents of ${driveLabel(blockedDrive(s.sub) ?? "")}.`),
-  ].filter((p): p is string => Boolean(p))
+  const errors = {
+    document: staged ? undefined : "Choose the document.",
+    signers: signers.length > 0 ? undefined : "Add at least one signer.",
+    title: title.trim() === "" ? "Give the request a title." : undefined,
+    folder: saveToDrive && !folder ? "Choose the OneDrive folder." : undefined,
+    fileName: saveToDrive && fileName.trim() === "" ? "Name the signed file." : undefined,
+    email: badEmail ? `“${badEmail}” isn't an email address.` : undefined,
+  }
+  // Signers who may not sign these documents block the request too; their rows say why.
+  const problems = outsiders.length > 0 || Object.values(errors).some(Boolean)
+
+  function revalidate(field: keyof typeof shown) {
+    if (shown[field]) setShown((current) => ({ ...current, [field]: errors[field] }))
+  }
+
+  function showProblems() {
+    setAttempted(true)
+    setShown({ title: errors.title, fileName: errors.fileName, email: errors.email })
+    setBlockedSubmits((count) => count + 1)
+  }
 
   // When the viewer signs first, creating the request and signing it are one step.
   const myIndex = signers.findIndex((s) => s.sub === me)
@@ -336,6 +492,21 @@ export function NewEsignRequestPage({
   const created = useRef<{ id: string; title: string } | null>(null)
 
   const creating = useRef(false)
+
+  // "Sign a document" starts with the viewer as signer: that alone is nothing to lose.
+  const untouched =
+    staged === null &&
+    title.trim() === "" &&
+    emails.trim() === "" &&
+    message.trim() === "" &&
+    signers.every((s) => withMe && s.sub === me && s.role.trim() === "")
+  const dirty = createdRequest === null && !untouched
+  // Reads the ref when it runs, so moving to the request just created is never blocked.
+  const leave = useBlocker({
+    shouldBlockFn: () => dirty && created.current === null,
+    enableBeforeUnload: () => dirty && created.current === null,
+    withResolver: true,
+  })
 
   async function create(documentId: string) {
     if (created.current) return created.current
@@ -349,7 +520,11 @@ export function NewEsignRequestPage({
           title: title.trim(),
           documentId,
           ordered,
-          signers: signers.map((s) => ({ sub: s.sub, role: s.role.trim() || null, places: s.places })),
+          signers: signers.map((s) => ({
+            sub: s.sub,
+            role: s.role.trim() || null,
+            places: s.places.map(({ page, x, y, width, height, kind }) => ({ page, x, y, width, height, kind })),
+          })),
           output:
             saveToDrive && folder ? { driveId: folder.driveId, folderId: folder.id, fileName: fileName.trim() } : null,
           email: recipients.length ? { to: recipients, message: message.trim() || null } : null,
@@ -382,8 +557,7 @@ export function NewEsignRequestPage({
 
   async function submit() {
     if (submitting || created.current) return
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return
+    if (problems || !staged) return showProblems()
     setSubmitting(true)
     const request = await create(staged.id)
     if (!request) return setSubmitting(false)
@@ -394,8 +568,10 @@ export function NewEsignRequestPage({
 
   function createAndSign() {
     if (submitting || created.current) return null
-    setAttempted(true)
-    if (problems.length > 0 || !staged) return null
+    if (problems || !staged) {
+      showProblems()
+      return null
+    }
     return create(staged.id).then((request) => (request ? [{ requestId: request.id, title: request.title }] : []))
   }
 
@@ -438,53 +614,51 @@ export function NewEsignRequestPage({
         }
       />
       <PageContent width="record">
-        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
+        <div ref={form} className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">
             {staged ? (
-              <div className="flex flex-col gap-2">
-                {placing !== null && (
-                  <InlineAlert tone="info">
-                    {placing.place === null
+              <PdfViewer
+                data={bytes}
+                pages={pages}
+                status={
+                  placing === null
+                    ? null
+                    : placing.place === null
                       ? `Click where ${signers[placing.signer]?.name} signs again.`
-                      : `Click the new spot for ${signers[placing.signer]?.name}.`}{" "}
-                    <button type="button" className="text-(--pn-accent) underline" onClick={() => setPlacing(null)}>
-                      Cancel
-                    </button>
-                  </InlineAlert>
-                )}
-                <PdfViewer
-                  data={bytes}
-                  pages={pages}
-                  cursor={placing !== null ? "crosshair" : "default"}
-                  onPageClick={place}
-                  focus={focus}
-                  overlay={(page) =>
-                    signers.flatMap((s, index) =>
-                      s.places.map((p, at) =>
-                        p.page === page ? (
-                          <SignatureBox
-                            // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
-                            key={`${s.sub}-${at}`}
-                            placement={p}
-                            label={s.name}
-                            role={s.role || null}
-                            number={index + 1}
-                            kind={p.kind}
-                            state="active"
-                            editable
-                            highlighted={highlight?.signer === s.sub && highlight.place === at}
-                            onChange={(placement) => movePlace(index, at, placement)}
-                            onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
-                          />
-                        ) : null
-                      )
+                      : `Click the new spot for ${signers[placing.signer]?.name}.`
+                }
+                statusAction={placing !== null && <PlacingCancel onCancel={() => setPlacing(null)} />}
+                cursor={placing !== null ? "crosshair" : "default"}
+                onPageClick={place}
+                focus={focus}
+                overlay={(page) =>
+                  signers.flatMap((s, index) =>
+                    s.places.map((p, at) =>
+                      p.page === page ? (
+                        <SignatureBox
+                          // biome-ignore lint/suspicious/noArrayIndexKey: places have no identity but their order
+                          key={`${s.sub}-${at}`}
+                          placement={p}
+                          label={s.name}
+                          role={s.role || null}
+                          number={index + 1}
+                          kind={p.kind}
+                          state="active"
+                          editable
+                          highlighted={highlight?.signer === s.sub && highlight.place === at}
+                          onChange={(placement) => movePlace(index, at, placement)}
+                          onRemove={s.places.length > 1 ? () => removePlace(index, at) : undefined}
+                        />
+                      ) : null
                     )
-                  }
-                />
-              </div>
+                  )
+                }
+              />
             ) : (
               <section
                 aria-label="Choose the document"
+                tabIndex={-1}
+                data-invalid={attempted || undefined}
                 onDragOver={(event) => {
                   event.preventDefault()
                   setDragging(true)
@@ -519,16 +693,20 @@ export function NewEsignRequestPage({
                     </div>
                   )}
                 </div>
-                {docError && <InlineAlert>{docError}</InlineAlert>}
+                {(docError || attempted) && <InlineAlert>{docError ?? errors.document}</InlineAlert>}
                 {source === "drive" && config.drives.length > 0 ? (
-                  <DriveBrowser
-                    mode="file"
-                    label="Files"
-                    drives={config.drives}
-                    busyId={busyItem}
-                    onPickFile={(item, from) => void importFromDrive(item.id, from)}
-                    className="flex-1"
-                  />
+                  lastFolder !== undefined && (
+                    <DriveBrowser
+                      mode="file"
+                      label="Files"
+                      drives={config.drives}
+                      initialDriveId={lastFolder?.driveId}
+                      initialFolderId={lastFolder?.id}
+                      busyId={busyItem}
+                      onPickFile={(item, from) => void importFromDrive(item.id, from)}
+                      className="flex-1"
+                    />
+                  )
                 ) : (
                   <label
                     htmlFor={ids.file}
@@ -562,8 +740,11 @@ export function NewEsignRequestPage({
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
-            {attempted && problems.length > 0 && <InlineAlert>{problems[0]}</InlineAlert>}
-            {submitError && <InlineAlert>{submitError}</InlineAlert>}
+            {submitError && (
+              <div ref={submitAlert}>
+                <InlineAlert>{submitError}</InlineAlert>
+              </div>
+            )}
             {createdRequest && (
               <InlineAlert tone="info">
                 Request created.{" "}
@@ -592,151 +773,179 @@ export function NewEsignRequestPage({
 
             <SectionCard title="Signers" count={signers.length || undefined}>
               {signers.length > 0 && (
-                <ol className="mb-3 flex flex-col gap-3">
-                  {signers.map((s, index) => (
-                    <li key={s.sub} className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3">
-                      <div className="flex items-center gap-2">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
-                          {index + 1}
-                        </span>
-                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                          <span className="truncate text-[14px] font-medium">{s.name}</span>
-                          {s.sub === me && <YouChip />}
-                        </span>
-                        <IconButton
-                          label="Move up"
-                          icon={ArrowUp}
-                          disabled={index === 0}
-                          onClick={() => moveSigner(index, -1)}
+                <ol ref={signerList.surfaceRef} tabIndex={-1} className="mb-3 flex flex-col gap-3">
+                  {signers.map((s, index) => {
+                    const blocked = blockedDrive(s.sub)
+                    const blockedId = `${ids.signersError}-${index}`
+                    return (
+                      <li
+                        key={s.sub}
+                        data-signer-row
+                        tabIndex={blocked === undefined ? undefined : -1}
+                        aria-describedby={blocked === undefined ? undefined : blockedId}
+                        data-invalid={(attempted && blocked !== undefined) || undefined}
+                        className="flex flex-col gap-2 rounded-(--pn-r-4) border border-(--pn-line) p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--pn-accent-soft) text-[12px] font-semibold text-(--pn-accent) tabular-nums">
+                            {index + 1}
+                          </span>
+                          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span className="truncate text-[14px] font-medium">{s.name}</span>
+                            {s.sub === me && <YouChip />}
+                          </span>
+                          {signers.length > 1 && (
+                            <>
+                              <IconButton
+                                ref={moveButtonRef(`${s.sub}:up`)}
+                                label="Move up"
+                                icon={ArrowUp}
+                                disabled={index === 0}
+                                onClick={(event) => moveSigner(index, -1, event.currentTarget)}
+                              />
+                              <IconButton
+                                ref={moveButtonRef(`${s.sub}:down`)}
+                                label="Move down"
+                                icon={ArrowDown}
+                                disabled={index === signers.length - 1}
+                                onClick={(event) => moveSigner(index, 1, event.currentTarget)}
+                              />
+                            </>
+                          )}
+                          <IconButton
+                            label={`Remove ${s.name}`}
+                            icon={Trash2}
+                            tone="danger"
+                            onClick={(event) => removeSigner(index, event.currentTarget)}
+                          />
+                        </div>
+                        {/* No autoHighlight: Enter keeps a role typed by hand instead of taking the first suggestion. */}
+                        <Autocomplete items={ROLES} value={s.role} onValueChange={(role) => setRole(index, role)}>
+                          <ComboboxInput
+                            ref={(input: HTMLInputElement | null) => {
+                              if (input) roleInputs.current.set(s.sub, input)
+                              else roleInputs.current.delete(s.sub)
+                            }}
+                            listLabel="roles"
+                            aria-label={`Role of ${s.name}`}
+                            placeholder="Role (optional), e.g. Segretario"
+                            maxLength={80}
+                          />
+                          <ComboboxContent>
+                            <ComboboxList>
+                              {(role: string) => (
+                                <ComboboxItem key={role} value={role}>
+                                  {role}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </ComboboxContent>
+                        </Autocomplete>
+                        {blocked !== undefined &&
+                          (attempted ? (
+                            <FieldError id={blockedId}>Can't sign documents of {driveLabel(blocked)}</FieldError>
+                          ) : (
+                            <p id={blockedId} className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
+                              <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                              Can't sign documents of {driveLabel(blocked)}
+                            </p>
+                          ))}
+                        <PlacesEditor
+                          name={s.name}
+                          places={s.places}
+                          disabled={!staged}
+                          adding={placing?.signer === index && placing.place === null}
+                          onShow={(at) => {
+                            setHighlight(at === null ? null : { signer: s.sub, place: at })
+                            const p = at === null ? undefined : s.places[at]
+                            if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
+                          }}
+                          onKind={(at, kind) =>
+                            updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)))
+                          }
+                          onMove={(at) => setPlacing({ signer: index, place: at })}
+                          onRemove={(at) => removePlace(index, at)}
+                          onAdd={() =>
+                            setPlacing(
+                              placing?.signer === index && placing.place === null
+                                ? null
+                                : { signer: index, place: null }
+                            )
+                          }
                         />
-                        <IconButton
-                          label="Move down"
-                          icon={ArrowDown}
-                          disabled={index === signers.length - 1}
-                          onClick={() => moveSigner(index, 1)}
-                        />
-                        <IconButton
-                          label={`Remove ${s.name}`}
-                          icon={Trash2}
-                          tone="danger"
-                          onClick={() => setSigners((current) => current.filter((_, i) => i !== index))}
-                        />
-                      </div>
-                      <Input
-                        aria-label={`Role of ${s.name}`}
-                        placeholder="Role (optional), e.g. Segretario"
-                        list={ids.roles}
-                        value={s.role}
-                        maxLength={80}
-                        className={cn(fieldControl, "h-9")}
-                        onChange={(event) => {
-                          const role = event.target.value
-                          const placed = s.manual ? null : placementForRole(role, anchors, pages)
-                          if (placed) setFocus({ page: placed.page, y: placed.y })
-                          updateSigner(
-                            index,
-                            placed
-                              ? { role, places: s.places.map((p, at) => (at === 0 ? { ...placed, kind: p.kind } : p)) }
-                              : { role }
-                          )
-                        }}
-                      />
-                      {blockedDrive(s.sub) !== undefined && (
-                        <p className="flex items-center gap-1.5 text-[12px] text-(--pn-warning-fg)">
-                          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-                          Can't sign documents of {driveLabel(blockedDrive(s.sub) ?? "")}
-                        </p>
-                      )}
-                      <PlacesEditor
-                        name={s.name}
-                        places={s.places}
-                        disabled={!staged}
-                        adding={placing?.signer === index && placing.place === null}
-                        onShow={(at) => {
-                          setHighlight(at === null ? null : { signer: s.sub, place: at })
-                          const p = at === null ? undefined : s.places[at]
-                          if (p) setFocus({ page: p.page, y: p.y + p.height / 2 })
-                        }}
-                        onKind={(at, kind) =>
-                          updatePlaces(index, (places) => places.map((p, i) => (i === at ? { ...p, kind } : p)), false)
-                        }
-                        onMove={(at) => setPlacing({ signer: index, place: at })}
-                        onRemove={(at) => removePlace(index, at)}
-                        onAdd={() =>
-                          setPlacing(
-                            placing?.signer === index && placing.place === null ? null : { signer: index, place: null }
-                          )
-                        }
-                      />
-                    </li>
-                  ))}
+                      </li>
+                    )
+                  })}
                 </ol>
               )}
-              <datalist id={ids.roles}>
-                {ROLES.map((role) => (
-                  <option key={role} value={role} />
-                ))}
-              </datalist>
-              <div className="flex flex-col gap-2">
-                <div className="relative">
-                  <Search
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
-                  />
-                  <Input
-                    id={ids.search}
-                    aria-label="Find a person to add"
-                    placeholder="Add a signer…"
-                    value={search}
-                    className={cn(fieldControl, "pl-9")}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-                {(matches.length > 0 || available.length === 0) && (
-                  <ul className="flex max-h-60 flex-col overflow-y-auto">
-                    {matches.slice(0, 30).map((person) => (
-                      <li key={person.sub}>
-                        <button
-                          type="button"
-                          onClick={() => addSigner(person)}
-                          className="flex min-h-10 w-full items-center gap-2 rounded-(--pn-r-2) px-2 py-1.5 text-left hover:bg-(--pn-hover)"
-                        >
-                          <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-[14px]">{person.name}</span>
-                              {person.sub === me && <YouChip />}
-                            </span>
-                            {person.email && (
-                              <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">
-                                {person.email}
-                              </span>
-                            )}
+              {/* The page filters people itself and lists them only once something is typed; the list stays in place. */}
+              <Combobox
+                items={matches.slice(0, 30)}
+                filter={null}
+                itemToStringLabel={(person: EsignProfile) => person.name}
+                value={null}
+                inputValue={search}
+                onInputValueChange={(value, { reason }) => {
+                  // Picking a person would otherwise put their name in the search.
+                  if (reason !== "item-press") setSearch(value)
+                }}
+                onValueChange={(person) => person && addSigner(person)}
+                autoHighlight
+                inline
+                open
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="relative">
+                    <Search
+                      aria-hidden
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--pn-fg-muted)"
+                    />
+                    <ComboboxPrimitive.Input
+                      ref={searchRef}
+                      render={<Input id={ids.search} className={cn(fieldControl, "pl-9")} />}
+                      aria-label="Find a person to add"
+                      placeholder="Add a signer…"
+                      aria-invalid={(attempted && errors.signers !== undefined) || undefined}
+                      aria-describedby={attempted && errors.signers ? ids.signersError : undefined}
+                    />
+                  </div>
+                  {attempted && errors.signers && <FieldError id={ids.signersError}>{errors.signers}</FieldError>}
+                  <ComboboxList className="p-0 empty:hidden">
+                    {(person: EsignProfile) => (
+                      <ComboboxItem key={person.sub} value={person} className="min-h-10 px-2 py-1.5">
+                        <UserPlus aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-[14px]">{person.name}</span>
+                            {person.sub === me && <YouChip />}
                           </span>
-                        </button>
-                      </li>
-                    ))}
-                    {available.length === 0 && (
-                      <li className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
-                        {search.trim() !== ""
-                          ? "Nobody matches."
-                          : eligible.length === 0 && usedDrives.length > 0
-                            ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
-                            : eligible.length === 0
-                              ? "No registered people currently have permission to sign."
-                              : usedDrives.length > 0
-                                ? "Everyone allowed to sign these documents is added."
-                                : "Everyone who can sign is added."}
-                      </li>
+                          {person.email && (
+                            <span className="truncate font-mono text-[12px] text-(--pn-fg-muted)">{person.email}</span>
+                          )}
+                        </span>
+                      </ComboboxItem>
                     )}
-                  </ul>
-                )}
-                {matches.length > 0 && eligible.length < people.length && (
-                  <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
-                    Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
-                  </p>
-                )}
-              </div>
+                  </ComboboxList>
+                  {available.length === 0 && (
+                    <p className="px-2 py-2 text-[13px] text-(--pn-fg-muted)">
+                      {search.trim() !== ""
+                        ? "Nobody matches."
+                        : eligible.length === 0 && usedDrives.length > 0
+                          ? `Nobody can sign documents of ${usedDrives.map(driveLabel).join(" and ")}. Who can is set in Signatures › Drives.`
+                          : eligible.length === 0
+                            ? "No registered people currently have permission to sign."
+                            : usedDrives.length > 0
+                              ? "Everyone allowed to sign these documents is added."
+                              : "Everyone who can sign is added."}
+                    </p>
+                  )}
+                  {matches.length > 0 && eligible.length < people.length && (
+                    <p className="px-2 text-[12px] text-pretty text-(--pn-fg-muted)">
+                      Only people allowed to sign documents of {usedDrives.map(driveLabel).join(" and ")} are listed.
+                    </p>
+                  )}
+                </div>
+              </Combobox>
               {signers.length > 1 && (
                 <label className="mt-3 flex items-start gap-2 text-[14px]">
                   <Checkbox
@@ -758,13 +967,19 @@ export function NewEsignRequestPage({
 
             <SectionCard title="Details">
               <div className="flex flex-col gap-4">
-                <FormField label="Title" htmlFor={ids.title}>
+                <FormField label="Title" htmlFor={ids.title} error={shown.title}>
                   <Input
                     id={ids.title}
                     className={fieldControl}
                     value={title}
                     maxLength={200}
-                    onChange={(e) => setTitle(e.target.value)}
+                    aria-invalid={shown.title ? true : undefined}
+                    aria-describedby={shown.title ? fieldHintId(ids.title) : undefined}
+                    onChange={(e) => {
+                      setTitle(e.target.value)
+                      setTitleTouched(true)
+                    }}
+                    onBlur={() => revalidate("title")}
                   />
                 </FormField>
                 {config.drives.length > 0 && (
@@ -780,35 +995,55 @@ export function NewEsignRequestPage({
                     {saveToDrive && (
                       <>
                         <div className="flex items-center justify-between gap-2 rounded-(--pn-r-3) bg-(--pn-sunken) px-3 py-2">
-                          <span className="min-w-0 truncate font-mono text-[12px]">
-                            {folder
-                              ? `${config.drives.length > 1 ? `${driveLabel(folder.driveId)}: ` : ""}/${folder.path}`
-                              : "No folder chosen"}
-                          </span>
-                          <Button variant="outline" size="sm" onClick={() => setChoosingFolder((v) => !v)}>
+                          {output ? (
+                            <Hint overflowOnly label={output.full}>
+                              <span className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate text-[14px] font-medium">{output.name}</span>
+                                <span className="truncate text-[13px] text-(--pn-fg-muted)">{output.place}</span>
+                              </span>
+                            </Hint>
+                          ) : (
+                            <span className="text-[14px] text-(--pn-fg-muted)">No folder chosen</span>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-invalid={(attempted && errors.folder !== undefined) || undefined}
+                            aria-describedby={attempted && errors.folder ? ids.folderError : undefined}
+                            onClick={() => setChoosingFolder((v) => !v)}
+                          >
                             {choosingFolder ? "Close" : "Choose folder"}
                           </Button>
                         </div>
+                        {attempted && errors.folder && <FieldError id={ids.folderError}>{errors.folder}</FieldError>}
                         {choosingFolder && (
                           <DriveBrowser
                             mode="folder"
                             label="Folders"
                             drives={config.drives}
-                            initialDriveId={folder?.driveId}
+                            initialDriveId={(folder ?? lastFolder)?.driveId}
+                            initialFolderId={(folder ?? lastFolder)?.id}
                             className="h-72"
                             onPickFolder={(picked) => {
                               setFolder(picked)
+                              setFolderTouched(true)
                               setChoosingFolder(false)
                             }}
                           />
                         )}
-                        <FormField label="File name" htmlFor={`${ids.title}-file`}>
+                        <FormField label="File name" htmlFor={ids.fileName} error={shown.fileName}>
                           <Input
-                            id={`${ids.title}-file`}
+                            id={ids.fileName}
                             className={fieldControl}
                             value={fileName}
                             maxLength={200}
-                            onChange={(e) => setFileName(e.target.value)}
+                            aria-invalid={shown.fileName ? true : undefined}
+                            aria-describedby={shown.fileName ? fieldHintId(ids.fileName) : undefined}
+                            onChange={(e) => {
+                              setFileName(e.target.value)
+                              setFileNameTouched(true)
+                            }}
+                            onBlur={() => revalidate("fileName")}
                           />
                         </FormField>
                       </>
@@ -820,6 +1055,7 @@ export function NewEsignRequestPage({
                   htmlFor={ids.emails}
                   optional
                   hint="Addresses separated by commas. Sent when every signature is in."
+                  error={shown.email}
                 >
                   <Input
                     id={ids.emails}
@@ -827,7 +1063,10 @@ export function NewEsignRequestPage({
                     value={emails}
                     inputMode="email"
                     placeholder="segreteria@polinetwork.org"
+                    aria-invalid={shown.email ? true : undefined}
+                    aria-describedby={fieldHintId(ids.emails)}
                     onChange={(e) => setEmails(e.target.value)}
+                    onBlur={() => revalidate("email")}
                   />
                 </FormField>
                 {recipients.length > 0 && (
@@ -846,7 +1085,28 @@ export function NewEsignRequestPage({
           </div>
         </div>
       </PageContent>
+      <ConfirmDialog
+        open={leave.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) leave.reset?.()
+        }}
+        title="Discard changes?"
+        description="The document, signers and boxes you set up here will be lost."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={async () => leave.proceed?.()}
+      />
     </>
+  )
+}
+
+/** A problem shown at the control it is about, styled like `FormField`'s error. */
+function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="flex items-center gap-1.5 text-xs text-(--pn-danger-fg)">
+      <CircleAlert aria-hidden className="size-3.5 shrink-0" />
+      {children}
+    </p>
   )
 }
 

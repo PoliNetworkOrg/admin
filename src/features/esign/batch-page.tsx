@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { EmptyState, IconButton, InlineAlert, SectionCard } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
@@ -12,9 +12,11 @@ import { cn } from "@/lib/utils"
 
 import { getEsignDocumentContent } from "./esign.functions"
 import { PdfViewer, usePdfBytes } from "./pdf-viewer"
-import { kindsLabel, type Place, pagesLabel, placesLeft } from "./places"
+import { kindsLabel, type Place, pagesLabel, placeAt, placesLeft } from "./places"
+import { MovePlaceButtons, PlacingCancel, placingStatus } from "./placing"
 import { SignWithCie } from "./sign-with-cie"
 import { SignatureBox } from "./signature-box"
+import { useReloadWhile } from "./use-reload-while"
 
 type Item = Pick<EsignRequestDetail, "request" | "currentDocumentId" | "signingNow"> & { pdf: EsignPdfInfo | null }
 
@@ -26,23 +28,67 @@ const BACK = { label: "documents to sign", link: { to: "/dashboard/esign/inbox" 
  */
 export function EsignBatchPage({ items, more, me }: { items: Item[]; more: number; me: string }) {
   const navigate = useNavigate()
+  const contentFn = useServerFn(getEsignDocumentContent)
+  /** PDF contents by document id (a version never changes), so Next opens a document fetched in advance. */
+  const pdfs = useRef(new Map<string, Promise<string>>())
+  const loadPdf = useCallback(
+    (documentId: string) => {
+      let pdf = pdfs.current.get(documentId)
+      if (!pdf) {
+        pdf = contentFn({ data: { documentId } }).then((result) => result.base64)
+        pdfs.current.set(documentId, pdf)
+        // Opening the document again tries again.
+        void pdf.catch((error) => {
+          console.error(error)
+          pdfs.current.delete(documentId)
+        })
+      }
+      return pdf
+    },
+    [contentFn]
+  )
   const [activeId, setActiveId] = useState(items[0]?.request.id ?? null)
   const [reviewed, setReviewed] = useState<Set<string>>(() => new Set(items[0] ? [items[0].request.id] : []))
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set())
   /** The viewer's boxes per request, as they drag them. */
   const [moved, setMoved] = useState<Map<string, Place[]>>(new Map())
+  /** The open document's place waiting for a click on its new spot. */
+  const [placing, setPlacing] = useState<number | null>(null)
 
   // Signed documents leave the batch when the page reloads.
   const active = items.find((item) => item.request.id === activeId) ?? items[0]
   const included = items.filter((item) => !leftOut.has(item.request.id))
   const unchecked = included.filter((item) => !reviewed.has(item.request.id))
+  // Follow documents another signer holds until they finish; reloads keep the review progress and moved boxes.
+  useReloadWhile(
+    included.some((item) => item.signingNow && item.signingNow.sub !== me),
+    3000
+  )
+
+  const activeDocument = active?.currentDocumentId
+  const nextDocument = unchecked[0]?.currentDocumentId
+  useEffect(() => {
+    if (!activeDocument || !nextDocument) return
+    let cancelled = false
+    // Once the open document has arrived, fetch the one Next opens.
+    loadPdf(activeDocument)
+      .then(() => {
+        if (!cancelled) void loadPdf(nextDocument)
+      })
+      .catch((error) => console.error(error))
+    return () => {
+      cancelled = true
+    }
+  }, [activeDocument, nextDocument, loadPdf])
 
   function open(id: string) {
     setActiveId(id)
+    setPlacing(null)
     setReviewed((current) => new Set(current).add(id))
   }
 
   function toggle(id: string) {
+    if (id === active?.request.id) setPlacing(null)
     setLeftOut((current) => {
       const next = new Set(current)
       if (!next.delete(id)) next.add(id)
@@ -152,8 +198,18 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
               key={active.request.id}
               item={active}
               me={me}
+              loadPdf={loadPdf}
               places={places}
               onMove={(next) => setMoved((current) => new Map(current).set(active.request.id, next))}
+              placing={placing}
+              onPlace={(page, x, y) => {
+                const next = places.map((p, at) =>
+                  at === placing ? placeAt(p, active.pdf?.pages ?? [], page, x, y) : p
+                )
+                setMoved((current) => new Map(current).set(active.request.id, next))
+                setPlacing(null)
+              }}
+              onCancelPlacing={() => setPlacing(null)}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
@@ -208,11 +264,30 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
                     ? `Check where you sign in each document, moving the blue boxes if needed. ${pluralize(unchecked.length, "document")} left to check.`
                     : included.length === 1
                       ? "Choose Sign with CIE at the top. You need the card, its PIN and the NFC reader."
-                      : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card and the NFC reader.`}
+                      : `All ${included.length} documents checked. Choose Sign at the top: one PIN signs them all. You need the card, its PIN and the NFC reader.`}
                 </p>
+                <p className="mt-2 text-[13px] text-(--pn-fg-muted)">
+                  First time signing on this computer?{" "}
+                  {/* A new tab, because the review progress and moved boxes live only in this page. */}
+                  <Link
+                    to="/dashboard/esign/setup"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-(--pn-accent) hover:underline"
+                  >
+                    Set it up first
+                  </Link>
+                  .
+                </p>
+                {signer && signer.signaturesDone === 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <MovePlaceButtons places={places} placing={placing} onPlacing={setPlacing} />
+                  </div>
+                )}
                 {active.signingNow && active.signingNow.sub !== me && (
                   <InlineAlert tone="warning" className="mt-3">
-                    {active.signingNow.name} is signing this document right now. Leave it out or try again later.
+                    {active.signingNow.name} is signing this document right now. Leave it out, or wait: it's ready as
+                    soon as they finish.
                   </InlineAlert>
                 )}
               </SectionCard>
@@ -227,15 +302,23 @@ export function EsignBatchPage({ items, more, me }: { items: Item[]; more: numbe
 function DocumentViewer({
   item,
   me,
+  loadPdf,
   places,
   onMove,
+  placing,
+  onPlace,
+  onCancelPlacing,
 }: {
   item: Item
   me: string
+  loadPdf: (documentId: string) => Promise<string>
   places: Place[]
   onMove: (places: Place[]) => void
+  /** The place waiting for a click on its new spot. */
+  placing: number | null
+  onPlace: (page: number, x: number, y: number) => void
+  onCancelPlacing: () => void
 }) {
-  const contentFn = useServerFn(getEsignDocumentContent)
   const [base64, setBase64] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const bytes = usePdfBytes(base64)
@@ -244,9 +327,9 @@ function DocumentViewer({
   useEffect(() => {
     if (!item.currentDocumentId) return
     let cancelled = false
-    contentFn({ data: { documentId: item.currentDocumentId } })
-      .then((result) => {
-        if (!cancelled) setBase64(result.base64)
+    loadPdf(item.currentDocumentId)
+      .then((pdf) => {
+        if (!cancelled) setBase64(pdf)
       })
       .catch((cause) => {
         console.error(cause)
@@ -255,16 +338,24 @@ function DocumentViewer({
     return () => {
       cancelled = true
     }
-  }, [item.currentDocumentId, contentFn])
+  }, [item.currentDocumentId, loadPdf])
 
   const mine = request.signers.find((s) => s.sub === me && s.status === "pending")
-  const first = mine ? placesLeft(places, mine.signaturesDone)[0] : undefined
+  // Once per document (it remounts for each): following the box as it moves would scroll it away from the pointer.
+  const [focus] = useState(() => {
+    const first = mine ? placesLeft(places, mine.signaturesDone)[0] : undefined
+    return first ? { page: first.page, y: first.y + first.height / 2 } : null
+  })
   if (error) return <InlineAlert>{error}</InlineAlert>
   return (
     <PdfViewer
       data={bytes}
       pages={item.pdf?.pages ?? []}
-      focus={first ? { page: first.page, y: first.y + first.height / 2 } : null}
+      focus={focus}
+      cursor={placing !== null ? "crosshair" : "default"}
+      onPageClick={placing !== null ? onPlace : undefined}
+      status={placing !== null ? placingStatus(places, placing) : null}
+      statusAction={placing !== null && <PlacingCancel onCancel={onCancelPlacing} />}
       overlay={(page) =>
         request.signers.flatMap((signer, index) => {
           if (signer.status !== "pending") return []

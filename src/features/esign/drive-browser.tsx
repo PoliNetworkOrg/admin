@@ -1,6 +1,6 @@
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowUp, FileText, Folder, LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { floatingMotion, raisedSurface } from "@/components/primitives/motion"
@@ -24,6 +24,8 @@ type DriveBrowserProps = {
   drives: EsignDrive[]
   /** The drive opened first, the first one by default. */
   initialDriveId?: string
+  /** The folder opened first in the initial drive, its top folder by default; ignored when initialDriveId is not one of drives. */
+  initialFolderId?: string
   /** A PDF, with the folder it is in. */
   onPickFile?: (item: EsignDriveItem, folder: DriveFolder) => void
   onPickFolder?: (folder: DriveFolder) => void
@@ -44,14 +46,18 @@ export function DriveBrowser({
   label,
   drives,
   initialDriveId,
+  initialFolderId,
   onPickFile,
   onPickFolder,
   busyId,
   className,
 }: DriveBrowserProps) {
   const listFn = useServerFn(listEsignDrive)
-  const [driveId, setDriveId] = useState(drives.some((d) => d.id === initialDriveId) ? initialDriveId : drives[0]?.id)
-  const [folderId, setFolderId] = useState<string | undefined>(undefined)
+  const initialDrive = drives.some((d) => d.id === initialDriveId)
+  const [driveId, setDriveId] = useState(initialDrive ? initialDriveId : drives[0]?.id)
+  const [folderId, setFolderId] = useState(initialDrive ? initialFolderId : undefined)
+  /** The initial folder until a listing loads: if it was moved or deleted, the drive's top folder opens instead. */
+  const initialFolder = useRef(folderId)
   const drive = drives.find((d) => d.id === driveId)
   const [listing, setListing] = useState<EsignDriveListing | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -64,11 +70,17 @@ export function DriveBrowser({
     setError(null)
     listFn({ data: { driveId, folderId } })
       .then((result) => {
-        if (!cancelled) setListing(result)
+        if (cancelled) return
+        initialFolder.current = undefined
+        setListing(result)
       })
       .catch((cause: unknown) => {
         console.error(cause)
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Couldn't open the folder.")
+        if (cancelled) return
+        if (folderId !== undefined && folderId === initialFolder.current) {
+          initialFolder.current = undefined
+          setFolderId(undefined)
+        } else setError(cause instanceof Error ? cause.message : "Couldn't open the folder.")
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

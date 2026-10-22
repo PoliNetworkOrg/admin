@@ -19,10 +19,29 @@ export function RequestStatusBadge({ request }: { request: Pick<EsignRequest, "s
   return <StatusBadge tone="neutral">Cancelled</StatusBadge>
 }
 
-export function SignerStatusBadge({ signer, turn }: { signer: EsignSigner; turn: boolean }) {
+export function SignerStatusBadge({
+  signer,
+  turn,
+  requestStatus,
+}: {
+  signer: EsignSigner
+  turn: boolean
+  requestStatus: EsignRequest["status"]
+}) {
   if (signer.status === "signed") return <StatusBadge tone="success">Signed</StatusBadge>
   if (signer.status === "declined") return <StatusBadge tone="danger">Declined</StatusBadge>
+  if (requestStatus !== "in_progress") return <StatusBadge tone="neutral">Not signed</StatusBadge>
   return turn ? <StatusBadge tone="brand">To sign</StatusBadge> : <StatusBadge tone="neutral">Waiting</StatusBadge>
+}
+
+const STATUS_FILTERS = ["all", "in_progress", "completed", "closed"] as const
+
+/** The requests list's status segment; "closed" is cancelled or declined. */
+export type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+/** The `?status=` search param; an unknown value falls back to the default instead of failing the route. */
+export function parseStatusFilter(value: string | undefined): StatusFilter | undefined {
+  return STATUS_FILTERS.find((filter) => filter === value)
 }
 
 /** "1 of 2 signed". */

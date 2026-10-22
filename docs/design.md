@@ -180,7 +180,8 @@ the selected range and a TanStack Charts line (3M per day, 1Y per week, All per 
 grid, month labels, a dashed hover guide and a tooltip with the date, total and growth), and Telegram groups, Open
 reports and Active grants as links on its right (a row under it on mobile, numbers on one baseline, labelled "Groups" rather than "Telegram groups", and without the "To
 review" flag); then "Areas": one card per service whose whole surface leads where the rail icon does, with each section
-as a 44px button (two per row on mobile).
+as a 44px button (two per row on mobile). Reports › Open and Signatures › To sign carry the same accent count pill as the
+panel, from the shell's pending counts; nothing at zero or on a failed load.
 
 **States.** While a route loads, its `pendingComponent` renders `PageBar`, `PageContent` and the template's skeleton
 (`TableSkeleton`, `CardsSkeleton`, `RecordSkeleton`, `SettingsListSkeleton`, labelled "Loading {things}…"), so nothing
@@ -440,13 +441,22 @@ Rules that the templates above don't imply.
   their own icon. The rail and bottom nav show a dot on Reports while any report is open.
 - **Signatures**: the request page puts the PDF viewer (pdf.js, so every browser renders the same) beside the
   signers, delivery and activity cards; the signer's box is blue and draggable, other pending signers' boxes are dashed.
+  Until their first signature, the signer's card (and "Before you sign" in a batch) offers "Move to another spot", one
+  button per place when there are several ("Signature · p. 2"). It works like the composer's: the next click on any
+  page puts the box there, the viewer's toolbar says so in place of the page counter, and Esc or Cancel stops it.
+  The viewer jumps to a box without scrolling smoothly, and zooming keeps the middle of the view in place.
   Signature boxes use the light palette in both themes, because they sit on white paper. "Sign with CIE" opens the
-  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. A person appears once
+  PoliNetwork eSign's own page in a popup: the PIN is typed there, never in the dashboard. When that window was closed
+  or PoliNetwork eSign doesn't answer, the dialog's footer primary is "Open the window again" beside "Cancel
+  signature" ("Stop here" once part of a batch is signed), and "Start PoliNetwork eSign" (outline) and "Setup guide" (ghost) sit in the body. A person appears once
   however many places they sign: their places are buttons under their name ("Signature · p. 2", "Mark · p. 1") whose
   menu switches the kind, moves or removes the place and rings its box on the page; marks have a dashed border.
   With several documents waiting, "Sign N together" opens a strip of the documents in the page bar's toolbar row: each
   is checked by opening it (a check replaces its number), can be left out, and the primary action stays "Next
   document" until all are checked, then becomes "Sign N documents" (one agent window, one PIN).
+  The requests list names whom an in-progress request waits on ("Waiting for X"); To sign has no Status column (every
+  row is the viewer's turn); `?status=` keeps the status segment across Back. The request page shows when each signer
+  whose turn it is was emailed, or why they weren't.
   Signatures › Drives (`esign:drives:manage`) has a card per drive with two rules, "Request signatures" and "Be asked
   to sign": chips for roles (people icon) and permissions (key icon), an inline picker listing both, a "Default: …"
   line while empty, and Save/Discard per drive. Unknown keys show as warning chips. On a new request, signers who may
