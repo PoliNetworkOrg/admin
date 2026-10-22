@@ -234,7 +234,8 @@ test("dashboard server functions attach their scoped authorization middleware", 
 
 test("dashboard mutations enforce their exact write scope", async () => {
   const entries = [
-    ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts"]],
+    ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
+    ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
     ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
@@ -255,11 +256,18 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
+  // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
+  const scoped = new Map()
+  const mutationsOf = async (file) => {
+    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
+    return exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
+  }
   for (const { expectedMiddleware, files } of entries) {
-    for (const file of files) {
-      const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8")
-      const mutations = exportedServerFunctions(source, file).filter((serverFunction) => serverFunction.isPost)
-      assert.ok(mutations.length > 0, `${file} must export at least one mutation`)
+    for (const entry of files) {
+      const [file, name] = entry.split("#")
+      const mutations = (await mutationsOf(file)).filter((mutation) => name === undefined || mutation.name === name)
+      assert.ok(mutations.length > 0, `${entry} must export at least one mutation`)
+      if (name !== undefined) scoped.set(file, [...(scoped.get(file) ?? []), name])
       for (const mutation of mutations) {
         assert.deepEqual(
           mutation.middleware,
@@ -269,12 +277,16 @@ test("dashboard mutations enforce their exact write scope", async () => {
       }
     }
   }
+  for (const [file, names] of scoped) {
+    for (const mutation of await mutationsOf(file))
+      assert.ok(names.includes(mutation.name), `${file}:${mutation.name} needs a write-scope entry`)
+  }
 })
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
-    "src/features/azure/groups-page.tsx": "azure:groups:write",
-    "src/features/azure/members-page.tsx": "azure:members:create",
+    "src/features/azure/membership-dialog.tsx": "azure:groups:write",
+    "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
     "src/features/esign/requests-page.tsx": "esign:requests:manage",
     "src/features/esign/request-page.tsx": "esign:requests:manage",
     "src/features/esign/drives-page.tsx": "esign:drives:manage",
@@ -333,6 +345,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
+    "src/features/azure/member-number-dialog.tsx": ["setAzureMemberNumber"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",
