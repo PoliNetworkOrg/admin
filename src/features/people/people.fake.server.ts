@@ -156,7 +156,11 @@ function record(person: StoredPerson, viewer: PeopleViewer): PersonRecord {
   return {
     ...row(person, viewer, canRead || ownRecord),
     notes: canRead ? person.notes : null,
-    discrepancies: discrepancies(person),
+    discrepancies: canRead
+      ? discrepancies(person)
+      : discrepancies(person).filter((item) =>
+          person.pendingGroupRemovals?.some((pending) => pending.message === item.message)
+        ),
     activity: [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)),
     fees: ownRecord || viewer.permissions.includes("people:members:read") ? fees(person) : null,
   }
