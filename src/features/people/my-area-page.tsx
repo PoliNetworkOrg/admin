@@ -45,6 +45,7 @@ import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AskToBeAddedDialog, CorrectionDialog, LeavingDialog } from "./my-area-dialogs"
+import { MyFeeCard } from "./my-fee-card"
 import {
   activeTeams,
   CENSUS_ANSWER,
@@ -502,6 +503,8 @@ function LinkedView({ area }: { area: Linked }) {
         <div className="flex flex-col gap-6">
           <CensusCard key={person.census.map((entry) => `${entry.year}:${entry.answer}`).join()} area={area} />
 
+          {person.fees ? <MyFeeCard fees={person.fees} instructions={area.feeInstructions} /> : null}
+
           <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-4">
               <SectionCard title="My roles" padding="flush">
@@ -515,7 +518,7 @@ function LinkedView({ area }: { area: Linked }) {
                             Member <MonoChip>{member.number}</MonoChip>
                           </>
                         }
-                        meta={`Admitted ${formatDay(member.admittedOn)}${member.fee ? ` · Fee: ${FEE_STATUS[member.fee].label}` : ""}`}
+                        meta={`Admitted ${formatDay(member.admittedOn)}${member.fee && !person.fees ? ` · Fee: ${FEE_STATUS[member.fee].label}` : ""}`}
                         end={<StateBadge state={MEMBER_STATUS[member.status]} />}
                       />
                     ) : null}

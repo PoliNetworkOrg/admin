@@ -223,6 +223,8 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-census.functions.ts",
     "src/features/people/people-capo.functions.ts",
     "src/features/people/people-self.functions.ts",
+    "src/features/people/people-fees.functions.ts",
+    "src/features/people/people-receipts.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -233,7 +235,9 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(serverFunction.isExported, `${file}:${serverFunction.name} must be exported`)
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
-          serverFunction.middleware.some((name) => /(?:Read|Write|Manage|Create|Self|Appoint)Middleware$/.test(name)),
+          serverFunction.middleware.some((name) =>
+            /(?:Read|Write|Manage|Create|Self|Appoint|Sign)Middleware$/.test(name)
+          ),
         `${file}:${serverFunction.name} must authorize access`
       )
     }
@@ -241,6 +245,13 @@ test("dashboard server functions attach their scoped authorization middleware", 
 })
 
 test("dashboard mutations enforce their exact write scope", async () => {
+  // Receipt preparation joins two domains; manual signing keeps its original People scope.
+  const combinedScopes = {
+    "src/features/people/people-receipts.functions.ts:prepareReceiptSignatures": [
+      "peopleReceiptsSignMiddleware",
+      "esignSignWriteMiddleware",
+    ],
+  }
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
     ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
@@ -267,6 +278,8 @@ test("dashboard mutations enforce their exact write scope", async () => {
       ["src/features/people/people-write.functions.ts", "src/features/people/people-census.functions.ts"],
     ],
     ["peopleMembersWriteMiddleware", ["src/features/people/people-members.functions.ts"]],
+    ["peopleFeesWriteMiddleware", ["src/features/people/people-fees.functions.ts"]],
+    ["peopleReceiptsSignMiddleware", ["src/features/people/people-receipts.functions.ts"]],
     ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
     ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
     [
@@ -290,7 +303,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
       for (const mutation of mutations) {
         assert.deepEqual(
           mutation.middleware,
-          [expectedMiddleware],
+          combinedScopes[`${file}:${mutation.name}`] ?? [expectedMiddleware],
           `${file}:${mutation.name} must use its dedicated middleware`
         )
       }
@@ -306,8 +319,9 @@ test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
     "src/features/azure/membership-dialog.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
-    "src/features/esign/requests-page.tsx": "esign:requests:manage",
-    "src/features/esign/request-page.tsx": "esign:requests:manage",
+    "src/features/esign/receipt-request-link.tsx": "people:members:read",
+    "src/features/esign/requests-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
+    "src/features/esign/request-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
     "src/features/esign/drives-page.tsx": "esign:drives:manage",
     "src/features/telegram/grants-page.tsx": "tg:grants:manage",
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
@@ -327,17 +341,19 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/projects/projects-page.tsx": "web:content:write",
     "src/features/people/overview-page.tsx": "people:write",
     "src/features/people/person-page.tsx": [
+      "people:members:read",
       "people:write",
       "people:read",
-      "people:members:read",
       "people:members:write",
       "people:appoint",
+      "people:fees:write",
     ],
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/census-page.tsx": ["people:write", "people:read"],
     "src/features/people/linking-page.tsx": "people:write",
-    "src/features/people/members-page.tsx": ["people:read", "people:members:write"],
+    "src/features/people/members-page.tsx": ["people:read", "people:members:write", "people:fees:write"],
+    "src/features/people/receipts-page.tsx": ["people:read", "people:receipts:sign", "people:fees:write", "esign:sign"],
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -398,6 +414,10 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
     "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],
     "src/features/people/member-dialogs.tsx": ["createMember", "setMemberStatus", "setMemberNumber", "exportMembers"],
+    "src/features/people/fee-dialogs.tsx": ["approveFee", "rejectFee", "markFeePaid", "sendFeeReminders"],
+    "src/features/people/receipts-page.tsx": ["downloadReceiptsToSign", "retryReceipt", "prepareReceiptSignatures"],
+    "src/features/people/receipt-dialogs.tsx": ["previewSignedReceipts", "sendSignedReceipts", "voidReceipt"],
+    "src/features/people/my-fee-card.tsx": ["uploadMyTransferReceipt"],
     "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",

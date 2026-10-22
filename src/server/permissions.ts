@@ -25,6 +25,8 @@ export const PERMISSIONS = [
   "people:members:read",
   "people:members:write",
   "people:appoint",
+  "people:fees:write",
+  "people:receipts:sign",
   "esign:sign",
   "esign:requests:manage",
   "esign:drives:manage",

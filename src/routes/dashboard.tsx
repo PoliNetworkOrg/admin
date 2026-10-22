@@ -6,6 +6,7 @@ import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { getEsignPendingCount } from "@/features/esign/esign.functions"
 import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
+import { getReceipts } from "@/features/people/people-receipts.functions"
 import { getLinkingReviews, getMyPeopleRoles } from "@/features/people/people.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
@@ -40,6 +41,23 @@ export const Route = createFileRoute("/dashboard")({
   // permission as managing them.
   loader: ({ context }) => ({
     pending: {
+      receipts:
+        hasPermission(context.permissions, "admin:access") &&
+        hasPermission(context.permissions, "people:receipts:sign") &&
+        hasPermission(context.permissions, "people:members:read")
+          ? getReceipts({ data: { year: null } }).then(
+              (page) =>
+                page.viewerSigner
+                  ? page.receipts.filter(
+                      (receipt) => receipt.status === "toSign" && receipt.signer === page.viewerSigner
+                    ).length
+                  : null,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
       linking:
         hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:read")
           ? getLinkingReviews().then(

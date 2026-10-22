@@ -4,7 +4,10 @@ import {
   CAMPUSES,
   type CensusEntry,
   type FeeStatus,
+  type FeeUpload,
+  type FeeDetail,
   type PersonRecord,
+  type Receipt,
   type Review,
   type TeamFields,
   type TeamId,
@@ -21,7 +24,9 @@ export const SAMPLE_TODAY = "2026-10-14"
 export type FamilyId = "inf" | "ges" | "ind" | "ele" | "des" | "arc"
 
 /** A record as the fake backend stores it: the contract's record plus what it derives views from. */
-export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember"> & {
+export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember" | "fees"> & {
+  /** The current fee year beyond `member.fee`, which stays the status; `null` for people who aren't members. */
+  feeState: FeeState | null
   family: FamilyId
   /** The first day of any role, for the census history. */
   start: string | null
@@ -32,6 +37,18 @@ export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember"> & {
   pendingGroupRemovals?: { chatId: string; message: string }[]
 }
 
+/** What the fake keeps about a member's current fee year; `member.fee` is its status. */
+export type FeeState = {
+  upload: FeeUpload | null
+  rejection: FeeDetail["rejection"]
+  /** Every rejection this fee year, newest first. */
+  rejections: NonNullable<FeeDetail["rejection"]>[]
+  payment: FeeDetail["payment"]
+  lastReminder: string | null
+  /** The member's mailbox rejects email, so sending their receipt fails (until someone retries). */
+  mailFails: boolean
+}
+
 export type JoinRequest = { id: string; personId: string; group: string; requestedOn: string }
 
 export type PeopleStore = {
@@ -39,6 +56,8 @@ export type PeopleStore = {
   byId: Map<string, StoredPerson>
   reviews: Review[]
   joinRequests: JoinRequest[]
+  /** Every receipt ever issued, voided ones included. */
+  receipts: Receipt[]
 }
 
 const FIRST = [
@@ -555,6 +574,7 @@ export function buildPeopleStore(): PeopleStore {
       account: { status: "none" },
       notes: random() < 0.1 ? pick(NOTES) : null,
       activity: [],
+      feeState: null,
       start: null,
       censusTelegram: null,
       expected: false,
@@ -1173,5 +1193,235 @@ export function buildPeopleStore(): PeopleStore {
     { id: "j3", personId: (informatics[1] ?? giulia).id, group: "Basi di Dati", requestedOn: "2026-10-12" },
   ]
 
-  return { people, byId, reviews, joinRequests }
+  return { people, byId, reviews, joinRequests, receipts: seedFees(people, byId) }
+}
+
+/** The fee year People › Receipts opens on, and the one My area asks to pay. */
+export const FEE_YEAR = "2026/27"
+export const FEE_AMOUNT_CENTS = 1000
+export const FEE_DUE_ON = "2026-10-31"
+/** Automatic reminders go out this many days before `FEE_DUE_ON`. */
+export const REMINDER_DAYS = [14, 3] as const
+/** The association's officers who sign receipts: Marta Colombo and Davide Russo in the sample data. */
+export const OFFICERS = { president: "P-0007", vicePresident: "P-0098" } as const
+export const FEE_BENEFICIARY = "PoliNetwork"
+/** A placeholder: the real IBAN is configuration on the backend. */
+export const FEE_IBAN = "IT00 X000 0000 0000 0000 0000 000"
+
+export function receiptId(number: string) {
+  return `rcp-${number.replace("/", "-")}`
+}
+
+export function emptyFeeState(): FeeState {
+  return { upload: null, rejection: null, rejections: [], payment: null, lastReminder: null, mailFails: false }
+}
+
+/**
+ * Fee years and receipts on top of the members, from their own seed so the rest of the sample data is unchanged:
+ * a sent 2025/26 receipt for members admitted before it, and 2026/27 receipts for this year's paid fees, the newest
+ * still to sign. Alessia Fontana (`P-0045`) has a receipt to review, Luca Ferri (`P-0021`) a rejected one, and the
+ * President's own receipt waits for the Vice-president.
+ */
+function seedFees(people: StoredPerson[], byId: Map<string, StoredPerson>): Receipt[] {
+  const random = mulberry32(2627)
+  const between = (from: string, to: string) => {
+    const days = Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000)
+    return addDays(from, Math.floor(random() * (days + 1)))
+  }
+  const name = (person: StoredPerson) => `${person.profile.firstName} ${person.profile.lastName}`
+  const at = (date: string, hour: number) => `${date}T${pad(hour, 2)}:${pad(Math.floor(random() * 60), 2)}:00+02:00`
+  const members = people.filter((person) => person.member)
+  for (const person of members) if (person.member?.status !== "former") person.feeState = emptyFeeState()
+
+  const force = (id: string, fee: FeeStatus) => {
+    const member = byId.get(id)?.member
+    if (member && member.status === "active") member.fee = fee
+  }
+  force("P-0045", "receipt")
+  force("P-0021", "due")
+  force("P-0052", "due")
+  force(OFFICERS.president, "paid")
+  force(OFFICERS.vicePresident, "paid")
+
+  const receipts: Receipt[] = []
+  const issue = (
+    person: StoredPerson,
+    number: string,
+    year: string,
+    paidOn: string,
+    method: Receipt["method"],
+    status: Receipt["status"]
+  ): Receipt => {
+    const member = person.member
+    if (!member) throw new Error(`${person.id} isn't a member`)
+    const issuedOn = addDays(paidOn, 1)
+    const signed = status !== "toSign"
+    const signer = person.id === OFFICERS.president ? "vicePresident" : "president"
+    const officer = byId.get(signer === "president" ? OFFICERS.president : OFFICERS.vicePresident)
+    const signedOn = signed ? addDays(issuedOn, 1) : null
+    const receipt: Receipt = {
+      id: receiptId(number),
+      number,
+      year,
+      person: { id: person.id, name: name(person) },
+      memberNumber: member.number,
+      amountCents: FEE_AMOUNT_CENTS,
+      issuedOn,
+      paidOn,
+      method,
+      transferDate: method === "transfer" ? paidOn : null,
+      status,
+      signer,
+      signedBy: signed && officer ? name(officer) : null,
+      signedOn,
+      sentAt: status === "sent" && signedOn ? at(signedOn, 22) : null,
+      sentTo: status === "sent" || status === "failed" ? member.m365Email : null,
+      failure: status === "failed" ? "The mail server rejected the address: mailbox unavailable." : null,
+      voided: null,
+    }
+    receipts.push(receipt)
+    person.activity.push({ actor: "System", text: `issued receipt ${number} for the ${year} fee`, at: at(issuedOn, 9) })
+    if (receipt.signedBy && signedOn) {
+      person.activity.push({
+        actor: receipt.signedBy,
+        text: `uploaded receipt ${number}, signed`,
+        at: at(signedOn, 21),
+      })
+    }
+    if (receipt.sentAt && receipt.sentTo) {
+      person.activity.push({
+        actor: "System",
+        text: `emailed receipt ${number} to ${receipt.sentTo}`,
+        at: receipt.sentAt,
+      })
+    }
+    if (status === "failed" && signedOn) {
+      person.activity.push({ actor: "System", text: `couldn't email receipt ${number}`, at: at(signedOn, 22) })
+    }
+    return receipt
+  }
+
+  // 2025/26: everyone admitted before that fee year paid it and got a sent receipt.
+  const lastYear = members
+    .filter((person) => (person.member?.admittedOn ?? "9999") < "2025-10-01")
+    .map((person) => ({ person, paidOn: between("2025-09-20", "2025-10-31") }))
+    .sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
+  lastYear.forEach(({ person, paidOn }, index) => {
+    issue(person, `2025/${pad(index + 1, 3)}`, "2025/26", paidOn, random() < 0.9 ? "transfer" : "cash", "sent")
+  })
+
+  // 2026/27: paid fees in payment order; the newest seven wait for a signature, two wait to be emailed.
+  const paid = members
+    .filter((person) => person.member?.fee === "paid" && person.feeState)
+    .map((person) => ({ person, paidOn: between("2026-09-20", "2026-10-12") }))
+    .sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
+  // The President pays late enough that their receipt still waits, for the Vice-president.
+  const president = paid.find((entry) => entry.person.id === OFFICERS.president)
+  if (president) president.paidOn = "2026-10-11"
+  paid.sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
+  const voidAt = 4
+  let sequence = 0
+  paid.forEach(({ person, paidOn }, index) => {
+    const fromEnd = paid.length - index
+    const method = random() < 0.9 ? "transfer" : "cash"
+    if (index === voidAt) {
+      // Issued with the wrong amount, voided, and issued again.
+      sequence++
+      const wrong = issue(person, `2026/${pad(sequence, 3)}`, FEE_YEAR, paidOn, method, "sent")
+      wrong.voided = {
+        reason: "Wrong amount on the receipt; issued again.",
+        by: "Davide Russo",
+        on: addDays(paidOn, 3),
+      }
+      wrong.status = "voided"
+      person.activity.push({
+        actor: "Davide Russo",
+        text: `voided receipt ${wrong.number}: “Wrong amount on the receipt; issued again.”`,
+        at: at(addDays(paidOn, 3), 10),
+      })
+    }
+    sequence++
+    const status =
+      person.id === OFFICERS.president || fromEnd <= 6
+        ? "toSign"
+        : fromEnd <= 8
+          ? "signed"
+          : index === Math.floor(paid.length / 2)
+            ? "failed"
+            : "sent"
+    const receipt = issue(person, `2026/${pad(sequence, 3)}`, FEE_YEAR, paidOn, method, status)
+    if (status === "failed" && person.feeState) person.feeState.mailFails = true
+    if (person.feeState) {
+      person.feeState.payment = {
+        paidOn,
+        method,
+        amountCents: FEE_AMOUNT_CENTS,
+        transferDate: receipt.transferDate,
+      }
+      person.activity.push({
+        actor: "Davide Russo",
+        text:
+          method === "transfer"
+            ? `approved the transfer receipt for ${FEE_YEAR}`
+            : `marked the ${FEE_YEAR} fee as paid (cash)`,
+        at: at(paidOn, 18),
+      })
+    }
+  })
+
+  // Receipts waiting for review: the member's upload.
+  for (const person of members) {
+    const state = person.feeState
+    if (!state || person.member?.fee !== "receipt") continue
+    const transferDate = between("2026-10-05", "2026-10-12")
+    state.upload = {
+      fileName: `bonifico_${slug(person.profile.lastName)}.pdf`,
+      size: 120_000 + Math.floor(random() * 120_000),
+      uploadedAt: at(addDays(transferDate, 1), 21),
+      transferDate,
+      amountCents: FEE_AMOUNT_CENTS,
+    }
+    person.activity.push({
+      actor: name(person),
+      text: `uploaded a transfer receipt for ${FEE_YEAR}`,
+      at: state.upload.uploadedAt,
+    })
+  }
+
+  // Reminders: the automatic one 14 days before the deadline has not gone out yet; some were sent by hand.
+  for (const person of members) {
+    const state = person.feeState
+    if (!state || (person.member?.fee !== "due" && person.member?.fee !== "unpaid")) continue
+    if (random() < 0.4) {
+      state.lastReminder = at(between("2026-10-01", "2026-10-13"), 10)
+      person.activity.push({
+        actor: "Davide Russo",
+        text: `sent a reminder for the ${FEE_YEAR} fee`,
+        at: state.lastReminder,
+      })
+    }
+  }
+
+  const rejected = byId.get("P-0021")
+  if (rejected?.feeState) {
+    const rejection = {
+      reason:
+        "The file is a screenshot of the payment page, not the transfer receipt. Upload the receipt your bank issued.",
+      by: "Davide Russo",
+      at: "2026-10-13T18:40:00+02:00",
+    }
+    rejected.feeState.rejection = rejection
+    rejected.feeState.rejections = [rejection]
+    rejected.activity.push({
+      actor: name(rejected),
+      text: `uploaded a transfer receipt for ${FEE_YEAR}`,
+      at: "2026-10-12T22:05:00+02:00",
+    })
+    rejected.activity.push({
+      actor: "Davide Russo",
+      text: `rejected the transfer receipt for ${FEE_YEAR}: “${rejection.reason}”`,
+      at: rejection.at,
+    })
+  }
+  return receipts
 }

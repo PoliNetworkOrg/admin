@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+import { saveBlob } from "./people-files"
 import { currentYear, FEE_STATUS, MEMBER_STATUS, todayIso } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { createMember, exportMembers, setMemberNumber, setMemberStatus } from "./people-members.functions"
@@ -45,6 +46,7 @@ export function AddMemberDialog({
   initialPerson = null,
   nextNumber,
   takenNumbers,
+  canMarkPaid,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -53,6 +55,8 @@ export function AddMemberDialog({
   initialPerson?: PersonOption | null
   nextNumber: string
   takenNumbers: ReadonlySet<string>
+  /** Admitting with the fee paid issues a receipt, which takes `people:fees:write`; otherwise the fee is due. */
+  canMarkPaid: boolean
 }) {
   const create = useServerFn(createMember)
   const refresh = useRefreshAfter()
@@ -131,14 +135,16 @@ export function AddMemberDialog({
             />
           </FormField>
         </div>
-        <FormField label={`Fee ${currentYear()}`} htmlFor="member-fee">
-          <SelectField<NewFee>
-            id="member-fee"
-            value={fee}
-            options={NEW_FEES.map((value) => ({ value, label: FEE_STATUS[value].label }))}
-            onChange={setFee}
-          />
-        </FormField>
+        {canMarkPaid ? (
+          <FormField label={`Fee ${currentYear()}`} htmlFor="member-fee">
+            <SelectField<NewFee>
+              id="member-fee"
+              value={fee}
+              options={NEW_FEES.map((value) => ({ value, label: FEE_STATUS[value].label }))}
+              onChange={setFee}
+            />
+          </FormField>
+        ) : null}
       </div>
     </FormDialog>
   )
@@ -307,15 +313,6 @@ export function MemberNumberDialog({
   )
 }
 
-function download(filename: string, contents: string) {
-  const url = URL.createObjectURL(new Blob([contents], { type: "text/csv;charset=utf-8" }))
-  const link = document.createElement("a")
-  link.href = url
-  link.download = filename
-  link.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
-
 /** Confirms first: the file holds personal data. */
 export function ExportMembersDialog({
   open,
@@ -338,7 +335,7 @@ export function ExportMembersDialog({
       confirmLabel="Export register"
       onConfirm={async () => {
         const file = await exportRegister()
-        download(file.filename, file.csv)
+        saveBlob(new Blob([file.csv], { type: "text/csv;charset=utf-8" }), file.filename)
         appToast.success("Member register exported.")
       }}
     />

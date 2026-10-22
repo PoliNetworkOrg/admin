@@ -117,7 +117,7 @@ service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and th
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
 font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
 accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
-bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. Section pills and bottom nav are the only navigation; there
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -278,7 +278,9 @@ first/last buttons); on narrow tables "‹ 1 of 34 ›".
 Clickable rows and rows with actions hover on `--pn-accent-soft`, using the brand blue in both themes.
 
 **Row actions** (`RowActions`, `IconButton`). Order: other actions → edit → delete → `⋮` menu, the menu always far
-right. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
+right. A `⋮` menu holds at least two actions: a single one is its own icon button, and none leaves an empty slot so the
+icons of every row align. Menus never repeat the row's own link (Open record) or an action already visible on the row,
+never start with a separator, and keep destructive actions last after one. Always visible, 2px apart, monochrome `--pn-fg-muted` ghosts. Every action uses brand blue on hover,
 including destructive actions; `tone="info"` marks an "on" state in accent (the visibility eye). Group row actions keep their semantic
 colors at rest: labels use `--pn-warning-fg`, edit uses `--pn-success-fg`, and leave/delete use `--pn-danger-fg`.
 Visibility, labels, edit and leave/delete all hover in brand blue (`--pn-accent` on `--pn-accent-soft`);
@@ -347,14 +349,17 @@ the language name over a field-like box that holds the `bare` input. Single-line
 **Forms** (`FormField`, `fieldControl`). Label above, real `<label for>`. Required is unmarked; optional fields say
 "(optional)". Hints 12px under the field. Validate on submit, then on blur for fields that have errored; never per
 keystroke. Errors: danger border, 12px danger text with an icon, `aria-invalid` + `aria-describedby`. Read-only values
-are text in a `KeyValueList`, never disabled inputs. Length counters (`FieldCounter`) appear only in the last 20% of the
-limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as text,
-shows the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an
+are text in a `KeyValueList`, never disabled inputs. A single choice among a few explained options is a
+`RadioCardGroup` of `RadioCard`s (custom radios, arrow keys move the choice), never native radio inputs; files are
+chosen with `FileButton` or `FilePickerButton` (several files). Length counters (`FieldCounter`) appear only in the last
+20% of the limit. A quiet field (`quietField`, the composer's title and a signer's role) has no box at rest: it reads as
+text, shows the hover line with a text cursor, and gets the normal border and ring when focused or invalid, with an
 `aria-label` in place of the visible label. Use it only for a value edited in place inside a working surface, where a
 box around every value would be clutter; forms keep boxed fields.
 
-Calendar dates use a custom picker at every viewport, display the same day–month–year format as read-only dates,
-and retain ISO values for the server. Month and year selectors are custom controls; calendars start on Monday.
+Calendar dates use `DateField`: a custom picker at every viewport that shows the same day–month–year format as read-only
+dates and keeps ISO values for the server. Its month and year selectors are custom controls (the years cover the last
+ten and the next one); calendars start on Monday.
 Grant date/time fields use the calendar and time wheels on touch devices too, with no native date/time fallback.
 
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
@@ -588,17 +593,24 @@ Rules that the templates above don't imply.
   badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
   use `FormDialog` with `tone="danger"`; plain confirmations stay `ConfirmDialog`.
 - **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
-  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Register rows open full
-  records only with `people:read`; `people:members:read` alone reads the register projection. A single row action is
-  an icon button; menus never repeat a row's record link.
+  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Without `people:read`,
+  register/receipt rows have no full-record links; the register loads its own restricted projection.
+- **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
+  Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
+  icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
+  Sign with CIE uses the shared eSign flow; Download to sign and Upload signed stay in its signing-options menu.
+  Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`tone="danger"`, Back on
+  the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
+  roles. Amounts are `formatCents` ("€10.00") with tabular numbers.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
 - **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
-  itself. Team-field columns come from `TEAMS` in `people.contract.ts`. Leads of several teams can open each of their own
-  teams; only `people:appoint` with admin access can end a Lead role.
+  itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
 - **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
   saves nothing before Confirm. Reminders report sent and skipped counts after sending.
 - **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has
   its own resolutions and a required reason.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
+
+Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.
