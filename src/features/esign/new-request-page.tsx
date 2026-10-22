@@ -792,29 +792,36 @@ export function NewEsignRequestPage({
 
   /** The request page the signature lands on, which says when it drew the signed spot. */
   const landing = useRef<ReturnType<typeof expectLanding> | null>(null)
+
+  /** Opens the signed request's page under the dialog, and waits for it to draw the signed spot. */
+  async function handOff([requestId]: string[]) {
+    // The composer stays under the dialog while the request's data and its signed PDF arrive.
+    const matches = await router.preloadRoute({ to: "/dashboard/esign/requests/$requestId", params: { requestId } })
+    const documentId = matches?.find((m) => m.routeId === "/dashboard/esign/requests/$requestId")?.loaderData
+      ?.currentDocumentId
+    const pdf = documentId
+      ? await contentFn({ data: { documentId } }).then(
+          (content) => ({ ...content, documentId }),
+          (error) => {
+            console.error(error)
+            return null
+          }
+        )
+      : null
+    const expected = expectLanding(requestId, pdf)
+    landing.current = expected
+    await openRequest(requestId)
+    // Meanwhile every loader reloads, so the shell's To sign count no longer has the document; a failed reload doesn't
+    // keep the dialog open.
+    const reloaded = router.invalidate({ sync: true }).catch((error) => console.error(error))
+    await Promise.all([reloaded, expected.painted])
+  }
+
   // Above the routes: the request page opens under the dialog, on the spot just signed, and the dialog and the agent
   // window close once it is drawn, as when signing from the request page.
   const signing = useHostedSignWithCie({
     prepare: createAndSign,
-    handOff: async ([requestId]) => {
-      // The composer stays under the dialog while the request's data and its signed PDF arrive.
-      const matches = await router.preloadRoute({ to: "/dashboard/esign/requests/$requestId", params: { requestId } })
-      const documentId = matches?.find((m) => m.routeId === "/dashboard/esign/requests/$requestId")?.loaderData
-        ?.currentDocumentId
-      const pdf = documentId
-        ? await contentFn({ data: { documentId } }).then(
-            (content) => ({ ...content, documentId }),
-            (error) => {
-              console.error(error)
-              return null
-            }
-          )
-        : null
-      const expected = expectLanding(requestId, pdf)
-      landing.current = expected
-      await openRequest(requestId)
-      await expected.painted
-    },
+    handOff,
     onSigned: () => landing.current?.release(),
     onStopped: signingStopped,
     finalFocus: () => landing.current?.focus() ?? null,

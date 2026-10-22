@@ -374,6 +374,85 @@ void test("a failed hand-off is logged and lets go after a second", async () => 
   assert.equal(events.filter((event) => event === "signed").length, 1)
 })
 
+async function composerHandOff(env, painted) {
+  const landing = { current: null }
+  const dependencies = {
+    ...env.dependencies,
+    router: {
+      ...env.dependencies.router,
+      preloadRoute: async (options) => {
+        env.events.push(["preload", options.params.requestId])
+        return [{ routeId: "/dashboard/esign/requests/$requestId", loaderData: { currentDocumentId: "version-2" } }]
+      },
+    },
+    contentFn: async ({ data }) => {
+      env.events.push(["pdf", data.documentId])
+      return { base64: "JVBERi0", fileName: "Verbale.pdf" }
+    },
+    expectLanding: (requestId, pdf) => {
+      env.events.push(["landing", requestId, pdf.documentId])
+      return { painted: painted.promise }
+    },
+    landing,
+    openRequest: async (id) => {
+      env.events.push(["open", id])
+    },
+  }
+  const handOff = await handler("src/features/esign/new-request-page.tsx", "handOff", dependencies)
+  return { handOff, landing }
+}
+
+for (const refreshFails of [false, true]) {
+  void test(`New request's hand-off reloads every loader while the request's page draws, failure=${refreshFails}`, async () => {
+    const env = environment()
+    const painted = deferred()
+    const { handOff, landing } = await composerHandOff(env, painted)
+    let done = false
+    const pending = handOff(["request-1"]).then(() => {
+      done = true
+    })
+    await setImmediate()
+    assert.deepEqual(env.events, [
+      ["preload", "request-1"],
+      ["pdf", "version-2"],
+      ["landing", "request-1", "version-2"],
+      ["open", "request-1"],
+      "reload",
+    ])
+    assert.ok(landing.current)
+    // Whichever comes first, the dialog waits for the other; a failed reload is only logged.
+    if (refreshFails) env.reload.reject(new Error("Refresh failed"))
+    else painted.resolve()
+    await setImmediate()
+    assert.equal(done, false)
+    if (refreshFails) painted.resolve()
+    else env.reload.resolve()
+    await pending
+    assert.deepEqual(env.events.slice(5), refreshFails ? [["logged", "Refresh failed"]] : [])
+  })
+
+  void test(`the batch's hand-off opens To sign, then reloads every loader, failure=${refreshFails}`, async () => {
+    const env = environment()
+    const handOff = await handler("src/features/esign/batch-page.tsx", "handOff", {
+      ...env.dependencies,
+      navigate: async (options) => {
+        env.events.push(["navigate", options.to])
+      },
+    })
+    let done = false
+    const pending = handOff().then(() => {
+      done = true
+    })
+    await setImmediate()
+    assert.deepEqual(env.events, [["navigate", "/dashboard/esign/inbox"], "reload"])
+    assert.equal(done, false)
+    if (refreshFails) env.reload.reject(new Error("Refresh failed"))
+    else env.reload.resolve()
+    await pending
+    assert.deepEqual(env.events.slice(2), refreshFails ? [["logged", "Refresh failed"]] : [])
+  })
+}
+
 async function agentWindow(popup, overrides = {}) {
   const events = []
   const dependencies = {

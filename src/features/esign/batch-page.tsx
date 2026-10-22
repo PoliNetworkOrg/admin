@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowRight, Check, ExternalLink, FileSignature, Plus, X } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
@@ -41,6 +41,7 @@ export function EsignBatchPage({
   /** Boxes already moved on the request page the viewer came from, by request id. */
   moved?: Record<string, Place[]>
 }) {
+  const router = useRouter()
   const navigate = useNavigate()
   const device = useSigningDevice()
   const knownBrowser = useKnownBrowser()
@@ -94,6 +95,19 @@ export function EsignBatchPage({
     3000
   )
 
+  /**
+   * To sign opens behind the dialog, so it is there when the dialog lets go; the dialog lives above the routes. Then
+   * every loader reloads, so the shell's To sign count agrees with the page.
+   */
+  async function handOff() {
+    await navigate({ to: "/dashboard/esign/inbox" })
+    try {
+      await router.invalidate({ sync: true })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
   // Above the routes: To sign opens under the dialog once every document is signed. Closing a batch that signed only
   // some reloads this page, which may leave nothing to sign and no card.
   const signing = useHostedSignWithCie({
@@ -105,10 +119,7 @@ export function EsignBatchPage({
         places: mine?.signaturesDone === 0 ? moved.get(item.request.id) : undefined,
       }
     }),
-    // To sign opens behind the dialog, so it is there when the dialog lets go; the dialog lives above the routes.
-    handOff: async () => {
-      await navigate({ to: "/dashboard/esign/inbox" })
-    },
+    handOff,
     // To sign only loses the documents: the toast says they were signed.
     onSigned: () =>
       appToast.success(included.length === 1 ? "Document signed." : `${included.length} documents signed.`),
