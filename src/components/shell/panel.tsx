@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { type KeyboardEvent, Suspense, use, useDeferredValue, useLayoutEffect, useRef } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +26,7 @@ const itemActiveClass = "bg-(--pn-nav-active) text-(--pn-fg) hover:bg-(--pn-nav-
 const itemCurrentClass =
   "before:absolute before:inset-y-2.5 before:-left-3 before:w-[3px] before:rounded-r-[3px] before:bg-(--pn-accent-solid)"
 
-/** Pending items (open reports, documents to sign) as a small accent pill; zero, loading or a failed load renders nothing. */
+/** Pending items (open reports, documents to sign, accounts to link) as a small accent pill; zero, loading or a failed load renders nothing. */
 export function PendingCount({ count: countPromise }: { count: Promise<number | null> }) {
   const count = use(useDeferredValue(countPromise))
   if (!count) return null
@@ -125,13 +126,16 @@ export function Panel({ service, match, pending, className }: PanelProps) {
         <ServiceGlyph service={service} className="size-4.5 text-(--pn-fg)" />
         <span className="truncate text-[15px] font-semibold text-(--pn-fg)">{service.title}</span>
       </div>
-      <nav
+      <CustomScrollbar
+        as="nav"
         aria-label={`${service.title} sections`}
+        scrollLabel={`${service.title} sections`}
         onKeyDown={onSectionListKeyDown}
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
+        className="min-h-0 flex-1"
+        viewportClassName="flex flex-col gap-0.5 p-3"
       >
         <SectionItems service={service} match={match} pending={pending} />
-      </nav>
+      </CustomScrollbar>
     </aside>
   )
 }

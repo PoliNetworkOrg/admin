@@ -20,8 +20,13 @@ type PdfViewerProps = {
    * drawn again, without blank sheets in between.
    */
   data: Uint8Array | null
-  /** Displayed page sizes in points (crop box after rotation), so the layout is right before rendering. */
-  pages: PageSize[]
+  /**
+   * Displayed page sizes in points (crop box after rotation), so the layout is right before rendering. Without them
+   * they are read from the document once it has loaded.
+   */
+  pages?: PageSize[]
+  /** A bounded viewer inside a dialog instead of filling the dashboard; overrides `fill`. */
+  compact?: boolean
   /** Content over each page, positioned with percentages of the page (`absolute inset-0` layer). */
   overlay?: (page: number) => ReactNode
   /** A click on a page, at fractions of its width and height from the top-left corner. */
@@ -54,7 +59,7 @@ const PAGE_GAP = 16
 type Pdfjs = typeof import("pdfjs-dist")
 type LoadingTask = ReturnType<Pdfjs["getDocument"]>
 /** A loaded document and the bytes it came from. */
-type Doc = { pdf: PDFDocumentProxy; pdfjs: Pdfjs; data: Uint8Array }
+type Doc = { pdf: PDFDocumentProxy; pdfjs: Pdfjs; data: Uint8Array; pages: PageSize[] }
 
 let pdfjsPromise: Promise<Pdfjs> | null = null
 
@@ -73,7 +78,8 @@ function loadPdfjs() {
  */
 export function PdfViewer({
   data,
-  pages,
+  pages: providedPages,
+  compact = false,
   overlay,
   onPageClick,
   cursor = "default",
@@ -92,6 +98,10 @@ export function PdfViewer({
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
 
+  // Without page sizes (a receipt preview), they come from the document once it has loaded.
+  const inferPages = !providedPages?.length
+  const pages = providedPages?.length ? providedPages : (doc?.pages ?? [])
+
   // A new version replaces the shown one page by page (see PdfPage), so the previous document stays until then.
   const loaded = useRef<LoadingTask | null>(null)
   /** Shown until the pages have moved to the next document. */
@@ -108,10 +118,19 @@ export function PdfViewer({
         // pdf.js takes ownership of the buffer: give it a copy.
         task = pdfjs.getDocument({ data: data.slice() })
         const pdf = await task.promise
+        const sizes: PageSize[] = []
+        if (inferPages) {
+          for (let number = 1; number <= pdf.numPages; number++) {
+            if (cancelled) return
+            const page = await pdf.getPage(number)
+            const { width, height } = page.getViewport({ scale: 1 })
+            sizes.push({ width, height })
+          }
+        }
         if (cancelled) return
         retired.current = loaded.current
         loaded.current = task
-        setDoc({ pdf, pdfjs, data })
+        setDoc({ pdf, pdfjs, data, pages: sizes })
       })
       .catch((cause) => {
         console.error(cause)
@@ -122,7 +141,7 @@ export function PdfViewer({
       // Still loading, or loaded for data that has already changed again: it will never be shown.
       if (task !== loaded.current) void task?.destroy()
     }
-  }, [data])
+  }, [data, inferPages])
 
   // The pages have moved to the new document (their effects ran before this one): the old one can go.
   useEffect(() => {
@@ -189,11 +208,11 @@ export function PdfViewer({
 
   return (
     <div
-      ref={fill ? fillHeight.ref : undefined}
-      style={fill ? fillHeight.style : undefined}
+      ref={fill && !compact ? fillHeight.ref : undefined}
+      style={fill && !compact ? fillHeight.style : undefined}
       className={cn(
-        "flex min-h-[480px] flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
-        fill ? "h-[calc(100dvh-210px)]" : "h-full"
+        "flex flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
+        compact ? "h-80" : fill ? "h-[calc(100dvh-210px)] min-h-[480px]" : "h-full min-h-[480px]"
       )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
@@ -205,7 +224,8 @@ export function PdfViewer({
             )}
             aria-live="polite"
           >
-            {status || `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}`}
+            {status ||
+              (pages.length ? `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}` : "Loading PDF…")}
           </span>
           {statusAction && <div className="shrink-0">{statusAction}</div>}
           {!status && toolbarStart && <div className="flex shrink-0 items-center">{toolbarStart}</div>}

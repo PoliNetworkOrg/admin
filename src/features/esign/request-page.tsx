@@ -22,7 +22,7 @@ import {
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import type { EsignDrive, EsignPdfInfo, EsignRequestDetail } from "@/lib/api/types"
+import type { EsignDrive, EsignPdfInfo, EsignRequest, EsignRequestDetail } from "@/lib/api/types"
 import { errorHasCode } from "@/lib/errors"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -33,6 +33,7 @@ import { landingFor } from "./landing"
 import { type PdfFocus, PdfViewer, usePdfBytes } from "./pdf-viewer"
 import { kindsLabel, type Place, placeAt, placesLeft } from "./places"
 import { MoveBoxButton, PlacingCancel, placingStatus } from "./placing"
+import { ReceiptRequestLink } from "./receipt-request-link"
 import { isDelivering, openPoint, type RequestCard, requestCardState } from "./request-card"
 import { SignerStatusBadge, YouChip } from "./request-status"
 import { cancelEsignRequest, deleteEsignRequest, retryEsignDelivery } from "./requests.functions"
@@ -58,7 +59,8 @@ type Ghosts = {
   afterDialog: boolean
 }
 
-type Detail = Omit<EsignRequestDetail, "events"> & {
+type Detail = Omit<EsignRequestDetail, "events" | "request"> & {
+  request: EsignRequestDetail["request"] & Pick<EsignRequest, "peopleReceipt">
   events: (Omit<EsignRequestDetail["events"][number], "data"> & { data: EventData })[]
   pdf: EsignPdfInfo | null
   me: string
@@ -86,6 +88,8 @@ function eventText(event: Detail["events"][number], names: Map<string, string>) 
       return `${who} cancelled the request`
     case "declined":
       return `${who} declined`
+    case "people_invalidated":
+      return `${who} voided the receipt`
     default:
       return event.type
   }
@@ -109,6 +113,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const router = useRouter()
   const navigate = useNavigate()
   const canManage = useCan("esign:requests:manage")
+  const canSignReceipts = useCan("people:receipts:sign")
   const device = useSigningDevice()
   const knownBrowser = useKnownBrowser()
   const contentFn = useServerFn(getEsignDocumentContent)
@@ -158,7 +163,11 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   }, [currentDocumentId, contentFn])
 
   const mySigner = request.signers.find((s) => s.sub === me && s.status === "pending")
-  const myTurn = request.myTurn && mySigner !== undefined
+  // A fee receipt belongs to People: its box is fixed, it is signed only with the receipt permission, and it is never
+  // cancelled, deleted or delivered from here.
+  const systemOwned = !!request.peopleReceipt
+  const receiptLocked = systemOwned && !canSignReceipts
+  const myTurn = request.myTurn && !receiptLocked && mySigner !== undefined
   // Order numbers only where the order holds, as in New request.
   const numbered = request.ordered && request.signers.length > 1
   const numberOf = (signerId: string) =>
@@ -174,8 +183,8 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
     setMyPlaces(savedPlaces)
   }
   const myDone = mySigner?.signaturesDone ?? 0
-  // Phones review only: the box stays where it is.
-  const editable = myTurn && myDone === 0 && device !== "phone"
+  // Phones review only, and a receipt's box is fixed: the box stays where it is.
+  const editable = myTurn && myDone === 0 && !systemOwned && device !== "phone"
   /** The place waiting for a click on its new spot; placing ends by itself once the boxes are fixed. */
   const [placing, setPlacing] = useState<number | null>(null)
   const placingAt = editable ? placing : null
@@ -201,12 +210,25 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
 
   const card = requestCardState(detail, {
     me,
-    canManage,
+    canManage: canManage && !systemOwned,
     device,
     knownBrowser,
     now: new Date(),
     places: myTurn ? myPlaces : undefined,
   })
+  if (systemOwned) {
+    // People emails the signed receipt to its member; eSign doesn't deliver it.
+    card.delivery = []
+    if (receiptLocked && card.primary?.kind === "sign") {
+      card.primary = null
+      card.signTogether = null
+      card.muted = null
+      card.lock = null
+      card.body = "Signing fee receipts needs the receipt-signing permission."
+    } else if (card.primary?.kind === "sign" && myDone === 0) {
+      card.body = "The receipt's signature box is fixed. Sign with CIE."
+    }
+  }
 
   const [ghosts, setGhosts] = useState<Ghosts | null>(() => {
     const landed = landing && request.signers.find((s) => s.sub === me && s.signaturesDone > 0)
@@ -281,7 +303,9 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   }
 
   const signing = useSignWithCie({
-    items: [{ requestId: request.id, title: request.title, places: myDone === 0 ? myPlaces : undefined }],
+    items: [
+      { requestId: request.id, title: request.title, places: myDone === 0 && !systemOwned ? myPlaces : undefined },
+    ],
     handOff,
     onSigned: released,
     finalFocus: () => bodyRef.current,
@@ -320,7 +344,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
   const deliveryPlanned = request.output !== null || (request.email?.to.length ?? 0) > 0
   const drive = detail.config.drives.find((d) => d.id === request.output?.driveId)?.label ?? "OneDrive"
   // A request in progress is cancelled first; a pending delivery still needs the request.
-  const canDelete = !inProgress && request.delivery?.status !== "pending" && canManage
+  const canDelete = !inProgress && request.delivery?.status !== "pending" && canManage && !systemOwned
   const pages = pdf?.pages ?? []
   const soleSigner = request.signers.length === 1 && request.signers[0].sub === me
   const details = useScrolls()
@@ -416,7 +440,12 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
             <div className="min-w-0 @min-[896px]:col-start-2 @min-[896px]:row-start-1">
               <EsignActionCard
                 title={request.title}
-                badge={<StatusBadge tone={card.badge.tone}>{card.badge.label}</StatusBadge>}
+                badge={
+                  <>
+                    <StatusBadge tone={card.badge.tone}>{card.badge.label}</StatusBadge>
+                    {request.peopleReceipt && <ReceiptRequestLink source={request.peopleReceipt} />}
+                  </>
+                }
                 meta={card.meta}
                 body={card.body}
                 bodyId={bodyId}
@@ -624,7 +653,7 @@ export function EsignRequestPage({ detail }: { detail: Detail }) {
                     </SectionCard>
                   )}
 
-                  {inProgress && deliveryPlanned && (
+                  {inProgress && deliveryPlanned && !systemOwned && (
                     <SectionCard title="Delivery">
                       <ul className="flex flex-col gap-3 text-[14px]">
                         {request.output && (

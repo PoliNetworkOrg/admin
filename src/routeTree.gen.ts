@@ -15,10 +15,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
-import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
+import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
@@ -27,8 +28,14 @@ import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faq
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
+import { Route as DashboardTelegramCapoRouteImport } from './routes/dashboard/telegram/capo'
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
+import { Route as DashboardPeopleReceiptsRouteImport } from './routes/dashboard/people/receipts'
+import { Route as DashboardPeopleMembersRouteImport } from './routes/dashboard/people/members'
+import { Route as DashboardPeopleLinkingRouteImport } from './routes/dashboard/people/linking'
+import { Route as DashboardPeopleAdminsRouteImport } from './routes/dashboard/people/admins'
+import { Route as DashboardPeoplePersonIdRouteImport } from './routes/dashboard/people/$personId'
 import { Route as DashboardEsignSignRouteImport } from './routes/dashboard/esign/sign'
 import { Route as DashboardEsignSetupRouteImport } from './routes/dashboard/esign/setup'
 import { Route as DashboardEsignNewRouteImport } from './routes/dashboard/esign/new'
@@ -36,12 +43,17 @@ import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esig
 import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
+import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
+import { Route as DashboardPeopleTeamsIndexRouteImport } from './routes/dashboard/people/teams/index'
+import { Route as DashboardPeopleCensusIndexRouteImport } from './routes/dashboard/people/census/index'
 import { Route as DashboardEsignRequestsIndexRouteImport } from './routes/dashboard/esign/requests/index'
 import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
 import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
+import { Route as DashboardPeopleTeamsTeamIdRouteImport } from './routes/dashboard/people/teams/$teamId'
+import { Route as DashboardPeopleCensusCampaignIdRouteImport } from './routes/dashboard/people/census/$campaignId'
 import { Route as DashboardEsignRequestsRequestIdRouteImport } from './routes/dashboard/esign/requests/$requestId'
 import { Route as ApiEsignAgentSplatRouteImport } from './routes/api/esign/agent/$'
 
@@ -75,11 +87,6 @@ const DashboardWebRoute = DashboardWebRouteImport.update({
   path: '/web',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardAccountRoute = DashboardAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
   id: '/auth/logout',
   path: '/auth/logout',
@@ -94,6 +101,16 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardPeopleIndexRoute = DashboardPeopleIndexRouteImport.update({
+  id: '/people/',
+  path: '/people/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAccountIndexRoute = DashboardAccountIndexRouteImport.update({
+  id: '/account/',
+  path: '/account/',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
   id: '/whatsapp/groups',
@@ -136,6 +153,11 @@ const DashboardTelegramGrantsRoute = DashboardTelegramGrantsRouteImport.update({
   path: '/telegram/grants',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardTelegramCapoRoute = DashboardTelegramCapoRouteImport.update({
+  id: '/telegram/capo',
+  path: '/telegram/capo',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardReportsResolvedRoute =
   DashboardReportsResolvedRouteImport.update({
     id: '/reports/resolved',
@@ -148,6 +170,31 @@ const DashboardReportsGroupLinksRoute =
     path: '/reports/group-links',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardPeopleReceiptsRoute = DashboardPeopleReceiptsRouteImport.update({
+  id: '/people/receipts',
+  path: '/people/receipts',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPeopleMembersRoute = DashboardPeopleMembersRouteImport.update({
+  id: '/people/members',
+  path: '/people/members',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPeopleLinkingRoute = DashboardPeopleLinkingRouteImport.update({
+  id: '/people/linking',
+  path: '/people/linking',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPeopleAdminsRoute = DashboardPeopleAdminsRouteImport.update({
+  id: '/people/admins',
+  path: '/people/admins',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPeoplePersonIdRoute = DashboardPeoplePersonIdRouteImport.update({
+  id: '/people/$personId',
+  path: '/people/$personId',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardEsignSignRoute = DashboardEsignSignRouteImport.update({
   id: '/esign/sign',
   path: '/esign/sign',
@@ -183,6 +230,11 @@ const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   path: '/azure/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAccountMeRoute = DashboardAccountMeRouteImport.update({
+  id: '/account/me',
+  path: '/account/me',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
     id: '/groups-by-label/',
@@ -193,6 +245,18 @@ const DashboardTelegramUsersIndexRoute =
   DashboardTelegramUsersIndexRouteImport.update({
     id: '/telegram/users/',
     path: '/telegram/users/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardPeopleTeamsIndexRoute =
+  DashboardPeopleTeamsIndexRouteImport.update({
+    id: '/people/teams/',
+    path: '/people/teams/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardPeopleCensusIndexRoute =
+  DashboardPeopleCensusIndexRouteImport.update({
+    id: '/people/census/',
+    path: '/people/census/',
     getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardEsignRequestsIndexRoute =
@@ -218,6 +282,18 @@ const DashboardTelegramUsersUserIdRoute =
     path: '/telegram/users/$userId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardPeopleTeamsTeamIdRoute =
+  DashboardPeopleTeamsTeamIdRouteImport.update({
+    id: '/people/teams/$teamId',
+    path: '/people/teams/$teamId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardPeopleCensusCampaignIdRoute =
+  DashboardPeopleCensusCampaignIdRouteImport.update({
+    id: '/people/census/$campaignId',
+    path: '/people/census/$campaignId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardEsignRequestsRequestIdRoute =
   DashboardEsignRequestsRequestIdRouteImport.update({
     id: '/esign/requests/$requestId',
@@ -238,9 +314,9 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
-  '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -248,8 +324,14 @@ export interface FileRoutesByFullPath {
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
+  '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
+  '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -258,12 +340,18 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
+  '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
+  '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
+  '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
+  '/dashboard/people/teams/': typeof DashboardPeopleTeamsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -274,9 +362,9 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
-  '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -284,8 +372,14 @@ export interface FileRoutesByTo {
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
+  '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
+  '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -294,12 +388,18 @@ export interface FileRoutesByTo {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/account': typeof DashboardAccountIndexRoute
+  '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
+  '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
+  '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/esign/requests': typeof DashboardEsignRequestsIndexRoute
+  '/dashboard/people/census': typeof DashboardPeopleCensusIndexRoute
+  '/dashboard/people/teams': typeof DashboardPeopleTeamsIndexRoute
   '/dashboard/telegram/users': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -312,9 +412,9 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
-  '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -322,8 +422,14 @@ export interface FileRoutesById {
   '/dashboard/esign/new': typeof DashboardEsignNewRoute
   '/dashboard/esign/setup': typeof DashboardEsignSetupRoute
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
+  '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
+  '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/people/members': typeof DashboardPeopleMembersRoute
+  '/dashboard/people/receipts': typeof DashboardPeopleReceiptsRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
+  '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
@@ -332,12 +438,18 @@ export interface FileRoutesById {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
+  '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
+  '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
   '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
+  '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
+  '/dashboard/people/teams/': typeof DashboardPeopleTeamsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
 }
@@ -351,9 +463,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
-    | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -361,8 +473,14 @@ export interface FileRouteTypes {
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
     | '/dashboard/esign/sign'
+    | '/dashboard/people/$personId'
+    | '/dashboard/people/admins'
+    | '/dashboard/people/linking'
+    | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
+    | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -371,12 +489,18 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/account/'
+    | '/dashboard/people/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
+    | '/dashboard/people/census/$campaignId'
+    | '/dashboard/people/teams/$teamId'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
     | '/dashboard/esign/requests/'
+    | '/dashboard/people/census/'
+    | '/dashboard/people/teams/'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
   fileRoutesByTo: FileRoutesByTo
@@ -387,9 +511,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
-    | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard'
+    | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -397,8 +521,14 @@ export interface FileRouteTypes {
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
     | '/dashboard/esign/sign'
+    | '/dashboard/people/$personId'
+    | '/dashboard/people/admins'
+    | '/dashboard/people/linking'
+    | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
+    | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -407,12 +537,18 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/account'
+    | '/dashboard/people'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
+    | '/dashboard/people/census/$campaignId'
+    | '/dashboard/people/teams/$teamId'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
     | '/dashboard/esign/requests'
+    | '/dashboard/people/census'
+    | '/dashboard/people/teams'
     | '/dashboard/telegram/users'
     | '/dashboard/web/groups-by-label'
   id:
@@ -424,9 +560,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
-    | '/dashboard/account'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -434,8 +570,14 @@ export interface FileRouteTypes {
     | '/dashboard/esign/new'
     | '/dashboard/esign/setup'
     | '/dashboard/esign/sign'
+    | '/dashboard/people/$personId'
+    | '/dashboard/people/admins'
+    | '/dashboard/people/linking'
+    | '/dashboard/people/members'
+    | '/dashboard/people/receipts'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
+    | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
@@ -444,12 +586,18 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/account/'
+    | '/dashboard/people/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
+    | '/dashboard/people/census/$campaignId'
+    | '/dashboard/people/teams/$teamId'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
     | '/dashboard/esign/requests/'
+    | '/dashboard/people/census/'
+    | '/dashboard/people/teams/'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
   fileRoutesById: FileRoutesById
@@ -509,13 +657,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/account': {
-      id: '/dashboard/account'
-      path: '/account'
-      fullPath: '/dashboard/account'
-      preLoaderRoute: typeof DashboardAccountRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/auth/logout': {
       id: '/auth/logout'
       path: '/auth/logout'
@@ -536,6 +677,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/people/': {
+      id: '/dashboard/people/'
+      path: '/people'
+      fullPath: '/dashboard/people/'
+      preLoaderRoute: typeof DashboardPeopleIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/account/': {
+      id: '/dashboard/account/'
+      path: '/account'
+      fullPath: '/dashboard/account/'
+      preLoaderRoute: typeof DashboardAccountIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/whatsapp/groups': {
       id: '/dashboard/whatsapp/groups'
@@ -593,6 +748,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramGrantsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/telegram/capo': {
+      id: '/dashboard/telegram/capo'
+      path: '/telegram/capo'
+      fullPath: '/dashboard/telegram/capo'
+      preLoaderRoute: typeof DashboardTelegramCapoRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/reports/resolved': {
       id: '/dashboard/reports/resolved'
       path: '/reports/resolved'
@@ -605,6 +767,41 @@ declare module '@tanstack/react-router' {
       path: '/reports/group-links'
       fullPath: '/dashboard/reports/group-links'
       preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/receipts': {
+      id: '/dashboard/people/receipts'
+      path: '/people/receipts'
+      fullPath: '/dashboard/people/receipts'
+      preLoaderRoute: typeof DashboardPeopleReceiptsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/members': {
+      id: '/dashboard/people/members'
+      path: '/people/members'
+      fullPath: '/dashboard/people/members'
+      preLoaderRoute: typeof DashboardPeopleMembersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/linking': {
+      id: '/dashboard/people/linking'
+      path: '/people/linking'
+      fullPath: '/dashboard/people/linking'
+      preLoaderRoute: typeof DashboardPeopleLinkingRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/admins': {
+      id: '/dashboard/people/admins'
+      path: '/people/admins'
+      fullPath: '/dashboard/people/admins'
+      preLoaderRoute: typeof DashboardPeopleAdminsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/$personId': {
+      id: '/dashboard/people/$personId'
+      path: '/people/$personId'
+      fullPath: '/dashboard/people/$personId'
+      preLoaderRoute: typeof DashboardPeoplePersonIdRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/esign/sign': {
@@ -656,6 +853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/account/me': {
+      id: '/dashboard/account/me'
+      path: '/account/me'
+      fullPath: '/dashboard/account/me'
+      preLoaderRoute: typeof DashboardAccountMeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
       path: '/groups-by-label'
@@ -668,6 +872,20 @@ declare module '@tanstack/react-router' {
       path: '/telegram/users'
       fullPath: '/dashboard/telegram/users/'
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/teams/': {
+      id: '/dashboard/people/teams/'
+      path: '/people/teams'
+      fullPath: '/dashboard/people/teams/'
+      preLoaderRoute: typeof DashboardPeopleTeamsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/census/': {
+      id: '/dashboard/people/census/'
+      path: '/people/census'
+      fullPath: '/dashboard/people/census/'
+      preLoaderRoute: typeof DashboardPeopleCensusIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/esign/requests/': {
@@ -696,6 +914,20 @@ declare module '@tanstack/react-router' {
       path: '/telegram/users/$userId'
       fullPath: '/dashboard/telegram/users/$userId'
       preLoaderRoute: typeof DashboardTelegramUsersUserIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/teams/$teamId': {
+      id: '/dashboard/people/teams/$teamId'
+      path: '/people/teams/$teamId'
+      fullPath: '/dashboard/people/teams/$teamId'
+      preLoaderRoute: typeof DashboardPeopleTeamsTeamIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/census/$campaignId': {
+      id: '/dashboard/people/census/$campaignId'
+      path: '/people/census/$campaignId'
+      fullPath: '/dashboard/people/census/$campaignId'
+      preLoaderRoute: typeof DashboardPeopleCensusCampaignIdRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/esign/requests/$requestId': {
@@ -742,9 +974,9 @@ const DashboardWebRouteWithChildren = DashboardWebRoute._addFileChildren(
 )
 
 interface DashboardRouteChildren {
-  DashboardAccountRoute: typeof DashboardAccountRoute
   DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAccountMeRoute: typeof DashboardAccountMeRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
@@ -752,21 +984,33 @@ interface DashboardRouteChildren {
   DashboardEsignNewRoute: typeof DashboardEsignNewRoute
   DashboardEsignSetupRoute: typeof DashboardEsignSetupRoute
   DashboardEsignSignRoute: typeof DashboardEsignSignRoute
+  DashboardPeoplePersonIdRoute: typeof DashboardPeoplePersonIdRoute
+  DashboardPeopleAdminsRoute: typeof DashboardPeopleAdminsRoute
+  DashboardPeopleLinkingRoute: typeof DashboardPeopleLinkingRoute
+  DashboardPeopleMembersRoute: typeof DashboardPeopleMembersRoute
+  DashboardPeopleReceiptsRoute: typeof DashboardPeopleReceiptsRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
+  DashboardTelegramCapoRoute: typeof DashboardTelegramCapoRoute
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
+  DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
+  DashboardPeopleIndexRoute: typeof DashboardPeopleIndexRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
+  DashboardPeopleCensusCampaignIdRoute: typeof DashboardPeopleCensusCampaignIdRoute
+  DashboardPeopleTeamsTeamIdRoute: typeof DashboardPeopleTeamsTeamIdRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
   DashboardEsignRequestsIndexRoute: typeof DashboardEsignRequestsIndexRoute
+  DashboardPeopleCensusIndexRoute: typeof DashboardPeopleCensusIndexRoute
+  DashboardPeopleTeamsIndexRoute: typeof DashboardPeopleTeamsIndexRoute
   DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardAccountRoute: DashboardAccountRoute,
   DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAccountMeRoute: DashboardAccountMeRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,
@@ -774,14 +1018,26 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardEsignNewRoute: DashboardEsignNewRoute,
   DashboardEsignSetupRoute: DashboardEsignSetupRoute,
   DashboardEsignSignRoute: DashboardEsignSignRoute,
+  DashboardPeoplePersonIdRoute: DashboardPeoplePersonIdRoute,
+  DashboardPeopleAdminsRoute: DashboardPeopleAdminsRoute,
+  DashboardPeopleLinkingRoute: DashboardPeopleLinkingRoute,
+  DashboardPeopleMembersRoute: DashboardPeopleMembersRoute,
+  DashboardPeopleReceiptsRoute: DashboardPeopleReceiptsRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
+  DashboardTelegramCapoRoute: DashboardTelegramCapoRoute,
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
+  DashboardAccountIndexRoute: DashboardAccountIndexRoute,
+  DashboardPeopleIndexRoute: DashboardPeopleIndexRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
+  DashboardPeopleCensusCampaignIdRoute: DashboardPeopleCensusCampaignIdRoute,
+  DashboardPeopleTeamsTeamIdRoute: DashboardPeopleTeamsTeamIdRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
   DashboardEsignRequestsIndexRoute: DashboardEsignRequestsIndexRoute,
+  DashboardPeopleCensusIndexRoute: DashboardPeopleCensusIndexRoute,
+  DashboardPeopleTeamsIndexRoute: DashboardPeopleTeamsIndexRoute,
   DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
 }
 

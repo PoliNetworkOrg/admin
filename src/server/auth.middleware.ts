@@ -38,8 +38,11 @@ export const authenticatedMiddleware = createMiddleware({ type: "function" })
     return next({ context: { session: context.session } })
   })
 
-/** Reads: the user holds `admin:access`. The backend checks the permission of every procedure on top. */
-export const adminMiddleware = createMiddleware({ type: "function" })
+/**
+ * Any dashboard user: `admin:access`, or `people:self` alone for the restricted People view. Functions add their own
+ * permission on top; the backend checks every procedure again.
+ */
+export const dashboardUserMiddleware = createMiddleware({ type: "function" })
   .middleware([authenticatedMiddleware])
   .server(async ({ next, context }) => {
     const { loadAccess } = await import("@/server/auth.server")
@@ -48,9 +51,120 @@ export const adminMiddleware = createMiddleware({ type: "function" })
     return next({ context: { user: access.user, permissions: access.permissions } })
   })
 
+/** Reads: the user holds `admin:access`. The backend checks the permission of every procedure on top. */
+export const adminMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next, context }) => {
+    if (!hasPermission(context.permissions, "admin:access")) throw redirect({ to: "/unauthorized" })
+    return next()
+  })
+
 function requirePermission(permissions: readonly string[], permission: Permission) {
   if (!hasPermission(permissions, permission)) throw new Error("UNAUTHORIZED")
 }
+
+/**
+ * People: the signed-in person's own area (My area), and the Capo Admin and Team Lead views the backend scopes. These
+ * (and the Team ones below) start from `dashboardUserMiddleware`, as volunteers have no `admin:access`; every other
+ * People middleware starts from `adminMiddleware`, like the sections the navigation shows.
+ */
+export const peopleSelfMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:self")
+    return next()
+  })
+
+/** People: every record, admins, teams, census and linking, with contacts and HR notes. */
+export const peopleReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:read")
+    return next()
+  })
+
+/** People: add and edit people, admin roles, team memberships, the census and account linking. */
+export const peopleWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:write")
+    return next()
+  })
+
+/**
+ * People › Teams writes: `people:write`, or a Team Lead (`people:self`) on their own team, which only the backend
+ * can tell from the record.
+ */
+export const peopleTeamWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next, context }) => {
+    const generalAccess =
+      hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:write")
+    if (!generalAccess) requirePermission(context.permissions, "people:self")
+    return next({
+      context: {
+        permissions: generalAccess
+          ? context.permissions
+          : context.permissions.filter((permission) => permission !== "people:write"),
+      },
+    })
+  })
+
+/** People › Teams reads: `people:read`, or a Team Lead (`people:self`) whose own team the backend returns. */
+export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next, context }) => {
+    const generalAccess =
+      hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:read")
+    if (!generalAccess) requirePermission(context.permissions, "people:self")
+    return next({
+      context: {
+        permissions: generalAccess
+          ? context.permissions
+          : context.permissions.filter((permission) => permission !== "people:read"),
+      },
+    })
+  })
+
+/** People › Member register: read. */
+export const peopleMembersReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:members:read")
+    return next()
+  })
+
+/** People › Member register: add members, change status and number, export. */
+export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:members:write")
+    return next()
+  })
+
+/** People › fees: review transfer receipts, mark fees as paid, send reminders, retry and void receipts. */
+export const peopleFeesWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:fees:write")
+    return next()
+  })
+
+/** People › Receipts: download receipts to sign and upload them signed (the President and Vice-president). */
+export const peopleReceiptsSignMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:receipts:sign")
+    return next()
+  })
+
+/** People: appoint Capo Admins and Team Leads. */
+export const peopleAppointMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:appoint")
+    return next()
+  })
 
 /** Telegram grants: create and interrupt. */
 export const grantsWriteMiddleware = createMiddleware({ type: "function" })

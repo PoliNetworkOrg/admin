@@ -1,9 +1,8 @@
 import { CalendarIcon, Clock3 } from "lucide-react"
-import { type ReactNode, useEffect, useMemo, useState } from "react"
+import { type ReactNode, useMemo, useState } from "react"
 
 import {
   buttonMotion,
-  fieldControl,
   fieldHintId,
   floatingMotion,
   FormField,
@@ -12,7 +11,6 @@ import {
 } from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { WheelPicker, WheelPickerColumn } from "@/components/ui/wheel-picker"
 import { formatDate } from "@/lib/format"
@@ -56,25 +54,12 @@ function clampToMinimum(date: Date, minimum?: Date) {
   return minimum && date < minimum ? new Date(minimum) : date
 }
 
-/** Native `datetime-local` on touch devices; the calendar and wheel popovers on fine pointers. */
-function useCoarsePointer() {
-  const [coarse, setCoarse] = useState(false)
-  useEffect(() => {
-    const query = window.matchMedia("(pointer: coarse)")
-    setCoarse(query.matches)
-    const onChange = (event: MediaQueryListEvent) => setCoarse(event.matches)
-    query.addEventListener("change", onChange)
-    return () => query.removeEventListener("change", onChange)
-  }, [])
-  return coarse
-}
-
 const HOUR_VALUES = Array.from({ length: 24 }, (_, hour) => pad(hour))
 const MINUTE_VALUES = Array.from({ length: 60 }, (_, minute) => pad(minute))
 
 const pickerButton = cn(
   buttonMotion,
-  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none hover:bg-(--pn-hover) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
+  "h-9 justify-start gap-2 border-(--pn-line-strong) bg-(--pn-surface) px-3 text-sm font-normal text-(--pn-fg) shadow-none pointer-coarse:h-10 pointer-coarse:text-base hover:bg-(--pn-hover) aria-invalid:border-(--pn-danger-solid) [&_svg]:text-(--pn-fg-muted)"
 )
 
 type DateTimeInputProps = {
@@ -87,7 +72,7 @@ type DateTimeInputProps = {
   disabled: boolean
 }
 
-function DesktopDateTimeInput({ id, label, value, onChange, minimum, invalid, disabled }: DateTimeInputProps) {
+function DateTimeInput({ id, label, value, onChange, minimum, invalid, disabled }: DateTimeInputProps) {
   const selected = parseLocalDateTime(value)
   const [dateOpen, setDateOpen] = useState(false)
   const [timeOpen, setTimeOpen] = useState(false)
@@ -166,13 +151,14 @@ function DesktopDateTimeInput({ id, label, value, onChange, minimum, invalid, di
         <PopoverContent align="start" className={cn(raisedSurface, floatingMotion, "w-auto rounded-(--pn-r-4) p-0")}>
           <Calendar
             mode="single"
+            weekStartsOn={1}
             selected={selected}
             defaultMonth={selected ?? minimum}
             disabled={
               minimum ? { before: new Date(minimum.getFullYear(), minimum.getMonth(), minimum.getDate()) } : undefined
             }
             onSelect={chooseDate}
-            className="bg-transparent"
+            className="bg-transparent [--cell-size:--spacing(9)] pointer-coarse:[--cell-size:--spacing(10)]"
           />
         </PopoverContent>
       </Popover>
@@ -230,25 +216,6 @@ function DesktopDateTimeInput({ id, label, value, onChange, minimum, invalid, di
         </PopoverContent>
       </Popover>
     </div>
-  )
-}
-
-function DateTimeInput(props: DateTimeInputProps) {
-  const coarse = useCoarsePointer()
-  if (!coarse) return <DesktopDateTimeInput {...props} />
-  const { id, value, onChange, minimum, invalid, disabled } = props
-  return (
-    <Input
-      id={id}
-      type="datetime-local"
-      min={minimum ? localDateTimeValue(minimum) : undefined}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? fieldHintId(id) : undefined}
-      disabled={disabled}
-      className={cn("h-10 w-full min-w-0 bg-(--pn-surface) min-[480px]:flex-1", fieldControl)}
-    />
   )
 }
 

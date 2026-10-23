@@ -106,6 +106,8 @@ export type PageBarProps<TRouter extends AnyRouter = RegisteredRouter, TOptions 
   back?: PageBarBack<TRouter, TOptions>
   /** Deep pages: the parent context after the section in the breadcrumb ("Users / 5021007919"). */
   context?: ReactNode
+  /** Deep pages: the parent crumb's label, when it isn't the section's title ("People" over "Overview"). */
+  crumb?: string
   /** Render `context` in DM Mono, for identifiers like Telegram IDs. */
   contextMono?: boolean
 }
@@ -140,6 +142,7 @@ export function PageBar({
   description,
   back,
   context,
+  crumb,
   contextMono = false,
 }: PageBarProps) {
   const { service, section } = useShellFrame()
@@ -158,7 +161,7 @@ export function PageBar({
               {section ? (
                 <li className="shrink-0">
                   <Link to={section.path} className="transition-[color] duration-120 hover:text-(--pn-fg)">
-                    {section.title}
+                    {crumb ?? section.title}
                   </Link>
                 </li>
               ) : null}
