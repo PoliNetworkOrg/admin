@@ -1,10 +1,9 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { CalendarPlus, ShieldCheck } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
 
 import {
   buttonMotion,
-  Chip,
   DataTable,
   type DataTableColumn,
   EmptyState,
@@ -18,17 +17,16 @@ import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell
 import { CreateGrantDialog } from "@/components/telegram/create-grant-dialog"
 import { telegramUserName } from "@/components/telegram/telegram-user"
 import { Button } from "@/components/ui/button"
-import type { getTelegramGrantsWithGrantors } from "@/features/telegram/grants.functions"
-import type { TgUser } from "@/lib/api/types"
+import type { getTelegramGrants } from "@/features/telegram/grants.functions"
 import { formatDate, formatDateTime } from "@/lib/format"
 
-export type TelegramGrants = Awaited<ReturnType<typeof getTelegramGrantsWithGrantors>>
+export type TelegramGrants = Awaited<ReturnType<typeof getTelegramGrants>>
 
 type GrantRecord = TelegramGrants["ongoing"]["grants"][number]
 type Status = "active" | "scheduled"
 type Tab = "all" | "ongoing" | "scheduled"
 
-type Row = GrantRecord & { grantor: TgUser | null; status: Status }
+type Row = GrantRecord & { status: Status }
 
 const TAB_STATUS = { ongoing: "active", scheduled: "scheduled" } satisfies Record<Exclude<Tab, "all">, Status>
 
@@ -36,18 +34,13 @@ function userName(user: GrantRecord["user"], id: number) {
   return user ? telegramUserName(user) : `User ${id}`
 }
 
-function searchText({ grant, user, grantor, status }: Row) {
+function searchText({ grant, user, status }: Row) {
   return [
     grant.userId,
     user?.firstName,
     user?.lastName,
     user?.username,
-    grant.grantedBy,
     grant.grantedBySub,
-    grant.source === "idp" ? "idp" : "legacy",
-    grantor?.firstName,
-    grantor?.lastName,
-    grantor?.username,
     grant.reason,
     formatDate(grant.validSince),
     formatDate(grant.validUntil),
@@ -131,22 +124,14 @@ const columns: DataTableColumn<Row>[] = [
     label: "Authorized by",
     priority: 3,
     minWidth: 130,
-    cell: ({ grant, grantor }) => (
+    cell: ({ grant }) => (
       <span className="flex min-w-0 items-baseline gap-1">
         <span aria-hidden className="hidden max-shell:inline">
           By
         </span>
-        <Grantor grant={grant} grantor={grantor} />
+        <Grantor grant={grant} />
       </span>
     ),
-  },
-  {
-    id: "source",
-    label: "Source",
-    // Legacy grants were made before the IdP migration; both kinds count until the legacy table is dropped.
-    priority: 6,
-    minWidth: 100,
-    cell: ({ grant }) => <Chip>{grant.source === "idp" ? "IdP" : "Legacy"}</Chip>,
   },
   {
     id: "starts",
@@ -175,44 +160,21 @@ const columns: DataTableColumn<Row>[] = [
   },
 ]
 
-/**
- * Legacy grants name their grantor by Telegram ID, linked to that user; IdP grants by IdP subject (`grantedBySub`),
- * which the backend does not resolve to a name.
- */
-function Grantor({ grant, grantor }: Pick<Row, "grant" | "grantor">) {
-  if (grant.grantedBy === null) {
-    return grant.grantedBySub ? (
-      <Hint label={`IdP user ${grant.grantedBySub}`}>
-        <span className="block truncate font-mono text-(--pn-fg-muted)">{grant.grantedBySub}</span>
-      </Hint>
-    ) : (
-      <Unset />
-    )
-  }
-  // Its own link to the grantor; the row click still opens the grantee.
-  return (
-    <Hint label={grantor?.username ? `@${grantor.username}` : undefined}>
-      <Link
-        to="/dashboard/telegram/users/$userId"
-        params={{ userId: String(grant.grantedBy) }}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-        className={
-          grantor
-            ? "block truncate text-(--pn-fg) underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-            : "font-mono text-(--pn-fg) tabular-nums underline-offset-2 transition-[color] duration-120 hover:text-(--pn-accent) hover:underline"
-        }
-      >
-        {grantor ? telegramUserName(grantor) : grant.grantedBy}
-      </Link>
+/** The grantor's IdP subject; the backend does not resolve it to a name. */
+function Grantor({ grant }: Pick<Row, "grant">) {
+  return grant.grantedBySub ? (
+    <Hint label={`IdP user ${grant.grantedBySub}`}>
+      <span className="block truncate font-mono text-(--pn-fg-muted)">{grant.grantedBySub}</span>
     </Hint>
+  ) : (
+    <Unset />
   )
 }
 
 const PAGE_SIZE = 20
 
 /** Grants: ongoing and scheduled grants with a status filter; a row opens the grantee. */
-export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }: { grants: TelegramGrants }) {
+export function TelegramGrantsPage({ grants: { ongoing, scheduled } }: { grants: TelegramGrants }) {
   const navigate = useNavigate()
   const canWrite = useCan("tg:grants:manage")
   const [query, setQuery] = useState("")
@@ -224,14 +186,9 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
   const deferredQuery = useDeferredValue(query)
 
   const current = useMemo(() => {
-    const grantorById = new Map(grantors.map((user) => [user.id, user]))
-    const toRow = (status: Status) => (record: GrantRecord) => ({
-      ...record,
-      grantor: record.grant.grantedBy === null ? null : (grantorById.get(record.grant.grantedBy) ?? null),
-      status,
-    })
+    const toRow = (status: Status) => (record: GrantRecord) => ({ ...record, status })
     return [...ongoing.grants.map(toRow("active")), ...scheduled.grants.map(toRow("scheduled"))]
-  }, [ongoing, scheduled, grantors])
+  }, [ongoing, scheduled])
 
   const counts = {
     all: current.length,
@@ -302,7 +259,7 @@ export function TelegramGrantsPage({ grants: { ongoing, scheduled, grantors } }:
           label="Grants"
           columns={columns}
           rows={rows}
-          getRowId={(row) => row.grant.key}
+          getRowId={(row) => String(row.grant.id)}
           sort={sort}
           onSort={(next) => {
             setSort(next)
