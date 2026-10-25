@@ -56,10 +56,10 @@ const columns: DataTableColumn<AzureMember>[] = [
     label: "Member ID",
     sortable: true,
     align: "end",
-    minWidth: 120,
+    minWidth: 104,
     // Cards: the muted "#id" ends the name's line (`order`: name, id, the rest), so avatars align with or without it.
     className:
-      "w-[120px] max-shell:order-[-1] max-shell:ml-auto max-shell:w-auto max-shell:shrink-0 max-shell:self-center",
+      "w-[104px] max-shell:order-[-1] max-shell:ml-auto max-shell:w-auto max-shell:shrink-0 max-shell:self-center",
     mobile: "meta",
     cell: (member) =>
       member.employeeId ? (
@@ -70,7 +70,7 @@ const columns: DataTableColumn<AzureMember>[] = [
   },
   {
     id: "displayName",
-    label: "Member",
+    label: "Name",
     sortable: true,
     minWidth: 180,
     fill: true,
@@ -94,7 +94,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     id: "mail",
     label: "Email",
     sortable: true,
-    priority: 1,
+    priority: 2,
     minWidth: 220,
     mobile: "full",
     cell: (member) =>
@@ -108,9 +108,11 @@ const columns: DataTableColumn<AzureMember>[] = [
   },
   {
     id: "isMember",
-    label: "Current member",
-    priority: 2,
-    minWidth: 150,
+    label: "Member",
+    priority: 1,
+    minWidth: 100,
+    // Centered under its header; cards keep the left edge.
+    className: "text-center max-shell:text-left",
     mobile: "meta",
     cell: (member) => {
       const licenses = member.assignedLicensesIds.map(formatLicense)
