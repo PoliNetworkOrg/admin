@@ -87,7 +87,8 @@ export function CapoPage({ area }: { area: CapoArea }) {
       width: 112,
       priority: 3,
       mobile: "hidden",
-      cell: (person) => <span className="whitespace-nowrap">{person.profile.year}</span>,
+      cell: (person) =>
+        person.profile.year ? <span className="whitespace-nowrap">{person.profile.year}</span> : <Unset />,
     },
     {
       id: "since",

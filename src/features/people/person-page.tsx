@@ -23,7 +23,7 @@ import {
   UserRoundCog,
   Users,
 } from "lucide-react"
-import { useState } from "react"
+import { Fragment, useState } from "react"
 
 import {
   buttonMotion,
@@ -131,6 +131,11 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   }
 
   async function applyCensusTelegram(username: string) {
+    // The update re-sends the whole profile, which needs a campus.
+    if (!profile.campus) {
+      appToast.error("Complete the profile first: it has no campus.")
+      return
+    }
     setApplyingTelegram(true)
     try {
       await update({
@@ -171,9 +176,9 @@ export function PersonPage({ person }: { person: PersonRecord }) {
         </span>
       ) : null,
     },
-    { key: "Course", value: profile.course },
-    { key: "Year", value: profile.year },
-    { key: "Campus", value: <Chip>{profile.campus}</Chip> },
+    { key: "Course", value: profile.course || null },
+    { key: "Year", value: profile.year || null },
+    { key: "Campus", value: profile.campus ? <Chip>{profile.campus}</Chip> : null },
     {
       key: "Other associations",
       value: profile.otherAssociations.length ? (
@@ -199,12 +204,12 @@ export function PersonPage({ person }: { person: PersonRecord }) {
             meta={
               <span className="flex flex-wrap items-center gap-x-1.5">
                 <span className="font-mono">{person.id}</span>
-                <span aria-hidden>·</span>
-                <span>{profile.course}</span>
-                <span aria-hidden>·</span>
-                <span>{profile.year}</span>
-                <span aria-hidden>·</span>
-                <span>{profile.campus}</span>
+                {[profile.course, profile.year, profile.campus].filter(Boolean).map((part) => (
+                  <Fragment key={part}>
+                    <span aria-hidden>·</span>
+                    <span>{part}</span>
+                  </Fragment>
+                ))}
               </span>
             }
             chips={roles.length ? roles.map((role) => <Chip key={role}>{role}</Chip>) : undefined}

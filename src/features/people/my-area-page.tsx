@@ -17,7 +17,7 @@ import {
   Users,
   UsersRound,
 } from "lucide-react"
-import { useState } from "react"
+import { Fragment, useState } from "react"
 
 import {
   buttonMotion,
@@ -136,8 +136,14 @@ function MatchView({ area }: { area: Match }) {
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-[15px] font-medium">{candidate.name}</span>
                 <span className="text-[13px] text-(--pn-fg-muted)">
-                  <span className="font-mono">{candidate.id}</span> · {candidate.course} · {candidate.year} ·{" "}
-                  {candidate.campus}
+                  {[candidate.id, candidate.course, candidate.year, candidate.campus]
+                    .filter(Boolean)
+                    .map((part, index) => (
+                      <Fragment key={part}>
+                        {index ? " · " : ""}
+                        {index ? part : <span className="font-mono">{part}</span>}
+                      </Fragment>
+                    ))}
                 </span>
                 {candidate.roles.length ? (
                   <span className="mt-1.5 flex flex-wrap gap-1.5">
@@ -253,9 +259,11 @@ function CensusCard({ area }: { area: Linked }) {
   const adminGroups = isActiveAdmin(person) ? (person.admin?.groups ?? []) : []
   const groups = adminGroups.map((group) => group.chatId)
   const teams = activeTeams(person).map((membership) => membership.team)
-  const [course, setCourse] = useState(person.profile.course)
+  // Records created from PoliNetwork Auth or Microsoft 365 have no course or campus until someone fills them in.
+  const [course, setCourse] = useState<string | null>(person.profile.course || null)
   const [year, setYear] = useState<Year>(nextYear(person.profile.year))
-  const [campus, setCampus] = useState<Campus>(person.profile.campus)
+  const [campus, setCampus] = useState<Campus | null>(person.profile.campus)
+  const [showMissing, setShowMissing] = useState(false)
   const [keepGroups, setKeepGroups] = useState(groups)
   const [keepTeams, setKeepTeams] = useState<TeamId[]>(teams)
   const [saving, setSaving] = useState(false)
@@ -263,7 +271,7 @@ function CensusCard({ area }: { area: Linked }) {
   const leavingKey = useOpenGeneration(leavingOpen)
 
   if (!campaign) return null
-  const answer = { course, year, campus, keepGroups, keepTeams }
+  const answer = course && campus ? { course, year, campus, keepGroups, keepTeams } : null
 
   // Team roles update immediately; Telegram removals wait for confirmation.
   if (entry?.answer) {
@@ -293,6 +301,10 @@ function CensusCard({ area }: { area: Linked }) {
   }
 
   async function confirmContinuing() {
+    if (!answer) {
+      setShowMissing(true)
+      return
+    }
     setSaving(true)
     try {
       await save({ data: { ...answer, answer: "continues", reason: "", note: "" } })
@@ -306,9 +318,10 @@ function CensusCard({ area }: { area: Linked }) {
     setSaving(false)
   }
 
-  const courses = COURSES.some((option) => option === person.profile.course)
-    ? COURSES
-    : [person.profile.course, ...COURSES]
+  const courses =
+    !person.profile.course || COURSES.some((option) => option === person.profile.course)
+      ? COURSES
+      : [person.profile.course, ...COURSES]
 
   return (
     <SectionCard
@@ -322,7 +335,8 @@ function CensusCard({ area }: { area: Linked }) {
             className={buttonMotion}
             disabled={saving}
             onClick={() => {
-              setLeavingOpen(true)
+              if (answer) setLeavingOpen(true)
+              else setShowMissing(true)
             }}
           >
             I'm leaving
@@ -336,18 +350,24 @@ function CensusCard({ area }: { area: Linked }) {
       <div className="flex flex-col gap-4">
         <p className="text-[14px] text-(--pn-fg-muted)">Check your details and confirm whether you're continuing.</p>
         <div className="grid grid-cols-1 gap-4 shell:grid-cols-3">
-          <FormField label="Course" htmlFor="census-course">
+          <FormField
+            label="Course"
+            htmlFor="census-course"
+            error={showMissing && !course ? "Choose your course." : undefined}
+          >
             <SelectField
               id="census-course"
               value={course}
+              placeholder="Choose your course"
               options={courses.map((option) => ({ value: option, label: option }))}
               onChange={setCourse}
+              invalid={showMissing && !course}
             />
           </FormField>
           <FormField
             label={`Year in ${campaign.year}`}
             htmlFor="census-year"
-            hint={`You were in ${person.profile.year} last year.`}
+            hint={person.profile.year ? `You were in ${person.profile.year} last year.` : undefined}
           >
             <SelectField<Year>
               id="census-year"
@@ -356,12 +376,18 @@ function CensusCard({ area }: { area: Linked }) {
               onChange={setYear}
             />
           </FormField>
-          <FormField label="Campus" htmlFor="census-campus">
+          <FormField
+            label="Campus"
+            htmlFor="census-campus"
+            error={showMissing && !campus ? "Choose your campus." : undefined}
+          >
             <SelectField<Campus>
               id="census-campus"
               value={campus}
+              placeholder="Choose your campus"
               options={CAMPUSES.map((option) => ({ value: option, label: option }))}
               onChange={setCampus}
+              invalid={showMissing && !campus}
             />
           </FormField>
         </div>
@@ -394,13 +420,15 @@ function CensusCard({ area }: { area: Linked }) {
           </FormField>
         ) : null}
       </div>
-      <LeavingDialog
-        key={`leaving-${leavingKey}`}
-        open={leavingOpen}
-        onOpenChange={setLeavingOpen}
-        year={campaign.year}
-        answer={answer}
-      />
+      {answer && (
+        <LeavingDialog
+          key={`leaving-${leavingKey}`}
+          open={leavingOpen}
+          onOpenChange={setLeavingOpen}
+          year={campaign.year}
+          answer={answer}
+        />
+      )}
     </SectionCard>
   )
 }
@@ -430,9 +458,9 @@ function LinkedView({ area }: { area: Linked }) {
         </span>
       ) : null,
     },
-    { key: "Course", value: profile.course },
-    { key: "Year", value: profile.year },
-    { key: "Campus", value: <Chip>{profile.campus}</Chip> },
+    { key: "Course", value: profile.course || null },
+    { key: "Year", value: profile.year || null },
+    { key: "Campus", value: profile.campus ? <Chip>{profile.campus}</Chip> : null },
     ...(member || person.account.status === "linked"
       ? [
           {

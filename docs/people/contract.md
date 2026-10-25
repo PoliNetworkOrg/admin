@@ -29,9 +29,9 @@ type Profile = {
   phone: string | null // omitted (null) without contact rights
   telegramUsername: string | null
   telegramId: string | null
-  course: string
-  year: string // "2nd year", "1st year MSc", "Graduated"
-  campus: Campus
+  course: string // "" until known
+  year: string // "2nd year", "1st year MSc", "Graduated"; "" until known
+  campus: Campus | null // null until known: records created from PoliNetwork Auth or Microsoft 365
   otherAssociations: string[]
   studentRepresentative: string | null
 }
@@ -256,7 +256,7 @@ type MyArea =
         name: string
         course: string
         year: string
-        campus: Campus
+        campus: Campus | null
         roles: string[]
       }
       reason: string

@@ -67,6 +67,24 @@ Known prototype defects to not reproduce:
 - People with no active role stay in Overview as muted rows; the Role filter has "No roles". Their record shows a
   neutral alert: the record stays for history and future census campaigns.
 
+## Where the register's people come from
+
+The backend keeps the register and fills it from two sources besides the dashboard and census imports (backend
+README, "People register sources"):
+
+- **PoliNetwork Auth roles.** Master Admin binds hand-made roles to People on the role's page in the IdP: `admin`,
+  `team:<id>:member` or `team:<id>:lead` (team keys `it`, `hr`, `design`, `intl`, `events`). Their holders get a linked
+  record with the matching Admin and team entries. PoliNetwork Auth is the source of truth: Add to team, End
+  membership and End admin role on a linked record give or take back the bound role there for the signed-in user, and
+  the IdP refuses what that user couldn't do in its own dashboard (no self-grants, Leads need `people:appoint`, nobody
+  hands out permissions they don't hold). Records without an account, and roles with no bound role, stay owned by
+  People.
+- **The Microsoft 365 Soci group** ("Members only" in Microsoft 365). Each member gets a membership numbered by the
+  account's `employeeId`. Leaving the group ends nothing; the register keeps the status.
+
+Records created this way have only a name: course, year and campus show "—" until HR edits the profile, and My area
+asks the person to choose them before answering the census.
+
 ## Per page
 
 - **Overview**: personal email is the secondary line. Admin is a state badge (Active / Former); Capo Admin a scope chip.
@@ -86,7 +104,7 @@ Known prototype defects to not reproduce:
   Year, Campus, Active since, then Requested, Representative, Other associations and Available as Capo Admin appear as
   the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the role actions follow it.
 - **Teams**: index = one `NavCard` per team (lead, member count, missing census answers) then all team members in one
-  table with a Team column. Team page columns follow the team's fields (IT: GitHub, Areas; Design & Social: Tools,
+  table with a Team column. Team page columns follow the team's fields (IT: GitHub, Areas; Design & Marketing: Tools,
   Portfolio; HR and Events: Focus; International: Languages). Team Leads see phone and Telegram for their team. Lead
   option in Add to team only for `people:appoint`. End membership needs a reason and keeps history.
 - **Census**: campaign list is a table with a stacked progress meter and counts. Campaign page: Import responses

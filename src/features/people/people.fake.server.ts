@@ -822,7 +822,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           ? [{ question: "Why are you leaving?", answer: person.admin?.endReason ?? "Graduating" }]
           : []),
         { question: "Course and year", answer: `${person.profile.course}, ${person.profile.year}` },
-        { question: "Campus", answer: person.profile.campus },
+        { question: "Campus", answer: person.profile.campus ?? "—" },
         {
           question: "Telegram username",
           answer: `@${person.censusTelegram ?? person.profile.telegramUsername ?? "—"}`,

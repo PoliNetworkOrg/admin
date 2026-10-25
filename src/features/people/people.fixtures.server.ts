@@ -1156,7 +1156,7 @@ export function buildPeopleStore(): PeopleStore {
       account: { name: "Aurora Fabbri", email: "aurora.fabbri@gmail.com", telegram: "@aurorafab", via: "Telegram" },
       record: null,
       other: null,
-      message: "I joined Design & Social at the open day.",
+      message: "I joined Design & Marketing at the open day.",
     },
     {
       id: "r6",
@@ -1192,6 +1192,13 @@ export function buildPeopleStore(): PeopleStore {
     { id: "j2", personId: (informatics[0] ?? giulia).id, group: "Reti Logiche", requestedOn: "2026-10-11" },
     { id: "j3", personId: (informatics[1] ?? giulia).id, group: "Basi di Dati", requestedOn: "2026-10-12" },
   ]
+
+  // Someone known only from a role in PoliNetwork Auth: the backend links the record but has no course or campus.
+  const fromAuth = people.find(
+    (p) => !(p.id in KEYS) && p.account.status === "linked" && p.teams.length && !p.admin && !p.member
+  )
+  if (fromAuth)
+    Object.assign(fromAuth.profile, { course: "", year: "", campus: null, personalEmail: null, phone: null })
 
   return { people, byId, reviews, joinRequests, receipts: seedFees(people, byId) }
 }

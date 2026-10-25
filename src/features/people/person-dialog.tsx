@@ -42,7 +42,7 @@ export function PersonDialog({
     phone: person?.profile.phone ?? "",
     telegramUsername: person?.profile.telegramUsername ? `@${person.profile.telegramUsername}` : "",
     course: person?.profile.course ?? "",
-    year: person ? yearOf(person.profile.year) : null,
+    year: person?.profile.year ? yearOf(person.profile.year) : null,
     campus: person?.profile.campus ?? null,
   }
   const [values, setValues] = useState(initial)

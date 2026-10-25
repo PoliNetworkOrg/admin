@@ -198,3 +198,7 @@ Newest last. One line per commit or session: date, what was done, what is next.
   `people.receipts.prepareSignatures` contract and adapter, both signing permissions, and regression tests for
   officer restrictions, loader refresh and merged navigation. The People backend bridge remains pending, so agent
   mode reports that requirement instead of simulating CIE success.
+
+- 2026-10-25: the register now fills from PoliNetwork Auth's bound roles and the Microsoft 365 Soci group (backend
+  `feat/people-role-sync`, IdP `feat/people-role-api`). `profile.campus` is nullable and course/year may be empty;
+  pages show "—", the profile form starts empty and My area asks for them. The Design team is Design & Marketing.

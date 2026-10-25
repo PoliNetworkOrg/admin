@@ -126,7 +126,8 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
       width: 112,
       priority: 4,
       mobile: "hidden",
-      cell: (person) => <span className="whitespace-nowrap">{person.profile.year}</span>,
+      cell: (person) =>
+        person.profile.year ? <span className="whitespace-nowrap">{person.profile.year}</span> : <Unset />,
     },
     {
       id: "campus",
@@ -134,7 +135,7 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
       width: 112,
       priority: 5,
       mobile: "hidden",
-      cell: (person) => person.profile.campus,
+      cell: (person) => person.profile.campus ?? <Unset />,
     },
     {
       id: "since",
@@ -280,7 +281,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
   const filtered = inScope.filter(
     (person) =>
       (campus === null || person.profile.campus === campus) &&
-      (year === null || yearOf(person.profile.year) === year) &&
+      (year === null || (person.profile.year !== "" && yearOf(person.profile.year) === year)) &&
       [...quick].every((id) => QUICK[id].test(person)) &&
       matchesQuery(person, deferredQuery)
   )
