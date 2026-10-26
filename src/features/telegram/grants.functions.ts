@@ -23,7 +23,7 @@ const grantInput = z
   })
   .refine(({ since, until }) => until > since, { message: "The grant end must be after its start.", path: ["until"] })
 
-// The backend takes the author from the access token; actor fields are only read from legacy callers.
+// The backend takes the author from the access token.
 export const createTelegramGrant = createServerFn({ method: "POST" })
   .middleware([grantsWriteMiddleware])
   .validator(grantInput)

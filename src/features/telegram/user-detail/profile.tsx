@@ -292,7 +292,6 @@ type AuditActor = { name: string; title?: string }
 function auditActor(audit: Audit): AuditActor {
   if (audit.admin) return { name: telegramUserName(audit.admin) }
   if (audit.actorTgId !== null) return { name: `User ${audit.actorTgId}` }
-  if (audit.adminId !== null) return { name: `User ${audit.adminId}` }
   if (audit.actorSub) {
     return {
       name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account",
