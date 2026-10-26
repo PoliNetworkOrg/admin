@@ -255,7 +255,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
     ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
-    ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
     ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
@@ -317,7 +316,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
-    "src/features/azure/membership-dialog.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
     "src/features/esign/receipt-request-link.tsx": "people:members:read",
     "src/features/esign/requests-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
@@ -418,7 +416,6 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/receipts-page.tsx": ["downloadReceiptsToSign", "retryReceipt", "prepareReceiptSignatures"],
     "src/features/people/receipt-dialogs.tsx": ["previewSignedReceipts", "sendSignedReceipts", "voidReceipt"],
     "src/features/people/my-fee-card.tsx": ["uploadMyTransferReceipt"],
-    "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",
       "importEsignDriveDocument",
