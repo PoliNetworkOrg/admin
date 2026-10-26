@@ -75,10 +75,13 @@ README, "People register sources"):
 - **PoliNetwork Auth roles.** Master Admin binds hand-made roles to People on the role's page in the IdP: `admin`,
   `team:<id>:member` or `team:<id>:lead` (team keys `it`, `hr`, `design`, `intl`, `events`). Their holders get a linked
   record with the matching Admin and team entries. PoliNetwork Auth is the source of truth: Add to team, End
-  membership and End admin role on a linked record give or take back the bound role there for the signed-in user, and
-  the IdP refuses what that user couldn't do in its own dashboard (no self-grants, Leads need `people:appoint`, nobody
-  hands out permissions they don't hold). Records without an account, and roles with no bound role, stay owned by
-  People.
+  membership, End admin role, census answers and account links on a linked record send it one command for the
+  signed-in user, and the IdP applies all of it or nothing, refusing what that user couldn't do in its own dashboard
+  (no self-grants, Leads need `people:appoint`, nobody hands out permissions they don't hold). A role takes effect in
+  People only once the IdP confirms it: until then the record keeps its previous roles and other role edits of that
+  person wait. Linking a record ends the roles recorded before it until the IdP confirms them; a refusal outside a
+  direct dashboard action flags the record for HR. Records without an account, and roles with no bound role, stay
+  owned by People.
 - **The Microsoft 365 Soci group** ("Members only" in Microsoft 365). Each member gets a membership numbered by the
   account's `employeeId`. Leaving the group ends nothing; the register keeps the status.
 
