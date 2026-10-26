@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard/azure/groups")({
   beforeLoad: ({ context }) => {
     if (!hasPermission(context.permissions, "azure:groups:read")) throw redirect({ to: "/unauthorized" })
   },
-  // The directory is only needed to add members, so it loads only for those who may read it.
+  // The directory only adds member emails, so it loads only for those who may read it.
   loader: async ({ context }) => {
     const [groups, members] = await Promise.all([
       getAzureGroups(),

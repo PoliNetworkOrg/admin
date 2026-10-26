@@ -2,10 +2,10 @@
 
 The dashboard manages Telegram and WhatsApp groups, labels, Telegram users and grants, website content and reports.
 Microsoft 365 supports a member directory, creating a new association member through the backend's fixed workflow
-(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and
-group membership management. Directory access requires `azure:members:read`; creation independently requires
-`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`; adding and
-removing members `azure:groups:write`.
+(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and a
+read-only list of groups. Directory access requires `azure:members:read`; creation independently requires
+`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`. Group
+membership is never edited: creating a member adds only that new user to Soci, which gives them the Socio role.
 
 **People** keeps one record per volunteer and member (Overview, Member register, Admins, Teams, Census, Linking), plus
 Telegram › Capo Admin and Account › My area for volunteers themselves. The dashboard talks to a typed `people.*`

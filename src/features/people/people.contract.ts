@@ -387,7 +387,8 @@ export type ImportPreview = z.infer<typeof importPreviewSchema>
 
 export const capoAreaSchema = z.object({
   scope: z.string(),
-  groups: z.array(groupSchema.extend({ admins: z.number().int() })),
+  // `admins` is null while the backend does not know a group's Telegram admins.
+  groups: z.array(groupSchema.extend({ admins: z.number().int().nullable() })),
   admins: z.array(personRowSchema),
   requests: z.array(z.object({ id: z.string(), person: personRefSchema, group: groupSchema, requestedOn: z.string() })),
 })
