@@ -18,7 +18,6 @@ export const PERMISSIONS = [
   "azure:members:create",
   "azure:members:write",
   "azure:groups:read",
-  "azure:groups:write",
   "people:self",
   "people:read",
   "people:write",

@@ -208,6 +208,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/esign/requests.functions.ts",
     "src/features/esign/drives.functions.ts",
     "src/features/guides/guides.functions.ts",
+    "src/features/freshman/freshman.functions.ts",
     "src/features/projects/projects.functions.ts",
     "src/features/group-labels/group-labels.functions.ts",
     "src/features/faqs/faqs.functions.ts",
@@ -255,7 +256,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
   const entries = [
     ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
     ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
-    ["azureGroupsWriteMiddleware", ["src/features/azure/groups.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
     ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
@@ -270,6 +270,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
         "src/features/guides/guides.functions.ts",
         "src/features/projects/projects.functions.ts",
         "src/features/faqs/faqs.functions.ts",
+        "src/features/freshman/freshman.functions.ts",
       ],
     ],
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
@@ -317,7 +318,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
-    "src/features/azure/membership-dialog.tsx": "azure:groups:write",
     "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
     "src/features/esign/receipt-request-link.tsx": "people:members:read",
     "src/features/esign/requests-page.tsx": ["esign:requests:manage", "people:receipts:sign"],
@@ -338,6 +338,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/groups-by-label/add-group-to-label-dialog.tsx": "wa:groups:manage",
     "src/features/group-link-reports/reports-page.tsx": "web:reports:manage",
     "src/features/guides/guides-page.tsx": "web:content:write",
+    "src/features/freshman/freshman-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
     "src/features/people/overview-page.tsx": "people:write",
     "src/features/people/person-page.tsx": [
@@ -418,7 +419,6 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/receipts-page.tsx": ["downloadReceiptsToSign", "retryReceipt", "prepareReceiptSignatures"],
     "src/features/people/receipt-dialogs.tsx": ["previewSignedReceipts", "sendSignedReceipts", "voidReceipt"],
     "src/features/people/my-fee-card.tsx": ["uploadMyTransferReceipt"],
-    "src/features/azure/membership-dialog.tsx": ["addAzureGroupMember", "removeAzureGroupMember"],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",
       "importEsignDriveDocument",
@@ -453,6 +453,9 @@ test("event handlers integrate protected server-function redirects with the rout
       "untagGroup",
     ],
     "src/features/guides/guide-dialogs.tsx": ["createGuide"],
+    "src/features/freshman/freshman-card-dialog.tsx": ["updateFreshmanCard"],
+    "src/features/freshman/freshman-faq-dialog.tsx": ["selectFreshmanFaq"],
+    "src/features/freshman/freshman-page.tsx": ["moveFreshmanCard"],
     "src/features/guides/guides-page.tsx": ["deleteGuide"],
     "src/features/projects/projects-page.tsx": ["createProject", "deleteProject", "editProject", "reorderProjects"],
     "src/features/telegram/leave-group-dialog.tsx": ["leaveTelegramGroup"],

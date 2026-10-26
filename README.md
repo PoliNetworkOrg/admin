@@ -2,10 +2,10 @@
 
 The dashboard manages Telegram and WhatsApp groups, labels, Telegram users and grants, website content and reports.
 Microsoft 365 supports a member directory, creating a new association member through the backend's fixed workflow
-(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and
-group membership management. Directory access requires `azure:members:read`; creation independently requires
-`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`; adding and
-removing members `azure:groups:write`.
+(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and a
+read-only list of groups. Directory access requires `azure:members:read`; creation independently requires
+`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`. Group
+membership is never edited: creating a member adds only that new user to Soci, which gives them the Socio role.
 
 **People** keeps one record per volunteer and member (Overview, Member register, Admins, Teams, Census, Linking), plus
 Telegram › Capo Admin and Account › My area for volunteers themselves. The dashboard talks to a typed `people.*`
@@ -56,6 +56,28 @@ Before review run `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. 
 signed ID tokens, checks private-key assertions, PKCE, nonce, signature failure, issuer failure, internal transport,
 refresh and revocation. It requires no production credentials. The optional compiled HTTP tests are documented in
 [`docs/idp-phase4c-handoff.md`](docs/idp-phase4c-handoff.md).
+
+## Freshman content
+
+Web › Freshman contains Resources, Telegram Hub, FAQs and Guide tabs. Resources and Telegram Hub read the
+fixed website slots through `web.freshman.getContent`; FAQs select five questions from the existing FAQ catalog.
+Edits and adjacent moves use authenticated server functions with `web:content:write`, forwarding the signed-in
+user's token through the existing BFF. After mutations the dashboard reloads its loaders before closing dialogs.
+A reload failure after a successful write reports that the change was saved, without offering to repeat it.
+There is no browser storage, demo catalog or local restore action.
+
+The Guide tab keeps the existing PDF edition management and loads editions only when selected. The former
+`/dashboard/web/guides` URL redirects to `/dashboard/web/freshman?tab=guide`. The selected tab stays in the URL;
+the full FAQ catalog loads only on the FAQs tab. Page titles, introductory text and slot counts remain fixed.
+
+### Pending backend package release
+
+The source integration targets the backend Freshman contract on `bia/freshmans` (migration
+`0026_freshman_content`). The currently pinned `@polinetwork/backend@1.4.0` does not yet export `web.freshman`.
+Once a version containing these procedures is published, update this dependency and `pnpm-lock.yaml`, then
+rerun `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Until that update, the normal typecheck is
+expected to report the missing Freshman contract. No declaration patches or type-error suppression directives are used.
+The running backend must also include the Freshman router and its migration before using this page.
 
 ## Production and cutover
 

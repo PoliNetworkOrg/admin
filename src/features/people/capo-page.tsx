@@ -174,7 +174,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
                         <span className="font-mono">{group.chatId}</span>
                       </span>
                     </span>
-                    {group.admins ? null : <StatusBadge tone="warning">No admins</StatusBadge>}
+                    {group.admins === 0 ? <StatusBadge tone="warning">No admins</StatusBadge> : null}
                   </li>
                 ))}
               </ul>
