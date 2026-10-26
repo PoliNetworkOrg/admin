@@ -60,8 +60,10 @@ PORT=1xxxx AGENT_MODE=true pnpm dev
 ```
 
 `AGENT_MODE` (development only) signs in a fake administrator with every permission and disables the auth redirects between
-`/login` and `/dashboard`, so open `/dashboard/...` or `/login` directly. Data still comes from `BACKEND_URL` (default
-`http://localhost:3000`). When changing auth or those redirects, also verify the normal flow with `AGENT_MODE=false`.
+`/login` and `/dashboard`, so open `/dashboard/...` or `/login` directly. It has no access token, so the backend
+(`BACKEND_URL`, default `http://localhost:3000`) refuses its calls: pages that read the backend show their error state,
+and People serves its sample data. To see real backend data, sign in through the IdP with `AGENT_MODE=false`. When
+changing auth or those redirects, also verify the normal flow with `AGENT_MODE=false`.
 
 > [!IMPORTANT]
 > Never run a destructive action on more than one row unless the prompt explicitly asks for it; otherwise ask the user

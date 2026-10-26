@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 /**
- * The `people.*` backend contract (docs/people/contract.md). The backend doesn't serve it yet: agent mode answers from
- * `people.fake.server.ts`, and real responses are parsed with these schemas before they reach a page.
+ * The `people.*` backend contract (docs/people/contract.md), served by the backend's `src/people/router.ts`. Agent mode
+ * answers from `people.fake.server.ts`; real responses are parsed with these schemas before they reach a page.
  */
 
 export const TEAM_IDS = ["it", "hr", "design", "intl", "events"] as const
