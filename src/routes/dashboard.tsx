@@ -1,27 +1,73 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
 import { RouteNotFound } from "@/components/route-error"
-import { DashboardShell, documentTitle, matchPath } from "@/components/shell"
+import { canOpenPage, DashboardShell, documentTitle, matchPath, NO_PEOPLE_ROLES } from "@/components/shell"
 import { getDashboardAccess } from "@/features/auth/auth.functions"
 import { getEsignPendingCount } from "@/features/esign/esign.functions"
+import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
+import { getReceipts } from "@/features/people/people-receipts.functions"
+import { getLinkingReviews, getMyPeopleRoles } from "@/features/people/people.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard")({
-  // Signed in, then `admin:access` from `me.access` (RFC v3 §11.3). The permissions go into the route context for
-  // `useCan`; the backend enforces them on every call regardless.
+  // Signed in, then `admin:access` or `people:self` from `me.access` (RFC v3 §11.3). The permissions and the roles
+  // from the person's People record go into the route context for `useCan` and the navigation; pages the user can't
+  // open send them to their own area. The backend enforces every call regardless.
   beforeLoad: async ({ location }) => {
     const access = await getDashboardAccess()
     if (access.status === "unauthenticated") throw signInRedirect(location.href)
     if (access.status === "forbidden") throw redirect({ to: "/unauthorized" })
-    return { user: access.user, permissions: access.permissions }
+    const peopleRoles = hasPermission(access.permissions, "people:self")
+      ? await getMyPeopleRoles().catch((error) => {
+          console.error(error)
+          return NO_PEOPLE_ROLES
+        })
+      : NO_PEOPLE_ROLES
+    if (!canOpenPage(matchPath(location.pathname), access.permissions, peopleRoles)) {
+      throw redirect({
+        to: hasPermission(access.permissions, "people:self")
+          ? "/dashboard/account/me"
+          : hasPermission(access.permissions, "admin:access")
+            ? "/dashboard"
+            : "/unauthorized",
+      })
+    }
+    return { user: access.user, permissions: access.permissions, peopleRoles }
   },
   // Not awaited: the panel count streams in. It is decoration, so a failed load hides it; the Reports page reports
   // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same
   // permission as managing them.
   loader: ({ context }) => ({
     pending: {
+      receipts:
+        hasPermission(context.permissions, "admin:access") &&
+        hasPermission(context.permissions, "people:receipts:sign") &&
+        hasPermission(context.permissions, "people:members:read")
+          ? getReceipts({ data: { year: null } }).then(
+              (page) =>
+                page.viewerSigner
+                  ? page.receipts.filter(
+                      (receipt) => receipt.status === "toSign" && receipt.signer === page.viewerSigner
+                    ).length
+                  : null,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
+      linking:
+        hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "people:read")
+          ? getLinkingReviews().then(
+              (reviews) => reviews.length,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
       reports: hasPermission(context.permissions, "web:reports:manage")
         ? getPendingGroupLinkReports().then(
             (reports) => reports.length,
@@ -55,5 +101,10 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardLayout() {
   const { user } = Route.useRouteContext()
   const { pending } = Route.useLoaderData()
-  return <DashboardShell user={user} pending={pending} />
+  // A signature from New request or a batch keeps its dialog while the page it lands on loads.
+  return (
+    <EsignSigningHost>
+      <DashboardShell user={user} pending={pending} />
+    </EsignSigningHost>
+  )
 }

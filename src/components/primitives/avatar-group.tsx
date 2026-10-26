@@ -1,3 +1,4 @@
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { pluralize } from "@/lib/format"
@@ -80,7 +81,11 @@ export function AvatarGroup({ people, max = 7, listLabel = "Members", className 
             <p className="border-b border-(--pn-line) px-3 py-2 text-xs text-(--pn-fg-muted) tabular-nums">
               {pluralize(rest.length, "more member")}
             </p>
-            <ul className="max-h-[min(20rem,var(--available-height))] overflow-y-auto overscroll-contain py-1">
+            <CustomScrollbar
+              as="ul"
+              className="max-h-[min(20rem,var(--available-height))]"
+              viewportClassName="overscroll-contain py-1"
+            >
               {rest.map((person) => (
                 <li key={person.id} className="flex h-9 items-center gap-2.5 px-3">
                   <PersonAvatar person={person} className="size-6 shrink-0" />
@@ -89,7 +94,7 @@ export function AvatarGroup({ people, max = 7, listLabel = "Members", className 
                   </Hint>
                 </li>
               ))}
-            </ul>
+            </CustomScrollbar>
           </PopoverContent>
         </Popover>
       )}

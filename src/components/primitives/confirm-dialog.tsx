@@ -2,6 +2,7 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { type LucideIcon, TriangleAlert } from "lucide-react"
 import { type ReactElement, type ReactNode, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -34,6 +35,10 @@ export const dialogTitleText = "text-[18px] leading-6 font-semibold tracking-[-0
 export const dialogDescriptionText = "text-[14px] leading-5 text-pretty text-(--pn-fg-muted)"
 
 export const FALLBACK_ERROR = "Something went wrong. Try again."
+
+/** The icon tile before a destructive confirmation's title. */
+export const dangerTile =
+  "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border border-[color-mix(in_oklab,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
 
 type ConfirmDialogProps = {
   /** Omit with `trigger` to let the dialog manage its own open state. */
@@ -116,16 +121,15 @@ export function ConfirmDialog({
           finalFocus={finalFocus ? () => finalFocus() ?? true : undefined}
           className={cn(dialogPanel, dialogMotion, "max-w-[460px]")}
         >
-          <div className="flex min-h-0 items-start gap-3.5 overflow-y-auto px-5.5 pt-5 pb-5">
+          <CustomScrollbar className="min-h-0 flex-1" viewportClassName="flex items-start gap-3.5 px-5.5 pt-5 pb-5">
             {Icon ? (
               <span
                 aria-hidden
-                className={cn(
-                  "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border",
+                className={
                   tone === "danger"
-                    ? "border-[color-mix(in_oklab,var(--pn-danger-fg)_30%,transparent)] bg-(--pn-danger-bg) text-(--pn-danger-fg)"
-                    : "border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)"
-                )}
+                    ? dangerTile
+                    : "grid size-10 shrink-0 place-items-center rounded-(--pn-r-4) border border-(--pn-line) bg-(--pn-muted) text-(--pn-fg)"
+                }
               >
                 <Icon strokeWidth={1.75} className="size-4.5" />
               </span>
@@ -135,7 +139,7 @@ export function ConfirmDialog({
               <AlertDialogDescription className={dialogDescriptionText}>{description}</AlertDialogDescription>
               {error && <InlineAlert className="mt-3">{error}</InlineAlert>}
             </div>
-          </div>
+          </CustomScrollbar>
           <div className={dialogFooter}>
             <AlertDialogCancel ref={cancelRef} disabled={pending} className={dialogFooterButton}>
               {cancelLabel}

@@ -4,6 +4,7 @@ import { Command } from "cmdk"
 import { LogOut, type LucideIcon, Moon, Search, Sun, UserRound } from "lucide-react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog"
 import { suppressNextFocusTooltip } from "@/components/ui/tooltip"
 
@@ -159,30 +160,36 @@ export function CommandPalette({ open, onOpenChange, onSignOut }: CommandPalette
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-(--pn-fg) outline-none placeholder:text-(--pn-fg-subtle)"
               />
             </div>
-            <Command.List className="max-h-[min(440px,calc(85vh-48px))] scroll-py-2 overflow-y-auto overscroll-contain p-2">
-              <Command.Empty className="p-8 text-center text-[13px] text-(--pn-fg-muted)">
-                Nothing matches “{query}”.
-              </Command.Empty>
-              {groups.map((group) => (
-                <Command.Group
-                  key={group.heading}
-                  heading={group.heading}
-                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-(--pn-fg-muted)"
-                >
-                  {group.entries.map((entry) => (
-                    <Command.Item
-                      key={entry.id}
-                      value={entry.id}
-                      onSelect={() => run(entry)}
-                      className="flex h-10 cursor-default items-center gap-3 rounded-(--pn-r-2) px-2 text-[14px] select-none data-[selected=true]:bg-(--pn-muted)"
-                    >
-                      {entry.glyph}
-                      <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              ))}
-            </Command.List>
+            <CustomScrollbar
+              scrollLabel="Command suggestions"
+              className="max-h-[min(440px,calc(85vh-48px))]"
+              viewportClassName="max-h-[min(440px,calc(85vh-48px))] scroll-py-2 overscroll-contain p-2"
+            >
+              <Command.List className="outline-none">
+                <Command.Empty className="p-8 text-center text-[13px] text-(--pn-fg-muted)">
+                  Nothing matches “{query}”.
+                </Command.Empty>
+                {groups.map((group) => (
+                  <Command.Group
+                    key={group.heading}
+                    heading={group.heading}
+                    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-(--pn-fg-muted)"
+                  >
+                    {group.entries.map((entry) => (
+                      <Command.Item
+                        key={entry.id}
+                        value={entry.id}
+                        onSelect={() => run(entry)}
+                        className="flex h-10 cursor-default items-center gap-3 rounded-(--pn-r-2) px-2 text-[14px] select-none data-[selected=true]:bg-(--pn-muted)"
+                      >
+                        {entry.glyph}
+                        <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ))}
+              </Command.List>
+            </CustomScrollbar>
           </Command>
         </DialogPrimitive.Popup>
       </DialogPortal>

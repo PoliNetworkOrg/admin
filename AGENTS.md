@@ -15,9 +15,21 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
 - **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through
-  the backend's fixed new-member workflow. List groups with `azure:groups:read`; add or remove existing directory users
-  in a group with `azure:groups:write`; the add picker lists the directory, so it is disabled without
-  `azure:members:read`. Users and groups themselves cannot be edited from the dashboard.
+  the backend's fixed new-member workflow, choosing a standard or custom address; a welcome email to a PoliNetwork
+  address asks for confirmation. Change a member's ID with `azure:members:write`, after a confirmation, optionally
+  emailing them; the backend refuses IDs already assigned and accepts this call only with a user token, so it fails in
+  `AGENT_MODE`. List groups with `azure:groups:read`; add or remove existing directory users in a group with
+  `azure:groups:write`; the add picker lists the directory, so it is disabled without `azure:members:read`. Nothing
+  else about users or groups can be edited from the dashboard.
+- **People** (`src/features/people/`): every page reads and writes through `peopleApi(context)`, which parses the
+  backend's `people.*` responses with `people.contract.ts` and, in agent mode, uses the in-memory fake
+  (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). `/dashboard` admits `people:self` without `admin:access`;
+  Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and only open their
+  sections. Fees and receipts (`docs/people/fees.md`): `people:fees:write` reviews, marks paid and reminds;
+  `people:receipts:sign` downloads and uploads signed receipts for the officer on the caller's record.
+  Preparing CIE requests additionally requires `esign:sign` and reuses the existing eSign UI and agent; the backend
+  owns the durable receipt/request association and completion (the People backend contract is still pending). Handoff notes,
+  decisions and the plan: `docs/people/`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

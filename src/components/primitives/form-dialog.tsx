@@ -1,7 +1,8 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { X } from "lucide-react"
+import { type LucideIcon, TriangleAlert, X } from "lucide-react"
 import { type KeyboardEvent, type ReactElement, type ReactNode, useRef, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils"
 
 import {
   ConfirmDialog,
+  dangerTile,
   dialogDescriptionText,
   dialogFooter,
   dialogFooterButton,
@@ -64,6 +66,14 @@ type FormDialogProps = {
   /** Immediate filters may replace Cancel/Submit with their clear action and count. */
   footer?: ReactNode
   trigger?: ReactElement
+  /** Element to focus on close instead of the trigger, e.g. the text that now states the outcome. */
+  finalFocus?: () => HTMLElement | null
+  /**
+   * "danger" for a form that confirms something destructive (declining a request): the confirmation's danger tile
+   * before the title, `icon` in it, and a red submit.
+   */
+  tone?: "danger"
+  icon?: LucideIcon
   children: ReactNode
 }
 
@@ -85,13 +95,16 @@ export function FormDialog({
   footerStart,
   footer,
   trigger,
+  finalFocus,
+  tone,
+  icon: Icon = TriangleAlert,
   children,
 }: FormDialogProps) {
   const [pending, setPending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
-  const bodyRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLElement>(null)
   const shownError = error ?? submitError
 
   function requestClose() {
@@ -145,11 +158,19 @@ export function FormDialog({
         <DialogPrimitive.Popup
           ref={popupRef}
           initialFocus={initialFocus}
+          finalFocus={finalFocus ? () => finalFocus() ?? true : undefined}
           className={cn(dialogPanel, dialogMotion, sizes[size])}
         >
-          <header className="relative flex shrink-0 flex-col gap-1 px-5.5 pt-5 pr-14">
-            <DialogTitle className={dialogTitleText}>{title}</DialogTitle>
-            {description && <DialogDescription className={dialogDescriptionText}>{description}</DialogDescription>}
+          <header className="relative flex shrink-0 items-start gap-3.5 px-5.5 pt-5 pr-14">
+            {tone === "danger" && (
+              <span aria-hidden className={dangerTile}>
+                <Icon strokeWidth={1.75} className="size-4.5" />
+              </span>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <DialogTitle className={dialogTitleText}>{title}</DialogTitle>
+              {description && <DialogDescription className={dialogDescriptionText}>{description}</DialogDescription>}
+            </div>
             <IconButton label="Close" icon={X} onClick={requestClose} className="absolute top-3 right-3" />
           </header>
           <form
@@ -161,9 +182,13 @@ export function FormDialog({
             onKeyDown={onFormKeyDown}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div ref={bodyRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5.5 py-4.5">
+            <CustomScrollbar
+              scrollRef={bodyRef}
+              className="min-h-0 flex-1"
+              viewportClassName="flex flex-col gap-4 px-5.5 py-4.5"
+            >
               {children}
-            </div>
+            </CustomScrollbar>
             {(shownError || notice) && (
               <div className="flex shrink-0 flex-col gap-2 px-5.5 pb-4">
                 {notice}
@@ -177,7 +202,13 @@ export function FormDialog({
                   Cancel
                 </Button>
                 {submitLabel !== undefined && (
-                  <LoadingButton type="submit" size="default" pending={pending} disabled={!canSubmit}>
+                  <LoadingButton
+                    type="submit"
+                    size="default"
+                    tone={tone === "danger" ? "dangerSolid" : "default"}
+                    pending={pending}
+                    disabled={!canSubmit}
+                  >
                     {submitLabel}
                   </LoadingButton>
                 )}

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { env } from "@/env"
+import { agentUserAgent } from "@/features/esign/agent"
 
 /** `jobs/{ticket}` and its actions: the only backend paths the agent may reach. */
 const AGENT_PATH = /^jobs\/[A-Za-z0-9_-]{43}(?:\/(?:prepare|complete|fail))?$/
@@ -52,7 +53,8 @@ async function readLimited(request: Request): Promise<string | null> {
 
 /**
  * Forwards the sign agent's calls to the backend's `/esign/agent/…`. The agent reaches the dashboard's public origin,
- * not the in-cluster backend. Nothing from the browser session is used or forwarded.
+ * not the in-cluster backend. Nothing from the browser session is used or forwarded; the agent's own User-Agent is,
+ * so the backend can tell its version.
  */
 async function proxy({ request, params }: { request: Request; params: { _splat?: string } }) {
   const path = params._splat ?? ""
@@ -65,13 +67,14 @@ async function proxy({ request, params }: { request: Request; params: { _splat?:
     if (read === null) return json(413, { error: { code: "bad_request", message: "Too large" } })
     body = read
   }
+  const headers = new Headers({ accept: "application/json" })
+  if (body !== undefined) headers.set("content-type", "application/json")
+  const userAgent = agentUserAgent(request.headers.get("user-agent"))
+  if (userAgent) headers.set("user-agent", userAgent)
   try {
     const response = await fetch(`${env.BACKEND_URL}/esign/agent/${path}`, {
       method: request.method,
-      headers:
-        body === undefined
-          ? { accept: "application/json" }
-          : { accept: "application/json", "content-type": "application/json" },
+      headers,
       body,
       redirect: "manual",
       signal: AbortSignal.timeout(60_000),
