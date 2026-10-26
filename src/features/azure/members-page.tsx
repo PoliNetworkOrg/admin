@@ -1,11 +1,9 @@
 import { useRouter } from "@tanstack/react-router"
-import { Hash, Plus, UsersRound } from "lucide-react"
+import { Check, Pencil, Plus, UsersRound } from "lucide-react"
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
   buttonMotion,
-  Chip,
-  ChipOverflow,
   DataTable,
   type DataTableColumn,
   EmptyState,
@@ -58,10 +56,10 @@ const columns: DataTableColumn<AzureMember>[] = [
     label: "Member ID",
     sortable: true,
     align: "end",
-    minWidth: 120,
+    minWidth: 104,
     // Cards: the muted "#id" ends the name's line (`order`: name, id, the rest), so avatars align with or without it.
     className:
-      "w-[120px] max-shell:order-[-1] max-shell:ml-auto max-shell:w-auto max-shell:shrink-0 max-shell:self-center",
+      "w-[104px] max-shell:order-[-1] max-shell:ml-auto max-shell:w-auto max-shell:shrink-0 max-shell:self-center",
     mobile: "meta",
     cell: (member) =>
       member.employeeId ? (
@@ -72,7 +70,7 @@ const columns: DataTableColumn<AzureMember>[] = [
   },
   {
     id: "displayName",
-    label: "Member",
+    label: "Name",
     sortable: true,
     minWidth: 180,
     fill: true,
@@ -96,7 +94,7 @@ const columns: DataTableColumn<AzureMember>[] = [
     id: "mail",
     label: "Email",
     sortable: true,
-    priority: 1,
+    priority: 2,
     minWidth: 220,
     mobile: "full",
     cell: (member) =>
@@ -109,31 +107,51 @@ const columns: DataTableColumn<AzureMember>[] = [
       ),
   },
   {
-    id: "licenses",
-    label: "Licenses",
-    priority: 2,
-    minWidth: 260,
-    mobile: "full",
-    cell: (member) =>
-      member.assignedLicensesIds.length ? (
-        <ChipOverflow
-          items={member.assignedLicensesIds}
-          itemLabel={formatLicense}
-          renderItem={(license) => (
-            <Chip key={license} className="h-6 rounded-(--pn-r-2) bg-(--pn-muted) px-2.25 font-normal">
-              {formatLicense(license)}
-            </Chip>
-          )}
-        />
-      ) : (
-        <span className="inline-flex h-5.5 items-center rounded-full bg-(--pn-warning-bg) px-2 text-xs font-medium whitespace-nowrap text-(--pn-warning-fg)">
-          No license
-        </span>
-      ),
+    id: "isMember",
+    label: "Member",
+    priority: 1,
+    minWidth: 100,
+    // Centered under its header; cards keep the left edge.
+    className: "text-center max-shell:text-left",
+    mobile: "meta",
+    cell: (member) => {
+      const licenses = member.assignedLicensesIds.map(formatLicense)
+      const status = member.isMember ? "Current member" : "Not a member"
+      const detail = licenses.length ? licenses.join(", ") : "No license"
+      return (
+        // Licenses are a detail: they live in the hint (and the screen-reader text), not in the row. On cards the check
+        // gets a visible label and a non-member's cell is dropped (`data-unset`).
+        <Hint
+          label={
+            <span className="flex flex-col gap-0.5">
+              <span>{status}</span>
+              <span className="opacity-70">Licenses: {detail}</span>
+            </span>
+          }
+        >
+          <span
+            {...(member.isMember ? {} : { "data-unset": "" })}
+            className="inline-grid size-6 place-items-center max-shell:inline-flex max-shell:size-auto max-shell:gap-1.5"
+          >
+            {member.isMember ? (
+              <>
+                <Check aria-hidden className="size-4.5 text-(--pn-success-fg)" strokeWidth={2.25} />
+                <span aria-hidden className="hidden max-shell:inline">
+                  Current member
+                </span>
+              </>
+            ) : null}
+            <span className="sr-only max-shell:hidden">
+              {status}. Licenses: {detail}
+            </span>
+          </span>
+        </Hint>
+      )
+    },
   },
 ]
 
-/** Microsoft 365 members: the directory with member IDs and licenses. */
+/** Microsoft 365 members: the directory with member IDs and who is still a member. */
 export function AzureMembersPage({ members }: { members: AzureMember[] | null }) {
   const router = useRouter()
   const canCreate = useCan("azure:members:create")
@@ -165,8 +183,6 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
   const filtered = shown.filter((member) => (!membersOnly || member.isMember) && matches(member, deferredQuery))
   const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
-  const licenses = filtered.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
-  const allLicenses = shown.filter((member) => member.assignedLicensesIds.includes("OFFICE_365")).length
   const filteredView = deferredQuery !== "" || membersOnly
 
   async function onSaved(welcomeMailSent: boolean) {
@@ -240,9 +256,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
     <>
       <PageBar
         description={
-          members === null
-            ? "Create association members in Microsoft Entra"
-            : `${pluralize(shown.length, "member")}, ${pluralize(allLicenses, "license")}`
+          members === null ? "Create association members in Microsoft Entra" : pluralize(shown.length, "member")
         }
         left={
           members !== null ? (
@@ -258,16 +272,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                   }}
                 />
               }
-              count={
-                filteredView ? (
-                  <Count
-                    value={filtered.length}
-                    total={shown.length}
-                    noun="member"
-                    parts={[{ value: licenses, noun: "license" }]}
-                  />
-                ) : undefined
-              }
+              count={filteredView ? <Count value={filtered.length} total={shown.length} noun="member" /> : undefined}
             />
           ) : undefined
         }
@@ -293,7 +298,7 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                       <IconButton
                         label="Change member ID"
                         ariaLabel={`Change member ID of ${memberName(member)}`}
-                        icon={Hash}
+                        icon={Pencil}
                         onClick={() => openNumberDialog(member)}
                       />
                     </RowActions>

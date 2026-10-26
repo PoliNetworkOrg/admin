@@ -9,7 +9,7 @@ import type { AzureGroup, AzureMember } from "@/lib/api/types"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { MembershipDialog } from "./membership-dialog"
+import { GroupMembersDialog } from "./group-members-dialog"
 
 type SectionId = "multi" | "single"
 type OpenState = { multi: boolean; single: boolean }
@@ -36,8 +36,8 @@ function matches(group: AzureGroup, query: string) {
 type DialogTarget = { groupId: string }
 
 /**
- * Microsoft 365 groups: groups with 2+ members and the rest, in two collapsibles. `directoryMembers` is null without
- * the member read permission, so there is no one to add.
+ * Microsoft 365 groups, read-only: groups with 2+ members and the rest, in two collapsibles. `directoryMembers` is null
+ * without the member read permission, so member emails are not shown.
  */
 export function AzureGroupsPage({
   groups,
@@ -162,7 +162,7 @@ export function AzureGroupsPage({
       />
       <PageContent>{renderContent()}</PageContent>
       {dialog && dialogGroup ? (
-        <MembershipDialog
+        <GroupMembersDialog
           key={dialog.groupId}
           group={dialogGroup}
           directoryMembers={directoryMembers}

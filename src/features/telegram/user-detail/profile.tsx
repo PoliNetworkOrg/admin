@@ -184,7 +184,7 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
 
 type GrantWindow = Pick<TgGrant, "validSince" | "validUntil">
 
-type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { key: string })[] }
+type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { id: number })[] }
 
 function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
   // `tg.grants.checkUser` returns the ongoing grant without a key or reason; a user has at most one.
@@ -214,7 +214,7 @@ function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
           ) : null}
           {scheduled.map((grant) => (
             <li
-              key={grant.key}
+              key={grant.id}
               className="flex flex-col gap-1.5 rounded-(--pn-r-4) border border-dashed border-(--pn-line-strong) p-3.5"
             >
               <div className="flex items-center justify-between gap-2">
