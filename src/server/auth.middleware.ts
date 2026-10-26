@@ -246,14 +246,6 @@ export const azureGroupsReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** Microsoft 365: add or remove an existing directory user in a group. */
-export const azureGroupsWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:groups:write")
-    return next()
-  })
-
 /** CIE signatures: see and sign the requests that involve the user. */
 export const esignReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])

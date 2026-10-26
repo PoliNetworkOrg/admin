@@ -18,9 +18,10 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   the backend's fixed new-member workflow, choosing a standard or custom address; a welcome email to a PoliNetwork
   address asks for confirmation. Change a member's ID with `azure:members:write`, after a confirmation, optionally
   emailing them; the backend refuses IDs already assigned and accepts this call only with a user token, so it fails in
-  `AGENT_MODE`. List groups with `azure:groups:read`; add or remove existing directory users in a group with
-  `azure:groups:write`; the add picker lists the directory, so it is disabled without `azure:members:read`. Nothing
-  else about users or groups can be edited from the dashboard.
+  `AGENT_MODE`. List groups and their members, read-only, with `azure:groups:read`. Group membership is never
+  edited from the dashboard: the backend's create workflow adds only the new user to Soci, from which the IdP derives
+  the Socio role, so adding or removing anyone in a group would grant or revoke IdP roles. Nothing else about users or
+  groups can be edited from the dashboard.
 - **People** (`src/features/people/`): every page reads and writes through `peopleApi(context)`, which parses the
   backend's `people.*` responses with `people.contract.ts` and, in agent mode, uses the in-memory fake
   (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). `/dashboard` admits `people:self` without `admin:access`;
