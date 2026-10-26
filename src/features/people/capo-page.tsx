@@ -1,50 +1,35 @@
-import { useServerFn } from "@tanstack/react-start"
 import { MessageCircle, Send, ShieldUser } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
   buttonMotion,
-  ChipOverflow,
   DataTable,
   type DataTableColumn,
   EmptyState,
   IconButton,
   PlatformGlyph,
   RowActions,
-  SectionCard,
-  SectionEmpty,
   SectionHeading,
-  StatusBadge,
   type TableSort,
   Unset,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
-import { approveJoinRequest, declineJoinRequest } from "./people-capo.functions"
 import { formatDay, personName, telegramUrl, whatsappUrl } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { PersonAvatar, PersonCell, TruncatedChip } from "./people-ui"
+import { PersonCell } from "./people-ui"
 import type { CapoArea, PersonRow } from "./people.contract"
-
-type CapoRequest = CapoArea["requests"][number]
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** Telegram › Capo Admin: the groups of the signed-in Capo Admin's course, their admins and requests to join. */
+/** Telegram › Capo Admin: the admins who have the signed-in Capo Admin as Capo of reference. */
 export function CapoPage({ area }: { area: CapoArea }) {
-  const approve = useServerFn(approveJoinRequest)
-  const decline = useServerFn(declineJoinRequest)
-  const refresh = useRefreshAfter()
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [pending, setPending] = useState<string | null>(null)
-  // Telegram titles repeat across courses: match groups by chat ID.
-  const chatIds = new Set(area.groups.map((group) => group.chatId))
 
   const filtered = area.admins.filter(
     (person) =>
@@ -56,20 +41,6 @@ export function CapoPage({ area }: { area: CapoArea }) {
   const sign = sort.direction === "asc" ? 1 : -1
   const sorted = filtered.toSorted((a, b) => personName(a).localeCompare(personName(b)) * sign)
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
-
-  async function decide(request: CapoRequest, approved: boolean) {
-    setPending(request.id)
-    try {
-      await (approved ? approve : decline)({ data: { requestId: request.id } })
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, approved ? "Couldn't approve the request." : "Couldn't decline the request."))
-      setPending(null)
-      return
-    }
-    await refresh(approved ? `Approved ${request.person.name} for ${request.group.title}.` : "Request declined.")
-    setPending(null)
-  }
 
   const columns: DataTableColumn<PersonRow>[] = [
     {
@@ -98,24 +69,6 @@ export function CapoPage({ area }: { area: CapoArea }) {
       mobile: "hidden",
       cell: (person) =>
         person.admin ? <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span> : <Unset />,
-    },
-    {
-      id: "groups",
-      label: "Groups",
-      width: 200,
-      mobile: "full",
-      cell: (person) => {
-        const groups = person.admin?.groups.filter((group) => chatIds.has(group.chatId)) ?? []
-        return groups.length ? (
-          <ChipOverflow
-            items={groups}
-            itemLabel={(group) => group.title}
-            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-          />
-        ) : (
-          <Unset />
-        )
-      },
     },
     {
       id: "representative",
@@ -158,71 +111,11 @@ export function CapoPage({ area }: { area: CapoArea }) {
 
   return (
     <>
-      <PageBar description={`${area.scope} · ${pluralize(area.groups.length, "group")}`} />
+      <PageBar description={`${area.scope} · ${pluralize(area.admins.length, "admin")}`} />
       <PageContent>
         <div className="flex flex-col gap-8">
-          <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
-            <SectionCard title="My groups" count={area.groups.length} padding="flush">
-              <ul className="divide-y divide-(--pn-line)">
-                {area.groups.map((group) => (
-                  <li key={group.chatId} className="flex items-center gap-3 px-4 py-3">
-                    <PlatformGlyph platform="tg" className="size-5 shrink-0" />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[14px] font-medium">{group.title}</span>
-                      <span className="text-xs text-(--pn-fg-muted)">
-                        {group.admins ? `${pluralize(group.admins, "admin")} · ` : ""}
-                        <span className="font-mono">{group.chatId}</span>
-                      </span>
-                    </span>
-                    {group.admins ? null : <StatusBadge tone="warning">No admins</StatusBadge>}
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
-            <SectionCard title="Requests to join" count={area.requests.length} padding="flush">
-              {area.requests.length === 0 ? (
-                <SectionEmpty title="No open requests" />
-              ) : (
-                <ul className="divide-y divide-(--pn-line)">
-                  {area.requests.map((request) => (
-                    <li key={request.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <PersonAvatar name={request.person.name} />
-                      {/* At least 160px for the name and date; the buttons wrap under them on phones. */}
-                      <span className="flex min-w-40 flex-1 basis-40 flex-col gap-0.5">
-                        <span className="truncate text-[14px] font-medium">{request.person.name}</span>
-                        <span className="text-xs text-(--pn-fg-muted)">
-                          {request.group.title} · asked {formatDay(request.requestedOn)}
-                        </span>
-                      </span>
-                      <span className="ml-auto flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={buttonMotion}
-                          disabled={pending !== null}
-                          onClick={() => decide(request, false)}
-                        >
-                          Decline
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className={buttonMotion}
-                          disabled={pending !== null}
-                          onClick={() => decide(request, true)}
-                        >
-                          Approve
-                        </Button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
-          </div>
-
           <section className="flex flex-col gap-3" aria-labelledby="capo-admins">
-            <SectionHeading id="capo-admins" title="Admins of my groups" count={area.admins.length} />
+            <SectionHeading id="capo-admins" title="My admins" count={area.admins.length} />
             <Toolbar
               search={{
                 value: query,
@@ -239,7 +132,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
               }
             />
             <DataTable
-              label="Admins of my groups"
+              label="My admins"
               columns={columns}
               rows={rows}
               getRowId={(person) => person.id}
@@ -304,7 +197,7 @@ export function CapoPage({ area }: { area: CapoArea }) {
                   <EmptyState
                     icon={ShieldUser}
                     title="No admins yet"
-                    text="Admins appear here when the bot sees them in one of your groups."
+                    text="Admins appear here once you are set as their Capo of reference."
                   />
                 )
               }

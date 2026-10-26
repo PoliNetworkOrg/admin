@@ -34,7 +34,6 @@ export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember" | "fe
   censusTelegram: string | null
   /** Whether the person is expected to answer the 2026/27 census. */
   expected: boolean
-  pendingGroupRemovals?: { chatId: string; message: string }[]
 }
 
 /** What the fake keeps about a member's current fee year; `member.fee` is its status. */
@@ -49,13 +48,10 @@ export type FeeState = {
   mailFails: boolean
 }
 
-export type JoinRequest = { id: string; personId: string; group: string; requestedOn: string }
-
 export type PeopleStore = {
   people: StoredPerson[]
   byId: Map<string, StoredPerson>
   reviews: Review[]
-  joinRequests: JoinRequest[]
   /** Every receipt ever issued, voided ones included. */
   receipts: Receipt[]
 }
@@ -265,40 +261,15 @@ const COURSES: Course[] = [
 export const COURSE_NAMES = COURSES.map((course) => course.name)
 
 export const FAMILIES = {
-  inf: { scope: "Ingegneria Informatica", groups: ["Fondamenti di Informatica", "Basi di Dati", "Reti Logiche"] },
-  ges: {
-    scope: "Ingegneria Gestionale",
-    groups: ["Economia e Organizzazione Aziendale", "Ricerca Operativa", "Statistica", "Gestione dei Progetti"],
-  },
-  ind: {
-    scope: "Ingegneria Industriale",
-    groups: ["Fisica Tecnica", "Meccanica Razionale", "Termodinamica Applicata", "Aerodinamica"],
-  },
-  ele: {
-    scope: "Ingegneria dell'Informazione",
-    groups: ["Elettrotecnica", "Fondamenti di Elettronica", "Segnali e Sistemi", "Geometria e Algebra Lineare"],
-  },
-  des: {
-    scope: "Design",
-    groups: ["Laboratorio di Comunicazione Visiva", "Storia del Design", "Disegno per il Design"],
-  },
-  arc: {
-    scope: "Architettura",
-    groups: ["Storia dell'Architettura", "Laboratorio di Progettazione 1", "Scienza delle Costruzioni"],
-  },
-} satisfies Record<FamilyId, { scope: string; groups: string[] }>
+  inf: { scope: "Ingegneria Informatica" },
+  ges: { scope: "Ingegneria Gestionale" },
+  ind: { scope: "Ingegneria Industriale" },
+  ele: { scope: "Ingegneria dell'Informazione" },
+  des: { scope: "Design" },
+  arc: { scope: "Architettura" },
+} satisfies Record<FamilyId, { scope: string }>
 
 export const FAMILY_IDS: FamilyId[] = ["inf", "ges", "ind", "ele", "des", "arc"]
-
-/** Stable fake Telegram chat ids per group title. */
-export const GROUP_IDS: Map<string, string> = new Map(
-  FAMILY_IDS.flatMap((family, familyIndex) =>
-    FAMILIES[family].groups.map((title, index): [string, string] => [
-      title,
-      `-100${1734200000 + familyIndex * 977331 + index * 40517}`,
-    ])
-  )
-)
 
 const REPS = ["Consiglio di Corso di Studio", "Giunta di Scuola", "Consiglio degli Studenti", "Senato Accademico"]
 const ASSOCIATIONS = [
@@ -478,10 +449,6 @@ function campusOf(value: string) {
   return campus
 }
 
-function group(title: string) {
-  return { chatId: GROUP_IDS.get(title) ?? "", title }
-}
-
 export function buildPeopleStore(): PeopleStore {
   const random = mulberry32(1442)
   const pick = <T>(items: readonly T[]) => items[Math.floor(random() * items.length)]
@@ -610,17 +577,7 @@ export function buildPeopleStore(): PeopleStore {
   const drafts = new Map<string, Draft>(people.map((p) => [p.id, { teams: [] }]))
   const draft = (p: StoredPerson) => drafts.get(p.id) ?? { teams: [] }
 
-  const familyGroups = (family: FamilyId) => FAMILIES[family].groups.filter((title) => title !== "Reti Logiche")
   const makeAdmin = (p: StoredPerson, status: "active" | "former") => {
-    const pool = familyGroups(p.family)
-    const groups = random() < 0.09 ? [] : sample(pool, 1 + Math.floor(random() * Math.min(3, pool.length)))
-    const requested =
-      random() < 0.12
-        ? sample(
-            FAMILIES[p.family].groups.filter((title) => !groups.includes(title)),
-            1
-          )
-        : []
     const rep = random() < 0.15 ? pick(REPS) : null
     const assoc = random() < 0.2 ? sample(ASSOCIATIONS, random() < 0.3 ? 2 : 1) : []
     const availableAsCapo = random() < 0.12
@@ -632,8 +589,6 @@ export function buildPeopleStore(): PeopleStore {
       since,
       endedOn,
       endReason,
-      groups: status === "former" ? [] : groups.map(group),
-      requested: status === "former" ? [] : requested.map((title) => ({ ...group(title), requestedOn: "2026-10-09" })),
       availableAsCapo,
       capoOfReference: null,
       capoScope: null,
@@ -766,32 +721,26 @@ export function buildPeopleStore(): PeopleStore {
   const keyAdmin = (
     id: string,
     since: string,
-    groups: string[],
     extra: Partial<AdminRole & { assoc: string[]; rep: string | null }> = {}
   ) => {
     const p = person(id)
     makeAdmin(p, "active")
     const admin = draft(p).admin
     if (!admin) return
-    Object.assign(
-      admin,
-      { since, groups: groups.map(group), requested: [], rep: null, assoc: [], availableAsCapo: false },
-      extra
-    )
+    Object.assign(admin, { since, rep: null, assoc: [], availableAsCapo: false }, extra)
   }
-  keyAdmin("P-0142", "2024-10-03", ["Fondamenti di Informatica", "Basi di Dati"], {
-    requested: [{ ...group("Reti Logiche"), requestedOn: "2026-10-09" }],
+  keyAdmin("P-0142", "2024-10-03", {
     availableAsCapo: true,
     rep: "Consiglio di Corso di Studio",
     assoc: ["Skyward"],
   })
-  keyAdmin("P-0098", "2022-09-20", ["Fondamenti di Informatica"], { assoc: ["JEMP"] })
-  keyAdmin("P-0034", "2023-03-01", ["Basi di Dati"])
-  keyAdmin("P-0115", "2025-09-25", ["Fondamenti di Informatica", "Basi di Dati"], { rep: "Consiglio degli Studenti" })
-  keyAdmin("P-0063", "2025-02-11", ["Ricerca Operativa", "Statistica"])
-  keyAdmin("P-0021", "2023-10-12", ["Segnali e Sistemi"])
-  keyAdmin("P-0088", "2024-03-05", ["Fisica Tecnica", "Termodinamica Applicata"])
-  keyAdmin("P-0076", "2026-03-02", ["Aerodinamica"])
+  keyAdmin("P-0098", "2022-09-20", { assoc: ["JEMP"] })
+  keyAdmin("P-0034", "2023-03-01")
+  keyAdmin("P-0115", "2025-09-25", { rep: "Consiglio degli Studenti" })
+  keyAdmin("P-0063", "2025-02-11")
+  keyAdmin("P-0021", "2023-10-12")
+  keyAdmin("P-0088", "2024-03-05")
+  keyAdmin("P-0076", "2026-03-02")
   const chiara = person("P-0131")
   makeAdmin(chiara, "former")
   const chiaraAdmin = draft(chiara).admin
@@ -1074,13 +1023,13 @@ export function buildPeopleStore(): PeopleStore {
 
   giulia.activity = [
     { actor: "Luca Ferri", text: "sent an invite to giulia.rossi.02@gmail.com", at: "2026-10-06T18:42:00+02:00" },
-    { actor: "Giulia Rossi", text: "asked to join Reti Logiche", at: "2026-10-09T21:30:00+02:00" },
+    { actor: "Luca Ferri", text: "set Davide Conti as Capo Admin of reference", at: "2026-10-09T21:30:00+02:00" },
     {
       actor: "Census import",
       text: "added the 2026/27 answer “Continues” from Modulo Volontari 2026/27",
       at: "2026-10-01T10:05:00+02:00",
     },
-    { actor: "Telegram bot", text: "detected Giulia as admin of Basi di Dati", at: "2026-09-24T09:12:00+02:00" },
+    { actor: "PoliNetwork Auth", text: "confirmed the admin role", at: "2026-09-24T09:12:00+02:00" },
     { actor: "Sara Galli", text: "added Giulia to IT as Member", at: "2025-03-04T16:20:00+01:00" },
   ]
 
@@ -1186,13 +1135,6 @@ export function buildPeopleStore(): PeopleStore {
   }
   review[0].account = { status: "review", reviewId: "r1", issue: "Its Telegram account is claimed by another sign-in" }
 
-  const informatics = people.filter((p) => p.family === "inf" && p.admin?.status === "active" && !(p.id in KEYS))
-  const joinRequests: JoinRequest[] = [
-    { id: "j1", personId: "P-0142", group: "Reti Logiche", requestedOn: "2026-10-09" },
-    { id: "j2", personId: (informatics[0] ?? giulia).id, group: "Reti Logiche", requestedOn: "2026-10-11" },
-    { id: "j3", personId: (informatics[1] ?? giulia).id, group: "Basi di Dati", requestedOn: "2026-10-12" },
-  ]
-
   // Someone known only from a role in PoliNetwork Auth: the backend links the record but has no course or campus.
   const fromAuth = people.find(
     (p) => !(p.id in KEYS) && p.account.status === "linked" && p.teams.length && !p.admin && !p.member
@@ -1200,7 +1142,7 @@ export function buildPeopleStore(): PeopleStore {
   if (fromAuth)
     Object.assign(fromAuth.profile, { course: "", year: "", campus: null, personalEmail: null, phone: null })
 
-  return { people, byId, reviews, joinRequests, receipts: seedFees(people, byId) }
+  return { people, byId, reviews, receipts: seedFees(people, byId) }
 }
 
 /** The fee year People › Receipts opens on, and the one My area asks to pay. */

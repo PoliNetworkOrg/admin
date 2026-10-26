@@ -76,7 +76,6 @@ them first and lays them over the register (backend README, "People register sou
 | ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------- |
 | Admin, team member, team Lead | **PoliNetwork Auth** roles bound to People        | When each started and ended, why, Capo Admin scope, team fields |
 | Member and member number      | **The Microsoft 365 Soci group** and `employeeId` | Suspension or expiry, admission date, fees, receipts            |
-| Admins of a Telegram group    | **Telegram**, through the bot                     | Nothing                                                         |
 
 - **PoliNetwork Auth roles.** Master Admin binds hand-made roles to People on the role's page in the IdP: `admin`,
   `team:<id>:member` or `team:<id>:lead` (team keys `it`, `hr`, `design`, `intl`, `events`). Their holders get a linked
@@ -91,8 +90,8 @@ them first and lays them over the register (backend README, "People register sou
 - **The Microsoft 365 Soci group** ("Members only" in Microsoft 365). Being in the group is being a member, numbered by
   the account's `employeeId`; a member who leaves the group becomes former (members admitted in the last two days are
   kept while the group listing catches up).
-- **Telegram group admins** come from the bot, which reads them from Telegram. While the bot doesn't answer, groups
-  show no admin information and People keeps what it last knew.
+- **Admin means the bound role in Auth.** People does not query the bot for Telegram group assignments or track
+  requests to join groups. A Capo Admin sees the active admins who have them as Capo of reference.
 
 Records created this way have only a name: course, year and campus show "—" until HR edits the profile, and My area
 asks the person to choose them before answering the census.
@@ -131,9 +130,8 @@ asks the person to choose them before answering the census.
 - **Linking**: segmented scope Needs review (queue, Dismiss ghost / Resolve outline) and Pending invites (table, Resend /
   Revoke). Link account dialog: search, suggested matches with reason badge, required reason, inline conflict error that
   keeps the dialog open.
-- **Capo Admin**: context line names the scope ("Ingegneria Informatica · 3 groups"). Cards My groups (warning badge on
-  groups without admins) and Requests to join (Decline ghost / Approve outline) above the Admins of my groups table
-  (phone, Telegram, Open in Telegram / Open in WhatsApp; no personal email).
+- **Capo Admin**: context line names the scope ("Ingegneria Informatica"). The table lists active admins who have the
+  caller as Capo of reference (phone, Telegram, Open in Telegram / Open in WhatsApp; no personal email).
 - **My area**: open census first while unanswered, pre-filled from last year (year advanced by one). My roles, People to
   contact (Capo Admin, Team Lead, HR), My profile with Request a correction (no direct edits: HR owns records), My
   consents with Revoke on photo/video. Team roster: name, role, Telegram, PoliNetwork email only. First sign-in: "Is

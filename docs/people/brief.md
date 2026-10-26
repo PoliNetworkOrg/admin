@@ -90,8 +90,7 @@ Plus, outside the People service:
    - Profile: personal email, phone, Telegram username, course, year, campus, other associations, student
      representative (where).
    - Member: number, status, admitted on, current year fee status. Link to the Microsoft 365 account.
-   - Admin: active since, groups they administer (detected by the bot, with Telegram glyphs), groups they asked to join,
-     available as Capo Admin, Capo Admin of reference.
+   - Admin: role from PoliNetwork Auth, active since, available as Capo Admin, Capo Admin of reference.
    - Teams: one row per team with role (Member/Lead), since, and the team-specific fields.
    - Census history: one row per academic year with answer and source ("Imported from Forms" / "Dashboard").
    - Consents: volunteer privacy policy (version, date), photo/video (granted/denied, revocable).
@@ -104,9 +103,9 @@ Plus, outside the People service:
    member", "Change status", "Change member number" (confirm dialog explaining the Microsoft 365 account is updated
    too), "Export" (confirm, since it exports personal data).
 
-4. Admins: name, course, year, campus, active since, groups administered (count + chips), groups requested, student
-   representative, other associations, available as Capo Admin, Capo Admin of reference, member yes/no, census status.
-   Quick filters: "No groups", "Available as Capo Admin", "Declared member but not registered", "No census answer".
+4. Admins: name, course, year, campus, active since, student representative, other associations, available as Capo
+   Admin, Capo Admin of reference, member yes/no, census status. Roles come from PoliNetwork Auth.
+   Quick filters: "Available as Capo Admin", "Declared member but not registered", "No census answer".
 
 5. Teams:
    - Index: one card per team (lead avatar, member count, missing census answers), then one table of all team members
@@ -134,12 +133,12 @@ Plus, outside the People service:
      IdP accounts, show suggested matches with the reason ("Same verified Telegram account" / "Similar name — check
      before linking"), a required reason field, and confirm.
 
-8. Capo Admin (scoped): header "Ingegneria Informatica · 3 groups". The admins of my groups with name, year, active
-   since, representative, other associations, phone, and Telegram with quick "Open in Telegram" / "Open in WhatsApp"
-   buttons. My groups, flagging groups without admins. Requests to join my groups.
+8. Capo Admin (scoped): header "Ingegneria Informatica". Active admins who have the caller as Capo of reference, with
+   name, year, active since, representative, other associations, phone, and Telegram with quick "Open in Telegram" /
+   "Open in WhatsApp" buttons.
 
 9. My area (self-service), for a linked person: my profile (with "Request a correction"), my roles (member number and
-   status; admin groups; teams), the open census ("Confirm for 2026/27" or "I'm leaving", with fields pre-filled from
+   status; admin role; teams), the open census ("Confirm for 2026/27" or "I'm leaving", with fields pre-filled from
    last year), my consents (with revoke), my Capo Admin and my Team Lead, and my team's roster (name, role, Telegram,
    PoliNetwork email only). Also show:
    - the first-time link flow: "Is this you?" with the matched record summary and "Yes, link my account" / "This isn't

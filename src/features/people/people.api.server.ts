@@ -120,8 +120,6 @@ export type PeopleApi = {
   linkAccount: (input: LinkAccountInput) => Promise<void>
   unlinkAccount: (input: { personId: string }) => Promise<void>
   getCapoArea: () => Promise<CapoArea>
-  approveJoinRequest: (input: { requestId: string }) => Promise<void>
-  declineJoinRequest: (input: { requestId: string }) => Promise<void>
   getMyRoles: () => Promise<MyRoles>
   getMyArea: () => Promise<MyArea>
   confirmMatch: () => Promise<void>
@@ -204,8 +202,6 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     linkAccount: (input) => mutate("linking.link", input),
     unlinkAccount: (input) => mutate("linking.unlink", input),
     getCapoArea: () => query("capo.get", undefined, capoAreaSchema),
-    approveJoinRequest: (input) => mutate("capo.approve", input),
-    declineJoinRequest: (input) => mutate("capo.decline", input),
     getMyRoles: () => query("me.roles", undefined, myRolesSchema),
     getMyArea: () => query("me.get", undefined, myAreaSchema),
     confirmMatch: () => mutate("me.confirmMatch"),

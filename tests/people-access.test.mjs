@@ -13,7 +13,6 @@ registerHooks({
 })
 
 const { fakePeopleApi } = await import("../src/features/people/people.fake.server.ts")
-const { FAMILIES } = await import("../src/features/people/people.fixtures.server.ts")
 
 const ALL = [
   "people:read",
@@ -34,34 +33,30 @@ const teamId = activeLead(lead).team
 const teammate = records.find(
   (person) => person.id !== lead.id && person.teams.some((team) => team.team === teamId && !team.endedOn)
 )
-const capoOf = (group) =>
-  records.find((person) => {
-    const scope = person.admin?.status === "active" ? person.admin.capoScope : null
-    return scope && Object.values(FAMILIES).some((family) => family.scope === scope && family.groups.includes(group))
-  })
-const otherCapo = (group) =>
-  records.find((person) => person.admin?.status === "active" && person.admin.capoScope && person !== capoOf(group))
+const capo = records.find((person) => person.admin?.status === "active" && person.admin.capoScope)
 
 const unauthorized = { message: "UNAUTHORIZED" }
 
-void test("join requests are approved or declined only by the Capo Admin of the request's group", async () => {
-  const { requests } = await fakePeopleApi({ permissions: SELF, personId: capoOf("Reti Logiche").id }).getCapoArea()
-  const request = requests.find((candidate) => candidate.group.title === "Reti Logiche")
-  assert.ok(request, "the fixtures hold a request to join Reti Logiche")
+void test("a Capo Admin sees only active admins who have them as Capo of reference", async () => {
+  for (const personId of [plain.id, "none", null])
+    await assert.rejects(fakePeopleApi({ permissions: SELF, personId }).getCapoArea(), unauthorized)
+  await assert.rejects(hr.getCapoArea(), unauthorized)
+  await assert.rejects(fakePeopleApi({ permissions: [], personId: capo.id }).getCapoArea(), unauthorized)
 
-  // Anyone else's request reads as already handled, so callers can't tell it exists.
-  const hidden = { message: "This request was already handled." }
-  for (const personId of [plain.id, "none", otherCapo("Reti Logiche").id]) {
-    const viewer = fakePeopleApi({ permissions: SELF, personId })
-    await assert.rejects(viewer.approveJoinRequest({ requestId: request.id }), hidden)
-    await assert.rejects(viewer.declineJoinRequest({ requestId: request.id }), hidden)
+  const area = await fakePeopleApi({ permissions: SELF, personId: capo.id }).getCapoArea()
+  assert.deepEqual(Object.keys(area).sort(), ["admins", "scope"])
+  assert.equal(area.scope, capo.admin.capoScope)
+  const expected = records.filter(
+    (person) => person.admin?.status === "active" && person.admin.capoOfReference?.id === capo.id
+  )
+  assert.ok(expected.length, "the fixtures hold admins assigned to this Capo Admin")
+  assert.deepEqual(area.admins.map((person) => person.id).sort(), expected.map((person) => person.id).sort())
+  for (const person of area.admins) {
+    assert.equal(person.profile.personalEmail, null)
+    assert.equal(person.member, null)
+    assert.equal("groups" in person.admin, false)
+    assert.equal("requested" in person.admin, false)
   }
-  // Even `people:write` gives no Capo Admin powers.
-  await assert.rejects(hr.approveJoinRequest({ requestId: request.id }), hidden)
-
-  await fakePeopleApi({ permissions: SELF, personId: capoOf("Reti Logiche").id }).approveJoinRequest({
-    requestId: request.id,
-  })
 })
 
 void test("an unconfirmed first-sign-in match gets none of the record's powers", async () => {
@@ -75,7 +70,6 @@ void test("an unconfirmed first-sign-in match gets none of the record's powers",
     unauthorized
   )
 
-  const capo = capoOf("Reti Logiche")
   await assert.rejects(fakePeopleApi({ permissions: SELF, personId: `match:${capo.id}` }).getCapoArea(), unauthorized)
 
   const { profile } = lead
@@ -85,7 +79,6 @@ void test("an unconfirmed first-sign-in match gets none of the record's powers",
       course: profile.course,
       year: profile.year,
       campus: profile.campus,
-      keepGroups: [],
       keepTeams: [],
       reason: "",
       note: "",
@@ -150,21 +143,22 @@ void test("member details need people:members:read, except on the viewer's own r
   assert.deepEqual((await self.getPerson(member.id)).member, member.member)
 })
 
-void test("a census answer that drops a group leaves an admin-removal item, not a Linking review", async () => {
+void test("an admin can confirm the census without Telegram groups or removal work", async () => {
   const admin = records.find(
     (person) =>
       person.admin?.status === "active" &&
-      person.admin.groups.length &&
       person.account.status === "linked" &&
       !person.census.some((entry) => entry.year === "2026/27" && entry.answer)
   )
   assert.ok(admin, "the fixtures hold a linked admin who hasn't answered")
   const self = fakePeopleApi({ permissions: SELF, personId: admin.id })
   const { course, campus } = admin.profile
-  await self.answerCensus({ answer: "continues", course, year: "1st year MSc", campus, keepGroups: [], keepTeams: [] })
-  const kinds = (await hr.getPerson(admin.id)).discrepancies.map((discrepancy) => discrepancy.kind)
-  assert.ok(kinds.includes("admin-removal"))
-  assert.ok(!kinds.includes("needs-review"))
+  const keepTeams = admin.teams.filter((team) => !team.endedOn).map((team) => team.team)
+  await self.answerCensus({ answer: "continues", course, year: "1st year MSc", campus, keepTeams })
+  const person = await hr.getPerson(admin.id)
+  assert.deepEqual(person.admin, admin.admin)
+  assert.equal(person.census[0].answer, "continues")
+  assert.ok(!person.discrepancies.some((item) => item.kind === "admin-removal"))
 })
 
 void test("a Lead sees contacts of current team members only", async () => {

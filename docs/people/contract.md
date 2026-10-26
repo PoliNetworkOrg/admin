@@ -49,8 +49,6 @@ type AdminRole = {
   since: string
   endedOn: string | null
   endReason: string | null
-  groups: { chatId: string; title: string }[] // detected by the bot
-  requested: { chatId: string; title: string; requestedOn: string }[]
   availableAsCapo: boolean
   capoOfReference: { id: PersonId; name: string } | null
   capoScope: string | null // set when this person is a Capo Admin, e.g. "Ingegneria Informatica"
@@ -168,15 +166,14 @@ The UI links to full person records only with `people:read`. Write permissions d
 | `people.linking.searchAccounts`    | query    | `{ personId, query }`                                                                                      | `{ id, name, email, telegram, via, linkedTo: { id, name } \| null, reason: "same-telegram" \| "same-email" \| "similar-name" }[]` | `people:write`                                              |
 | `people.linking.link`              | mutation | `{ personId, accountId, reason }` (fails `CONFLICT` when the account is linked elsewhere)                  | `void`                                                                                                                            | `people:write`                                              |
 | `people.linking.unlink`            | mutation | `{ personId }`                                                                                             | `void`                                                                                                                            | `people:write`                                              |
-| `people.capo.get`                  | query    | —                                                                                                          | `{ scope, groups: { chatId, title, admins: number }[], admins: PersonRow[], requests: { id, person, group, requestedOn }[] }`     | Capo Admin (scope from record)                              |
-| `people.capo.approve` / `.decline` | mutation | `{ requestId }`                                                                                            | `void`                                                                                                                            | Capo Admin of that group                                    |
+| `people.capo.get`                  | query    | —                                                                                                          | `{ scope, admins: PersonRow[] }`                                                                                                  | Capo Admin (scope from record)                              |
 | `people.me.get`                    | query    | —                                                                                                          | `MyArea` (below)                                                                                                                  | `people:self`                                               |
 | `people.me.roles`                  | query    | —                                                                                                          | `{ capoScope: string \| null, leads: TeamId[] }` (caller's Capo Admin scope and led teams for navigation)                         | `people:self`                                               |
 | `people.me.confirmMatch`           | mutation | —                                                                                                          | `void`                                                                                                                            | `people:self`                                               |
 | `people.me.rejectMatch`            | mutation | —                                                                                                          | `void` (creates a Needs review item)                                                                                              | `people:self`                                               |
 | `people.me.acceptInvite`           | mutation | `{ token }` (43-character base64url, from the invite link `/dashboard/account/me?peopleInvite=<token>`)    | `void` (links the caller's account to the invited record)                                                                         | `people:self`                                               |
 | `people.me.askToBeAdded`           | mutation | `{ roles: string[], groupsOrTeam?, telegramUsername? }`                                                    | `void`                                                                                                                            | `people:self`                                               |
-| `people.me.answerCensus`           | mutation | `{ answer, course, year, campus, keepGroups: chatId[], keepTeams: TeamId[], reason?, note? }`              | `void` (`CONFLICT` once answered: the answer is final)                                                                            | `people:self`                                               |
+| `people.me.answerCensus`           | mutation | `{ answer, course, year, campus, keepTeams: TeamId[], reason?, note? }`                                    | `void` (`CONFLICT` once answered: the answer is final)                                                                            | `people:self`                                               |
 | `people.me.requestCorrection`      | mutation | `{ field, value, note? }`                                                                                  | `void`                                                                                                                            | `people:self`                                               |
 | `people.me.revokePhotoConsent`     | mutation | —                                                                                                          | `void`                                                                                                                            | `people:self`                                               |
 
@@ -403,9 +400,9 @@ The dashboard checks these too, but the backend owns them (from the security rev
 - **Unconfirmed match**: while the signed-in account is only a `match` candidate (not confirmed, or rejected), it acts as
   a person with no record: no team, no Capo Admin scope, no census answer or correction on the candidate's record. Only
   `people.me.get`, `confirmMatch` and `rejectMatch` see the candidate.
-- **`people.capo.approve` / `.decline`**: only requests for groups in the caller's own Capo Admin scope; anything else
-  answers as already handled, so request IDs of other scopes leak nothing. Approving records the decision; the Telegram bot, not the dashboard, makes the person an admin of
-  the group.
+- **`people.capo.get`**: requires an active Capo Admin role on the caller's confirmed record and returns only active
+  admins who have that person as Capo of reference. Contacts exclude personal email and member details still require
+  `people:members:read`. The response contains the scope and admins, with no Telegram group data.
 - **`people.teams.list`**: a Lead without `people:read` gets contacts (phone, personal email) only for the team's
   current members; former members come back without them.
 - **`people.teams.endMembership`**: ending a lead's membership needs `people:appoint`, like appointing one. A team has at most one Lead:
@@ -438,10 +435,8 @@ including a former membership. It must never overwrite a member number, account 
 `due` or `paid`; `receipt` requires an actual uploaded transfer receipt and cannot be selected at admission. `paid` issues a receipt, so it
 also needs `people:fees:write`; without it the dashboard admits with the fee due.
 
-### Census group changes
+### Census role changes
 
-Team roles deselected in `people.me.answerCensus` end immediately. Telegram admin rights require HR to remove them
-and the bot to confirm the result. The backend persists each deselected group's chat ID as pending HR work, adds a
-`admin-removal` discrepancy to the record, and records the request in Activity. My area shows the pending state.
-Reading the record or People list reconciles pending removals with the bot's current group assignments; confirmed
-removals clear their discrepancy and add a completion event. A leaving answer requests removal from every group.
+Team roles deselected in `people.me.answerCensus` end through PoliNetwork Auth. A leaving answer also ends the admin
+role through Auth; a continuing answer keeps it. People does not track Telegram group assignments, requests to join
+or pending group removals. Older records may still carry an `admin-removal` discrepancy, but no new ones are created.

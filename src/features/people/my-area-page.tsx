@@ -41,7 +41,6 @@ import {
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { AskToBeAddedDialog, CorrectionDialog, LeavingDialog } from "./my-area-dialogs"
@@ -255,25 +254,20 @@ function CensusCard({ area }: { area: Linked }) {
   const save = useServerFn(answerMyCensus)
   const refresh = useRefreshAfter()
   const entry = campaign ? person.census.find((candidate) => candidate.year === campaign.year) : undefined
-  // Groups are kept by chat ID: titles aren't unique.
-  const adminGroups = isActiveAdmin(person) ? (person.admin?.groups ?? []) : []
-  const groups = adminGroups.map((group) => group.chatId)
   const teams = activeTeams(person).map((membership) => membership.team)
   // Records created from PoliNetwork Auth or Microsoft 365 have no course or campus until someone fills them in.
   const [course, setCourse] = useState<string | null>(person.profile.course || null)
   const [year, setYear] = useState<Year | null>(nextYear(person.profile.year))
   const [campus, setCampus] = useState<Campus | null>(person.profile.campus)
   const [showMissing, setShowMissing] = useState(false)
-  const [keepGroups, setKeepGroups] = useState(groups)
   const [keepTeams, setKeepTeams] = useState<TeamId[]>(teams)
   const [saving, setSaving] = useState(false)
   const [leavingOpen, setLeavingOpen] = useState(false)
   const leavingKey = useOpenGeneration(leavingOpen)
 
   if (!campaign) return null
-  const answer = course && year && campus ? { course, year, campus, keepGroups, keepTeams } : null
+  const answer = course && year && campus ? { course, year, campus, keepTeams } : null
 
-  // Team roles update immediately; Telegram removals wait for confirmation.
   if (entry?.answer) {
     return (
       <SectionCard padding="flush">
@@ -291,11 +285,6 @@ function CensusCard({ area }: { area: Linked }) {
             meta={`Answered ${entry.answeredOn ? formatDay(entry.answeredOn) : ""}${entry.source ? ` · ${CENSUS_SOURCE[entry.source]}` : ""}`}
           />
         </Rows>
-        {person.discrepancies.some((item) => item.kind === "admin-removal") && (
-          <InlineAlert tone="info" className="mx-4 mb-4">
-            Your Telegram group changes are waiting for HR to remove the admin rights.
-          </InlineAlert>
-        )}
       </SectionCard>
     )
   }
@@ -394,22 +383,6 @@ function CensusCard({ area }: { area: Linked }) {
             />
           </FormField>
         </div>
-        {groups.length ? (
-          <FormField
-            label="Groups you'll keep administering"
-            htmlFor="census-groups"
-            hint="HR processes groups you deselect. Your admin rights stay active until the removal is confirmed."
-          >
-            <ChoiceChips
-              id="census-groups"
-              label="Groups you'll keep administering"
-              options={groups}
-              value={keepGroups}
-              onChange={setKeepGroups}
-              labelOf={(chatId) => adminGroups.find((group) => group.chatId === chatId)?.title ?? chatId}
-            />
-          </FormField>
-        ) : null}
         {teams.length ? (
           <FormField label="Teams you're continuing with" htmlFor="census-teams" hint="Teams you deselect end today.">
             <ChoiceChips
@@ -560,9 +533,8 @@ function LinkedView({ area }: { area: Linked }) {
                             <PlatformGlyph platform="tg" className="size-4" />
                           </span>
                         }
-                        title={`Admin of ${pluralize(admin.groups.length, "group")}`}
+                        title="Admin"
                         meta={`Since ${formatDay(admin.since)}`}
-                        detail={admin.groups.map((group) => group.title).join(", ") || undefined}
                       />
                     ) : null}
                     {admin?.capoScope ? (

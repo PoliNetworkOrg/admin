@@ -12,7 +12,6 @@ import {
   Spinner,
 } from "@/components/primitives"
 import { Textarea } from "@/components/ui/textarea"
-import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { setCapoScope } from "./people-appoint.functions"
@@ -25,9 +24,9 @@ import { getPeople } from "./people.functions"
 const END_REASONS = ["Graduated", "No longer has time", "Left the association", "Removed by HR", "Other"] as const
 type EndReason = (typeof END_REASONS)[number]
 
-export type AdminTarget = { personId: string; name: string; groups: number }
+export type AdminTarget = { personId: string; name: string }
 
-/** Ends an admin role with a reason; the bot removes their rights in every group they administer. */
+/** Ends the admin role in PoliNetwork Auth with a reason. */
 export function EndAdminDialog({
   open,
   onOpenChange,
@@ -64,7 +63,7 @@ export function EndAdminDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="End admin role?"
-      description={`${target.name} stops being an admin of ${pluralize(target.groups, "group")}. The bot removes their admin rights there; the record keeps the history.`}
+      description={`${target.name} stops being an admin. The record keeps the history.`}
       noun="change"
       dirty={reason !== null || details.trim() !== ""}
       submitLabel="End admin role"
@@ -224,7 +223,7 @@ export function CapoScopeDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={scope ? "Change Capo Admin scope" : "Appoint as Capo Admin"}
-      description={`${target.name} coordinates the admins of the course's groups and sees them in Telegram › Capo Admin.`}
+      description={`${target.name} coordinates the course's admins and sees them in Telegram › Capo Admin.`}
       noun="appointment"
       dirty={value !== scope}
       submitLabel={scope ? "Change scope" : "Appoint Capo Admin"}
@@ -265,7 +264,7 @@ export function EndCapoDialog({
       tone="danger"
       icon={Crown}
       title="End Capo Admin role?"
-      description={`${target.name} stops being Capo Admin of ${scope}. They stay an admin of their groups; the admins who answered to them have no Capo Admin until you set one.`}
+      description={`${target.name} stops being Capo Admin of ${scope}. They stay an admin; the admins who answered to them have no Capo Admin until you set one.`}
       confirmLabel="End Capo Admin role"
       onConfirm={async () => {
         await save({ data: { personId: target.personId, scope: null } })

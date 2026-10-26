@@ -46,7 +46,7 @@ import { type AdminRole, CAMPUSES, type Campus, type PersonRow, YEARS } from "./
 type Admin = PersonRow & { admin: AdminRole }
 type Scope = "active" | "former"
 type Year = (typeof YEARS)[number]
-type Quick = "noGroups" | "availableAsCapo" | "declaredMember" | "noCensus"
+type Quick = "availableAsCapo" | "declaredMember" | "noCensus"
 type AdminDialog = { kind: "end" | "capoRef" | "capoScope" | "endCapo"; admin: Admin }
 
 function isAdmin(person: PersonRow): person is Admin {
@@ -54,7 +54,6 @@ function isAdmin(person: PersonRow): person is Admin {
 }
 
 const QUICK = {
-  noGroups: { label: "No groups", test: (person: Admin) => person.admin.groups.length === 0 },
   availableAsCapo: { label: "Available as Capo Admin", test: (person: Admin) => person.admin.availableAsCapo },
   declaredMember: {
     label: "Declared member but not registered",
@@ -69,16 +68,13 @@ const QUICK = {
   },
 } satisfies Record<Quick, { label: string; test: (person: Admin) => boolean }>
 
-const QUICK_IDS = ["noGroups", "availableAsCapo", "declaredMember", "noCensus"] satisfies Quick[]
+const QUICK_IDS = ["availableAsCapo", "declaredMember", "noCensus"] satisfies Quick[]
 
 function matchesQuery(person: Admin, query: string) {
   if (!query) return true
-  return [
-    personName(person),
-    person.profile.course,
-    person.profile.telegramUsername ?? "",
-    ...person.admin.groups.map((group) => group.title),
-  ].some((value) => value.toLocaleLowerCase().includes(query))
+  return [personName(person), person.profile.course, person.profile.telegramUsername ?? ""].some((value) =>
+    value.toLocaleLowerCase().includes(query)
+  )
 }
 
 function CensusCell({ person }: { person: Admin }) {
@@ -104,14 +100,10 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
             secondary={person.profile.course}
             muted={person.admin.status === "former"}
           />
-          {/* Mobile cards: groups and census on one labelled line, then the Capo Admin scope. */}
+          {/* Mobile cards: status and census on one labelled line, then the Capo Admin scope. */}
           <span className="mt-2 hidden flex-col items-start gap-1.5 pl-11 text-xs text-(--pn-fg-muted) max-shell:flex">
             <span className="flex flex-wrap items-center gap-1.5">
-              {person.admin.status !== "active"
-                ? "Former admin"
-                : person.admin.groups.length
-                  ? pluralize(person.admin.groups.length, "group")
-                  : "No groups"}
+              {person.admin.status !== "active" ? "Former admin" : `Since ${formatDay(person.admin.since)}`}
               <span aria-hidden>·</span>
               Census <CensusCell person={person} />
             </span>
@@ -144,42 +136,11 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
       width: 128,
       priority: 5,
       mobile: "hidden",
-      cell: (person) => <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>,
-    },
-    {
-      id: "groups",
-      label: "Groups",
-      width: 232,
-      mobile: "hidden",
       cell: (person) =>
         person.admin.status === "former" ? (
-          <span className="text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
-        ) : person.admin.groups.length ? (
-          <ChipOverflow
-            items={person.admin.groups}
-            itemLabel={(group) => group.title}
-            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-          />
+          <span className="whitespace-nowrap text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
         ) : (
-          <span className="text-(--pn-fg-muted)">No groups</span>
-        ),
-    },
-    {
-      id: "requested",
-      label: "Requested",
-      width: 160,
-      priority: 6,
-      mobile: "hidden",
-      cell: (person) =>
-        person.admin.requested.length ? (
-          <ChipOverflow
-            items={person.admin.requested}
-            max={1}
-            itemLabel={(group) => group.title}
-            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-          />
-        ) : (
-          <Unset />
+          <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>
         ),
     },
     {
@@ -256,7 +217,7 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** People › Admins: admins of the Telegram course groups, their groups, Capo Admin and census answer. */
+/** People › Admins: the admins PoliNetwork Auth knows, their Capo Admin and census answer. */
 export function AdminsPage({ people }: { people: PersonRow[] }) {
   const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
@@ -325,20 +286,18 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
     setDialogOpen(true)
   }
 
-  const target: AdminTarget | null = dialog
-    ? { personId: dialog.admin.id, name: personName(dialog.admin), groups: dialog.admin.admin.groups.length }
-    : null
+  const target: AdminTarget | null = dialog ? { personId: dialog.admin.id, name: personName(dialog.admin) } : null
 
   return (
     <>
       <PageBar
-        description={`${pluralize(active.length, "active admin")} of Telegram course groups`}
+        description={`${pluralize(active.length, "active admin")} in PoliNetwork Auth`}
         left={
           <Toolbar
             search={{
               value: query,
               onChange: resetPage(setQuery),
-              placeholder: "Search by name, course or group…",
+              placeholder: "Search by name, course or username…",
             }}
             filters={
               <>
@@ -494,7 +453,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
               <EmptyState
                 icon={ShieldUser}
                 title="No admins yet"
-                text="Admins appear here when you add a person as admin or the bot sees them in a course group."
+                text="Admins appear here from the admin role in PoliNetwork Auth."
               />
             )
           }

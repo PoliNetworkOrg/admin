@@ -164,7 +164,7 @@ export function CorrectionDialog({ open, onOpenChange }: { open: boolean; onOpen
 }
 
 const ROLE_OPTIONS = {
-  "Admin of Telegram groups": "admin",
+  "PoliNetwork admin": "admin",
   "Team member": "team",
   "Member (socio)": "member",
 } satisfies Record<string, AskRole>
@@ -239,7 +239,7 @@ export function AskToBeAddedDialog({ open, onOpenChange }: { open: boolean; onOp
           label="Telegram username"
           htmlFor="ask-telegram"
           optional
-          hint="Helps HR find you in the groups the bot knows."
+          hint="Helps HR match your request to your record."
           error={telegramError}
         >
           <Input

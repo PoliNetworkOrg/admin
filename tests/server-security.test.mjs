@@ -282,10 +282,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["peopleReceiptsSignMiddleware", ["src/features/people/people-receipts.functions.ts"]],
     ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
     ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
-    [
-      "peopleSelfMiddleware",
-      ["src/features/people/people-capo.functions.ts", "src/features/people/people-self.functions.ts"],
-    ],
+    ["peopleSelfMiddleware", ["src/features/people/people-self.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -401,7 +398,6 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
     "src/features/people/census-page.tsx": ["sendCensusReminders", "closeCampaign"],
     "src/features/people/linking-page.tsx": ["resolveLinkingReview", "dismissLinkingReview"],
-    "src/features/people/capo-page.tsx": ["approveJoinRequest", "declineJoinRequest"],
     "src/features/people/my-area-page.tsx": [
       "acceptMyInvite",
       "answerMyCensus",

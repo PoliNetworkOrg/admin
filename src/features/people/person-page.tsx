@@ -104,7 +104,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
   const archived = hasNoRoles(person)
   const roles = roleLabels(person)
   const { profile, admin, member, account } = person
-  const adminTarget = { personId: person.id, name, groups: admin?.groups.length ?? 0 }
+  const adminTarget = { personId: person.id, name }
 
   const { busy: downloading, download: downloadFile } = useFileDownload()
   const edit = useDialogState()
@@ -413,38 +413,6 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       ]}
                     />
                   </div>
-                  {admin.status === "active" || admin.requested.length ? (
-                    <Rows>
-                      {admin.status === "active" ? (
-                        <SubHeading>Groups they administer · detected by the bot</SubHeading>
-                      ) : null}
-                      {admin.status === "active" && admin.groups.length === 0 ? (
-                        <Row
-                          lead={<RowIcon icon={Users} />}
-                          title="No groups"
-                          meta="The bot hasn't seen them as admin in any group."
-                        />
-                      ) : null}
-                      {admin.groups.map((group) => (
-                        <Row
-                          key={group.chatId}
-                          lead={<PlatformGlyph platform="tg" className="size-5" />}
-                          title={group.title}
-                          meta={<span className="font-mono">{group.chatId}</span>}
-                        />
-                      ))}
-                      {admin.requested.length ? <SubHeading>Asked to join</SubHeading> : null}
-                      {admin.requested.map((group) => (
-                        <Row
-                          key={group.chatId}
-                          lead={<PlatformGlyph platform="tg" className="size-5" />}
-                          title={group.title}
-                          meta={`Asked ${formatDay(group.requestedOn)}`}
-                          end={<StatusBadge tone="brand">Pending</StatusBadge>}
-                        />
-                      ))}
-                    </Rows>
-                  ) : null}
                 </SectionCard>
               ) : null}
 

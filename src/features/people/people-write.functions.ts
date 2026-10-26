@@ -51,7 +51,7 @@ export const unlinkPersonAccount = createServerFn({ method: "POST" })
   .validator(personRefInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).unlinkAccount(data))
 
-/** The bot removes their admin rights in every group; the record keeps the history. */
+/** Ends the admin role through PoliNetwork Auth; the record keeps the history. */
 export const endAdminRole = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
   .validator(endAdminInputSchema)

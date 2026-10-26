@@ -27,14 +27,11 @@ import {
   addDays,
   buildPeopleStore,
   emptyFeeState,
-  FAMILIES,
-  FAMILY_IDS,
   FEE_AMOUNT_CENTS,
   FEE_BENEFICIARY,
   FEE_DUE_ON,
   FEE_IBAN,
   FEE_YEAR,
-  GROUP_IDS,
   m365Address,
   OFFICERS,
   receiptId,
@@ -98,8 +95,6 @@ function log(person: StoredPerson, actor: string, text: string) {
 
 function discrepancies(person: StoredPerson): Discrepancy[] {
   const out: Discrepancy[] = []
-  for (const pending of person.pendingGroupRemovals ?? [])
-    out.push({ kind: "admin-removal", message: pending.message, suggestedTelegram: null })
   const current = person.census.find((entry) => entry.year === "2026/27")
   const isMember = person.member !== null && person.member.status !== "former"
   if (current?.declaredMember && !isMember) {
@@ -156,11 +151,7 @@ function record(person: StoredPerson, viewer: PeopleViewer): PersonRecord {
   return {
     ...row(person, viewer, canRead || ownRecord),
     notes: canRead ? person.notes : null,
-    discrepancies: canRead
-      ? discrepancies(person)
-      : discrepancies(person).filter((item) =>
-          person.pendingGroupRemovals?.some((pending) => pending.message === item.message)
-        ),
+    discrepancies: canRead ? discrepancies(person) : [],
     activity: [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)),
     fees: ownRecord || viewer.permissions.includes("people:members:read") ? fees(person) : null,
   }
@@ -330,21 +321,6 @@ function csvCell(value: string) {
   return `"${safe.replaceAll('"', '""')}"`
 }
 
-/**
- * A request to join one of the groups the signed-in Capo Admin coordinates. Any other request reads as already
- * handled, so a caller can't tell whether a request of another course exists.
- */
-function capoRequest(viewer: PeopleViewer, requestId: string) {
-  const scope = linkedRecord(viewer)?.admin?.capoScope
-  const family = scope ? familyOfScope(scope) : undefined
-  const titles: readonly string[] = family ? FAMILIES[family].groups : []
-  const request = data().joinRequests.find(
-    (candidate) => candidate.id === requestId && titles.includes(candidate.group)
-  )
-  if (!request) throw new Error("This request was already handled.")
-  return request
-}
-
 function leadsOf(person: StoredPerson | null): TeamId[] {
   if (!person) return []
   return person.teams.filter((team) => team.role === "lead" && !team.endedOn).map((team) => team.team)
@@ -379,10 +355,6 @@ function campaigns(): Campaign[] {
       ...count("2025/26"),
     },
   ]
-}
-
-function familyOfScope(scope: string) {
-  return FAMILY_IDS.find((family) => FAMILIES[family].scope === scope)
 }
 
 function buildPreview(fileName: string): ImportPreview {
@@ -469,9 +441,9 @@ function buildPreview(fileName: string): ImportPreview {
           name: fullName(person),
           detail: [
             "Telegram username differs from the record",
-            "Says they administer Statistica; the bot hasn't seen them there",
+            "Says they're an admin; PoliNetwork Auth doesn't list them",
             "Campus Cremona in the form, Leonardo on the record",
-            "Answered “No” but administers 2 groups",
+            "Answered “No” but still holds the admin role",
           ][index % 4],
           answer: answer(person),
         })),
@@ -519,7 +491,7 @@ function buildPreview(fileName: string): ImportPreview {
           : {
               telegramId: person.profile.telegramId ?? "",
               name: fullName(person),
-              info: person.admin ? `Admin in ${Math.max(1, person.admin.groups.length)} groups` : "Member of 3 groups",
+              info: person.admin ? "Admin" : "Member of 3 groups",
             },
     })),
   }
@@ -579,8 +551,6 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
               since: today(),
               endedOn: null,
               endReason: null,
-              groups: [],
-              requested: [],
               availableAsCapo: false,
               capoOfReference: null,
               capoScope: null,
@@ -692,8 +662,6 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         status: "former",
         endedOn: today(),
         endReason: input.reason,
-        groups: [],
-        requested: [],
         capoScope: null,
       })
       log(person, actor, `ended the admin role: ${input.reason}`)
@@ -826,10 +794,6 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         {
           question: "Telegram username",
           answer: `@${person.censusTelegram ?? person.profile.telegramUsername ?? "—"}`,
-        },
-        {
-          question: "Groups you administer",
-          answer: person.admin?.groups.map((group) => group.title).join(", ") || "—",
         },
         { question: "Are you a PoliNetwork member (socio)?", answer: entry.declaredMember ? "Yes" : "No" },
         { question: "Available as Capo Admin?", answer: person.admin?.availableAsCapo ? "Yes" : "No" },
@@ -1035,57 +999,18 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     getCapoArea: async () => {
       require(viewer, "people:self")
       const me = linkedRecord(viewer)
-      const scope = me?.admin?.capoScope
-      const family = scope ? familyOfScope(scope) : undefined
-      if (!scope || !family) throw new Error("UNAUTHORIZED")
-      const titles = FAMILIES[family].groups
+      const scope = me?.admin?.status === "active" ? me.admin.capoScope : null
+      if (!me || !scope) throw new Error("UNAUTHORIZED")
       const admins = data().people.filter(
-        (person) =>
-          person.admin?.status === "active" && person.admin.groups.some((group) => titles.includes(group.title))
+        (person) => person.admin?.status === "active" && person.admin.capoOfReference?.id === me.id
       )
       return {
         scope,
-        groups: titles.map((title) => ({
-          chatId: GROUP_IDS.get(title) ?? "",
-          title,
-          admins: admins.filter((person) => person.admin?.groups.some((group) => group.title === title)).length,
-        })),
         admins: admins.map((person) => ({
           ...row(person, viewer, true),
           profile: { ...person.profile, personalEmail: null },
         })),
-        requests: data()
-          .joinRequests.filter((request) => titles.includes(request.group))
-          .map((request) => {
-            const person = find(request.personId)
-            return {
-              id: request.id,
-              person: { id: person.id, name: fullName(person) },
-              group: { chatId: GROUP_IDS.get(request.group) ?? "", title: request.group },
-              requestedOn: request.requestedOn,
-            }
-          }),
       } satisfies CapoArea
-    },
-    approveJoinRequest: async (input) => {
-      require(viewer, "people:self")
-      const store = data()
-      const request = capoRequest(viewer, input.requestId)
-      const person = find(request.personId)
-      if (person.admin && !person.admin.groups.some((group) => group.title === request.group)) {
-        person.admin.groups.push({ chatId: GROUP_IDS.get(request.group) ?? "", title: request.group })
-        person.admin.requested = person.admin.requested.filter((group) => group.title !== request.group)
-      }
-      store.joinRequests = store.joinRequests.filter((candidate) => candidate !== request)
-      log(person, actor, `approved ${person.profile.firstName} as admin of ${request.group}`)
-    },
-    declineJoinRequest: async (input) => {
-      require(viewer, "people:self")
-      const store = data()
-      const request = capoRequest(viewer, input.requestId)
-      const person = find(request.personId)
-      if (person.admin) person.admin.requested = person.admin.requested.filter((group) => group.title !== request.group)
-      store.joinRequests = store.joinRequests.filter((candidate) => candidate !== request)
     },
     getMyRoles: async () => {
       const me = linkedRecord(viewer)
@@ -1243,13 +1168,6 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         declaredMember: me.member !== null && me.member.status !== "former",
         reminders: 0,
       })
-      for (const group of me.admin?.groups ?? []) {
-        if (input.answer === "continues" && input.keepGroups.includes(group.chatId)) continue
-        const message = `Telegram admin removal pending: ${group.title} (${group.chatId}). HR must remove the admin rights; requested in census 2026/27.`
-        me.pendingGroupRemovals ??= []
-        if (!me.pendingGroupRemovals.some((item) => item.chatId === group.chatId))
-          me.pendingGroupRemovals.push({ chatId: group.chatId, message })
-      }
       for (const membership of me.teams)
         if (!membership.endedOn && (input.answer === "leaving" || !input.keepTeams.includes(membership.team)))
           Object.assign(membership, { endedOn: today(), endReason: input.reason || "Census 2026/27" })
