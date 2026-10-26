@@ -60,7 +60,8 @@ const NEXT_YEAR = {
 
 /** Last year's answer advanced by one, to pre-fill this year's census. */
 export function nextYear(value: string) {
-  return NEXT_YEAR[yearOf(value)]
+  const known = YEARS.find((year) => year === value)
+  return known ? NEXT_YEAR[known] : null
 }
 
 export function teamName(team: TeamId) {

@@ -261,7 +261,7 @@ function CensusCard({ area }: { area: Linked }) {
   const teams = activeTeams(person).map((membership) => membership.team)
   // Records created from PoliNetwork Auth or Microsoft 365 have no course or campus until someone fills them in.
   const [course, setCourse] = useState<string | null>(person.profile.course || null)
-  const [year, setYear] = useState<Year>(nextYear(person.profile.year))
+  const [year, setYear] = useState<Year | null>(nextYear(person.profile.year))
   const [campus, setCampus] = useState<Campus | null>(person.profile.campus)
   const [showMissing, setShowMissing] = useState(false)
   const [keepGroups, setKeepGroups] = useState(groups)
@@ -271,7 +271,7 @@ function CensusCard({ area }: { area: Linked }) {
   const leavingKey = useOpenGeneration(leavingOpen)
 
   if (!campaign) return null
-  const answer = course && campus ? { course, year, campus, keepGroups, keepTeams } : null
+  const answer = course && year && campus ? { course, year, campus, keepGroups, keepTeams } : null
 
   // Team roles update immediately; Telegram removals wait for confirmation.
   if (entry?.answer) {
@@ -367,11 +367,14 @@ function CensusCard({ area }: { area: Linked }) {
           <FormField
             label={`Year in ${campaign.year}`}
             htmlFor="census-year"
+            error={showMissing && !year ? "Choose your year." : undefined}
             hint={person.profile.year ? `You were in ${person.profile.year} last year.` : undefined}
           >
             <SelectField<Year>
               id="census-year"
               value={year}
+              placeholder="Choose your year"
+              invalid={showMissing && !year}
               options={YEARS.map((option) => ({ value: option, label: option }))}
               onChange={setYear}
             />
