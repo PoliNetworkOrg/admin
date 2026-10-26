@@ -5,6 +5,7 @@ import { validateCensusImport } from "../src/features/people/census-import.serve
 import {
   askToBeAddedInputSchema,
   campaignInputSchema,
+  capoAreaSchema,
   createMemberInputSchema,
   personInputSchema,
   resolveReviewInputSchema,
@@ -47,4 +48,15 @@ void test("admission cannot claim a transfer upload that does not exist", () => 
       .success,
     false
   )
+})
+
+void test("the Capo area accepts groups whose Telegram admins the backend does not know", () => {
+  const area = (admins) => ({
+    scope: "Informatica",
+    groups: [{ chatId: "-1001", title: "Analisi 1", admins }],
+    admins: [],
+    requests: [],
+  })
+  assert.equal(capoAreaSchema.safeParse(area(null)).success, true)
+  assert.equal(capoAreaSchema.safeParse(area(2)).success, true)
 })
