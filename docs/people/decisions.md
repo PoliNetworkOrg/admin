@@ -69,21 +69,30 @@ Known prototype defects to not reproduce:
 
 ## Where the register's people come from
 
-The backend keeps the register and fills it from two sources besides the dashboard and census imports (backend
-README, "People register sources"):
+Every fact has one source of truth, and the backend stores no copy of the others: on every People operation it reads
+them first and lays them over the register (backend README, "People register sources").
+
+| Fact                          | Source                                            | The register keeps                                              |
+| ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------- |
+| Admin, team member, team Lead | **PoliNetwork Auth** roles bound to People        | When each started and ended, why, Capo Admin scope, team fields |
+| Member and member number      | **The Microsoft 365 Soci group** and `employeeId` | Suspension or expiry, admission date, fees, receipts            |
+| Admins of a Telegram group    | **Telegram**, through the bot                     | Nothing                                                         |
 
 - **PoliNetwork Auth roles.** Master Admin binds hand-made roles to People on the role's page in the IdP: `admin`,
   `team:<id>:member` or `team:<id>:lead` (team keys `it`, `hr`, `design`, `intl`, `events`). Their holders get a linked
-  record with the matching Admin and team entries. PoliNetwork Auth is the source of truth: Add to team, End
-  membership, End admin role, census answers and account links on a linked record send it one command for the
-  signed-in user, and the IdP applies all of it or nothing, refusing what that user couldn't do in its own dashboard
-  (no self-grants, Leads need `people:appoint`, nobody hands out permissions they don't hold). A role takes effect in
-  People only once the IdP confirms it: until then the record keeps its previous roles and other role edits of that
-  person wait. Linking a record ends the roles recorded before it until the IdP confirms them; a refusal outside a
-  direct dashboard action flags the record for HR. Records without an account, and roles with no bound role, stay
-  owned by People.
-- **The Microsoft 365 Soci group** ("Members only" in Microsoft 365). Each member gets a membership numbered by the
-  account's `employeeId`. Leaving the group ends nothing; the register keeps the status.
+  record, and on a linked record an Admin or team entry is active exactly while its role is held in the IdP, starting
+  when the IdP gave it. Add to team, End membership, End admin role, census answers and account links on a linked
+  record send the IdP one command for the signed-in user, and the IdP applies all of it or nothing, refusing what that
+  user couldn't do in its own dashboard (no self-grants, Leads need `people:appoint`, nobody hands out permissions they
+  don't hold). Until the IdP confirms it the record shows the roles the IdP holds, so a requested role grants nothing,
+  and other role edits of that person wait; a refusal outside a direct dashboard action flags the record for HR. If the
+  IdP hasn't answered for an hour, People pages fail instead of showing old roles. Records without an account, and
+  roles with no bound role, stay owned by People.
+- **The Microsoft 365 Soci group** ("Members only" in Microsoft 365). Being in the group is being a member, numbered by
+  the account's `employeeId`; a member who leaves the group becomes former (members admitted in the last two days are
+  kept while the group listing catches up).
+- **Telegram group admins** come from the bot, which reads them from Telegram. While the bot doesn't answer, groups
+  show no admin information and People keeps what it last knew.
 
 Records created this way have only a name: course, year and campus show "—" until HR edits the profile, and My area
 asks the person to choose them before answering the census.

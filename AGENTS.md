@@ -29,7 +29,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `people:receipts:sign` downloads and uploads signed receipts for the officer on the caller's record.
   Preparing CIE requests additionally requires `esign:sign` and reuses the existing eSign UI and agent; the backend
   owns the durable receipt/request association and completion (the People backend contract is still pending). The
-  backend fills the register from PoliNetwork Auth roles bound to People and the Microsoft 365 Soci group, so a
+  backend reads roles from PoliNetwork Auth and members from the Microsoft 365 Soci group without copying them, so a
   record's course and year may be empty and its campus `null`. Handoff notes, decisions and the plan: `docs/people/`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 

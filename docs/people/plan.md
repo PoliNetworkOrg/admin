@@ -202,3 +202,6 @@ Newest last. One line per commit or session: date, what was done, what is next.
 - 2026-10-25: the register now fills from PoliNetwork Auth's bound roles and the Microsoft 365 Soci group (backend
   `feat/people-role-sync`, IdP `feat/people-role-api`). `profile.campus` is nullable and course/year may be empty;
   pages show "—", the profile form starts empty and My area asks for them. The Design team is Design & Marketing.
+- 2026-10-26: one source of truth per fact: the backend reads PoliNetwork Auth roles, the Microsoft 365 Soci group and
+  Telegram group admins on every operation instead of copying them (backend `feat/people-single-source`); see
+  "Where the register's people come from" in `decisions.md`.
