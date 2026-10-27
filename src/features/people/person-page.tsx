@@ -197,6 +197,12 @@ export function PersonPage({ person }: { person: PersonRecord }) {
       <PageBar width="record" back={BACK} crumb="People" context={name} />
       <PageContent width="record">
         <div className="flex flex-col gap-6">
+          {person.preliminary ? (
+            <InlineAlert tone="info">
+              This person is registered in Auth before their first login. Roles are already recorded there; a Master
+              Admin must approve the link to their login account.
+            </InlineAlert>
+          ) : null}
           <RecordHeader
             title={name}
             avatar={<PersonAvatar name={name} size={64} muted={archived} />}
@@ -543,7 +549,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                 footer={
                   canWrite && account.status !== "review" ? (
                     <div className="flex flex-wrap gap-2">
-                      {account.status === "none" && profile.personalEmail ? (
+                      {account.status === "none" && !person.preliminary && profile.personalEmail ? (
                         <Button
                           size="sm"
                           className={buttonMotion}
@@ -580,7 +586,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                           Revoke invite
                         </Button>
                       ) : null}
-                      {account.status === "linked" ? (
+                      {account.status === "linked" && !person.preliminary ? (
                         <Button
                           size="sm"
                           variant="outline"

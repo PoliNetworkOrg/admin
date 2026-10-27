@@ -209,3 +209,18 @@ void test("admission cannot overwrite an existing membership or its history", as
   )
   assert.deepEqual(await hr.getPerson(member.id), before)
 })
+
+void test("a person can be added before login with just names and team/admin roles", async () => {
+  const created = await hr.createPerson({ firstName: "Before", lastName: "Login", teams: ["it"], admin: true })
+  const person = await hr.getPerson(created.id)
+  assert.equal(person.preliminary, true)
+  assert.equal(person.profile.course, "")
+  assert.equal(person.profile.year, "")
+  assert.equal(person.profile.campus, null)
+  assert.equal(person.profile.personalEmail, null)
+  assert.equal(person.admin.status, "active")
+  assert.deepEqual(
+    person.teams.map((team) => team.team),
+    ["it"]
+  )
+})

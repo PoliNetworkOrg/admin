@@ -161,3 +161,7 @@ remain an option.
 
 Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes and
 full census answers need `people:read`. The backend enforces all of this again; the dashboard only hides.
+
+## People before the first login
+
+New people can be registered with only names and optional contacts, plus team/admin roles. The preliminary identity and assignments live in Auth; People keeps the register history and its own optional census fields. On a later login, verified identity matches and name-only hints become proposals for a Master Admin in Linking. No automatic merge or self-grant is allowed. See `pre-registration.md`.

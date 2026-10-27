@@ -9,8 +9,19 @@ import { cn } from "@/lib/utils"
 
 import { yearOf } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { ChoiceChips } from "./people-ui"
 import { createPerson, updatePerson } from "./people-write.functions"
-import { CAMPUSES, type Campus, COURSES, type PersonRow, TELEGRAM_USERNAME_PATTERN, YEARS } from "./people.contract"
+import {
+  CAMPUSES,
+  type Campus,
+  COURSES,
+  type PersonRow,
+  type TeamId,
+  TEAM_IDS,
+  TEAMS,
+  TELEGRAM_USERNAME_PATTERN,
+  YEARS,
+} from "./people.contract"
 
 type Year = (typeof YEARS)[number]
 
@@ -47,22 +58,25 @@ export function PersonDialog({
   }
   const [values, setValues] = useState(initial)
   const [admin, setAdmin] = useState(false)
+  const [teams, setTeams] = useState<TeamId[]>([])
+  const [telegramId, setTelegramId] = useState("")
+  const [requestId] = useState(() => crypto.randomUUID())
   const [submitted, setSubmitted] = useState(false)
 
   const errors: Partial<Record<keyof typeof initial, string>> = submitted
     ? {
         firstName: values.firstName.trim() ? undefined : "Enter a first name.",
         lastName: values.lastName.trim() ? undefined : "Enter a last name.",
-        personalEmail: EMAIL_PATTERN.test(values.personalEmail.trim()) ? undefined : "Enter a valid email address.",
+        personalEmail:
+          !values.personalEmail.trim() || EMAIL_PATTERN.test(values.personalEmail.trim())
+            ? undefined
+            : "Enter a valid email address.",
         telegramUsername: validTelegram(values.telegramUsername)
           ? undefined
           : "Enter 5–32 letters, digits or underscores.",
-        course: values.course.trim() ? undefined : "Choose a course.",
-        year: values.year ? undefined : "Choose a year.",
-        campus: values.campus ? undefined : "Choose a campus.",
       }
     : {}
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || admin
+  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || admin || teams.length > 0 || telegramId !== ""
 
   function set<K extends keyof typeof values>(key: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [key]: value }))
@@ -74,11 +88,9 @@ export function PersonDialog({
     if (
       !values.firstName.trim() ||
       !values.lastName.trim() ||
-      !EMAIL_PATTERN.test(values.personalEmail.trim()) ||
+      (values.personalEmail.trim() !== "" && !EMAIL_PATTERN.test(values.personalEmail.trim())) ||
       !validTelegram(values.telegramUsername) ||
-      !values.course.trim() ||
-      !year ||
-      !campus
+      (telegramId !== "" && !/^[1-9]\d{0,19}$/.test(telegramId))
     ) {
       return
     }
@@ -89,14 +101,14 @@ export function PersonDialog({
       phone: values.phone.trim(),
       telegramUsername: values.telegramUsername.trim(),
       course: values.course.trim(),
-      year,
+      year: year ?? ("" as const),
       campus,
     }
     try {
       if (person) {
         await update({ data: { ...fields, id: person.id } })
       } else {
-        const created = await create({ data: { ...fields, admin } })
+        const created = await create({ data: { ...fields, year: year ?? "", requestId, telegramId, admin, teams } })
         await refresh("Person added.")
         onOpenChange(false)
         await navigate({ to: "/dashboard/people/$personId", params: { personId: created.id } })
@@ -127,7 +139,7 @@ export function PersonDialog({
       description={
         person
           ? "Changes are saved to the record and shown in its activity."
-          : "Creates a record. The person doesn't need an account; you can invite them later."
+          : "Creates a person in Auth before their first login. A Master Admin can link their verified account later."
       }
       noun="person"
       dirty={dirty}
@@ -141,7 +153,7 @@ export function PersonDialog({
         <FormField label="Last name" htmlFor="person-last" error={errors.lastName}>
           <Input {...text("lastName", "person-last")} autoComplete="off" className={fieldControl} />
         </FormField>
-        <FormField label="Personal email" htmlFor="person-email" error={errors.personalEmail}>
+        <FormField label="Personal email" htmlFor="person-email" optional error={errors.personalEmail}>
           <Input {...text("personalEmail", "person-email")} type="email" autoComplete="off" className={fieldControl} />
         </FormField>
         <FormField label="Phone" htmlFor="person-phone" optional>
@@ -151,7 +163,7 @@ export function PersonDialog({
           label="Telegram username"
           htmlFor="person-telegram"
           optional
-          hint="Used to match the Telegram user the bot already knows."
+          hint="Optional contact hint. Linking uses a verified Telegram ID or email."
           error={errors.telegramUsername}
         >
           <Input
@@ -161,37 +173,80 @@ export function PersonDialog({
             className={cn(fieldControl, "font-mono")}
           />
         </FormField>
-        <FormField label="Course" htmlFor="person-course" error={errors.course}>
-          <SelectField
-            id="person-course"
-            value={values.course || null}
-            options={COURSES.map((course) => ({ value: course, label: course }))}
-            onChange={(course) => set("course", course)}
-            placeholder="Choose a course"
-            invalid={!!errors.course}
-          />
-        </FormField>
-        <FormField label="Year" htmlFor="person-year" error={errors.year}>
-          <SelectField<Year>
-            id="person-year"
-            value={values.year}
-            options={YEARS.map((year) => ({ value: year, label: year }))}
-            onChange={(year) => set("year", year)}
-            placeholder="Choose a year"
-            invalid={!!errors.year}
-          />
-        </FormField>
-        <FormField label="Campus" htmlFor="person-campus" error={errors.campus}>
-          <SelectField<Campus>
-            id="person-campus"
-            value={values.campus}
-            options={CAMPUSES.map((campus) => ({ value: campus, label: campus }))}
-            onChange={(campus) => set("campus", campus)}
-            placeholder="Choose a campus"
-            invalid={!!errors.campus}
-          />
-        </FormField>
+        {person ? (
+          <>
+            <FormField label="Course" htmlFor="person-course" optional error={errors.course}>
+              <SelectField
+                id="person-course"
+                value={values.course || null}
+                options={COURSES.map((course) => ({ value: course, label: course }))}
+                onChange={(course) => set("course", course)}
+                placeholder="Choose a course"
+                invalid={!!errors.course}
+              />
+            </FormField>
+            <FormField label="Year" htmlFor="person-year" optional error={errors.year}>
+              <SelectField<Year>
+                id="person-year"
+                value={values.year}
+                options={YEARS.map((year) => ({ value: year, label: year }))}
+                onChange={(year) => set("year", year)}
+                placeholder="Choose a year"
+                invalid={!!errors.year}
+              />
+            </FormField>
+            <FormField label="Campus" htmlFor="person-campus" optional error={errors.campus}>
+              <SelectField<Campus>
+                id="person-campus"
+                value={values.campus}
+                options={CAMPUSES.map((campus) => ({ value: campus, label: campus }))}
+                onChange={(campus) => set("campus", campus)}
+                placeholder="Choose a campus"
+                invalid={!!errors.campus}
+              />
+            </FormField>
+          </>
+        ) : (
+          <FormField
+            label="Telegram ID"
+            htmlFor="person-telegram-id"
+            optional
+            hint="Stable numeric user ID. The username is a contact hint and does not prove identity."
+            error={
+              submitted && telegramId !== "" && !/^[1-9]\d{0,19}$/.test(telegramId)
+                ? "Enter a numeric Telegram user ID."
+                : undefined
+            }
+          >
+            <Input
+              id="person-telegram-id"
+              value={telegramId}
+              onChange={(event) => setTelegramId(event.target.value.trim())}
+              inputMode="numeric"
+              aria-invalid={submitted && telegramId !== "" && !/^[1-9]\d{0,19}$/.test(telegramId) ? true : undefined}
+              className={fieldControl}
+              aria-describedby={fieldHintId("person-telegram-id")}
+            />
+          </FormField>
+        )}
       </div>
+      {!person ? (
+        <FormField
+          label="Teams"
+          htmlFor="person-teams"
+          optional
+          hint="Member roles are assigned in Auth. Team details can be completed later."
+        >
+          <ChoiceChips
+            id="person-teams"
+            label="Teams"
+            options={TEAM_IDS}
+            value={teams}
+            onChange={setTeams}
+            labelOf={(team) => TEAMS[team].name}
+          />
+        </FormField>
+      ) : null}
       {person ? null : (
         <label className="mt-4 flex items-start gap-2.5 text-[14px]">
           <Checkbox
@@ -202,7 +257,7 @@ export function PersonDialog({
           <span className="flex flex-col gap-0.5">
             <span className="font-medium">PoliNetwork admin</span>
             <span className="text-xs text-(--pn-fg-muted)">
-              The admin role is managed in PoliNetwork Auth. Add members from the member register and teams from Teams.
+              Assigns the admin role in Auth. No census details or login are required.
             </span>
           </span>
         </label>

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 
 import { nextReceiptNumber, receiptFileName, receiptNumberFromFileName } from "./people-fees"
 import type { PeopleApi, PeopleViewer } from "./people.api.server"
+import { createPersonInputSchema } from "./people.contract"
 import {
   type AccountMatch,
   type Campaign,
@@ -130,6 +131,7 @@ function row(person: StoredPerson, viewer: PeopleViewer, withContacts: boolean):
   const withMember = ownRecord || viewer.permissions.includes("people:members:read")
   return {
     id: person.id,
+    preliminary: person.preliminary,
     profile: {
       ...person.profile,
       personalEmail: withContacts ? person.profile.personalEmail : null,
@@ -521,15 +523,17 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       require(viewer, "people:read")
       return record(find(id), viewer)
     },
-    createPerson: async (input) => {
+    createPerson: async (raw) => {
+      const input = createPersonInputSchema.parse(raw)
       require(viewer, "people:write")
       const { people, byId } = data()
-      if (people.some((person) => person.profile.personalEmail === input.personalEmail)) {
+      if (input.personalEmail && people.some((person) => person.profile.personalEmail === input.personalEmail)) {
         throw new Error(`${input.personalEmail} already belongs to another record.`)
       }
       const id = `P-${String(people.length + 1).padStart(4, "0")}`
       const person: StoredPerson = {
         id,
+        preliminary: true,
         family: "inf",
         profile: {
           firstName: input.firstName,
@@ -537,7 +541,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           personalEmail: input.personalEmail || null,
           phone: input.phone || null,
           telegramUsername: input.telegramUsername || null,
-          telegramId: null,
+          telegramId: input.telegramId || null,
           course: input.course,
           year: input.year,
           campus: input.campus,
@@ -556,7 +560,14 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
               capoScope: null,
             }
           : null,
-        teams: [],
+        teams: input.teams.map((team) => ({
+          team,
+          role: "member",
+          since: today(),
+          endedOn: null,
+          endReason: null,
+          fields: {},
+        })),
         census: [],
         consents: { privacy: null, photo: null },
         account: { status: "none" },

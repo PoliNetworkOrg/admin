@@ -43,6 +43,7 @@ const ISSUE = {
   "two-records": "Two records match this sign-in",
   "not-me": "Said “This isn't me” at first sign-in",
   "name-only": "Matched by name only; email and Telegram differ",
+  "preliminary-link": "Auth person awaiting Master Admin approval of their login account",
 } satisfies Record<ReviewKind, string>
 
 type Resolution = { value: string; label: string; description: string }
@@ -53,6 +54,25 @@ function resolutionsFor(review: Review): ResolutionChoices {
   const record = review.record ? `${review.record.name} (${review.record.id})` : "the record"
   const other = review.other ? `${review.other.name} (${review.other.id})` : "the other record"
   switch (review.kind) {
+    case "preliminary-link":
+      return {
+        title: "Link the preliminary Auth person?",
+        description:
+          review.message ??
+          `Check that this login belongs to ${record}. A Master Admin must approve the identity link in Auth.`,
+        options: [
+          {
+            value: "link-anyway",
+            label: "Approve identity link",
+            description: "Auth transfers their current roles to the verified login account. Master Admin only.",
+          },
+          {
+            value: "decline",
+            label: "Different person",
+            description: "Keep the preliminary person and this login separate.",
+          },
+        ],
+      }
     case "telegram-conflict":
       return {
         title: "Resolve Telegram conflict",
