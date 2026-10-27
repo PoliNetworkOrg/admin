@@ -584,8 +584,16 @@ void test("native OAuth login verifies state/PKCE/nonce/signatures, rotates once
   const stored = JSON.parse(await readFile(auth.file, "utf8"))
   await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: true }))
   await mkdir(`${auth.file}.lock`)
-  await assert.rejects(auth.accessToken(), /another admin MCP process/i)
+  const competing = new AdminMcpAuth(origin, join(directory, "credentials")).accessToken().then(
+    (token) => ({ token }),
+    (error) => ({ error })
+  )
+  // A different serve process is finishing a refresh. Its marker is replaced before it releases the lock.
+  await new Promise((resolve) => setTimeout(resolve, 150))
+  await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: false }))
   await rm(`${auth.file}.lock`, { recursive: true })
+  assert.deepEqual(await competing, { token: "access-two" })
+  await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: true }))
   await assert.rejects(auth.accessToken())
   assert.equal(tokenCalls.filter((call) => call.get("grant_type") === "refresh_token").length, 1)
   await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: false }))

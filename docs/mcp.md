@@ -97,7 +97,8 @@ Download permission is public. Data permissions are always the person's own; ins
 roles. This implementation does not require `idp:mcp`, which governs the separate Auth MCP.
 
 Tokens live on the installing user's computer in `~/.polinetwork/admin-mcp/`: directory mode 0700 and files 0600
-on POSIX, atomic replacements, one refresh at a time across processes, and no stdout logging. Protect this directory
+on POSIX, atomic replacements, one refresh at a time across processes (waiting up to five seconds for another
+process's refresh), and no stdout logging. Protect this directory
 as other local application credentials. A refresh marker is saved before contacting the IdP: after a crash or an
 ambiguous refresh response the user signs in again instead of replaying a rotating token. A crashed process can also
 leave a `.lock` directory next to its credential file; remove that directory only after the process has stopped.

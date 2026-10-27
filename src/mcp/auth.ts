@@ -3,6 +3,7 @@ import { chmod, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promise
 import { createServer } from "node:http"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
+import { setTimeout as delay } from "node:timers/promises"
 
 import * as oidc from "openid-client"
 import { z } from "zod"
@@ -46,21 +47,30 @@ export class AdminMcpAuth {
     this.file = join(directory, `${key}.json`)
   }
 
-  private async lock() {
+  private async lock(waitMs = 0) {
     const directory = dirname(this.file)
     await mkdir(directory, { recursive: true, mode: 0o700 })
     const stat = await lstat(directory)
     if (!stat.isDirectory() || stat.isSymbolicLink())
       throw new Error("The credential directory must be a real directory.")
     await chmod(directory, 0o700)
-    try {
-      await mkdir(`${this.file}.lock`, { mode: 0o700 })
-    } catch (error) {
-      console.error(new Error(error instanceof Error ? error.name : "The credential store is locked."))
-      throw new Error(
-        "Another admin MCP process is signing in or refreshing. Try again after it finishes. If it crashed, remove the .lock directory next to the credential file.",
-        { cause: error }
-      )
+    const deadline = Date.now() + waitMs
+    for (;;) {
+      try {
+        await mkdir(`${this.file}.lock`, { mode: 0o700 })
+        break
+      } catch (error) {
+        const remaining = deadline - Date.now()
+        if (error instanceof Error && "code" in error && error.code === "EEXIST" && remaining > 0) {
+          await delay(Math.min(100, remaining))
+          continue
+        }
+        console.error(new Error(error instanceof Error ? error.name : "The credential store is locked."))
+        throw new Error(
+          "Another admin MCP process is signing in or refreshing. Try again after it finishes. If it crashed, remove the .lock directory next to the credential file.",
+          { cause: error }
+        )
+      }
     }
     return () => rm(`${this.file}.lock`, { recursive: true, force: true })
   }
@@ -209,7 +219,7 @@ export class AdminMcpAuth {
   private async freshToken() {
     const current = await this.read()
     if (!current.refreshing && current.expiresAt > Date.now() + 30_000) return current.accessToken
-    const unlock = await this.lock()
+    const unlock = await this.lock(5_000)
     try {
       const stored = await this.read()
       if (stored.refreshing) throw new Error("The last refresh was interrupted. Run login again.")
