@@ -15,5 +15,6 @@ export function isTrustedRequest(method: string, origin: string | null, appOrigi
  * cookie and forwards no credential: the single-use ticket in the path is the only authority, so CSRF cannot apply.
  */
 export function isCsrfExemptPath(pathname: string) {
-  return pathname.startsWith("/api/esign/agent/")
+  // MCP RPCs ignore cookies and require a user bearer token. The gateway rejects foreign browser Origins itself.
+  return pathname.startsWith("/api/esign/agent/") || pathname.startsWith("/api/mcp/rpc/")
 }

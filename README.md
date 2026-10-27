@@ -23,6 +23,11 @@ come from `me.access`. Identity, Telegram linking, passkeys and session manageme
 
 ## Development
 
+The [downloadable Admin MCP](docs/mcp.md) gives local AI agents the signed-in person's dashboard operations and
+permissions. `pnpm build` includes its public package at `/downloads/polinetwork-admin-mcp.tgz`. Activation requires
+a separate public native OAuth client and `ADMIN_MCP_CLIENT_ID`; the Auth MCP's existing registration policy stays
+unchanged. Downloading is public; accessing data requires each user's own login.
+
 ```bash
 pnpm install
 pnpm dev
