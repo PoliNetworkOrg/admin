@@ -9,7 +9,9 @@ export type DashboardUser = {
 
 export type DashboardAccess =
   | { status: "authorized"; user: DashboardUser; permissions: string[] }
-  /** Signed in without `admin:access`; `stale` when the backend's permission snapshot is out of date. */
+  /**
+   * Signed in without `admin:access` or `people:self`; `stale` when the backend's permission snapshot is out of date.
+   */
   | { status: "forbidden"; user: DashboardUser; stale: boolean }
 
 export type DashboardAccessState = DashboardAccess | { status: "unauthenticated" }

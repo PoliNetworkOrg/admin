@@ -1,15 +1,15 @@
-import { ChevronRight, Database, UserMinus, UserPlus } from "lucide-react"
+import { ChevronRight, Database, UsersRound } from "lucide-react"
 import { type ReactNode, useDeferredValue, useId, useLayoutEffect, useMemo, useState } from "react"
 
 import { AvatarGroup, EmptyState, IconButton, Reveal, SectionEmpty, Unset } from "@/components/primitives"
 import { Hint } from "@/components/primitives/hint"
-import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { AzureGroup, AzureMember } from "@/lib/api/types"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { MembershipDialog, type MembershipMode } from "./membership-dialog"
+import { GroupMembersDialog } from "./group-members-dialog"
 
 type SectionId = "multi" | "single"
 type OpenState = { multi: boolean; single: boolean }
@@ -33,11 +33,11 @@ function matches(group: AzureGroup, query: string) {
   return `${group.displayName} ${group.mailAddress ?? ""}`.toLocaleLowerCase().includes(query)
 }
 
-type DialogTarget = { groupId: string; mode: MembershipMode }
+type DialogTarget = { groupId: string }
 
 /**
- * Microsoft 365 groups: groups with 2+ members and the rest, in two collapsibles. `directoryMembers` is null without
- * the member read permission, so there is no one to add.
+ * Microsoft 365 groups, read-only: groups with 2+ members and the rest, in two collapsibles. `directoryMembers` is null
+ * without the member read permission, so member emails are not shown.
  */
 export function AzureGroupsPage({
   groups,
@@ -46,7 +46,6 @@ export function AzureGroupsPage({
   groups: AzureGroup[]
   directoryMembers: AzureMember[] | null
 }) {
-  const canWrite = useCan("azure:groups:write")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [openState, setOpenState] = useState(DEFAULT_OPEN)
@@ -76,12 +75,12 @@ export function AzureGroupsPage({
     })
   }
 
-  function openDialog(groupId: string, mode: MembershipMode) {
-    setDialog({ groupId, mode })
+  function openDialog(groupId: string) {
+    setDialog({ groupId })
     setDialogOpen(true)
   }
 
-  const rowProps = { canWrite, canAdd: directoryMembers !== null, onOpenDialog: openDialog }
+  const rowProps = { onOpenDialog: openDialog }
   const dialogGroup = dialog ? groups.find((group) => group.id === dialog.groupId) : undefined
   const revealClass = restored ? undefined : "transition-none"
 
@@ -163,11 +162,10 @@ export function AzureGroupsPage({
       />
       <PageContent>{renderContent()}</PageContent>
       {dialog && dialogGroup ? (
-        <MembershipDialog
-          key={`${dialog.groupId}:${dialog.mode}`}
+        <GroupMembersDialog
+          key={dialog.groupId}
           group={dialogGroup}
-          directoryMembers={directoryMembers ?? []}
-          mode={dialog.mode}
+          directoryMembers={directoryMembers}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
         />
@@ -181,9 +179,7 @@ function Surface({ children }: { children: ReactNode }) {
 }
 
 type RowActionsProps = {
-  canWrite: boolean
-  canAdd: boolean
-  onOpenDialog: (groupId: string, mode: MembershipMode) => void
+  onOpenDialog: (groupId: string) => void
 }
 
 type GroupSectionProps = RowActionsProps & {
@@ -234,7 +230,7 @@ function GroupSection({ title, emptyTitle, groups, open, onToggle, revealClassNa
   )
 }
 
-function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & { group: AzureGroup }) {
+function GroupRow({ group, onOpenDialog }: RowActionsProps & { group: AzureGroup }) {
   const people = useMemo(
     () =>
       group.members
@@ -242,7 +238,6 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
         .toSorted((a, b) => a.name.localeCompare(b.name)),
     [group.members]
   )
-  const empty = group.members.length === 0
   return (
     <li className="@container flex min-h-15 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--pn-line) px-4.5 py-2 transition-[background-color] duration-120 last:border-b-0 hover:bg-(--pn-hover) max-shell:px-3.5 max-shell:py-3">
       <div className="flex min-w-0 flex-1 flex-col max-shell:basis-full">
@@ -263,29 +258,15 @@ function GroupRow({ group, canWrite, canAdd, onOpenDialog }: RowActionsProps & {
       <span className="w-24 shrink-0 text-right text-[14px] whitespace-nowrap text-(--pn-fg) tabular-nums max-shell:w-auto max-shell:flex-1 max-shell:text-left max-shell:text-[13px] max-shell:text-(--pn-fg-muted)">
         {pluralize(group.members.length, "member")}
       </span>
-      {canWrite ? (
-        <div className="flex items-center gap-1.5">
-          <IconButton
-            label={canAdd ? "Add member" : "Adding members needs access to the member directory"}
-            ariaLabel={canAdd ? `Add a member to ${group.displayName}` : undefined}
-            icon={UserPlus}
-            appearance="boxed"
-            disabled={!canAdd}
-            focusableWhenDisabled
-            onClick={() => onOpenDialog(group.id, "add")}
-          />
-          <IconButton
-            label={empty ? "No members to remove" : "Remove member"}
-            ariaLabel={empty ? "No members to remove" : `Remove a member from ${group.displayName}`}
-            icon={UserMinus}
-            appearance="boxed"
-            tone="danger"
-            disabled={empty}
-            focusableWhenDisabled
-            onClick={() => onOpenDialog(group.id, "remove")}
-          />
-        </div>
-      ) : null}
+      <div className="flex items-center gap-1.5">
+        <IconButton
+          label="View members"
+          ariaLabel={`View the members of ${group.displayName}`}
+          icon={UsersRound}
+          appearance="boxed"
+          onClick={() => onOpenDialog(group.id)}
+        />
+      </div>
     </li>
   )
 }

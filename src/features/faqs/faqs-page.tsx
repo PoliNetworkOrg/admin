@@ -17,6 +17,7 @@ import { appToast, Count, PageBar, PageContent, SearchField, useCan } from "@/co
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import type { FAQItem, FAQs } from "@/lib/api/types"
+import { errorHasCode } from "@/lib/errors"
 import { formatNumber, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -301,7 +302,11 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
             await deleteCategoryFn({ data: { id: category.categoryId } })
           } catch (error) {
             console.error(error)
-            throw new Error("Couldn't delete the category.")
+            throw new Error(
+              errorHasCode(error, "FEATURED_FAQ")
+                ? "A question in this category is featured on the freshman page. Replace it in Web › Freshman first."
+                : "Couldn't delete the category."
+            )
           }
           edit.stop()
           editDirty.current = false
@@ -324,7 +329,11 @@ export function FAQsPage({ categories }: { categories: FAQs }) {
             await deleteFAQFn({ data: { id: deletingFaq.faqId } })
           } catch (error) {
             console.error(error)
-            throw new Error("Couldn't delete the FAQ.")
+            throw new Error(
+              errorHasCode(error, "FEATURED_FAQ")
+                ? "This question is featured on the freshman page. Replace it in Web › Freshman first."
+                : "Couldn't delete the FAQ."
+            )
           }
           await router.invalidate({ sync: true })
           setOpenIds((current) => current.filter((id) => id !== deletingFaq.faqId))

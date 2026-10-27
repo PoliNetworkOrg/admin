@@ -19,6 +19,61 @@ type FileButtonProps = {
   className?: string
 }
 
+/** The outline button over a hidden file input. `FileButton` adds the chosen file's chip; alone it picks several. */
+export function FilePickerButton({
+  id,
+  onFiles,
+  accept,
+  multiple = false,
+  label,
+  pending = false,
+  invalid = false,
+  describedBy,
+}: {
+  id?: string
+  onFiles: (files: File[]) => void
+  accept?: string
+  multiple?: boolean
+  label: string
+  pending?: boolean
+  invalid?: boolean
+  describedBy?: string
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? [])
+          // Cleared so choosing the same file again still fires a change.
+          event.target.value = ""
+          onFiles(files)
+        }}
+        className="sr-only"
+        tabIndex={-1}
+      />
+      <LoadingButton
+        type="button"
+        variant="outline"
+        icon={Upload}
+        pending={pending}
+        aria-describedby={describedBy}
+        onClick={() => inputRef.current?.click()}
+        className={cn("shadow-none", invalid && "border-(--pn-danger-solid)")}
+      >
+        {label}
+      </LoadingButton>
+    </>
+  )
+}
+
 /** Outline "Choose file" button + selected filename chip with remove, and the type/size hint. */
 export function FileButton({
   file,
@@ -30,40 +85,21 @@ export function FileButton({
   id,
   className,
 }: FileButtonProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const generatedId = useId()
   const inputId = id ?? generatedId
   const hintId = `${inputId}-hint`
 
-  function clear() {
-    if (inputRef.current) inputRef.current.value = ""
-    onChange(null)
-  }
-
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          ref={inputRef}
+        <FilePickerButton
           id={inputId}
-          type="file"
           accept={accept}
-          aria-invalid={invalid || undefined}
-          aria-describedby={hint ? hintId : undefined}
-          onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-          className="sr-only"
-          tabIndex={-1}
+          label={label}
+          invalid={invalid}
+          describedBy={hint ? hintId : undefined}
+          onFiles={(files) => onChange(files[0] ?? null)}
         />
-        <LoadingButton
-          type="button"
-          variant="outline"
-          icon={Upload}
-          aria-describedby={hint ? hintId : undefined}
-          onClick={() => inputRef.current?.click()}
-          className={cn("shadow-none", invalid && "border-(--pn-danger-solid)")}
-        >
-          {label}
-        </LoadingButton>
         {file && (
           <span className="inline-flex h-7 max-w-64 items-center gap-1.5 rounded-(--pn-r-full) bg-(--pn-muted) pr-0.5 pl-2.5 text-xs font-medium text-(--pn-fg)">
             <FileText aria-hidden className="size-3.5 shrink-0 text-(--pn-fg-muted)" />
@@ -74,7 +110,7 @@ export function FileButton({
               <button
                 type="button"
                 aria-label="Remove file"
-                onClick={clear}
+                onClick={() => onChange(null)}
                 className="relative flex size-6 shrink-0 items-center justify-center rounded-full text-(--pn-fg-muted) transition-[background-color,color] duration-120 after:absolute after:-inset-1.5 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
               >
                 <X aria-hidden className="size-3.5" />

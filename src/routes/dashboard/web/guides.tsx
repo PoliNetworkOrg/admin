@@ -1,27 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { TableSkeleton } from "@/components/primitives"
-import { PageBar, PageContent } from "@/components/shell"
-import { GuidesPage } from "@/features/guides/guides-page"
-import { getGuides } from "@/features/guides/guides.functions"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/dashboard/web/guides")({
-  loader: () => getGuides(),
-  pendingComponent: GuidesPending,
-  component: GuidesRoute,
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard/web/freshman", search: { tab: "guide" }, replace: true })
+  },
 })
-
-function GuidesPending() {
-  return (
-    <>
-      <PageBar width="tree" />
-      <PageContent width="tree">
-        <TableSkeleton columns={4} rows={4} label="Loading editions…" />
-      </PageContent>
-    </>
-  )
-}
-
-function GuidesRoute() {
-  return <GuidesPage guides={Route.useLoaderData()} />
-}
