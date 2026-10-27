@@ -1,8 +1,7 @@
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
-import { createServer } from "node:http"
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, test } from "node:test"
@@ -56,7 +55,7 @@ const {
 } = await import(pathToFileURL(entry).href)
 
 async function connection(t, permissions) {
-  const state = { permissions, stale: false, calls: [], mutationError: null }
+  const state = { permissions, stale: false, calls: [], mutationError: null, mutationResult: { error: null } }
   const api = {
     query: async (path, input) => {
       if (path === "me.access") return { sub: "person", permissions: state.permissions, stale: state.stale }
@@ -66,7 +65,7 @@ async function connection(t, permissions) {
     mutation: async (path, input) => {
       state.calls.push({ method: "mutation", path, input })
       if (state.mutationError) throw state.mutationError
-      return { error: null }
+      return state.mutationResult
     },
   }
   const server = createAdminMcpServer(api)
@@ -89,14 +88,15 @@ void test("MCP handshake and schemas cover the complete dashboard allowlist", as
   assert.equal(rpcMethod("azure.groups.addMember"), null)
   assert.equal(rpcMethod("azure.groups.removeMember"), null)
   assert.equal(rpcMethod("azure.members.delete"), null)
-  const sourcePaths = execFileSync(
-    "rg",
-    ["-o", "--no-filename", "context\\.backend\\.[A-Za-z0-9_.]+\\.(query|mutate)", "src/features"],
-    { cwd: root, encoding: "utf8" }
+  const features = join(root, "src/features")
+  const files = await readdir(features, { recursive: true })
+  const sources = await Promise.all(
+    files.filter((file) => file.endsWith(".functions.ts")).map((file) => readFile(join(features, file), "utf8"))
   )
-    .trim()
-    .split("\n")
-    .map((value) => value.replace(/^context\.backend\./, "").replace(/\.(query|mutate)$/, ""))
+  const sourcePaths = sources.flatMap((source) =>
+    Array.from(source.matchAll(/context\.backend\.([A-Za-z0-9_.]+)\.(?:query|mutate)/g), ([, path]) => path)
+  )
+  assert.ok(sourcePaths.length > 0, "The dashboard procedure coverage must inspect its server functions")
   // The dashboard also syncs its signer display profile from the ID token. It is internal, not a model tool.
   for (const path of sourcePaths.filter((path) => path !== "esign.profile.sync"))
     assert.ok(
@@ -190,8 +190,64 @@ void test("a failed mutation is sent once and never retried automatically", asyn
   state.mutationError = new Error("Connection lost after submitting the change")
   const failed = await client.callTool({ name: "wa_groups_delete", arguments: { confirmed: true, input: { id: 42 } } })
   assert.equal(failed.isError, true)
+  assert.match(failed.content[0].text, /inspect.*before retrying/i)
   assert.equal(state.calls.length, 1)
   assert.equal(state.calls[0].path, "wa.groups.delete")
+})
+
+void test("a successful write with an unexpected response is reported as uncertain, without a retry", async (t) => {
+  const { client, state } = await connection(t, ["admin:access", "people:fees:write"])
+  state.mutationResult = { unexpected: "receipt was created" }
+  const response = await client.callTool({
+    name: "people_fees_approve",
+    arguments: { confirmed: true, input: { personId: "P-0007" } },
+  })
+  assert.equal(response.isError, true)
+  assert.match(response.content[0].text, /backend answered.*could not be verified/i)
+  assert.match(response.content[0].text, /inspect.*before retrying/i)
+  assert.equal(state.calls.length, 1)
+})
+
+void test("multipart sends normalized dashboard fields and supplies an omitted optional project link", async () => {
+  const project = await uploadForm(
+    "web.projects.addProject",
+    multipartInput.parse({
+      fields: {
+        title: "  Project  ",
+        descriptionIt: "  Italiano  ",
+        descriptionEn: " English ",
+        category: "general",
+        grantedBySub: "forged",
+      },
+      files: [],
+    })
+  )
+  assert.deepEqual(Object.fromEntries(project), {
+    title: "Project",
+    descriptionIt: "Italiano",
+    descriptionEn: "English",
+    category: "general",
+    link: "",
+  })
+  const association = await uploadForm(
+    "web.associations.editAssociation",
+    multipartInput.parse({
+      fields: {
+        id: "7",
+        name: " Name ",
+        descriptionIt: " Italiano ",
+        descriptionEn: " English ",
+        grantedBySub: "forged",
+      },
+      files: [],
+    })
+  )
+  assert.deepEqual(Object.fromEntries(association), {
+    id: "7",
+    name: "Name",
+    descriptionIt: "Italiano",
+    descriptionEn: "English",
+  })
 })
 
 void test("multipart accepts explicit file bytes and enforces the dashboard file limits", async () => {
@@ -502,6 +558,15 @@ void test("native OAuth login verifies state/PKCE/nonce/signatures, rotates once
     authorization = url
     assert.equal(url.searchParams.get("code_challenge_method"), "S256")
     assert.equal(url.searchParams.get("scope"), "openid profile email offline_access backend:admin")
+    const malformed = await new Promise((resolve, reject) => {
+      const request = httpRequest({ hostname: "127.0.0.1", port: 47322, path: "//[" }, (response) => {
+        response.resume()
+        resolve(response.statusCode)
+      })
+      request.once("error", reject)
+      request.end()
+    })
+    assert.equal(malformed, 400)
     const bad = new URL(MCP_CALLBACK)
     bad.searchParams.set("state", "wrong")
     bad.searchParams.set("code", "code")
@@ -518,6 +583,9 @@ void test("native OAuth login verifies state/PKCE/nonce/signatures, rotates once
   assert.equal(JSON.parse(await readFile(auth.file, "utf8")).refreshToken, "refresh-two")
   const stored = JSON.parse(await readFile(auth.file, "utf8"))
   await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: true }))
+  await mkdir(`${auth.file}.lock`)
+  await assert.rejects(auth.accessToken(), /another admin MCP process/i)
+  await rm(`${auth.file}.lock`, { recursive: true })
   await assert.rejects(auth.accessToken())
   assert.equal(tokenCalls.filter((call) => call.get("grant_type") === "refresh_token").length, 1)
   await writeFile(auth.file, JSON.stringify({ ...stored, refreshing: false }))

@@ -134,6 +134,7 @@ export function createAdminMcpServer(api: AdminApi) {
     }
   })
   server.setRequestHandler("tools/call", async (request) => {
+    let writeOutcome: "not-sent" | "submitted" | "received" | "rejected" = "not-sent"
     try {
       const access = await currentAccess(api)
       if (request.params.name === "whoami") return result(access)
@@ -150,9 +151,14 @@ export function createAdminMcpServer(api: AdminApi) {
       const parsed: unknown = tool.input.parse(raw)
       const input = tool.multipart ? await uploadForm(backendPath(tool), multipartInput.parse(parsed)) : parsed
       const body = Object.keys(z.record(z.string(), z.unknown()).parse(parsed)).length === 0 ? undefined : input
+      if (tool.method === "mutation") writeOutcome = "submitted"
       const response = await api[tool.method](backendPath(tool), body)
+      if (tool.method === "mutation") writeOutcome = "received"
       const error = backendErrorSchema.safeParse(response)
-      if (error.success && error.data.error) throw new Error(error.data.error)
+      if (error.success && error.data.error) {
+        writeOutcome = "rejected"
+        throw new Error(error.data.error)
+      }
       if (tool.path === "people.receipts.prepareSignatures") {
         const selection = prepareReceiptSignaturesInputSchema.parse(raw)
         const signatures = receiptSignaturesSchema.parse(response)
@@ -164,6 +170,7 @@ export function createAdminMcpServer(api: AdminApi) {
         ["tg.groups.setHide", "wa.groups.setHide", "wa.groups.modify", "wa.groups.delete"].includes(tool.path) &&
         !response
       ) {
+        writeOutcome = "rejected"
         throw new Error("The record was not updated.")
       }
       if (
@@ -175,13 +182,20 @@ export function createAdminMcpServer(api: AdminApi) {
         ].includes(tool.path) &&
         (!Array.isArray(response) || response.length === 0)
       ) {
+        writeOutcome = "rejected"
         throw new Error("The label was not saved.")
       }
       return result(tool.output ? tool.output.parse(response) : response)
     } catch (error) {
       // Log the message only: OAuth and HTTP error objects can contain authorization headers.
-      const message = error instanceof Error ? error.message : "The operation failed."
-      console.error(new Error(error instanceof Error ? error.message : "The operation failed."))
+      const prefix =
+        writeOutcome === "received"
+          ? "The backend answered after the change was submitted, but its result could not be verified. Inspect the record before retrying. "
+          : writeOutcome === "submitted"
+            ? "The change may already have been applied. Inspect the record before retrying. "
+            : ""
+      const message = prefix + (error instanceof Error ? error.message : "The operation failed.")
+      console.error(new Error(prefix + (error instanceof Error ? error.message : "The operation failed.")))
       return { isError: true, content: [{ type: "text", text: message }] }
     }
   })

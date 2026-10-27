@@ -64,6 +64,8 @@ An uncertain network result must be checked before any retry; writes are never r
 Upload tools accept `fields` (string form values) and `files` entries containing `field`, `name`, `type` and `base64`.
 They never read local paths. Download tools return base64 content or CSV. CIE tools can prepare requests and tickets;
 the person must complete signing with the existing CIE application and hardware. Never give a PIN to the agent.
+The server accepts MCP messages up to 72 MB, enough for a 50 MB signed-receipt batch encoded as base64. MCP clients
+can impose their own smaller limits, including on large download responses.
 
 ## Activate on a deployment
 

@@ -130,8 +130,10 @@ export class AdminMcpAuth {
       const completed = new Promise<URL>((resolve, reject) => {
         timer = setTimeout(() => reject(new Error("Sign-in timed out. Run login again.")), 5 * 60_000)
         listener.on("request", (request, reply) => {
-          const url = new URL(request.url ?? "/", callback)
+          const target = request.url ?? "/"
+          const url = URL.canParse(target, callback) ? new URL(target, callback) : null
           const valid =
+            url !== null &&
             request.method === "GET" &&
             request.headers.host === callback.host &&
             url.origin === callback.origin &&
@@ -146,7 +148,7 @@ export class AdminMcpAuth {
           reply.end(
             valid ? "Return to the terminal to finish connecting PoliNetwork Admin." : "Invalid sign-in callback."
           )
-          if (valid) resolve(url)
+          if (valid && url) resolve(url)
         })
       })
       // Attach the callback waiter before opening the browser, including for fast local test providers.
@@ -206,8 +208,7 @@ export class AdminMcpAuth {
 
   private async freshToken() {
     const current = await this.read()
-    if (current.refreshing) throw new Error("The last refresh was interrupted. Run login again.")
-    if (current.expiresAt > Date.now() + 30_000) return current.accessToken
+    if (!current.refreshing && current.expiresAt > Date.now() + 30_000) return current.accessToken
     const unlock = await this.lock()
     try {
       const stored = await this.read()

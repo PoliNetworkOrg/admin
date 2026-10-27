@@ -3,9 +3,9 @@ import { SuperJSON } from "superjson"
 import { z } from "zod"
 
 import { backendPath, canUseTool, rpcMethod, tools } from "../mcp/catalog"
-import { MCP_RPC_PATH } from "../mcp/protocol"
+import { MCP_MAX_MESSAGE_BYTES, MCP_RPC_PATH } from "../mcp/protocol"
 
-const MAX_BODY = 72 * 1024 * 1024
+const MAX_BODY = MCP_MAX_MESSAGE_BYTES
 export const mcpAccessSchema = z.object({ permissions: z.array(z.string()), stale: z.boolean() })
 export type McpAccess = z.infer<typeof mcpAccessSchema>
 

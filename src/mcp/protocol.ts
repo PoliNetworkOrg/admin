@@ -5,6 +5,8 @@ export const MCP_VERSION = "0.1.0"
 export const MCP_RPC_PATH = "/api/mcp/rpc"
 export const MCP_CALLBACK = "http://127.0.0.1:47322/callback"
 export const MCP_DOWNLOAD = "/downloads/polinetwork-admin-mcp.tgz"
+/** Covers a 50 MB signed-receipt batch encoded as base64, with room for the JSON envelope. */
+export const MCP_MAX_MESSAGE_BYTES = 72 * 1024 * 1024
 
 /** Only public client metadata: never put the dashboard's client credentials here. */
 export const mcpConfigSchema = z.object({

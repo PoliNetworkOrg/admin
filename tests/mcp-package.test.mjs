@@ -8,6 +8,7 @@ import test from "node:test"
 
 import { Client } from "@modelcontextprotocol/client"
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio"
+import { z } from "zod"
 
 void test(
   "the public download installs without dependencies and starts a real stdio MCP outside the repository",
@@ -53,5 +54,15 @@ void test(
     )
     assert.equal(client.getServerVersion().name, "polinetwork-admin")
     assert.ok(client.getServerCapabilities().tools)
+    // Real upload envelopes can exceed the SDK's 10 MB default. Unknown methods exercise transport limits
+    // without reading credentials or calling the API on the machine running the test.
+    await assert.rejects(
+      client.request(
+        { method: "test/large-upload-envelope", params: { padding: "x".repeat(11 * 1024 * 1024) } },
+        z.object({})
+      ),
+      /method not found/i
+    )
+    await client.ping()
   }
 )

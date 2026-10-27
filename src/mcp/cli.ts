@@ -4,6 +4,7 @@ import { spawn } from "node:child_process"
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio"
 
 import { AdminMcpAuth } from "./auth"
+import { MCP_MAX_MESSAGE_BYTES } from "./protocol"
 import { createAdminApi, createAdminMcpServer } from "./server"
 
 const args = process.argv.slice(2)
@@ -45,7 +46,9 @@ async function main() {
     () => auth.accessToken(),
     () => auth.signerProfile()
   )
-  await createAdminMcpServer(api).connect(new StdioServerTransport())
+  await createAdminMcpServer(api).connect(
+    new StdioServerTransport(process.stdin, process.stdout, { maxBufferSize: MCP_MAX_MESSAGE_BYTES })
+  )
 }
 
 main().catch((error) => {
