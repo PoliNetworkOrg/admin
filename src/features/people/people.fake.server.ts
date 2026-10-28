@@ -20,6 +20,7 @@ import {
   type Signer,
   type SignedUpload,
   TEAM_IDS,
+  RECENT_LINK_DAYS,
   TEAMS,
   type TeamId,
   type TeamSummary,
@@ -884,6 +885,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           via: review.account.via,
           linkedOn: today(),
           how: `Resolved by ${actor}`,
+          by: "admin",
         }
         log(target, actor, `linked ${review.account.email}: ${input.reason}`)
       } else if (target && target.account.status === "review") {
@@ -897,6 +899,33 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       store.reviews = store.reviews.filter((candidate) => candidate.id !== input.reviewId)
       const target = review?.record ? store.byId.get(review.record.id) : undefined
       if (target?.account.status === "review") target.account = { status: "none" }
+    },
+    listRecentLinks: async () => {
+      require(viewer, "people:read")
+      const since = new Date(Date.now() - RECENT_LINK_DAYS * 86400000).toISOString().slice(0, 10)
+      return data()
+        .people.flatMap((person) =>
+          person.account.status === "linked" && person.account.linkedOn >= since
+            ? [
+                {
+                  personId: person.id,
+                  name: fullName(person),
+                  email: person.account.email,
+                  via: person.account.via,
+                  how: person.account.how,
+                  linkedOn: person.account.linkedOn,
+                  linkedBy:
+                    person.account.by === "admin"
+                      ? ("admin" as const)
+                      : person.account.by === "account-holder"
+                        ? ("account-holder" as const)
+                        : ("unknown" as const),
+                  preliminary: person.preliminary === true,
+                },
+              ]
+            : []
+        )
+        .toSorted((a, b) => b.linkedOn.localeCompare(a.linkedOn))
     },
     listInvites: async () => {
       require(viewer, "people:read")
@@ -998,6 +1027,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         via: account.via.split(" on ")[0].replace("Signed in with ", ""),
         linkedOn: today(),
         how: `Linked by ${actor}`,
+        by: "admin",
       }
       log(person, actor, `linked ${account.email}: ${input.reason}`)
     },
@@ -1148,6 +1178,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         via: "Telegram",
         linkedOn: today(),
         how: `Confirmed by ${fullName(me)} at first sign-in`,
+        by: "account-holder",
       }
     },
     rejectMatch: async () => {
@@ -1173,6 +1204,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         via: "Email",
         linkedOn: today(),
         how: "Accepted the email invitation",
+        by: "account-holder",
       }
     },
     askToBeAdded: async () => {

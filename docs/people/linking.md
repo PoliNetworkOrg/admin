@@ -175,3 +175,19 @@ linked records and, for role holders without one, follows `decideFor`.
   `@polinetwork.org` address). A Telegram ID match becomes an HR review.
 
 No open decisions remain.
+
+## 7. Checking and undoing links
+
+Linking has a **Recently linked** view of the last 30 days. It lists the record, login address, linking method, day
+and who linked it (account holder, admin or system). Old links without actor metadata show an unknown actor. This
+is a check of current links; the record's activity retains earlier links and unlinks. Reading requires `people:read`;
+unlinking additionally requires `people:write` and an explicit confirmation.
+
+For a preliminary person, People asks Auth to undo the link. Auth requires a Master Admin, atomically returns the
+account's directly assigned People-bound roles to the preliminary subject and clears the link, with an audit event.
+Inherited roles, other role assignments and provider accounts stay with the login account. For an ordinary record,
+Auth must confirm revocation of its bound roles before People removes the account link. Auth can refuse removal of
+an inherited role: change its granting role in Auth first.
+
+The record and its history remain. Identity IDs copied from the detached account are cleared, and a resolved
+rejection excludes that account from future proposals for this record. Explicit admin linking remains possible.

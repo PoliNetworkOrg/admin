@@ -50,7 +50,9 @@ import {
   type ImportPreview,
   importPreviewSchema,
   type Invite,
+  type RecentLink,
   inviteSchema,
+  recentLinkSchema,
   type LinkAccountInput,
   memberRegisterRowSchema,
   type MemberRegisterRow,
@@ -114,6 +116,7 @@ export type PeopleApi = {
   resolveReview: (input: ResolveReviewInput) => Promise<void>
   dismissReview: (input: { reviewId: string }) => Promise<void>
   listInvites: () => Promise<Invite[]>
+  listRecentLinks: () => Promise<RecentLink[]>
   sendInvite: (input: { personId: string }) => Promise<void>
   revokeInvite: (input: { personId: string }) => Promise<void>
   searchAccounts: (input: SearchAccountsInput) => Promise<AccountMatch[]>
@@ -196,6 +199,7 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     resolveReview: (input) => mutate("linking.resolve", input),
     dismissReview: (input) => mutate("linking.dismiss", input),
     listInvites: () => query("linking.invites", undefined, inviteSchema.array()),
+    listRecentLinks: () => query("linking.recent", undefined, recentLinkSchema.array()),
     sendInvite: (input) => mutate("linking.sendInvite", input),
     revokeInvite: (input) => mutate("linking.revokeInvite", input),
     searchAccounts: (input) => query("linking.searchAccounts", input, accountMatchSchema.array()),

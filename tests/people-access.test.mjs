@@ -233,3 +233,16 @@ void test("a person can be added before login with just names and team/admin rol
     ["it"]
   )
 })
+
+void test("recent links need read access and disappear after an authorized unlink", async () => {
+  await assert.rejects(fakePeopleApi({ permissions: SELF, personId: plain.id }).listRecentLinks(), unauthorized)
+  const recent = await hr.listRecentLinks()
+  assert.ok(recent.length, "confirmed links are visible to HR")
+  assert.ok(recent.some((link) => link.linkedBy === "account-holder"))
+  const linked = recent[0]
+  const reader = fakePeopleApi({ permissions: ["people:read"], personId: null })
+  await assert.rejects(reader.unlinkAccount({ personId: linked.personId }), unauthorized)
+  assert.ok((await hr.listRecentLinks()).some((link) => link.personId === linked.personId))
+  await hr.unlinkAccount({ personId: linked.personId })
+  assert.ok(!(await hr.listRecentLinks()).some((link) => link.personId === linked.personId))
+})

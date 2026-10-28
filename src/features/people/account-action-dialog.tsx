@@ -12,6 +12,8 @@ export type AccountAction = {
   name: string
   /** The invite address, or the linked sign-in for `unlink`. */
   email: string
+  /** For `unlink`: the person was created in Auth before their first login, so only a Master Admin can undo the link. */
+  preliminary?: boolean
 }
 
 /** Send, resend or revoke an invite, or unlink an account. Keep `action` after closing so the text survives the exit. */
@@ -71,7 +73,7 @@ export function AccountActionDialog({
       onOpenChange={onOpenChange}
       icon={Unlink}
       title="Unlink account?"
-      description={`${action.email} can no longer see ${action.name}'s record. The record and its history stay.`}
+      description={`${action.email} can no longer see ${action.name}'s record, loses the roles it gives in PoliNetwork Auth and won't be offered it again. The record and its history stay.${action.preliminary ? " Only a Master Admin can undo this link: the roles go back to the person created in Auth." : ""}`}
       confirmLabel="Unlink account"
       onConfirm={async () => {
         await unlink({ data })

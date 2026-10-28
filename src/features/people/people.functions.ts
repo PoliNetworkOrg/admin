@@ -29,6 +29,11 @@ export const getPendingInvites = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).listInvites())
 
+/** Links of the last 30 days, so HR can spot and undo a mistaken one. */
+export const getRecentLinks = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listRecentLinks())
+
 /** A census year's full answers: HR and the Direttivo only (`people:read`). */
 export const getCensusAnswers = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])

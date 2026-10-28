@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { CircleCheck, Mail, RefreshCw, X } from "lucide-react"
+import { CircleCheck, History, Mail, RefreshCw, Unlink, X } from "lucide-react"
 import { type ReactNode, useDeferredValue, useState } from "react"
 
 import {
@@ -32,9 +32,16 @@ import { formatDay, isExpired } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { PersonCell } from "./people-ui"
 import { dismissLinkingReview, resolveLinkingReview } from "./people-write.functions"
-import type { Invite, Review } from "./people.contract"
+import { type Invite, RECENT_LINK_DAYS, type RecentLink, type Review } from "./people.contract"
 
-type Scope = "review" | "invites"
+type Scope = "review" | "invites" | "recent"
+
+const LINKED_BY = {
+  "account-holder": "Themselves",
+  admin: "An admin",
+  system: "Automatically",
+  unknown: "—",
+} satisfies Record<RecentLink["linkedBy"], string>
 type ReviewKind = Review["kind"]
 
 const ISSUE = {
@@ -333,8 +340,16 @@ function ResolveDialog({
   )
 }
 
-/** People › Linking: sign-ins the backend couldn't link on its own, and invites still waiting. */
-export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: Invite[] }) {
+/** People › Linking: sign-ins the backend couldn't link on its own, invites still waiting, and recent links to check. */
+export function LinkingPage({
+  reviews,
+  invites,
+  recent,
+}: {
+  reviews: Review[]
+  invites: Invite[]
+  recent: RecentLink[]
+}) {
   const canWrite = useCan("people:write")
   const dismiss = useServerFn(dismissLinkingReview)
   const refresh = useRefreshAfter()
@@ -353,6 +368,7 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
   const inviteRows = invites
     .filter((invite) => matches([invite.name, invite.email]))
     .toSorted((a, b) => a.expiresOn.localeCompare(b.expiresOn))
+  const recentRows = recent.filter((link) => matches([link.name, link.email]))
 
   async function dismissReview(review: Review) {
     try {
@@ -367,6 +383,17 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
 
   function openInvite(kind: "resend" | "revoke", invite: Invite) {
     setAccountAction({ kind, personId: invite.personId, name: invite.name, email: invite.email })
+    setAccountOpen(true)
+  }
+
+  function openUnlink(link: RecentLink) {
+    setAccountAction({
+      kind: "unlink",
+      personId: link.personId,
+      name: link.name,
+      email: link.email,
+      preliminary: link.preliminary,
+    })
     setAccountOpen(true)
   }
 
@@ -457,6 +484,47 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
     },
   ]
 
+  const recentColumns: DataTableColumn<RecentLink>[] = [
+    {
+      id: "person",
+      label: "Record",
+      fill: true,
+      minWidth: 200,
+      mobile: "main",
+      cell: (link) => <PersonCell name={link.name} secondary={link.personId} secondaryMono />,
+    },
+    {
+      id: "email",
+      label: "Signed in as",
+      width: 248,
+      mobile: "full",
+      cell: (link) => <span className="block truncate font-mono text-[13px]">{link.email || link.via}</span>,
+    },
+    {
+      id: "how",
+      label: "How",
+      width: 264,
+      priority: 3,
+      mobile: "text",
+      cell: (link) => <span className="block whitespace-normal">{link.how}</span>,
+    },
+    {
+      id: "by",
+      label: "Linked by",
+      width: 136,
+      priority: 4,
+      mobile: "meta",
+      cell: (link) => <span className="whitespace-nowrap">{LINKED_BY[link.linkedBy]}</span>,
+    },
+    {
+      id: "on",
+      label: "Linked on",
+      width: 120,
+      mobile: "meta",
+      cell: (link) => <span className="whitespace-nowrap">{formatDay(link.linkedOn)}</span>,
+    },
+  ]
+
   return (
     <>
       <PageBar
@@ -466,7 +534,7 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
             search={{
               value: query,
               onChange: setQuery,
-              placeholder: scope === "review" ? "Search by name or email…" : "Search invites…",
+              placeholder: scope === "invites" ? "Search invites…" : "Search by name or email…",
             }}
             filters={
               <SegmentedControl<Scope>
@@ -474,6 +542,7 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
                 items={[
                   { value: "review", label: "Needs review", count: reviews.length },
                   { value: "invites", label: "Pending invites", count: invites.length },
+                  { value: "recent", label: "Recently linked", count: recent.length },
                 ]}
                 value={scope}
                 onValueChange={setScope}
@@ -483,8 +552,10 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
               deferredQuery ? (
                 scope === "review" ? (
                   <Count value={reviewRows.length} total={reviews.length} noun="item" plural="items" />
-                ) : (
+                ) : scope === "invites" ? (
                   <Count value={inviteRows.length} total={invites.length} noun="invite" plural="invites" />
+                ) : (
+                  <Count value={recentRows.length} total={recent.length} noun="link" plural="links" />
                 )
               ) : undefined
             }
@@ -539,6 +610,51 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
                   icon={CircleCheck}
                   title="Nothing needs review"
                   text="Conflicts and requests to be added appear here when someone signs in."
+                />
+              )
+            }
+          />
+        ) : scope === "recent" ? (
+          <DataTable
+            label="Recently linked"
+            columns={recentColumns}
+            rows={recentRows}
+            getRowId={(link) => link.personId}
+            rowLabel={(link) => link.name}
+            rowHref={(link) => `/dashboard/people/${link.personId}`}
+            actions={
+              canWrite
+                ? (link) => (
+                    <RowActions>
+                      <IconButton
+                        label="Unlink account"
+                        ariaLabel={`Unlink ${link.email || link.name}`}
+                        icon={Unlink}
+                        tone="danger"
+                        onClick={() => openUnlink(link)}
+                      />
+                    </RowActions>
+                  )
+                : undefined
+            }
+            actionsWidth={56}
+            empty={
+              deferredQuery ? (
+                <EmptyState
+                  icon={History}
+                  title="No links match"
+                  text="Try another name or email."
+                  action={
+                    <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setQuery("")}>
+                      Clear search
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={History}
+                  title="No recent links"
+                  text={`Accounts linked to a record in the last ${RECENT_LINK_DAYS} days appear here, so a mistaken link can be undone.`}
                 />
               )
             }
