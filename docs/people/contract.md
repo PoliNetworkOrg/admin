@@ -180,7 +180,14 @@ The UI links to full person records only with `people:read`. Write permissions d
 ```ts
 type Review = {
   id: string
-  kind: "telegram-conflict" | "ask-to-be-added" | "two-records" | "not-me" | "name-only" | "preliminary-link"
+  kind:
+    | "telegram-conflict"
+    | "ask-to-be-added"
+    | "two-records"
+    | "not-me"
+    | "name-only"
+    | "preliminary-link"
+    | "identity-match"
   since: string
   account: {
     name: string
@@ -454,6 +461,6 @@ or pending group removals. Older records may still carry an `admin-removal` disc
 
 Rows may include `preliminary: true`. A preliminary person has no login account or My area access, even while their organizational roles are recorded in Auth. Auth's stable registration ID preserves the People record and its history when a Master Admin approves a link to the real login account.
 
-The `preliminary-link` review kind carries Auth's verified-email/Telegram proposal, a name-only hint or a conflict explanation. Resolutions are `link-anyway` (Master Admin approval checked in Auth) and `decline` (keep identities separate). Phone and mutable usernames are contact hints only. No name or unverified contact automatically merges identities or grants roles. Auth-owned identity links cannot be detached locally with `linking.unlink`.
+The backend matches sign-ins to records with one rule and one outcome policy ([linking.md](linking.md)). The `preliminary-link` review kind is a verified or Telegram-username match on a preliminary Auth person; resolutions are `link-anyway` (Master Admin approval checked in Auth) and `decline` (keep identities separate). The `identity-match` kind is a match HR confirms on any other record: a verified match on a record that carries roles, a role holder matched by Telegram ID or a non-PoliNetwork address, or a Telegram username; resolutions are `link-anyway` and `decline`. Phone numbers are contact hints only. No name or unverified contact automatically merges identities or grants roles. Auth-owned identity links cannot be detached locally with `linking.unlink`.
 
 See `pre-registration.md` for the design, rollout and verification scope.

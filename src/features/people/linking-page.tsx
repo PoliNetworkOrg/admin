@@ -44,6 +44,7 @@ const ISSUE = {
   "not-me": "Said “This isn't me” at first sign-in",
   "name-only": "Matched by name only; email and Telegram differ",
   "preliminary-link": "Auth person awaiting Master Admin approval of their login account",
+  "identity-match": "Sign-in matches a record HR must confirm",
 } satisfies Record<ReviewKind, string>
 
 type Resolution = { value: string; label: string; description: string }
@@ -70,6 +71,23 @@ function resolutionsFor(review: Review): ResolutionChoices {
             value: "decline",
             label: "Different person",
             description: "Keep the preliminary person and this login separate.",
+          },
+        ],
+      }
+    case "identity-match":
+      return {
+        title: "Link this sign-in to the record?",
+        description: review.message ?? `The sign-in matches ${record}. Check with them before linking.`,
+        options: [
+          {
+            value: "link-anyway",
+            label: `Link to ${review.record?.id ?? "the record"}`,
+            description: "Links the account; Auth grants the record's roles if you may give them.",
+          },
+          {
+            value: "decline",
+            label: "Different person",
+            description: "Keep the record and this sign-in separate.",
           },
         ],
       }
