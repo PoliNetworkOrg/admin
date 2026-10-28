@@ -59,6 +59,15 @@ void test("a Capo Admin sees only active admins who have them as Capo of referen
   }
 })
 
+void test("a first sign-in waiting for Master Admin approval sees its record but none of its powers", async () => {
+  const waiting = fakePeopleApi({ permissions: SELF, personId: `awaiting:${capo.id}` })
+  const area = await waiting.getMyArea()
+  assert.equal(area.state, "awaiting-approval")
+  assert.equal(area.candidate?.id, capo.id)
+  assert.deepEqual(await waiting.getMyRoles(), { capoScope: null, leads: [] })
+  await assert.rejects(waiting.getCapoArea(), unauthorized)
+})
+
 void test("an unconfirmed first-sign-in match gets none of the record's powers", async () => {
   const leadMatch = fakePeopleApi({ permissions: SELF, personId: `match:${lead.id}` })
   assert.deepEqual(await leadMatch.getMyRoles(), { capoScope: null, leads: [] })

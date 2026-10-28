@@ -258,6 +258,13 @@ type MyArea =
       }
       reason: string
     }
+  | {
+      // A record made in People before this account's first sign-in; a Master Admin decides the link in Auth.
+      state: "awaiting-approval"
+      // Only for a verified email or Telegram match: weaker matches may be someone else's record.
+      candidate: { id: PersonId; name: string; roles: string[] } | null
+      reason: string
+    }
   | { state: "none"; request: { sentOn: string } | null }
 ```
 

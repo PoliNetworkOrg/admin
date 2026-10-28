@@ -72,12 +72,14 @@ import { CAMPUSES, type Campus, COURSES, type MyArea, type TeamId, YEARS } from 
 
 type Linked = Extract<MyArea, { state: "linked" }>
 type Match = Extract<MyArea, { state: "match" }>
+type Awaiting = Extract<MyArea, { state: "awaiting-approval" }>
 type Year = (typeof YEARS)[number]
 
 /** Account › My area: what the signed-in person's record says, and the yearly census. */
 export function MyAreaPage({ area, invite }: { area: MyArea; invite: string | null }) {
   if (invite && area.state !== "linked") return <InviteView token={invite} />
   if (area.state === "match") return <MatchView area={area} />
+  if (area.state === "awaiting-approval") return <AwaitingApprovalView area={area} />
   if (area.state === "none") return <NoRecordView sentOn={area.request?.sentOn ?? null} />
   return <LinkedView area={area} />
 }
@@ -153,6 +155,39 @@ function MatchView({ area }: { area: Match }) {
                 ) : null}
               </div>
             </div>
+            <InlineAlert tone="info">{area.reason}</InlineAlert>
+          </div>
+        </SectionCard>
+      </PageContent>
+    </>
+  )
+}
+
+/** A record made before the first sign-in: nothing to do until a Master Admin approves the link. */
+function AwaitingApprovalView({ area }: { area: Awaiting }) {
+  const { candidate } = area
+  return (
+    <>
+      <PageBar title="Welcome" width="settings" />
+      <PageContent width="settings">
+        <SectionCard title={candidate ? "We found your record" : "Your sign-in is being checked"}>
+          <div className="flex flex-col gap-4">
+            {candidate ? (
+              <div className="flex items-start gap-3 rounded-(--pn-r-4) border border-(--pn-line) p-3">
+                <PersonAvatar name={candidate.name} size={40} />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[15px] font-medium">{candidate.name}</span>
+                  <span className="font-mono text-[13px] text-(--pn-fg-muted)">{candidate.id}</span>
+                  {candidate.roles.length ? (
+                    <span className="mt-1.5 flex flex-wrap gap-1.5">
+                      {candidate.roles.map((role) => (
+                        <Chip key={role}>{role}</Chip>
+                      ))}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <InlineAlert tone="info">{area.reason}</InlineAlert>
           </div>
         </SectionCard>

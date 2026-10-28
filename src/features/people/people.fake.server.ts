@@ -48,7 +48,7 @@ import { downloadName, looksSigned, receiptPdf, sampleTransferPdf, zipFiles } fr
  */
 
 let store: PeopleStore | null = null
-/** The agent user's own state when `AGENT_PERSON` is `none` or `match:P-…`. */
+/** The agent user's own state when `AGENT_PERSON` is `none`, `match:P-…` or `awaiting:P-…`. */
 type SelfState = {
   matchConfirmed: boolean
   matchRejected: boolean
@@ -292,7 +292,7 @@ function viewerName(viewer: PeopleViewer) {
 function viewerRecord(viewer: PeopleViewer) {
   if (self.invitedId) return data().byId.get(self.invitedId) ?? null
   if (!viewer.personId || viewer.personId === "none") return null
-  const id = viewer.personId.replace(/^match:/, "")
+  const id = viewer.personId.replace(/^(match|awaiting):/, "")
   return data().byId.get(id) ?? null
 }
 
@@ -303,6 +303,7 @@ function viewerRecord(viewer: PeopleViewer) {
 function linkedRecord(viewer: PeopleViewer) {
   if (self.matchRejected) return null
   if (viewer.personId?.startsWith("match:") && !self.matchConfirmed) return null
+  if (viewer.personId?.startsWith("awaiting:")) return null
   return viewerRecord(viewer)
 }
 
@@ -1032,6 +1033,20 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const me = viewerRecord(viewer)
       if (!me || self.matchRejected)
         return { state: "none", request: self.askedOn ? { sentOn: self.askedOn } : null } satisfies MyArea
+      if (viewer.personId?.startsWith("awaiting:"))
+        return {
+          state: "awaiting-approval",
+          candidate: {
+            id: me.id,
+            name: fullName(me),
+            roles: [
+              ...(me.admin?.status === "active" ? ["Admin"] : []),
+              ...me.teams.filter((team) => !team.endedOn).map((team) => TEAMS[team.team].name),
+            ],
+          },
+          reason:
+            "Same verified email address. A Master Admin will confirm the link: you don't need to ask to be added.",
+        } satisfies MyArea
       if (viewer.personId?.startsWith("match:") && !self.matchConfirmed) {
         const roles = [
           ...(me.member && me.member.status !== "former" ? ["Member"] : []),
