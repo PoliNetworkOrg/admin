@@ -13,7 +13,7 @@ import { env } from "@/env"
 
 /**
  * A backend client for one request, carrying the signed-in user's access token (RFC v3 §11): the backend verifies it
- * and enforces the user's permissions. `null` only in agent mode, which uses the backend's legacy anonymous path.
+ * and enforces the user's permissions. `null` only in agent mode, which has no token: the backend refuses its calls.
  */
 export function createBackendClient(accessToken: string | null) {
   return createTRPCClient<AppRouter>({ links: backendLinks(accessToken) })

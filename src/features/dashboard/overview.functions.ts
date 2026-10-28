@@ -46,7 +46,7 @@ export const getOverviewCounts = createServerFn()
 
 /**
  * `forbidden` without `tg:users:read`; `unavailable` while the backend predates `tg.users.getCreationHistory` or refuses
- * the call as unauthenticated (agent mode's anonymous path), so the Overview shows the total without the chart instead
+ * the call as unauthenticated (agent mode has no token), so the Overview shows the total without the chart instead
  * of an error.
  */
 export type TelegramUserHistory =
@@ -98,8 +98,8 @@ export const getTelegramUserHistory = createServerFn()
       if (result.error !== null) throw new Error(result.error)
       return { status: "ok", days: result.days, today: romeToday() }
     } catch (error) {
-      // NOT_FOUND: a backend that predates the procedure. UNAUTHORIZED: the procedure is token-only, and agent mode
-      // (development) calls the backend anonymously. Either way the Overview shows the total without the chart.
+      // NOT_FOUND: a backend that predates the procedure. UNAUTHORIZED: agent mode (development) has no token. Either
+      // way the Overview shows the total without the chart.
       if (
         error instanceof TRPCClientError &&
         (error.data?.code === "NOT_FOUND" || error.data?.code === "UNAUTHORIZED")
