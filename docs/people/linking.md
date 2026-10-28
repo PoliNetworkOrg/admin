@@ -91,21 +91,22 @@ Rules, in order; the first tier with a hit decides:
 3. **name**: full name equal.
 
 Conflict: more than one record in the deciding tier; or the single record carries a different `telegramId` or
-`azureId` than the account. Records already linked to another account, and records the account holder rejected, are
-excluded.
+`azureId` than the account (a different Microsoft 365 account goes to HR as `identity-match`). Records are looked up
+through an index of these keys, so a pass over every Auth account costs lookups, not a scan of the register. Records already linked to another account, and records the account holder rejected ("This isn't me", or a review
+declined or dismissed by HR), are excluded, so a declined match does not open again.
 
 ### 4.3 One outcome policy
 
-| Match                                                  | Record                      | Outcome                                                                                         |
-| ------------------------------------------------------ | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| verified, one                                          | preliminary person          | `preliminary-link` review; the person sees "awaiting approval"; Master Admin approves in Auth   |
-| verified, one                                          | no account, grants no roles | "Is this you?": the person confirms                                                             |
-| verified, one                                          | no account, carries roles   | `identity-match` review: HR links and the roles are granted in one step (D1)                    |
-| verified (Microsoft 365 ID or `@polinetwork.org`), one | account holds a bound role  | automatic link (as today)                                                                       |
-| verified (Telegram ID only), one                       | account holds a bound role  | `identity-match` review, no automatic link (D2)                                                 |
-| username, one                                          | any                         | `identity-match` (`preliminary-link` for a preliminary person); the person sees "being checked" |
-| name, one                                              | any                         | `name-only` review; nothing shown to the person                                                 |
-| conflict                                               | any                         | `two-records` / `telegram-conflict` review                                                      |
+| Match                                                                                             | Record                      | Outcome                                                                                         |
+| ------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| verified, one                                                                                     | preliminary person          | `preliminary-link` review; the person sees "awaiting approval"; Master Admin approves in Auth   |
+| verified, one                                                                                     | no account, grants no roles | "Is this you?": the person confirms                                                             |
+| verified, one                                                                                     | no account, carries roles   | `identity-match` review: HR links and the roles are granted in one step (D1)                    |
+| verified (Microsoft 365 ID, or the `@polinetwork.org` address Microsoft 365 gave the record), one | account holds a bound role  | automatic link (as today)                                                                       |
+| verified (Telegram ID only), one                                                                  | account holds a bound role  | `identity-match` review, no automatic link (D2)                                                 |
+| username, one                                                                                     | any                         | `identity-match` (`preliminary-link` for a preliminary person); the person sees "being checked" |
+| name, one                                                                                         | any                         | `name-only` review; nothing shown to the person                                                 |
+| conflict                                                                                          | any                         | `two-records` / `telegram-conflict` review                                                      |
 
 ### 4.4 One linking module — `src/people/linking.ts`
 
@@ -134,7 +135,9 @@ linked records and, for role holders without one, follows `decideFor`.
    getting a new empty record next to it. Ambiguous username or name matches (several records) match nobody.
 5. A record that carries roles is no longer self-confirmed: "Is this you?" is offered only for records that grant
    nothing; otherwise HR approves (D1).
-6. A role holder is linked automatically only by a Microsoft 365 identity; a Telegram ID match becomes an HR review
+6. A linked record whose account's verified identity (now including the verified email) also appears on another
+   record is flagged for review, as Telegram and Microsoft 365 identities already were.
+7. A role holder is linked automatically only by a Microsoft 365 identity; a Telegram ID match becomes an HR review
    (D2).
 
 ## 6. Verification
