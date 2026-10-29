@@ -144,7 +144,7 @@ export function AddToTeamDialog({
       onOpenChange={onOpenChange}
       size="lg"
       title={title}
-      description={fixedPerson ? fixedPerson.name : "Team history and census answers stay on the person’s record."}
+      description={fixedPerson ? fixedPerson.name : "Team history stays on the person’s record."}
       noun="team membership"
       dirty={
         (!fixedTeam && team !== null) ||
@@ -278,7 +278,7 @@ const END_REASONS = [
 ] as const
 type EndReason = (typeof END_REASONS)[number]
 
-/** Ends a team membership with its last day and reason; history and census answers stay. */
+/** Ends a team membership with its last day and reason; the history stays. */
 export function EndTeamMembershipDialog({
   open,
   onOpenChange,
@@ -324,7 +324,7 @@ export function EndTeamMembershipDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="End membership?"
-      description={`${target.name} leaves ${teamName(target.team)} on the last day below. Their history and census answers stay.`}
+      description={`${target.name} leaves ${teamName(target.team)} on the last day below. Their history stays.`}
       noun="change"
       dirty={reason !== null || note.trim() !== ""}
       submitLabel="End membership"

@@ -1,7 +1,9 @@
 # People area: original brief
 
 This is the brief the prototype was built from, kept verbatim so later work answers to the same requirements. Where it
-conflicts with [`decisions.md`](decisions.md), the decisions win: they record what was settled afterwards.
+conflicts with [`decisions.md`](decisions.md), the decisions win: they record what was settled afterwards. Since #138
+the brief's Member register, census and record-matching parts are unconnected mockups or removed (see
+[`README.md`](README.md)).
 
 ---
 

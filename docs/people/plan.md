@@ -198,3 +198,13 @@ Newest last. One line per commit or session: date, what was done, what is next.
   `people.receipts.prepareSignatures` contract and adapter, both signing permissions, and regression tests for
   officer restrictions, loader refresh and merged navigation. The People backend bridge remains pending, so agent
   mode reports that requirement instead of simulating CIE success.
+
+- 2026-10-29: cleanup (#138), deployed before PoliNetworkOrg/backend#100. Member register, Receipts and Census (and
+  My area's fee card) are unconnected mockups: static sample data from `mockup-data.ts`, no loaders or server
+  functions, disabled actions and a shared `MockupBanner` linking Phase 2 (#144) or Phase 3 (#145), gated by
+  `people:read`. Removed: the members, fees, receipts and census server functions, contract entries and agent-mode
+  data; the eSign receipt bridge (`peopleReceipt`); Telegram group columns and Capo Admin join requests; the Linking
+  review queue and My area's first-sign-in match, Ask to be added, census, correction and photo-consent revocation; the permissions
+  `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign`. The schemas strip the
+  fields the current backend still sends until its own cleanup deploys.
+  The backend counterpart is PoliNetworkOrg/backend#104, which deploys after this.

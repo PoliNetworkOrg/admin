@@ -1,8 +1,6 @@
 import type { AppRouter } from "@polinetwork/backend"
 import type { inferRouterOutputs } from "@trpc/server"
 
-import type { ReceiptRequestSource } from "@/features/people/people.contract"
-
 export type ApiOutput = inferRouterOutputs<AppRouter>
 
 export type TgUser = NonNullable<ApiOutput["tg"]["users"]["get"]["user"]>
@@ -24,9 +22,7 @@ export type GroupWithLabels = ApiOutput["groups"]["search"]["getAll"][number]
 
 export type GroupLinkReport = ApiOutput["web"]["reports"]["list"][number]
 
-export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number] & {
-  peopleReceipt?: ReceiptRequestSource | null
-}
+export type EsignRequest = ApiOutput["esign"]["requests"]["list"][number]
 export type EsignRequestDetail = ApiOutput["esign"]["requests"]["get"]
 /** A version of a request's PDF, or a PDF staged for a new request. */
 export type EsignDocumentMeta = EsignRequestDetail["versions"][number]

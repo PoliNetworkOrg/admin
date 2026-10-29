@@ -2,13 +2,7 @@ import {
   type Account,
   type AdminRole,
   CAMPUSES,
-  type CensusEntry,
-  type FeeStatus,
-  type FeeUpload,
-  type FeeDetail,
   type PersonRecord,
-  type Receipt,
-  type Review,
   type TeamFields,
   type TeamId,
   type TeamMembership,
@@ -16,48 +10,22 @@ import {
 
 /**
  * Agent-mode sample data for the People area, ported from the prototype's `buildData()` (docs/people/prototype):
- * 148 people, ~40 linked accounts, ~60 members, ~110 admins, 27 team members, with the same seed and key people.
+ * 148 people, ~40 linked accounts, ~110 admins and 27 team members, with the same seed and key people. Soci, fees,
+ * receipts, the census and record matching are gone (#138); their mockups keep their own data in `mockup-data.ts`.
  */
-
-export const SAMPLE_TODAY = "2026-10-14"
 
 export type FamilyId = "inf" | "ges" | "ind" | "ele" | "des" | "arc"
 
 /** A record as the fake backend stores it: the contract's record plus what it derives views from. */
-export type StoredPerson = Omit<PersonRecord, "discrepancies" | "isMember" | "fees"> & {
-  /** The current fee year beyond `member.fee`, which stays the status; `null` for people who aren't members. */
-  feeState: FeeState | null
+export type StoredPerson = Omit<PersonRecord, "discrepancies"> & {
   family: FamilyId
-  /** The first day of any role, for the census history. */
-  start: string | null
-  /** The Telegram username given in the 2026/27 census, when it differs from the record. */
+  /** A Telegram username reported elsewhere that differs from the record: a `telegram-mismatch` discrepancy. */
   censusTelegram: string | null
-  /** Whether the person is expected to answer the 2026/27 census. */
-  expected: boolean
-  pendingGroupRemovals?: { chatId: string; message: string }[]
 }
-
-/** What the fake keeps about a member's current fee year; `member.fee` is its status. */
-export type FeeState = {
-  upload: FeeUpload | null
-  rejection: FeeDetail["rejection"]
-  /** Every rejection this fee year, newest first. */
-  rejections: NonNullable<FeeDetail["rejection"]>[]
-  payment: FeeDetail["payment"]
-  lastReminder: string | null
-  /** The member's mailbox rejects email, so sending their receipt fails (until someone retries). */
-  mailFails: boolean
-}
-
-export type JoinRequest = { id: string; personId: string; group: string; requestedOn: string }
 
 export type PeopleStore = {
   people: StoredPerson[]
   byId: Map<string, StoredPerson>
-  reviews: Review[]
-  joinRequests: JoinRequest[]
-  /** Every receipt ever issued, voided ones included. */
-  receipts: Receipt[]
 }
 
 const FIRST = [
@@ -264,41 +232,17 @@ const COURSES: Course[] = [
 
 export const COURSE_NAMES = COURSES.map((course) => course.name)
 
+/** The Capo Admin scope of each family of courses. */
 export const FAMILIES = {
-  inf: { scope: "Ingegneria Informatica", groups: ["Fondamenti di Informatica", "Basi di Dati", "Reti Logiche"] },
-  ges: {
-    scope: "Ingegneria Gestionale",
-    groups: ["Economia e Organizzazione Aziendale", "Ricerca Operativa", "Statistica", "Gestione dei Progetti"],
-  },
-  ind: {
-    scope: "Ingegneria Industriale",
-    groups: ["Fisica Tecnica", "Meccanica Razionale", "Termodinamica Applicata", "Aerodinamica"],
-  },
-  ele: {
-    scope: "Ingegneria dell'Informazione",
-    groups: ["Elettrotecnica", "Fondamenti di Elettronica", "Segnali e Sistemi", "Geometria e Algebra Lineare"],
-  },
-  des: {
-    scope: "Design",
-    groups: ["Laboratorio di Comunicazione Visiva", "Storia del Design", "Disegno per il Design"],
-  },
-  arc: {
-    scope: "Architettura",
-    groups: ["Storia dell'Architettura", "Laboratorio di Progettazione 1", "Scienza delle Costruzioni"],
-  },
-} satisfies Record<FamilyId, { scope: string; groups: string[] }>
+  inf: { scope: "Ingegneria Informatica" },
+  ges: { scope: "Ingegneria Gestionale" },
+  ind: { scope: "Ingegneria Industriale" },
+  ele: { scope: "Ingegneria dell'Informazione" },
+  des: { scope: "Design" },
+  arc: { scope: "Architettura" },
+} satisfies Record<FamilyId, { scope: string }>
 
 export const FAMILY_IDS: FamilyId[] = ["inf", "ges", "ind", "ele", "des", "arc"]
-
-/** Stable fake Telegram chat ids per group title. */
-export const GROUP_IDS: Map<string, string> = new Map(
-  FAMILY_IDS.flatMap((family, familyIndex) =>
-    FAMILIES[family].groups.map((title, index): [string, string] => [
-      title,
-      `-100${1734200000 + familyIndex * 977331 + index * 40517}`,
-    ])
-  )
-)
 
 const REPS = ["Consiglio di Corso di Studio", "Giunta di Scuola", "Consiglio degli Studenti", "Senato Accademico"]
 const ASSOCIATIONS = [
@@ -314,7 +258,7 @@ const NOTES = [
   "Prefers to be contacted on Telegram.",
   "Away on Erasmus from February to July.",
   "Interested in joining IT next semester.",
-  "Asked to step down from one group at the end of the year.",
+  "Asked to step down as admin at the end of the year.",
   "Helped run the freshers' open day.",
 ]
 
@@ -448,10 +392,6 @@ export function slug(text: string) {
     .toLowerCase()
 }
 
-export function m365Address(firstName: string, lastName: string) {
-  return `${slug(firstName)}.${slug(lastName)}@polinetwork.org`
-}
-
 export function addDays(date: string, days: number) {
   const next = new Date(`${date}T12:00:00Z`)
   next.setUTCDate(next.getUTCDate() + days)
@@ -476,10 +416,6 @@ function campusOf(value: string) {
   const campus = CAMPUSES.find((candidate) => candidate === value)
   if (!campus) throw new Error(`Unknown campus ${value}`)
   return campus
-}
-
-function group(title: string) {
-  return { chatId: GROUP_IDS.get(title) ?? "", title }
 }
 
 export function buildPeopleStore(): PeopleStore {
@@ -513,11 +449,7 @@ export function buildPeopleStore(): PeopleStore {
     return new Date(start + Math.floor(random() * (end - start))).toISOString().slice(0, 10)
   }
 
-  const used = new Set([
-    ...Object.values(KEYS).map((key) => `${key.first} ${key.last}`),
-    "Nicolò Barbieri",
-    "Aurora Fabbri",
-  ])
+  const used = new Set(Object.values(KEYS).map((key) => `${key.first} ${key.last}`))
   const people: StoredPerson[] = []
   for (let index = 0; index < 148; index++) {
     let first = pick(FIRST)
@@ -566,18 +498,13 @@ export function buildPeopleStore(): PeopleStore {
         otherAssociations: [],
         studentRepresentative: null,
       },
-      member: null,
       admin: null,
       teams: [],
-      census: [],
       consents: { privacy: null, photo: null },
       account: { status: "none" },
       notes: random() < 0.1 ? pick(NOTES) : null,
       activity: [],
-      feeState: null,
-      start: null,
       censusTelegram: null,
-      expected: false,
     })
   }
   const byId = new Map(people.map((person) => [person.id, person]))
@@ -601,26 +528,12 @@ export function buildPeopleStore(): PeopleStore {
   }
   person("P-0142").profile.personalEmail = "giulia.rossi.02@gmail.com"
 
-  // Admin, team and member data accumulate here before the records get their contract shape.
-  type Draft = {
-    admin?: AdminRole & { assoc: string[]; rep: string | null }
-    memberAdmitted?: string
-    teams: TeamMembership[]
-  }
+  // Admin and team data accumulate here before the records get their contract shape.
+  type Draft = { admin?: AdminRole & { assoc: string[]; rep: string | null }; teams: TeamMembership[] }
   const drafts = new Map<string, Draft>(people.map((p) => [p.id, { teams: [] }]))
   const draft = (p: StoredPerson) => drafts.get(p.id) ?? { teams: [] }
 
-  const familyGroups = (family: FamilyId) => FAMILIES[family].groups.filter((title) => title !== "Reti Logiche")
   const makeAdmin = (p: StoredPerson, status: "active" | "former") => {
-    const pool = familyGroups(p.family)
-    const groups = random() < 0.09 ? [] : sample(pool, 1 + Math.floor(random() * Math.min(3, pool.length)))
-    const requested =
-      random() < 0.12
-        ? sample(
-            FAMILIES[p.family].groups.filter((title) => !groups.includes(title)),
-            1
-          )
-        : []
     const rep = random() < 0.15 ? pick(REPS) : null
     const assoc = random() < 0.2 ? sample(ASSOCIATIONS, random() < 0.3 ? 2 : 1) : []
     const availableAsCapo = random() < 0.12
@@ -632,8 +545,6 @@ export function buildPeopleStore(): PeopleStore {
       since,
       endedOn,
       endReason,
-      groups: status === "former" ? [] : groups.map(group),
-      requested: status === "former" ? [] : requested.map((title) => ({ ...group(title), requestedOn: "2026-10-09" })),
       availableAsCapo,
       capoOfReference: null,
       capoScope: null,
@@ -688,9 +599,6 @@ export function buildPeopleStore(): PeopleStore {
   const generic = shuffle(people.filter((p) => !(p.id in KEYS)))
   generic.slice(0, 96).forEach((p) => makeAdmin(p, "active"))
   generic.slice(96, 103).forEach((p) => makeAdmin(p, "former"))
-  for (const p of [...generic.slice(0, 28), ...generic.slice(96, 99), ...generic.slice(103, 127)]) {
-    draft(p).memberAdmitted = randomDate("2019-10-01", "2026-09-30")
-  }
   const slots: TeamId[] = [
     "it",
     "it",
@@ -730,13 +638,12 @@ export function buildPeopleStore(): PeopleStore {
   }
 
   const link = (p: StoredPerson) => {
-    const isMember = draft(p).memberAdmitted !== undefined
     const account: Account = {
       status: "linked",
-      email: isMember ? m365Address(p.profile.firstName, p.profile.lastName) : (p.profile.personalEmail ?? ""),
-      via: isMember ? "Microsoft 365" : pick(["Telegram", "Google"]),
+      email: p.profile.personalEmail ?? "",
+      via: pick(["Telegram", "Google", "Microsoft 365"]),
       linkedOn: randomDate("2026-02-01", "2026-10-10"),
-      how: pick(["Invite accepted", "Matched on verified Telegram account", "Linked by Luca Ferri"]),
+      how: pick(["Invite accepted", "Linked by Luca Ferri"]),
     }
     p.account = account
   }
@@ -756,42 +663,27 @@ export function buildPeopleStore(): PeopleStore {
   ;[...generic.slice(10, 18), ...generic.slice(109, 113)].forEach((p) =>
     invite(p, p === generic[11] || p === generic[110])
   )
-  const review = [generic[30], generic[31], generic[113], generic[114], generic[132]]
-  review[0].profile.firstName = "Marco"
-  review[0].profile.lastName = "Bianchini"
-  review[0].profile.telegramUsername = "marcobianchi"
-  review[2].profile.personalEmail = review[1].profile.personalEmail
 
   // Key people.
   const keyAdmin = (
     id: string,
     since: string,
-    groups: string[],
     extra: Partial<AdminRole & { assoc: string[]; rep: string | null }> = {}
   ) => {
     const p = person(id)
     makeAdmin(p, "active")
     const admin = draft(p).admin
     if (!admin) return
-    Object.assign(
-      admin,
-      { since, groups: groups.map(group), requested: [], rep: null, assoc: [], availableAsCapo: false },
-      extra
-    )
+    Object.assign(admin, { since, rep: null, assoc: [], availableAsCapo: false }, extra)
   }
-  keyAdmin("P-0142", "2024-10-03", ["Fondamenti di Informatica", "Basi di Dati"], {
-    requested: [{ ...group("Reti Logiche"), requestedOn: "2026-10-09" }],
-    availableAsCapo: true,
-    rep: "Consiglio di Corso di Studio",
-    assoc: ["Skyward"],
-  })
-  keyAdmin("P-0098", "2022-09-20", ["Fondamenti di Informatica"], { assoc: ["JEMP"] })
-  keyAdmin("P-0034", "2023-03-01", ["Basi di Dati"])
-  keyAdmin("P-0115", "2025-09-25", ["Fondamenti di Informatica", "Basi di Dati"], { rep: "Consiglio degli Studenti" })
-  keyAdmin("P-0063", "2025-02-11", ["Ricerca Operativa", "Statistica"])
-  keyAdmin("P-0021", "2023-10-12", ["Segnali e Sistemi"])
-  keyAdmin("P-0088", "2024-03-05", ["Fisica Tecnica", "Termodinamica Applicata"])
-  keyAdmin("P-0076", "2026-03-02", ["Aerodinamica"])
+  keyAdmin("P-0142", "2024-10-03", { availableAsCapo: true, rep: "Consiglio di Corso di Studio", assoc: ["Skyward"] })
+  keyAdmin("P-0098", "2022-09-20", { assoc: ["JEMP"] })
+  keyAdmin("P-0034", "2023-03-01")
+  keyAdmin("P-0115", "2025-09-25", { rep: "Consiglio degli Studenti" })
+  keyAdmin("P-0063", "2025-02-11")
+  keyAdmin("P-0021", "2023-10-12")
+  keyAdmin("P-0088", "2024-03-05")
+  keyAdmin("P-0076", "2026-03-02")
   const chiara = person("P-0131")
   makeAdmin(chiara, "former")
   const chiaraAdmin = draft(chiara).admin
@@ -802,15 +694,6 @@ export function buildPeopleStore(): PeopleStore {
     endReason: "Graduated",
   })
 
-  const admitted: [string, string][] = [
-    ["P-0098", "2022-11-03"],
-    ["P-0034", "2023-03-20"],
-    ["P-0007", "2021-10-15"],
-    ["P-0021", "2023-11-02"],
-    ["P-0045", "2024-02-09"],
-    ["P-0052", "2024-10-21"],
-  ]
-  for (const [id, date] of admitted) draft(person(id)).memberAdmitted = date
   draft(person("P-0034")).teams.push(
     makeTeam(person("P-0034"), "it", "lead", "2023-02-10", {
       github: "saragalli",
@@ -824,7 +707,7 @@ export function buildPeopleStore(): PeopleStore {
     makeTeam(person("P-0115"), "it", "member", "2025-10-01", { github: "mconti", areas: ["Bot"] })
   )
   draft(person("P-0021")).teams.push(
-    makeTeam(person("P-0021"), "hr", "lead", "2024-01-15", { focus: ["Recruiting", "Census"] })
+    makeTeam(person("P-0021"), "hr", "lead", "2024-01-15", { focus: ["Recruiting", "Onboarding"] })
   )
   draft(person("P-0045")).teams.push(
     makeTeam(person("P-0045"), "design", "lead", "2024-03-01", {
@@ -841,8 +724,6 @@ export function buildPeopleStore(): PeopleStore {
   for (const id of ["P-0098", "P-0034", "P-0115", "P-0063", "P-0007", "P-0021", "P-0045", "P-0052"]) link(person(id))
   const davideAccount = person("P-0098").account
   if (davideAccount.status === "linked") davideAccount.how = "Invite accepted"
-  const matteoAccount = person("P-0115").account
-  if (matteoAccount.status === "linked") matteoAccount.how = "Matched on verified Telegram account"
   person("P-0142").account = {
     status: "invite",
     email: "giulia.rossi.02@gmail.com",
@@ -874,41 +755,7 @@ export function buildPeopleStore(): PeopleStore {
     }
   }
 
-  // Members: numbers in admission order, then statuses and fees.
-  const members = people
-    .filter((p) => draft(p).memberAdmitted !== undefined)
-    .sort((a, b) => ((draft(a).memberAdmitted ?? "") < (draft(b).memberAdmitted ?? "") ? -1 : 1))
-  let number = 287
-  for (const p of members) {
-    number += 1 + Math.floor(random() * 4)
-    p.member = {
-      number: pad(number, 4),
-      status: "active",
-      admittedOn: draft(p).memberAdmitted ?? SAMPLE_TODAY,
-      fee: null,
-      m365Email: m365Address(p.profile.firstName, p.profile.lastName),
-    }
-  }
-  const setStatus = (list: StoredPerson[], status: "former" | "expired" | "suspended") => {
-    for (const p of list) if (p.member) p.member.status = status
-  }
-  setStatus(generic.slice(0, 4), "former")
-  setStatus([...generic.slice(4, 7), ...generic.slice(103, 107)], "expired")
-  setStatus(generic.slice(107, 109), "suspended")
-  for (const p of members) {
-    const member = p.member
-    if (!member) continue
-    if (member.status === "active") {
-      const roll = random() * 100
-      member.fee = roll < 58 ? "paid" : roll < 72 ? "receipt" : roll < 96 ? "due" : "unpaid"
-    } else member.fee = member.status === "former" ? null : "unpaid"
-  }
-  for (const id of ["P-0098", "P-0034", "P-0007"]) {
-    const member = person(id).member
-    if (member) member.fee = "paid" satisfies FeeStatus
-  }
-
-  // Admin and team roles take their contract shape.
+  // Admin and team roles take their contract shape, then consents from the first day of any role.
   for (const p of people) {
     const d = draft(p)
     if (d.admin) {
@@ -918,510 +765,29 @@ export function buildPeopleStore(): PeopleStore {
       p.profile.studentRepresentative = rep
     }
     p.teams = d.teams
-  }
-
-  // Census and consents.
-  const hasRole = (p: StoredPerson) =>
-    (p.member !== null && p.member.status !== "former") ||
-    p.admin?.status === "active" ||
-    p.teams.some((team) => !team.endedOn)
-  for (const p of people) {
-    const starts = [p.admin?.since, p.member?.admittedOn, ...p.teams.map((team) => team.since)]
+    const start = [p.admin?.since, ...p.teams.map((team) => team.since)]
       .filter((date): date is string => !!date)
-      .sort()
-    p.start = starts[0] ?? null
-    const leftInCensus = p.admin?.status === "former" && (p.admin.endedOn ?? "") >= "2026-09-15"
-    p.expected = hasRole(p) || leftInCensus
-    const census: CensusEntry[] = []
-    if (p.start && p.start < "2025-09-15" && random() < 0.9) {
-      census.push({
-        year: "2025/26",
-        answer: "continues",
-        answeredOn: randomDate("2025-09-16", "2025-10-25"),
-        source: "forms",
-        declaredMember: p.member !== null,
-        reminders: 0,
-      })
-    }
-    if (leftInCensus) {
-      census.push({
-        year: "2026/27",
-        answer: "leaving",
-        answeredOn: addDays(p.admin?.endedOn ?? SAMPLE_TODAY, -3),
-        source: "forms",
-        declaredMember: p.member !== null,
-        reminders: 0,
-      })
-    } else if (p.expected && random() < 0.71) {
-      census.push({
-        year: "2026/27",
-        answer: "continues",
-        answeredOn: randomDate("2026-09-16", "2026-10-12"),
-        source: p.account.status === "linked" && random() < 0.5 ? "dashboard" : "forms",
-        declaredMember: p.member !== null && p.member.status !== "former",
-        reminders: 0,
-      })
-    } else if (p.expected) {
-      census.push({
-        year: "2026/27",
-        answer: null,
-        answeredOn: null,
-        source: null,
-        declaredMember: null,
-        reminders: random() < 0.6 ? 1 + Math.floor(random() * 2) : 0,
-      })
-    }
-    p.census = census
-    const consentOn = census.find((entry) => entry.answeredOn)?.answeredOn ?? p.start
-    if (consentOn) {
+      .sort()[0]
+    if (start) {
       const roll = random()
       p.consents = {
-        privacy: { version: consentOn >= "2025-09-01" ? "3" : "2", acceptedOn: consentOn },
-        photo:
-          roll < 0.8 ? { status: "granted", on: consentOn } : roll < 0.95 ? { status: "denied", on: consentOn } : null,
+        privacy: { version: start >= "2025-09-01" ? "3" : "2", acceptedOn: start },
+        photo: roll < 0.8 ? { status: "granted", on: start } : roll < 0.95 ? { status: "denied", on: start } : null,
       }
     }
   }
-  const setAnswer = (p: StoredPerson, entry: CensusEntry | null) => {
-    p.census = p.census.filter((existing) => existing.year !== "2026/27")
-    if (entry) p.census.push(entry)
-  }
-  const leaver = generic[135]
-  leaver.census = [
-    {
-      year: "2025/26",
-      answer: "leaving",
-      answeredOn: "2025-10-02",
-      source: "forms",
-      declaredMember: false,
-      reminders: 0,
-    },
-  ]
-  for (const team of leaver.teams) {
-    team.endedOn = "2025-10-20"
-    team.endReason = "Answered No in the 2025/26 census"
-  }
-  for (const p of [generic[40], generic[41], generic[42]]) {
-    if (!p.member)
-      setAnswer(p, {
-        year: "2026/27",
-        answer: "continues",
-        answeredOn: randomDate("2026-09-16", "2026-10-12"),
-        source: "forms",
-        declaredMember: true,
-        reminders: 0,
-      })
-  }
+
   const giulia = person("P-0142")
-  giulia.census = [
-    {
-      year: "2025/26",
-      answer: "continues",
-      answeredOn: "2025-09-30",
-      source: "forms",
-      declaredMember: false,
-      reminders: 0,
-    },
-    {
-      year: "2026/27",
-      answer: "continues",
-      answeredOn: "2026-09-21",
-      source: "forms",
-      declaredMember: true,
-      reminders: 0,
-    },
-  ]
   giulia.consents = {
     privacy: { version: "3", acceptedOn: "2026-09-21" },
     photo: { status: "granted", on: "2026-09-21" },
   }
   giulia.notes = "Strong on the bot codebase; Sara suggests her for IT co-lead next year."
-  for (const id of ["P-0115", "P-0063"])
-    setAnswer(person(id), {
-      year: "2026/27",
-      answer: null,
-      answeredOn: null,
-      source: null,
-      declaredMember: null,
-      reminders: 1,
-    })
-  setAnswer(person("P-0098"), {
-    year: "2026/27",
-    answer: "continues",
-    answeredOn: "2026-09-17",
-    source: "dashboard",
-    declaredMember: true,
-    reminders: 0,
-  })
-  setAnswer(person("P-0034"), {
-    year: "2026/27",
-    answer: "continues",
-    answeredOn: "2026-09-18",
-    source: "dashboard",
-    declaredMember: true,
-    reminders: 0,
-  })
-  setAnswer(person("P-0088"), {
-    year: "2026/27",
-    answer: "continues",
-    answeredOn: "2026-09-25",
-    source: "forms",
-    declaredMember: false,
-    reminders: 0,
-  })
-  person("P-0088").censusTelegram = "marco_bianchi"
-  for (const p of people) p.census.sort((a, b) => (a.year < b.year ? 1 : -1))
-
   giulia.activity = [
     { actor: "Luca Ferri", text: "sent an invite to giulia.rossi.02@gmail.com", at: "2026-10-06T18:42:00+02:00" },
-    { actor: "Giulia Rossi", text: "asked to join Reti Logiche", at: "2026-10-09T21:30:00+02:00" },
-    {
-      actor: "Census import",
-      text: "added the 2026/27 answer “Continues” from Modulo Volontari 2026/27",
-      at: "2026-10-01T10:05:00+02:00",
-    },
-    { actor: "Telegram bot", text: "detected Giulia as admin of Basi di Dati", at: "2026-09-24T09:12:00+02:00" },
     { actor: "Sara Galli", text: "added Giulia to IT as Member", at: "2025-03-04T16:20:00+01:00" },
   ]
+  person("P-0088").censusTelegram = "marco_bianchi"
 
-  // Linking reviews.
-  const name = (p: StoredPerson) => `${p.profile.firstName} ${p.profile.lastName}`
-  const ref = (p: StoredPerson) => ({ id: p.id, name: name(p) })
-  person("P-0088").account = {
-    status: "review",
-    reviewId: "r1",
-    issue: "Telegram account already linked to another record",
-  }
-  const reviews: Review[] = [
-    {
-      id: "r1",
-      kind: "telegram-conflict",
-      since: "2026-10-12",
-      account: {
-        name: "Marco Bianchi",
-        email: "marco.bianchi.pc@gmail.com",
-        telegram: "@marcobianchi",
-        via: "Telegram",
-      },
-      record: ref(person("P-0088")),
-      other: ref(review[0]),
-      message: null,
-    },
-    {
-      id: "r2",
-      kind: "ask-to-be-added",
-      since: "2026-10-13",
-      account: {
-        name: "Nicolò Barbieri",
-        email: "nicolo.barbieri@mail.polimi.it",
-        telegram: "@nicobarbieri",
-        via: "Google",
-      },
-      record: null,
-      other: null,
-      message: "I administer the Analisi Matematica 2 group since September.",
-    },
-    {
-      id: "r3",
-      kind: "two-records",
-      since: "2026-10-10",
-      account: {
-        name: name(review[1]),
-        email: review[1].profile.personalEmail ?? "",
-        telegram: review[1].profile.telegramUsername ? `@${review[1].profile.telegramUsername}` : null,
-        via: "Google",
-      },
-      record: ref(review[1]),
-      other: ref(review[2]),
-      message: null,
-    },
-    {
-      id: "r4",
-      kind: "not-me",
-      since: "2026-10-11",
-      account: {
-        name: `${review[3].profile.firstName} ${LAST[(LAST.indexOf(review[3].profile.lastName) + 7) % LAST.length]}`,
-        email: `${slug(review[3].profile.firstName)}.x@outlook.it`,
-        telegram: null,
-        via: "Google",
-      },
-      record: ref(review[3]),
-      other: null,
-      message: null,
-    },
-    {
-      id: "r5",
-      kind: "ask-to-be-added",
-      since: "2026-10-09",
-      account: { name: "Aurora Fabbri", email: "aurora.fabbri@gmail.com", telegram: "@aurorafab", via: "Telegram" },
-      record: null,
-      other: null,
-      message: "I joined Design & Social at the open day.",
-    },
-    {
-      id: "r6",
-      kind: "name-only",
-      since: "2026-10-08",
-      account: {
-        name: name(review[4]),
-        email: `${slug(review[4].profile.firstName)}${slug(review[4].profile.lastName)}@icloud.com`,
-        telegram: `@${slug(review[4].profile.firstName)}_real`,
-        via: "Telegram",
-      },
-      record: ref(review[4]),
-      other: null,
-      message: null,
-    },
-  ]
-  const reviewIssue = new Map([
-    ["r1", "Telegram account already linked to another record"],
-    ["r3", "Two records match one sign-in"],
-    ["r4", "Said “This isn't me” at first sign-in"],
-    ["r6", "Matched by name only"],
-  ])
-  for (const item of reviews) {
-    const target = item.record && byId.get(item.record.id)
-    const issue = reviewIssue.get(item.id)
-    if (target && issue) target.account = { status: "review", reviewId: item.id, issue }
-  }
-  review[0].account = { status: "review", reviewId: "r1", issue: "Its Telegram account is claimed by another sign-in" }
-
-  const informatics = people.filter((p) => p.family === "inf" && p.admin?.status === "active" && !(p.id in KEYS))
-  const joinRequests: JoinRequest[] = [
-    { id: "j1", personId: "P-0142", group: "Reti Logiche", requestedOn: "2026-10-09" },
-    { id: "j2", personId: (informatics[0] ?? giulia).id, group: "Reti Logiche", requestedOn: "2026-10-11" },
-    { id: "j3", personId: (informatics[1] ?? giulia).id, group: "Basi di Dati", requestedOn: "2026-10-12" },
-  ]
-
-  return { people, byId, reviews, joinRequests, receipts: seedFees(people, byId) }
-}
-
-/** The fee year People › Receipts opens on, and the one My area asks to pay. */
-export const FEE_YEAR = "2026/27"
-export const FEE_AMOUNT_CENTS = 1000
-export const FEE_DUE_ON = "2026-10-31"
-/** Automatic reminders go out this many days before `FEE_DUE_ON`. */
-export const REMINDER_DAYS = [14, 3] as const
-/** The association's officers who sign receipts: Marta Colombo and Davide Russo in the sample data. */
-export const OFFICERS = { president: "P-0007", vicePresident: "P-0098" } as const
-export const FEE_BENEFICIARY = "PoliNetwork"
-/** A placeholder: the real IBAN is configuration on the backend. */
-export const FEE_IBAN = "IT00 X000 0000 0000 0000 0000 000"
-
-export function receiptId(number: string) {
-  return `rcp-${number.replace("/", "-")}`
-}
-
-export function emptyFeeState(): FeeState {
-  return { upload: null, rejection: null, rejections: [], payment: null, lastReminder: null, mailFails: false }
-}
-
-/**
- * Fee years and receipts on top of the members, from their own seed so the rest of the sample data is unchanged:
- * a sent 2025/26 receipt for members admitted before it, and 2026/27 receipts for this year's paid fees, the newest
- * still to sign. Alessia Fontana (`P-0045`) has a receipt to review, Luca Ferri (`P-0021`) a rejected one, and the
- * President's own receipt waits for the Vice-president.
- */
-function seedFees(people: StoredPerson[], byId: Map<string, StoredPerson>): Receipt[] {
-  const random = mulberry32(2627)
-  const between = (from: string, to: string) => {
-    const days = Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000)
-    return addDays(from, Math.floor(random() * (days + 1)))
-  }
-  const name = (person: StoredPerson) => `${person.profile.firstName} ${person.profile.lastName}`
-  const at = (date: string, hour: number) => `${date}T${pad(hour, 2)}:${pad(Math.floor(random() * 60), 2)}:00+02:00`
-  const members = people.filter((person) => person.member)
-  for (const person of members) if (person.member?.status !== "former") person.feeState = emptyFeeState()
-
-  const force = (id: string, fee: FeeStatus) => {
-    const member = byId.get(id)?.member
-    if (member && member.status === "active") member.fee = fee
-  }
-  force("P-0045", "receipt")
-  force("P-0021", "due")
-  force("P-0052", "due")
-  force(OFFICERS.president, "paid")
-  force(OFFICERS.vicePresident, "paid")
-
-  const receipts: Receipt[] = []
-  const issue = (
-    person: StoredPerson,
-    number: string,
-    year: string,
-    paidOn: string,
-    method: Receipt["method"],
-    status: Receipt["status"]
-  ): Receipt => {
-    const member = person.member
-    if (!member) throw new Error(`${person.id} isn't a member`)
-    const issuedOn = addDays(paidOn, 1)
-    const signed = status !== "toSign"
-    const signer = person.id === OFFICERS.president ? "vicePresident" : "president"
-    const officer = byId.get(signer === "president" ? OFFICERS.president : OFFICERS.vicePresident)
-    const signedOn = signed ? addDays(issuedOn, 1) : null
-    const receipt: Receipt = {
-      id: receiptId(number),
-      number,
-      year,
-      person: { id: person.id, name: name(person) },
-      memberNumber: member.number,
-      amountCents: FEE_AMOUNT_CENTS,
-      issuedOn,
-      paidOn,
-      method,
-      transferDate: method === "transfer" ? paidOn : null,
-      status,
-      signer,
-      signedBy: signed && officer ? name(officer) : null,
-      signedOn,
-      sentAt: status === "sent" && signedOn ? at(signedOn, 22) : null,
-      sentTo: status === "sent" || status === "failed" ? member.m365Email : null,
-      failure: status === "failed" ? "The mail server rejected the address: mailbox unavailable." : null,
-      voided: null,
-    }
-    receipts.push(receipt)
-    person.activity.push({ actor: "System", text: `issued receipt ${number} for the ${year} fee`, at: at(issuedOn, 9) })
-    if (receipt.signedBy && signedOn) {
-      person.activity.push({
-        actor: receipt.signedBy,
-        text: `uploaded receipt ${number}, signed`,
-        at: at(signedOn, 21),
-      })
-    }
-    if (receipt.sentAt && receipt.sentTo) {
-      person.activity.push({
-        actor: "System",
-        text: `emailed receipt ${number} to ${receipt.sentTo}`,
-        at: receipt.sentAt,
-      })
-    }
-    if (status === "failed" && signedOn) {
-      person.activity.push({ actor: "System", text: `couldn't email receipt ${number}`, at: at(signedOn, 22) })
-    }
-    return receipt
-  }
-
-  // 2025/26: everyone admitted before that fee year paid it and got a sent receipt.
-  const lastYear = members
-    .filter((person) => (person.member?.admittedOn ?? "9999") < "2025-10-01")
-    .map((person) => ({ person, paidOn: between("2025-09-20", "2025-10-31") }))
-    .sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
-  lastYear.forEach(({ person, paidOn }, index) => {
-    issue(person, `2025/${pad(index + 1, 3)}`, "2025/26", paidOn, random() < 0.9 ? "transfer" : "cash", "sent")
-  })
-
-  // 2026/27: paid fees in payment order; the newest seven wait for a signature, two wait to be emailed.
-  const paid = members
-    .filter((person) => person.member?.fee === "paid" && person.feeState)
-    .map((person) => ({ person, paidOn: between("2026-09-20", "2026-10-12") }))
-    .sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
-  // The President pays late enough that their receipt still waits, for the Vice-president.
-  const president = paid.find((entry) => entry.person.id === OFFICERS.president)
-  if (president) president.paidOn = "2026-10-11"
-  paid.sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1))
-  const voidAt = 4
-  let sequence = 0
-  paid.forEach(({ person, paidOn }, index) => {
-    const fromEnd = paid.length - index
-    const method = random() < 0.9 ? "transfer" : "cash"
-    if (index === voidAt) {
-      // Issued with the wrong amount, voided, and issued again.
-      sequence++
-      const wrong = issue(person, `2026/${pad(sequence, 3)}`, FEE_YEAR, paidOn, method, "sent")
-      wrong.voided = {
-        reason: "Wrong amount on the receipt; issued again.",
-        by: "Davide Russo",
-        on: addDays(paidOn, 3),
-      }
-      wrong.status = "voided"
-      person.activity.push({
-        actor: "Davide Russo",
-        text: `voided receipt ${wrong.number}: “Wrong amount on the receipt; issued again.”`,
-        at: at(addDays(paidOn, 3), 10),
-      })
-    }
-    sequence++
-    const status =
-      person.id === OFFICERS.president || fromEnd <= 6
-        ? "toSign"
-        : fromEnd <= 8
-          ? "signed"
-          : index === Math.floor(paid.length / 2)
-            ? "failed"
-            : "sent"
-    const receipt = issue(person, `2026/${pad(sequence, 3)}`, FEE_YEAR, paidOn, method, status)
-    if (status === "failed" && person.feeState) person.feeState.mailFails = true
-    if (person.feeState) {
-      person.feeState.payment = {
-        paidOn,
-        method,
-        amountCents: FEE_AMOUNT_CENTS,
-        transferDate: receipt.transferDate,
-      }
-      person.activity.push({
-        actor: "Davide Russo",
-        text:
-          method === "transfer"
-            ? `approved the transfer receipt for ${FEE_YEAR}`
-            : `marked the ${FEE_YEAR} fee as paid (cash)`,
-        at: at(paidOn, 18),
-      })
-    }
-  })
-
-  // Receipts waiting for review: the member's upload.
-  for (const person of members) {
-    const state = person.feeState
-    if (!state || person.member?.fee !== "receipt") continue
-    const transferDate = between("2026-10-05", "2026-10-12")
-    state.upload = {
-      fileName: `bonifico_${slug(person.profile.lastName)}.pdf`,
-      size: 120_000 + Math.floor(random() * 120_000),
-      uploadedAt: at(addDays(transferDate, 1), 21),
-      transferDate,
-      amountCents: FEE_AMOUNT_CENTS,
-    }
-    person.activity.push({
-      actor: name(person),
-      text: `uploaded a transfer receipt for ${FEE_YEAR}`,
-      at: state.upload.uploadedAt,
-    })
-  }
-
-  // Reminders: the automatic one 14 days before the deadline has not gone out yet; some were sent by hand.
-  for (const person of members) {
-    const state = person.feeState
-    if (!state || (person.member?.fee !== "due" && person.member?.fee !== "unpaid")) continue
-    if (random() < 0.4) {
-      state.lastReminder = at(between("2026-10-01", "2026-10-13"), 10)
-      person.activity.push({
-        actor: "Davide Russo",
-        text: `sent a reminder for the ${FEE_YEAR} fee`,
-        at: state.lastReminder,
-      })
-    }
-  }
-
-  const rejected = byId.get("P-0021")
-  if (rejected?.feeState) {
-    const rejection = {
-      reason:
-        "The file is a screenshot of the payment page, not the transfer receipt. Upload the receipt your bank issued.",
-      by: "Davide Russo",
-      at: "2026-10-13T18:40:00+02:00",
-    }
-    rejected.feeState.rejection = rejection
-    rejected.feeState.rejections = [rejection]
-    rejected.activity.push({
-      actor: name(rejected),
-      text: `uploaded a transfer receipt for ${FEE_YEAR}`,
-      at: "2026-10-12T22:05:00+02:00",
-    })
-    rejected.activity.push({
-      actor: "Davide Russo",
-      text: `rejected the transfer receipt for ${FEE_YEAR}: “${rejection.reason}”`,
-      at: rejection.at,
-    })
-  }
-  return receipts
+  return { people, byId }
 }

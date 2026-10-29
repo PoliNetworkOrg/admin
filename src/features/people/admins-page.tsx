@@ -29,24 +29,14 @@ import {
   EndAdminDialog,
   EndCapoDialog,
 } from "./admin-dialogs"
-import {
-  CENSUS_ANSWER,
-  censusEntry,
-  currentYear,
-  formatDay,
-  isMember,
-  NO_ANSWER,
-  personName,
-  telegramUrl,
-  yearOf,
-} from "./people-format"
-import { ActionMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
+import { formatDay, personName, telegramUrl, yearOf } from "./people-format"
+import { ActionMenu, PersonCell, TruncatedChip } from "./people-ui"
 import { type AdminRole, CAMPUSES, type Campus, type PersonRow, YEARS } from "./people.contract"
 
 type Admin = PersonRow & { admin: AdminRole }
 type Scope = "active" | "former"
 type Year = (typeof YEARS)[number]
-type Quick = "noGroups" | "availableAsCapo" | "declaredMember" | "noCensus"
+type Quick = "availableAsCapo"
 type AdminDialog = { kind: "end" | "capoRef" | "capoScope" | "endCapo"; admin: Admin }
 
 function isAdmin(person: PersonRow): person is Admin {
@@ -54,41 +44,19 @@ function isAdmin(person: PersonRow): person is Admin {
 }
 
 const QUICK = {
-  noGroups: { label: "No groups", test: (person: Admin) => person.admin.groups.length === 0 },
   availableAsCapo: { label: "Available as Capo Admin", test: (person: Admin) => person.admin.availableAsCapo },
-  declaredMember: {
-    label: "Declared member but not registered",
-    test: (person: Admin) => censusEntry(person, currentYear())?.declaredMember === true && !isMember(person),
-  },
-  noCensus: {
-    label: "No census answer",
-    test: (person: Admin) => {
-      const entry = censusEntry(person, currentYear())
-      return entry !== undefined && entry.answer === null
-    },
-  },
 } satisfies Record<Quick, { label: string; test: (person: Admin) => boolean }>
 
-const QUICK_IDS = ["noGroups", "availableAsCapo", "declaredMember", "noCensus"] satisfies Quick[]
+const QUICK_IDS = ["availableAsCapo"] satisfies Quick[]
 
 function matchesQuery(person: Admin, query: string) {
   if (!query) return true
-  return [
-    personName(person),
-    person.profile.course,
-    person.profile.telegramUsername ?? "",
-    ...person.admin.groups.map((group) => group.title),
-  ].some((value) => value.toLocaleLowerCase().includes(query))
+  return [personName(person), person.profile.course, person.profile.telegramUsername ?? ""].some((value) =>
+    value.toLocaleLowerCase().includes(query)
+  )
 }
 
-function CensusCell({ person }: { person: Admin }) {
-  const entry = censusEntry(person, currentYear())
-  if (!entry) return <Unset />
-  return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
-}
-
-/** The table's columns; the census and fee columns name the current academic year. */
-function tableColumns(year: string): DataTableColumn<Admin>[] {
+function tableColumns(): DataTableColumn<Admin>[] {
   return [
     {
       id: "name",
@@ -104,16 +72,10 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
             secondary={person.profile.course}
             muted={person.admin.status === "former"}
           />
-          {/* Mobile cards: groups and census on one labelled line, then the Capo Admin scope. */}
+          {/* Mobile cards: the admin role on one line, then the Capo Admin scope. */}
           <span className="mt-2 hidden flex-col items-start gap-1.5 pl-11 text-xs text-(--pn-fg-muted) max-shell:flex">
-            <span className="flex flex-wrap items-center gap-1.5">
-              {person.admin.status !== "active"
-                ? "Former admin"
-                : person.admin.groups.length
-                  ? pluralize(person.admin.groups.length, "group")
-                  : "No groups"}
-              <span aria-hidden>·</span>
-              Census <CensusCell person={person} />
+            <span>
+              {person.admin.status !== "active" ? "Former admin" : `Admin since ${formatDay(person.admin.since)}`}
             </span>
             {person.admin.capoScope ? <Chip>Capo Admin · {person.admin.capoScope}</Chip> : null}
           </span>
@@ -143,42 +105,11 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
       width: 128,
       priority: 5,
       mobile: "hidden",
-      cell: (person) => <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>,
-    },
-    {
-      id: "groups",
-      label: "Groups",
-      width: 232,
-      mobile: "hidden",
       cell: (person) =>
         person.admin.status === "former" ? (
-          <span className="text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
-        ) : person.admin.groups.length ? (
-          <ChipOverflow
-            items={person.admin.groups}
-            itemLabel={(group) => group.title}
-            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-          />
+          <span className="whitespace-nowrap text-(--pn-fg-muted)">Ended {formatDay(person.admin.endedOn ?? "")}</span>
         ) : (
-          <span className="text-(--pn-fg-muted)">No groups</span>
-        ),
-    },
-    {
-      id: "requested",
-      label: "Requested",
-      width: 160,
-      priority: 6,
-      mobile: "hidden",
-      cell: (person) =>
-        person.admin.requested.length ? (
-          <ChipOverflow
-            items={person.admin.requested}
-            max={1}
-            itemLabel={(group) => group.title}
-            renderItem={(group) => <TruncatedChip key={group.chatId} label={group.title} />}
-          />
-        ) : (
-          <Unset />
+          <span className="whitespace-nowrap">{formatDay(person.admin.since)}</span>
         ),
     },
     {
@@ -235,31 +166,15 @@ function tableColumns(year: string): DataTableColumn<Admin>[] {
           <Unset />
         ),
     },
-    {
-      id: "member",
-      label: "Member",
-      width: 88,
-      priority: 3,
-      mobile: "hidden",
-      cell: (person) => (isMember(person) ? "Yes" : <span className="text-(--pn-fg-muted)">No</span>),
-    },
-    {
-      id: "census",
-      label: `Census ${year}`,
-      width: 152,
-      mobile: "hidden",
-      cell: (person) => <CensusCell person={person} />,
-    },
   ]
 }
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** People › Admins: admins of the Telegram course groups, their groups, Capo Admin and census answer. */
+/** People › Admins: admins of the Telegram course groups and their Capo Admin. */
 export function AdminsPage({ people }: { people: PersonRow[] }) {
   const canWrite = useCan("people:write")
   const canAppoint = useCan("people:appoint")
-  const censusYear = currentYear()
   const admins = people.filter(isAdmin)
   const active = admins.filter((person) => person.admin.status === "active")
 
@@ -324,9 +239,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
     setDialogOpen(true)
   }
 
-  const target: AdminTarget | null = dialog
-    ? { personId: dialog.admin.id, name: personName(dialog.admin), groups: dialog.admin.admin.groups.length }
-    : null
+  const target: AdminTarget | null = dialog ? { personId: dialog.admin.id, name: personName(dialog.admin) } : null
 
   return (
     <>
@@ -337,7 +250,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
             search={{
               value: query,
               onChange: resetPage(setQuery),
-              placeholder: "Search by name, course or group…",
+              placeholder: "Search by name, course or username…",
             }}
             filters={
               <>
@@ -364,18 +277,15 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
                   onChange={resetPage(setYear)}
                   options={YEARS.map((value) => ({ value, label: value }))}
                 />
-                {/* Quick filters scroll sideways on phones instead of stacking four rows. */}
-                <div className="flex flex-wrap gap-2 max-shell:-mx-4 max-shell:w-[calc(100%+2rem)] max-shell:flex-nowrap max-shell:overflow-x-auto max-shell:px-4 max-shell:[scrollbar-width:none]">
-                  {QUICK_IDS.map((id) => (
-                    <ToggleFilter
-                      key={id}
-                      label={QUICK[id].label}
-                      count={inScope.filter(QUICK[id].test).length}
-                      pressed={quick.has(id)}
-                      onPressedChange={(pressed) => toggleQuick(id, pressed)}
-                    />
-                  ))}
-                </div>
+                {QUICK_IDS.map((id) => (
+                  <ToggleFilter
+                    key={id}
+                    label={QUICK[id].label}
+                    count={inScope.filter(QUICK[id].test).length}
+                    pressed={quick.has(id)}
+                    onPressedChange={(pressed) => toggleQuick(id, pressed)}
+                  />
+                ))}
               </>
             }
             count={
@@ -394,7 +304,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
       <PageContent>
         <DataTable
           label="Admins"
-          columns={tableColumns(censusYear)}
+          columns={tableColumns()}
           rows={rows}
           getRowId={(person) => person.id}
           rowLabel={personName}
@@ -493,7 +403,7 @@ export function AdminsPage({ people }: { people: PersonRow[] }) {
               <EmptyState
                 icon={ShieldUser}
                 title="No admins yet"
-                text="Admins appear here when you add a person as admin or the bot sees them in a course group."
+                text="Admins appear here when you add a person as admin."
               />
             )
           }

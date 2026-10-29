@@ -12,7 +12,6 @@ import {
   Spinner,
 } from "@/components/primitives"
 import { Textarea } from "@/components/ui/textarea"
-import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { setCapoScope } from "./people-appoint.functions"
@@ -25,9 +24,9 @@ import { getPeople } from "./people.functions"
 const END_REASONS = ["Graduated", "No longer has time", "Left the association", "Removed by HR", "Other"] as const
 type EndReason = (typeof END_REASONS)[number]
 
-export type AdminTarget = { personId: string; name: string; groups: number }
+export type AdminTarget = { personId: string; name: string }
 
-/** Ends an admin role with a reason; the bot removes their rights in every group they administer. */
+/** Ends an admin role with a reason; the bot removes their admin rights. */
 export function EndAdminDialog({
   open,
   onOpenChange,
@@ -64,7 +63,7 @@ export function EndAdminDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="End admin role?"
-      description={`${target.name} stops being an admin of ${pluralize(target.groups, "group")}. The bot removes their admin rights there; the record keeps the history.`}
+      description={`${target.name} stops being an admin. The bot removes their admin rights; the record keeps the history.`}
       noun="change"
       dirty={reason !== null || details.trim() !== ""}
       submitLabel="End admin role"

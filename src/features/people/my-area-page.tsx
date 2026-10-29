@@ -1,159 +1,48 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import {
-  Camera,
-  ChevronRight,
-  CircleCheck,
-  Crown,
-  FileText,
-  IdCard,
-  Inbox,
-  Mail,
-  Pencil,
-  Send,
-  UserMinus,
-  UserPlus,
-  UserRound,
-  Users,
-  UsersRound,
-} from "lucide-react"
+import { Camera, ChevronRight, Crown, FileText, Send, UserRound, Users, UsersRound } from "lucide-react"
 import { useState } from "react"
 
 import {
   buttonMotion,
   Chip,
-  ConfirmDialog,
   DataTable,
   type DataTableColumn,
   EmptyState,
-  FormField,
   IconButton,
-  InlineAlert,
   type KeyValueItem,
   KeyValueList,
   PlatformGlyph,
   SectionCard,
   SectionHeading,
-  SelectField,
   StatusBadge,
   Unset,
-  useOpenGeneration,
 } from "@/components/primitives"
-import { appToast, PageBar, PageContent } from "@/components/shell"
+import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { pluralize } from "@/lib/format"
-import { cn } from "@/lib/utils"
 
-import { AskToBeAddedDialog, CorrectionDialog, LeavingDialog } from "./my-area-dialogs"
 import { MyFeeCard } from "./my-fee-card"
 import {
   activeTeams,
-  CENSUS_ANSWER,
-  CENSUS_SOURCE,
-  FEE_STATUS,
   formatDay,
   isActiveAdmin,
-  MEMBER_STATUS,
-  nextYear,
   personName,
   PHOTO_CONSENT,
   teamName,
   telegramUrl,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
-import {
-  acceptMyInvite,
-  answerMyCensus,
-  confirmMyMatch,
-  rejectMyMatch,
-  revokePhotoConsent,
-} from "./people-self.functions"
-import { ChoiceChips, MonoChip, PersonAvatar, PersonCell, Row, RowIcon, Rows, StateBadge } from "./people-ui"
-import { CAMPUSES, type Campus, COURSES, type MyArea, type TeamId, YEARS } from "./people.contract"
+import { acceptMyInvite } from "./people-self.functions"
+import { PersonAvatar, PersonCell, Row, RowIcon, Rows, StateBadge } from "./people-ui"
+import type { MyArea } from "./people.contract"
 
 type Linked = Extract<MyArea, { state: "linked" }>
-type Match = Extract<MyArea, { state: "match" }>
-type Year = (typeof YEARS)[number]
 
-/** Account › My area: what the signed-in person's record says, and the yearly census. */
+/** Account › My area: what the signed-in person's record says. */
 export function MyAreaPage({ area, invite }: { area: MyArea; invite: string | null }) {
   if (invite && area.state !== "linked") return <InviteView token={invite} />
-  if (area.state === "match") return <MatchView area={area} />
-  if (area.state === "none") return <NoRecordView sentOn={area.request?.sentOn ?? null} />
+  if (area.state === "none") return <NoRecordView />
   return <LinkedView area={area} />
-}
-
-function MatchView({ area }: { area: Match }) {
-  const confirm = useServerFn(confirmMyMatch)
-  const reject = useServerFn(rejectMyMatch)
-  const refresh = useRefreshAfter()
-  const [pending, setPending] = useState<"yes" | "no" | null>(null)
-  const { candidate } = area
-
-  async function decide(yes: boolean) {
-    setPending(yes ? "yes" : "no")
-    try {
-      await (yes ? confirm : reject)()
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, "That didn't work. Try again."))
-      setPending(null)
-      return
-    }
-    await refresh(yes ? "Account linked." : "HR will check your sign-in.")
-    setPending(null)
-  }
-
-  return (
-    <>
-      <PageBar title="Welcome" width="settings" />
-      <PageContent width="settings">
-        <SectionCard
-          title="Is this you?"
-          footer={
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                className={buttonMotion}
-                disabled={pending !== null}
-                onClick={() => decide(false)}
-              >
-                This isn't me
-              </Button>
-              <Button className={buttonMotion} disabled={pending !== null} onClick={() => decide(true)}>
-                Yes, link my account
-              </Button>
-            </div>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            <p className="text-[14px] text-(--pn-fg-muted)">
-              We found a record that matches your sign-in. Linking it shows your roles here and lets you answer the
-              census.
-            </p>
-            <div className="flex items-start gap-3 rounded-(--pn-r-4) border border-(--pn-line) p-3">
-              <PersonAvatar name={candidate.name} size={40} />
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-[15px] font-medium">{candidate.name}</span>
-                <span className="text-[13px] text-(--pn-fg-muted)">
-                  <span className="font-mono">{candidate.id}</span> · {candidate.course} · {candidate.year} ·{" "}
-                  {candidate.campus}
-                </span>
-                {candidate.roles.length ? (
-                  <span className="mt-1.5 flex flex-wrap gap-1.5">
-                    {candidate.roles.map((role) => (
-                      <Chip key={role}>{role}</Chip>
-                    ))}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-            <InlineAlert tone="info">{area.reason}</InlineAlert>
-          </div>
-        </SectionCard>
-      </PageContent>
-    </>
-  )
 }
 
 /** Opened from the invite link HR emails. */
@@ -196,8 +85,8 @@ function InviteView({ token }: { token: string }) {
           }
         >
           <p className="text-[14px] text-(--pn-fg-muted)">
-            HR invited you to link this sign-in to your PoliNetwork record, so you can see your roles and answer the
-            census. Use the account with the email address the invite was sent to.
+            HR invited you to link this sign-in to your PoliNetwork record, so you can see your roles. Use the account
+            with the email address the invite was sent to.
           </p>
         </SectionCard>
       </PageContent>
@@ -205,214 +94,26 @@ function InviteView({ token }: { token: string }) {
   )
 }
 
-function NoRecordView({ sentOn }: { sentOn: string | null }) {
-  const [askOpen, setAskOpen] = useState(false)
-  const askKey = useOpenGeneration(askOpen)
+function NoRecordView() {
   return (
     <>
       <PageBar width="settings" />
       <PageContent width="settings">
-        {sentOn ? (
-          <EmptyState
-            icon={Inbox}
-            title="Request sent"
-            text={`HR will add you or link you to your record. You asked on ${formatDay(sentOn)}; you'll get an email when it's done.`}
-            action={<StatusBadge tone="brand">Waiting for HR</StatusBadge>}
-          />
-        ) : (
-          <EmptyState
-            icon={UserRound}
-            title="You're not on the volunteer or member lists"
-            text="If you administer groups, belong to a team or are a member, ask to be added. HR matches your sign-in to your record."
-            action={
-              <Button
-                className={buttonMotion}
-                onClick={() => {
-                  setAskOpen(true)
-                }}
-              >
-                <UserPlus data-icon="inline-start" />
-                Ask to be added
-              </Button>
-            }
-          />
-        )}
+        <EmptyState
+          icon={UserRound}
+          title="You're not on the volunteer lists"
+          text="If you administer groups or belong to a team, ask HR to add you. They link your sign-in to your record with an invite or by hand."
+        />
       </PageContent>
-      <AskToBeAddedDialog key={`ask-${askKey}`} open={askOpen} onOpenChange={setAskOpen} />
     </>
-  )
-}
-
-/** This year's census: pre-filled from the record with the year advanced, then Confirm or I'm leaving. */
-function CensusCard({ area }: { area: Linked }) {
-  const { person, campaign } = area
-  const save = useServerFn(answerMyCensus)
-  const refresh = useRefreshAfter()
-  const entry = campaign ? person.census.find((candidate) => candidate.year === campaign.year) : undefined
-  // Groups are kept by chat ID: titles aren't unique.
-  const adminGroups = isActiveAdmin(person) ? (person.admin?.groups ?? []) : []
-  const groups = adminGroups.map((group) => group.chatId)
-  const teams = activeTeams(person).map((membership) => membership.team)
-  const [course, setCourse] = useState(person.profile.course)
-  const [year, setYear] = useState<Year>(nextYear(person.profile.year))
-  const [campus, setCampus] = useState<Campus>(person.profile.campus)
-  const [keepGroups, setKeepGroups] = useState(groups)
-  const [keepTeams, setKeepTeams] = useState<TeamId[]>(teams)
-  const [saving, setSaving] = useState(false)
-  const [leavingOpen, setLeavingOpen] = useState(false)
-  const leavingKey = useOpenGeneration(leavingOpen)
-
-  if (!campaign) return null
-  const answer = { course, year, campus, keepGroups, keepTeams }
-
-  // Team roles update immediately; Telegram removals wait for confirmation.
-  if (entry?.answer) {
-    return (
-      <SectionCard padding="flush">
-        <Rows>
-          <Row
-            lead={<RowIcon icon={entry.answer === "continues" ? CircleCheck : UserMinus} />}
-            title={
-              <>
-                {entry.answer === "continues"
-                  ? `You're confirmed for ${campaign.year}`
-                  : `You told us you're leaving in ${campaign.year}`}
-                <StateBadge state={CENSUS_ANSWER[entry.answer]} />
-              </>
-            }
-            meta={`Answered ${entry.answeredOn ? formatDay(entry.answeredOn) : ""}${entry.source ? ` · ${CENSUS_SOURCE[entry.source]}` : ""}`}
-          />
-        </Rows>
-        {person.discrepancies.some((item) => item.kind === "admin-removal") && (
-          <InlineAlert tone="info" className="mx-4 mb-4">
-            Your Telegram group changes are waiting for HR to remove the admin rights.
-          </InlineAlert>
-        )}
-      </SectionCard>
-    )
-  }
-
-  async function confirmContinuing() {
-    setSaving(true)
-    try {
-      await save({ data: { ...answer, answer: "continues", reason: "", note: "" } })
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, "Your answer couldn't be saved. Try again."))
-      setSaving(false)
-      return
-    }
-    await refresh(`Confirmed for ${campaign?.year ?? "this year"}.`)
-    setSaving(false)
-  }
-
-  const courses = COURSES.some((option) => option === person.profile.course)
-    ? COURSES
-    : [person.profile.course, ...COURSES]
-
-  return (
-    <SectionCard
-      title={`${campaign.year} census`}
-      action={<span className="text-[13px] text-(--pn-fg-muted)">Closes {formatDay(campaign.closesOn)}</span>}
-      footer={
-        // Phones stack the buttons full width with Confirm on top, like dialog footers.
-        <div className="flex flex-col-reverse gap-2 shell:flex-row shell:flex-wrap shell:justify-end">
-          <Button
-            variant="outline"
-            className={buttonMotion}
-            disabled={saving}
-            onClick={() => {
-              setLeavingOpen(true)
-            }}
-          >
-            I'm leaving
-          </Button>
-          <Button className={buttonMotion} disabled={saving} onClick={confirmContinuing}>
-            Confirm for {campaign.year}
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <p className="text-[14px] text-(--pn-fg-muted)">Check your details and confirm whether you're continuing.</p>
-        <div className="grid grid-cols-1 gap-4 shell:grid-cols-3">
-          <FormField label="Course" htmlFor="census-course">
-            <SelectField
-              id="census-course"
-              value={course}
-              options={courses.map((option) => ({ value: option, label: option }))}
-              onChange={setCourse}
-            />
-          </FormField>
-          <FormField
-            label={`Year in ${campaign.year}`}
-            htmlFor="census-year"
-            hint={`You were in ${person.profile.year} last year.`}
-          >
-            <SelectField<Year>
-              id="census-year"
-              value={year}
-              options={YEARS.map((option) => ({ value: option, label: option }))}
-              onChange={setYear}
-            />
-          </FormField>
-          <FormField label="Campus" htmlFor="census-campus">
-            <SelectField<Campus>
-              id="census-campus"
-              value={campus}
-              options={CAMPUSES.map((option) => ({ value: option, label: option }))}
-              onChange={setCampus}
-            />
-          </FormField>
-        </div>
-        {groups.length ? (
-          <FormField
-            label="Groups you'll keep administering"
-            htmlFor="census-groups"
-            hint="HR processes groups you deselect. Your admin rights stay active until the removal is confirmed."
-          >
-            <ChoiceChips
-              id="census-groups"
-              label="Groups you'll keep administering"
-              options={groups}
-              value={keepGroups}
-              onChange={setKeepGroups}
-              labelOf={(chatId) => adminGroups.find((group) => group.chatId === chatId)?.title ?? chatId}
-            />
-          </FormField>
-        ) : null}
-        {teams.length ? (
-          <FormField label="Teams you're continuing with" htmlFor="census-teams" hint="Teams you deselect end today.">
-            <ChoiceChips
-              id="census-teams"
-              label="Teams you're continuing with"
-              options={teams}
-              value={keepTeams}
-              onChange={setKeepTeams}
-              labelOf={teamName}
-            />
-          </FormField>
-        ) : null}
-      </div>
-      <LeavingDialog
-        key={`leaving-${leavingKey}`}
-        open={leavingOpen}
-        onOpenChange={setLeavingOpen}
-        year={campaign.year}
-        answer={answer}
-      />
-    </SectionCard>
   )
 }
 
 function LinkedView({ area }: { area: Linked }) {
   const { person, contacts, roster } = area
-  const revoke = useServerFn(revokePhotoConsent)
-  const refresh = useRefreshAfter()
-  const [correctionOpen, setCorrectionOpen] = useState(false)
-  const correctionKey = useOpenGeneration(correctionOpen)
-  const [revokeOpen, setRevokeOpen] = useState(false)
-  const { profile, member, admin, consents } = person
+  // The fee card is an unconnected mockup (Phase 2, #144), shown only to People readers.
+  const canRead = useCan("people:read")
+  const { profile, admin, consents } = person
   const teams = activeTeams(person)
   const name = personName(person)
 
@@ -433,21 +134,15 @@ function LinkedView({ area }: { area: Linked }) {
     { key: "Course", value: profile.course },
     { key: "Year", value: profile.year },
     { key: "Campus", value: <Chip>{profile.campus}</Chip> },
-    ...(member || person.account.status === "linked"
+    ...(person.account.status === "linked"
       ? [
           {
             key: "PoliNetwork account",
-            value: (
-              <span className="font-mono [overflow-wrap:anywhere]">
-                {member?.m365Email ?? (person.account.status === "linked" ? person.account.email : "")}
-              </span>
-            ),
+            value: <span className="font-mono [overflow-wrap:anywhere]">{person.account.email}</span>,
           },
         ]
       : []),
   ]
-
-  const photoGranted = consents.photo?.status === "granted"
 
   const rosterColumns: DataTableColumn<NonNullable<Linked["roster"]>["members"][number]>[] = [
     {
@@ -485,15 +180,6 @@ function LinkedView({ area }: { area: Linked }) {
           <Unset />
         ),
     },
-    {
-      id: "email",
-      label: "PoliNetwork email",
-      width: 280,
-      priority: 3,
-      mobile: "full",
-      cell: (row) =>
-        row.email ? <span className="block truncate font-mono text-[13px]">{row.email}</span> : <Unset />,
-    },
   ]
 
   return (
@@ -501,27 +187,13 @@ function LinkedView({ area }: { area: Linked }) {
       <PageBar description={`${name} · ${person.id}`} />
       <PageContent>
         <div className="flex flex-col gap-6">
-          <CensusCard key={person.census.map((entry) => `${entry.year}:${entry.answer}`).join()} area={area} />
-
-          {person.fees ? <MyFeeCard fees={person.fees} instructions={area.feeInstructions} /> : null}
+          {canRead ? <MyFeeCard /> : null}
 
           <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-4">
               <SectionCard title="My roles" padding="flush">
-                {member || isActiveAdmin(person) || admin?.capoScope || teams.length ? (
+                {isActiveAdmin(person) || admin?.capoScope || teams.length ? (
                   <Rows>
-                    {member ? (
-                      <Row
-                        lead={<RowIcon icon={IdCard} />}
-                        title={
-                          <>
-                            Member <MonoChip>{member.number}</MonoChip>
-                          </>
-                        }
-                        meta={`Admitted ${formatDay(member.admittedOn)}${member.fee && !person.fees ? ` · Fee: ${FEE_STATUS[member.fee].label}` : ""}`}
-                        end={<StateBadge state={MEMBER_STATUS[member.status]} />}
-                      />
-                    ) : null}
                     {admin && isActiveAdmin(person) ? (
                       <Row
                         lead={
@@ -529,9 +201,8 @@ function LinkedView({ area }: { area: Linked }) {
                             <PlatformGlyph platform="tg" className="size-4" />
                           </span>
                         }
-                        title={`Admin of ${pluralize(admin.groups.length, "group")}`}
+                        title="Admin"
                         meta={`Since ${formatDay(admin.since)}`}
-                        detail={admin.groups.map((group) => group.title).join(", ") || undefined}
                       />
                     ) : null}
                     {admin?.capoScope ? (
@@ -592,7 +263,7 @@ function LinkedView({ area }: { area: Linked }) {
                           ? "Your Capo Admin"
                           : contact.role === "lead"
                             ? `Your Team Lead · ${contact.team ? teamName(contact.team) : ""}`
-                            : `${contact.email ?? ""} · for anything about your record`
+                            : "For anything about your record"
                       }
                       end={
                         contact.telegram ? (
@@ -604,13 +275,6 @@ function LinkedView({ area }: { area: Linked }) {
                             nativeButton={false}
                             render={<a href={telegramUrl(contact.telegram)} target="_blank" rel="noreferrer" />}
                           />
-                        ) : contact.email ? (
-                          <IconButton
-                            label={`Email ${contact.name}`}
-                            icon={Mail}
-                            nativeButton={false}
-                            render={<a href={`mailto:${contact.email}`} />}
-                          />
                         ) : undefined
                       }
                     />
@@ -620,22 +284,7 @@ function LinkedView({ area }: { area: Linked }) {
             </div>
 
             <div className="flex min-w-0 flex-col gap-4">
-              <SectionCard
-                title="My profile"
-                action={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={buttonMotion}
-                    onClick={() => {
-                      setCorrectionOpen(true)
-                    }}
-                  >
-                    <Pencil data-icon="inline-start" />
-                    Request a correction
-                  </Button>
-                }
-              >
+              <SectionCard title="My profile">
                 <KeyValueList items={profileItems} />
               </SectionCard>
 
@@ -657,25 +306,7 @@ function LinkedView({ area }: { area: Linked }) {
                         ? `${PHOTO_CONSENT[consents.photo.status].label} ${formatDay(consents.photo.on)}`
                         : "Not granted"
                     }
-                    end={
-                      photoGranted ? (
-                        <>
-                          <StateBadge state={PHOTO_CONSENT.granted} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className={cn(buttonMotion, "text-(--pn-danger-fg)")}
-                            onClick={() => setRevokeOpen(true)}
-                          >
-                            Revoke
-                          </Button>
-                        </>
-                      ) : (
-                        <StateBadge
-                          state={PHOTO_CONSENT[consents.photo?.status === "revoked" ? "revoked" : "denied"]}
-                        />
-                      )
-                    }
+                    end={<StateBadge state={PHOTO_CONSENT[consents.photo?.status ?? "denied"]} />}
                   />
                 </Rows>
               </SectionCard>
@@ -697,20 +328,6 @@ function LinkedView({ area }: { area: Linked }) {
           ) : null}
         </div>
       </PageContent>
-      <CorrectionDialog key={`correction-${correctionKey}`} open={correctionOpen} onOpenChange={setCorrectionOpen} />
-      <ConfirmDialog
-        open={revokeOpen}
-        onOpenChange={setRevokeOpen}
-        tone="danger"
-        icon={Camera}
-        title="Revoke photo and video consent?"
-        description="PoliNetwork stops using new photos and videos of you. Content already published stays unless you ask HR to remove it."
-        confirmLabel="Revoke consent"
-        onConfirm={async () => {
-          await revoke()
-          await refresh("Consent revoked.")
-        }}
-      />
     </>
   )
 }

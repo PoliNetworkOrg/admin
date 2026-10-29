@@ -24,18 +24,13 @@ import { LinkAccountDialog } from "./link-account-dialog"
 import {
   ACCOUNT_STATUS,
   activeTeams,
-  CENSUS_ANSWER,
-  censusEntry,
-  currentYear,
   hasNoRoles,
   isActiveAdmin,
-  isMember,
-  lastAnswer,
   personName,
   roleLabels,
   teamName,
 } from "./people-format"
-import { ActionMenu, MonoChip, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
+import { ActionMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import {
   ACCOUNT_STATUSES,
   type AccountStatus,
@@ -47,20 +42,17 @@ import {
 } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
 
-type RoleFilter = "member" | "admin" | "team" | "none"
-type CensusFilter = "continues" | "leaving" | "none"
+type RoleFilter = "admin" | "team" | "none"
 type Filters = {
   role: RoleFilter | null
   team: TeamId | null
   campus: Campus | null
   account: AccountStatus | null
-  census: CensusFilter | null
 }
 
-const NO_FILTERS: Filters = { role: null, team: null, campus: null, account: null, census: null }
+const NO_FILTERS: Filters = { role: null, team: null, campus: null, account: null }
 
 const ROLE_TEST = {
-  member: isMember,
   admin: isActiveAdmin,
   team: (person) => activeTeams(person).length > 0,
   none: hasNoRoles,
@@ -71,17 +63,13 @@ function matchesFilters(person: PersonRow, filters: Filters) {
   if (filters.team && !activeTeams(person).some((team) => team.team === filters.team)) return false
   if (filters.campus && person.profile.campus !== filters.campus) return false
   if (filters.account && person.account.status !== filters.account) return false
-  if (filters.census) {
-    const entry = censusEntry(person, currentYear())
-    if (filters.census === "none" ? !entry || entry.answer !== null : entry?.answer !== filters.census) return false
-  }
   return true
 }
 
 function matchesQuery(person: PersonRow, query: string) {
   if (query === "") return true
   const { profile } = person
-  const haystack = `${personName(person)} ${profile.personalEmail ?? ""} ${profile.telegramUsername ?? ""} ${person.id} ${person.member?.number ?? ""}`
+  const haystack = `${personName(person)} ${profile.personalEmail ?? ""} ${profile.telegramUsername ?? ""} ${person.id}`
   return haystack.toLocaleLowerCase().includes(query.replace(/^@/, ""))
 }
 
@@ -110,15 +98,6 @@ const columns: DataTableColumn<PersonRow>[] = [
         </>
       )
     },
-  },
-  {
-    id: "member",
-    label: "Member",
-    width: 96,
-    priority: 3,
-    mobile: "hidden",
-    cell: (person) =>
-      !isMember(person) ? <Unset /> : person.member ? <MonoChip>{person.member.number}</MonoChip> : "Yes",
   },
   {
     id: "admin",
@@ -172,27 +151,11 @@ const columns: DataTableColumn<PersonRow>[] = [
     mobile: "hidden",
     cell: (person) => <StateBadge state={ACCOUNT_STATUS[person.account.status]} />,
   },
-  {
-    id: "census",
-    label: "Last census",
-    width: 176,
-    priority: 1,
-    mobile: "hidden",
-    cell: (person) => {
-      const entry = lastAnswer(person)
-      if (!entry?.answer) return <Unset />
-      return (
-        <span className="whitespace-nowrap">
-          <span className="font-mono text-[13px]">{entry.year}</span> · {CENSUS_ANSWER[entry.answer].label}
-        </span>
-      )
-    },
-  },
 ]
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** People › Overview: one row per person with their roles, account and last census answer. */
+/** People › Overview: one row per person with their roles and account. */
 export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
   const canWrite = useCan("people:write")
   const [query, setQuery] = useState("")
@@ -272,7 +235,6 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                   value={filters.role}
                   onChange={(value) => setFilter("role", value)}
                   options={[
-                    { value: "member", label: "Member", count: count(ROLE_TEST.member) },
                     { value: "admin", label: "Admin", count: count(ROLE_TEST.admin) },
                     { value: "team", label: "Team member", count: count(ROLE_TEST.team) },
                     { value: "none", label: "No roles", count: count(ROLE_TEST.none) },
@@ -302,17 +264,6 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                     label: ACCOUNT_STATUS[status].label,
                     count: count((person) => person.account.status === status),
                   }))}
-                />
-                <FilterMenu<CensusFilter>
-                  label="Census"
-                  allLabel="Any census answer"
-                  value={filters.census}
-                  onChange={(value) => setFilter("census", value)}
-                  options={[
-                    { value: "continues", label: `Continues in ${currentYear()}` },
-                    { value: "leaving", label: `Leaving in ${currentYear()}` },
-                    { value: "none", label: `No ${currentYear()} answer` },
-                  ]}
                 />
               </>
             }
@@ -398,7 +349,7 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
               <EmptyState
                 icon={UsersRound}
                 title="No people yet"
-                text="People appear here when you add them or import census answers."
+                text="People appear here when you add them."
                 action={
                   canWrite ? (
                     <Button size="sm" variant="outline" className={buttonMotion} onClick={openAdd}>

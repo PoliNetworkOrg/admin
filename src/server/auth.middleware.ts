@@ -83,7 +83,7 @@ export const peopleReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** People: add and edit people, admin roles, team memberships, the census and account linking. */
+/** People: add and edit people, admin roles, team memberships and account linking. */
 export const peopleWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
@@ -124,38 +124,6 @@ export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
           : context.permissions.filter((permission) => permission !== "people:read"),
       },
     })
-  })
-
-/** People › Member register: read. */
-export const peopleMembersReadMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:members:read")
-    return next()
-  })
-
-/** People › Member register: add members, change status and number, export. */
-export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:members:write")
-    return next()
-  })
-
-/** People › fees: review transfer receipts, mark fees as paid, send reminders, retry and void receipts. */
-export const peopleFeesWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:fees:write")
-    return next()
-  })
-
-/** People › Receipts: download receipts to sign and upload them signed (the President and Vice-president). */
-export const peopleReceiptsSignMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:receipts:sign")
-    return next()
   })
 
 /** People: appoint Capo Admins and Team Leads. */

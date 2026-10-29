@@ -201,9 +201,7 @@ export function PersonDialog({
           />
           <span className="flex flex-col gap-0.5">
             <span className="font-medium">Admin of Telegram groups</span>
-            <span className="text-xs text-(--pn-fg-muted)">
-              The bot fills in their groups. Members are added from the member register, and teams from Teams.
-            </span>
+            <span className="text-xs text-(--pn-fg-muted)">Teams are added from Teams.</span>
           </span>
         </label>
       )}
