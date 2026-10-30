@@ -247,3 +247,11 @@ export const esignRequestsManageMiddleware = createMiddleware({ type: "function"
     requirePermission(context.permissions, "esign:requests:manage")
     return next()
   })
+
+/** Audit log: every change made through the backend. */
+export const auditReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "audit:read")
+    return next()
+  })
