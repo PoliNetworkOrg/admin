@@ -1,88 +1,112 @@
-# Modello dati e contratti — Identity Provider PoliNetwork
+# Modello dati e contratti — Auth, backend e admin
 
-**Documenti collegati:** [`PRD_Admin_Dashboard_PoliNetwork.md`](./PRD_Admin_Dashboard_PoliNetwork.md) §2.6 · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md)
-**Versione:** 2.0
-**Data:** 12 ottobre 2026
+**Versione:** 3.0 · **Aggiornamento:** 30 ottobre 2026.
+[Design IdP](IdentityProvider_Design.md), [People](Persone_Volontari_Soci.md),
+[RBAC](RBAC_Ruoli_Permessi.md), [fonti/SHA](PRD_Admin_Dashboard_PoliNetwork.md#20-fonti-della-revisione).
 
-## 0. Stato e responsabilità
+Questo documento distingue lo schema presente dai contratti in lavorazione. Non è una migrazione SQL né
+un'autorizzazione a modificare dati. Non creare tabelle usando i nomi delle vecchie proposte.
 
-Il modello implementato vive nella repository autonoma `auth`, nel proprio database Postgres/Drizzle. Questa revisione segue il codice integrato agli SHA del PRD §20; non certifica migrazioni o configurazioni di produzione.
+## 1. Auth main
 
-La precedente proposta `capability_grant`, `institutional_email_link`, `institutional_email_domain` non è stata adottata. I nomi di endpoint proposti (`authorization.getCapabilities`, `rbac.grantCapability`, ecc.) non sono contratti disponibili. Non creare queste tabelle per integrare un nuovo consumer: usare OIDC/OAuth, i permessi IdP e il contratto della RFC v3.
+Fonte: `src/db/auth-schema.ts`, `src/db/evidence.ts`, `src/db/rbac.ts` nel repository Auth.
 
-## 1. Schema implementato in auth
+| Blocco                                   | Responsabilità                                                                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| Utente / account / sessione / passkey    | Identità login e provider verificati, con vincoli di ownership                          |
+| `identity_evidence`                      | Evidenze per issuer/subject, ID esterni verificati, Telegram e stati                    |
+| `student_verification_challenge`         | Verifica mail Polimi con hash, scadenza, tentativi e cooldown                           |
+| `permission`, `permission_implication`   | Chiavi stabili e implicazioni transitive senza cicli                                    |
+| `role`, `role_parent`, `role_permission` | Ruoli, ereditarietà e permessi                                                          |
+| `user_role`                              | Assegnazioni manuali con attore/data; ruoli gestiti derivati da evidenze/configurazione |
+| `rbac_audit_event`                       | Audit append-only con attore, operazione, target, prima/dopo e data                     |
+| OAuth / snapshot / outbox                | Client e risorse, proiezioni accesso e aggiornamenti verso consumer                     |
 
-Fonti: `src/db/auth-schema.ts`, `src/db/evidence.ts`, `src/db/rbac.ts`, `src/db/access-snapshot.ts`.
+Username/email di contatto non sono chiavi di autorizzazione. Il modello globale non contiene un sistema
+`capability_grant` con livelli e scope corso/team: quella proposta non è stata adottata.
+Schema Auth main non contiene i binding People della PR #73 né gli utenti preliminari di #75.
+Gli override di permessi ereditati sono in Auth#68, ancora aperta: non sono una proprietà verificata di main.
 
-### 1.1 Identità ed evidenze
+## 2. Backend e BFF main
 
-- **`user` e `account`:** identità locale e collegamenti provider; ownership del collegamento necessaria prima di usare un'evidenza. Matching di email non unisce utenti automaticamente.
-- **`identity_evidence`:** PK `(issuer, subject)`, `provider_id`, `external_id`, lista `states`, `valid_until`, `telegram_id`, `telegram_username`, `email`. Indice univoco parziale su `telegram_id` non nullo. Username/email sono dati di visualizzazione; l'autorizzazione usa identificativi verificati, non lo username.
-- **`student_verification_challenge`:** PK `user_id` con FK a `user`, `email` univoca, `code_hash`, `attempts`, `expires_at`, `last_sent_at`. Hash HMAC, TTL 10 minuti, cinque tentativi e cooldown 60 secondi. Dominio ammesso: solo `mail.polimi.it`. Alla conferma viene creato l'account `polimi-email` e la relativa evidenza Student.
-- **Account/session/passkey e tabelle OAuth:** gestite dall'IdP e dal provider. Socio/Direttivo provengono dai gruppi Entra, ricontrollati per autorizzare; l'evidenza memorizzata non prolunga la freschezza della verifica.
+- Il backend richiede token IdP: attore dal token, scope e tipo attore verificati, permessi correnti da snapshot.
+  `me.access` è la fonte della dashboard. Nessun percorso anonimo o login legacy nella baseline #97.
+- I grant correnti sono in `tg_grants` con soggetto IdP del grantor. Non descrivere più una convivenza
+  operativa `tg_grants_v2`/legacy o chiedere nuovi `admin_id` Telegram per l'audit.
+- Contenuti conservano autori `*_by_sub`; i riferimenti storici Telegram non equivalgono all'audit prima/dopo.
+- People main espone `persons`, `members`, `fees`, `receipts`, `census`, `linking`, `capo`, `me`, `teams`:
+  contratto consumato tramite adapter e parsing Zod in admin. È la prima versione, da ridurre e rifare per fasi.
+- Admin usa Redis dedicato per token/sessioni e cookie opaco nel browser. Il contesto route non contiene token.
+- Microsoft 365: Entra object ID per l'utente, `employeeId` per numero socio, gruppo Soci per appartenenza.
+  La dashboard non modifica membership dei gruppi; crea il nuovo socio tramite workflow backend fisso.
 
-Queste tabelle non includono un registro di quote annuali, numeri associativi o censimento organizzativo.
+La dipendenza admin/lockfile è `@polinetwork/backend` 4.0.0, con `web.freshman` presente. Versione del pacchetto,
+versione dell'app backend e contratto realmente distribuito sono evidenze diverse: controllarle separatamente.
 
-### 1.2 RBAC globale
+## 3. Cleanup in PR, non ancora main
 
-| Tabella | Significato |
-|---|---|
-| `permission` | Chiave stabile univoca, nome/descrizione, flag managed |
-| `permission_implication` | Permesso → permesso implicato; transitiva, senza cicli |
-| `role` | Bundle con chiave univoca, flag managed e possibile `source_state` |
-| `role_parent` | Ruolo → ruolo ereditato; transitiva, senza cicli |
-| `role_permission` | Collegamenti tra ruoli e permessi |
-| `user_role` | Assegnazione manuale utente→ruolo con `assigned_by`, `assigned_at`; i ruoli gestiti non sono assegnazioni manuali |
-| `rbac_audit_event` | Attore, operazione, target, prima/dopo JSON, data; append-only, scritto nella transazione della mutazione |
+[Admin#147](https://github.com/PoliNetworkOrg/admin/pull/147) scollega soci/quote/ricevute/censimento e rimuove
+matching, gruppi People e ponte eSign. [Backend#104](https://github.com/PoliNetworkOrg/backend/pull/104)
+elimina i router e i campi collegati; conserva per ora record e identità People nella forma ridotta.
 
-Nel modello implementato non ci sono campi `level`, `scope_type`, `scope_value`, revoca temporale del grant o assegnazione diretta di permessi a utenti come prevedeva la proposta originaria. La rimozione di un'assegnazione viene tracciata nell'audit. Gli scope di OAuth delimitano il client, non il corso/team dei record.
+La migrazione proposta `0030_people_cleanup.sql` elimina file/ricevute/associazioni richieste e numero socio
+People, e svuota i record di test secondo #146. Non è un backfill. Non eseguire la migrazione nell'ambito
+di questa revisione. Deploy frontend prima del backend, poi rimozione dei permessi obsoleti Auth#77.
 
-I ruoli gestiti sono Master Admin (wildcard da configurazione), Socio/Direttivo (Entra), Student (email verificata). Il permesso `membership:read` non implementa da solo l'area tesseramento o i rinnovi. Implicazioni e ruoli personalizzati possono concedere accesso senza costituire prova dello stato associativo: distinguere `states`, `roles` e `permissions`.
+I mockup admin devono avere dati propri, separati da `people.contract.ts`, senza API o server functions.
+La shell deve smettere di caricare i vecchi conteggi. Il contratto di transizione deve tollerare sia il backend
+precedente sia quello ripulito fino al completamento dell'ordine di deploy.
 
-### 1.3 Snapshot e notifiche
+## 4. Fase 1: contratto pianificato
 
-L'IdP pubblica snapshot versionati/proiettati per client e notifiche da outbox; il backend effettua anche polling. La relazione Telegram→identità deriva dai collegamenti verificati, non da import di vecchi codici. Per campi wire, validità per fonte e comportamento in caso di outage si segue la RFC v3 §§5–7 e il codice, evitando un secondo schema divergente in questo PRD.
+Fonti: [auth#78](https://github.com/PoliNetworkOrg/auth/issues/78),
+[backend#101](https://github.com/PoliNetworkOrg/backend/issues/101),
+[#102](https://github.com/PoliNetworkOrg/backend/issues/102),
+[#103](https://github.com/PoliNetworkOrg/backend/issues/103).
 
-## 2. Contratti implementati fra servizi
+### Auth
 
-- **OIDC persone:** Authorization Code/PKCE e refresh token. I consumer verificano issuer, audience, firma e claim; `polinetwork:identity` espone stati, ruoli, permessi e Telegram ID. Per API backend l'autorità corrente viene verificata tramite snapshot, non soltanto dai claim di un vecchio ID token.
-- **OAuth servizi:** client credentials con `private_key_jwt`, risorsa/audience e scope assegnati al client. Token personali e di servizio hanno tipi attore distinti.
-- **Backend tRPC:** `me.access` restituisce l'accesso corrente della persona. Ogni procedura ha policy per tipo attore, scope e permesso. Il bot può usare `X-PN-Actor: telegram:<id>` solo con il relativo scope act-as.
-- **Snapshot IdP:** lettura di servizio autenticata, proiezione configurata per client e notifiche interne; il backend conserva in `common_idp_state` l'ultimo snapshot/chiavi validi per un uso limitato nel tempo.
-- **Dashboard BFF:** sessione in Redis, token solo sul server; le funzioni server applicano middleware e inoltrano bearer token al backend.
+- Campo binding del ruolo con tipi `admin`, `capo`, `team:<key>:member`, `team:<key>:lead` e vincoli.
+- Directory interna dei ruoli associati e titolari; senza elenco Soci/utenti Microsoft 365 come fonte People.
+- Lettura `GET /api/internal/people-roles`; comandi `POST` con scope interno `idp:people:roles`.
+- Comando `{ id, actor, sub, reason, changes }`, idempotente, atomico; `sub` sempre account reale.
+  Auth risolve i permessi dell'attore e rifiuta binding ambigui, auto-grant e delega insufficiente.
+- Nuovo permesso di binding delegabile, nome proposto `idp:people:bind`; non creare un endpoint preliminari.
 
-La compatibilità legacy senza token resta configurabile nel backend; un token invalido viene rifiutato e non ripiega sul legacy. Le nuove procedure IdP, incluso lo storico giornaliero utenti Telegram, non accettano chiamate anonime.
+Questi contratti sono il target della rielaborazione #73; non considerarli già distribuiti.
 
-## 3. Dati backend implementati per la transizione
+### Backend
 
-- **Audit Telegram:** attore IdP (`actor_sub`), ID Telegram opzionale, client, `basis`, eventuale review e chiave di idempotenza; le azioni automatiche/native Telegram sono distinte da quelle autorizzate per permesso IdP.
-- **Grant:** `tg_grants_v2` per i caller token, con attori IdP; il backend considera anche i grant legacy fino al cleanup. Non dedurre dai nuovi campi che la vecchia tabella sia già eliminata.
-- **Contenuti:** colonne `*_by_sub` per l'autore IdP; non costituiscono un audit unificato prima/dopo di ogni modifica.
-- **Microsoft 365:** lettura directory, workflow dedicato di creazione e membership dei gruppi tramite Graph, con permessi separati. Non è lo schema del registro associativo PoliNetwork.
+Record relazionali per persone, incarichi, relazione Capo, storico e inviti. Incarichi con stato
+`pending`/`sent`/`applied`/`refused`, motivo e autore; account collegato univoco, contatti informativi.
+Outbox comandi Auth con revisioni e retry; un record senza account non produce scritture Auth.
 
-## 4. Proposta residua: registro associativo e claim
+Inviti: hash token, 14 giorni, monouso e revocati al reinvio; nessun vincolo di uguaglianza email account/contatto.
+Accettazione per account autenticato anche senza `people:self`; comandi attribuiti agli autori degli incarichi.
+Link/unlink manuali con `people:link`; revoca ruoli prima di staccare l'account, cronologia e lista 30 giorni.
 
-Lo schema definitivo del registro del PRD §3.1 va deciso prima delle FK. Conservare un identificativo associativo univoco, stati e annualità storicizzati, consensi versionati e collegamento opzionale all'identità IdP; nessuna dipendenza obbligatoria da account Entra/Telegram.
+Import CSV: preview errori/duplicati/delega, commit idempotente e inviti opzionali. Nessuna ricerca identità
+per matching durante il commit. Esportare i nuovi tipi nel pacchetto prima di aggiornare i consumer.
 
-Una possibile futura tabella **`membership_claim`** (non implementata) conserva:
+### Admin
 
-| Campo logico | Requisito proposto |
-|---|---|
-| ID | Identificativo univoco del claim |
-| Record socio / numero associativo | Riferimento al registro futuro |
-| Email destinatario | Indirizzo verificato dal processo di iscrizione |
-| Hash codice | Mai codice in chiaro |
-| Scadenza e tentativi | TTL e limite da definire; uso singolo e invalidazione del precedente codice |
-| Identità richiedente e data claim | `user.id` dell'IdP, valorizzato solo dopo verifica e controllo conflitti |
-| Creazione / attore emissione | Tracciabilità dell'emissione e dei re-invii |
+Aggiornare adapter/parsing, permessi, fixture, route e test insieme al nuovo contratto. Gestire esplicitamente
+pending/rifiuto senza successo ottimistico della concessione. La landing invito vive fuori dal gate dashboard.
+I nomi delle nuove procedure e i dettagli wire definitivi vanno fissati nelle PR implementative; il vecchio
+`docs/people/contract.md` non deve introdurre endpoint eliminati nel nuovo flusso.
 
-Il claim deve collegare il record alla persona senza duplicare l'identità, rifiutare conflitti e concedere solo accesso ai propri dati. Emissione come effetto dell'approvazione o azione manuale, re-invio, TTL e riconciliazione con lo stato Socio Entra restano aperti. Non sono disponibili oggi endpoint `identity.membershipClaim.*`.
+## 5. Proposte ritirate e modelli da progettare
 
-## 5. Modello ancora da definire
+- Ritirati: `capability_grant`, utenti preliminari, matching/merge di record, `membership_claim` e claim del socio
+  mediante codice, join gruppi Telegram come fonte degli incarichi, registro socio People indipendente da Entra.
+- Soci fase 2 #144: quote agganciate all'object ID Entra; namespace dedicato, schema annualità/ricevute da disegnare.
+- Censimento fase 3 #145: collegato alla fase 1; uscita tramite stesso comando di revoca ruolo Auth.
+- Informative, prove di consenso, retention ed export: definire policy prima del nuovo schema.
+- Audit unico: backend#90 propone `common_audit_events`/`audit.list`; auth#76 e admin#123 completano il filone.
+  Non dedurre che l'audit RBAC sia già federato dal solo fatto che entrambe le tabelle esistano.
 
-1. Schema Anagrafica Soci/Censimento, annualità, collegamento fra database e retention dei dati.
-2. Scope corso/team, relazioni di responsabilità e policy dei record lato backend: il RBAC globale non li rappresenta.
-3. Consensi/firme e testo versionato, audit amministrativo comune oltre al solo RBAC/moderazione.
-4. Catalogo IdP dei nuovi moduli: sostituire le chiavi descrittive della roadmap con permessi esatti condivisi tra UI e backend.
-5. Modalità sicura di claim e merge ownership-verified, che non esiste nel semplice collegamento account corrente.
-6. Conferma operativa delle fasi 5–6: backup e rimozione delle tabelle legacy restano separati da questa revisione documentale.
+## 6. Criteri di compatibilità
+
+Documentare ordine deploy e differenze wire in ogni PR; nessun silenziamento dei tipi per superare un disallineamento.
+Testare righe fuori ambito, token mancanti, delega, revoche, attori, retry, outage e vecchio/nuovo payload nella
+transizione. Agent mode usa il fake People; non dimostra schema PostgreSQL, OAuth o consegna dei comandi Auth.

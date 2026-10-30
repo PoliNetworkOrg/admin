@@ -1,379 +1,254 @@
 # PRD — Admin Dashboard PoliNetwork
 
-**Documento di prodotto per il Team IT**
-**Versione:** 2.3
-**Data:** 14 ottobre 2026
-**Stato:** Bozza per revisione, allineata al codice integrato al 12 ottobre 2026
+**Versione:** 3.0 · **Aggiornamento:** 30 ottobre 2026 · **Stato:** proposta di prodotto aggiornata per revisione.
 
-**Documenti di dettaglio:** [`PRD_Classificazione_Feature.md`](./PRD_Classificazione_Feature.md) (priorità e dipendenze) · [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md) (capacità e ruoli) · [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) (Identity Provider) · [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md) (tabelle e contratti) · [`Persone_Volontari_Soci.md`](./Persone_Volontari_Soci.md) (persone, censimento volontari, Libro Soci e viste per ruolo)
+Documenti: [classificazione e prossime attività](PRD_Classificazione_Feature.md), [MVP](MVP.md),
+[People](Persone_Volontari_Soci.md), [permessi](RBAC_Ruoli_Permessi.md),
+[design IdP](IdentityProvider_Design.md), [modello dati](IdentityProvider_DataModel.md),
+[checklist sito](Checklist_Sito_Web.md).
 
-## 0. Scopo
+## 0. Scopo e metodo
 
-Documento di riferimento per le funzionalità della Admin Dashboard di PoliNetwork. Le funzionalità interne (anagrafica soci, censimento admin/team, ruoli, governance, team) hanno priorità sulle aree pensate per soggetti esterni (associazioni partner, aziende, alloggi).
+Dare al team una base attuale per decidere e assegnare il lavoro. Prima gli strumenti interni, poi i servizi
+per soggetti esterni. Questa revisione sostituisce le ipotesi di agosto–ottobre, in particolare il registro
+unico persone/soci/censimento e i collegamenti automatici delle identità.
 
-### 0.1 Stato verificato e confini della verifica
+**Presente in main** significa codice integrato, non deploy o collaudo certificato. **In PR** significa lavoro
+non integrato. **Da progettare** significa che il requisito non è un contratto da implementare subito.
+Le decisioni People del 29 ottobre in [admin#146](https://github.com/PoliNetworkOrg/admin/issues/146)
+prevalgono sui vecchi documenti e sulle descrizioni delle PR #132/#136. Le fonti fissate sono in §20.
 
-La baseline è il codice dei branch remoti predefiniti dopo `git fetch --all --prune`, non i checkout locali o i branch di feature. «Implementato» significa presente nel codice integrato: questa revisione non certifica deploy, configurazione dei client, migrazione dei dati o collaudo in produzione. Le fonti e gli SHA verificati sono in §20.
+### 0.1 Stato attuale
 
-- **Implementato:** IdP autonomo in `auth`, collegamenti di identità, eRBACo globale, directory utenti IdP, amministrazione applicazioni OAuth/OIDC, login OIDC/BFF della dashboard e controlli per procedura nel backend.
-- **Implementato con transizione ancora prevista:** token di servizio per sito e bot, snapshot di autorizzazione, audit degli attori IdP e grant v2. Nel codice restano compatibilità anonima configurabile, modalità shadow/enforce del bot e dati/API legacy; non si assume concluso il cutover delle fasi 5–6 della RFC.
-- **Implementato in admin:** overview con conteggi e andamento della creazione degli utenti Telegram, gestione Telegram/WhatsApp, contenuti (FAQ, guide, progetti, associazioni, etichette), segnalazioni link, directory Microsoft 365 e membership dei gruppi con permessi separati.
-- **Roadmap residua:** Anagrafica Soci indipendente da Entra, Censimento Admin/Team, rinnovi, firma privacy e consensi versionati, scope corso/team, area Capo Admin e onboarding associativo; inoltre ricerca globale e audit amministrativo unificato.
-
-La directory Microsoft 365 e il ruolo IdP `socio` derivato da Entra **non costituiscono** il registro associativo paganti/storico richiesto da §3.1. Il sito usa un token di servizio verso il backend: questo non equivale a un login personale degli studenti sul sito.
-
----
+- OIDC/BFF, permessi puntuali, shell, overview, Telegram, WhatsApp, etichette, report e CMS sono in main.
+- eSign è integrato: richieste, firma CIE locale, più firmatari, posizioni e documenti, OneDrive e consegna email.
+- People, soci, quote, ricevute e censimento sono entrati in main con #97/#100. Il backend espone `people.*`:
+  non è più corretto descriverli come sole UI in PR o chiedere di implementare da zero il vecchio contratto.
+  La roadmap #146 riporta però un'area vuota/non collegata a RBAC, con soli dati di test: serve il nuovo percorso sotto.
+- Microsoft 365 crea soci e cambia il numero associativo; i gruppi e i loro membri sono in sola lettura (#133).
+- Matricole è modificabile da admin (#124), e web legge il contenuto backend. Il lockfile admin risolve
+  `@polinetwork/backend` 4.0.0, che include `web.freshman`: la nota README su 1.4.0 è storica.
+- Il backend main rifiuta tutte le chiamate senza token (#97); web richiede il proprio token (#198).
+  Non pianificare un rollback con `LEGACY_ANONYMOUS=allow`.
 
 ## 1. Persone, ruoli e gerarchie
 
-### 1.1 Ruoli Telegram
+Socio, Group Admin e membro di team sono categorie indipendenti. Essere admin di un gruppo Telegram non
+costituisce la fonte dei ruoli organizzativi. Telegram collegato non è necessario per entrare nella dashboard.
 
-I ruoli Telegram legacy (`admin`, `hr`, `president`, `direttivo`, `creator`, `owner` e `web` nell'inventario della RFC) servono alla riconciliazione della migrazione; non sono più il contratto di accesso della dashboard migrata.
+La direzione approvata in #146 separa:
 
-L'accesso richiede `admin:access`; ogni lettura riservata o mutazione richiede il proprio permesso IdP, verificato anche dal backend. Telegram non è obbligatorio per accedere. I vecchi titolari vanno riconciliati con ruoli e permessi IdP, senza assegnazioni automatiche basate sul nome legacy.
+1. **People:** Group Admin, Capo Admin e membri/Lead dei team, collegati ai ruoli Auth.
+2. **Soci:** utenti Entra ID, quote e rinnovi, separati dai record People.
+3. **Censimento:** conferma periodica degli admin, costruita dopo la fase 1.
 
-L'IdP implementa i ruoli gestiti `master-admin`, `socio`, `direttivo`, `student`, oltre a ruoli personalizzati. `master-admin` ha tutti i permessi; gli altri ruoli hanno i permessi configurati. Il vecchio veto globale `creator` è sostituito dall'assenza dei permessi pertinenti, non da un'esclusione incondizionata. Dettagli in [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md).
-
-### 1.2 Socio, Admin e membro di team — categorie indipendenti
-
-Socio, Admin e membro di un team interno (IT, Design & Social, International, HR, Events & Partnerships, ...) sono **tre categorie indipendenti**, non una gerarchia annidata:
-
-- **Socio**: chi risulta iscritto e in regola con la quota associativa (Anagrafica Soci, §3).
-- **Admin**: chi ha un ruolo operativo/organizzativo su PoliNetwork.
-- **Membro di team**: chi fa parte di un team interno (§7).
-
-Un admin può essere socio o no; un socio può essere admin o no; un membro di un team può essere admin, socio, entrambi o nessuno dei due: le tre categorie si intersecano liberamente e nessuna implica le altre. **Il Socio resta la categoria più rilevante per l'associazione**: è chi la costituisce formalmente. Admin e membro di team sono categorie organizzative/operative e non sostituiscono né presuppongono lo status di socio.
-
-- Un **Socio** è un record dell'Anagrafica Soci (§3), indipendente dall'essere admin o membro di team.
-- Un **Admin** è una persona con un ruolo organizzativo (Admin, Capo Admin, Direttivo, Presidente, ...) tracciato dal Censimento Admin/Team (§3), con un'identità Telegram collegata se opera sui canali PoliNetwork. Non deve necessariamente essere anche Socio.
-- Un **Capo Admin** è un Admin con uno scope aggiuntivo (es. corso di studi) e visibilità limitata al proprio ambito.
-
-### 1.3 Gerarchia organizzativa
-
-```
-Owner / Presidente / Direttivo   — responsabilità organizzative (permessi IdP espliciti)
-        │
-   Capo Admin (per corso/ambito) — visibilità e azioni limitate al proprio ambito
-        │
-      Admin                       — operativo
-```
-
-Lo status di Socio e l'appartenenza a un team interno sono assi indipendenti (§1.2): possono coesistere con qualunque punto della gerarchia sopra, o con nessuno.
-
-Il Direttivo assegna e revoca il ruolo di Capo Admin (periodicità da definire). L'admin "semplice" deve ottenere accesso alla dashboard, con permessi determinati dal proprio scope. Il modello attuale IdP è globale: vanno progettati lo scope corso/team e la sua verifica nel backend prima di attivare la vista Capo Admin (§19). Un ruolo personalizzato da solo non limita i record visibili.
-
-Una persona admin appartiene a **un solo corso di studi** come dato anagrafico personale, ma può essere admin/Capo Admin con **scope su gruppi di corsi diversi** contemporaneamente: il corso di appartenenza personale e lo scope di responsabilità sono due campi distinti.
-
----
+Una persona non collegata vive soltanto nel backend. Nessun utente preliminare in Auth, nessun matching
+per nome, email o Telegram. Sono previsti solo invito accettato e collegamento manuale autorizzato.
 
 ## 2. Fondamenta
 
-### 2.1 Autorizzazione per capacità (RBAC granulare)
+### 2.1 Autorizzazione
 
-**Implementato:** ruoli e permessi globali in eRBACo (`auth`), con ereditarietà dei ruoli e implicazioni dei permessi. La dashboard legge `me.access` tramite BFF, filtra navigazione/azioni e applica middleware; il backend verifica token, scope del client e permesso della persona per procedura. Le assegnazioni e l'amministrazione RBAC vivono nell'IdP, con delega limitata ai permessi posseduti.
+Implementata: `me.access`, permessi esatti, middleware BFF e controllo indipendente nel backend.
+`/dashboard` ammette `admin:access` oppure `people:self`; quest'ultimo apre la vista limitata.
+In main gli incarichi People vengono dalla scheda; il loro collegamento ai ruoli Auth è lavoro di fase 1.
 
-**Da realizzare:** autorizzazione sui nuovi registri soci/censimento, scoping corso/team e permessi dei flussi futuri. Il catalogo implementato usa chiavi come `tg:users:read` e `web:content:write`, non la proposta `capability_grant` con chiave e livello separati. Le azioni ad alto impatto devono mostrare il permesso richiesto e richiedere conferma esplicita. Catalogo attuale e requisiti futuri sono distinti in [`RBAC_Ruoli_Permessi.md`](./RBAC_Ruoli_Permessi.md).
+Requisito fase 1: binding predeterminati `admin`, `capo`, `team:<key>:member`, `team:<key>:lead`.
+Auth controlla delega, autorizzazione corrente e divieto di autoassegnazione. Ruoli con permessi `idp:*`
+non sono associabili a People. Un Lead può gestire i membri del proprio team, senza promuovere Lead.
+Il Capo Admin consulta i propri admin; la loro gestione resta futura.
 
-### 2.2 Audit amministrativo unificato
+### 2.2 Audit amministrativo
 
-**Stato parziale:** l’IdP ha un audit RBAC append-only con prima/dopo; il backend registra attori IdP nelle azioni di moderazione, nei grant e nelle scritture dei contenuti. Questo non copre ancora un unico storico amministrativo per tutti i moduli.
+L'audit RBAC di Auth e quello di moderazione non sono un registro unificato già disponibile in admin.
+Filone aperto: [auth#76](https://github.com/PoliNetworkOrg/auth/pull/76) registra `audit:read`,
+[backend#90](https://github.com/PoliNetworkOrg/backend/pull/90) registra le mutazioni e offre `audit.list`,
+[admin#123](https://github.com/PoliNetworkOrg/admin/pull/123) aggiunge la pagina.
 
-**Requisito residuo:** ogni mutazione amministrativa deve produrre una voce di audit con: attore, ruolo al momento dell'azione, timestamp, oggetto modificato, valori prima/dopo, motivo (obbligatorio per azioni sensibili), esito. Precondizione per esporre dati personali dell'Anagrafica/Censimento a più ruoli.
+Accettazione: ricerca e filtri per attore, oggetto, azione, esito e periodo; dettaglio prima/dopo dove raccolto;
+sola lettura; nessun segreto o contenuto dei file nei log. Verificare la copertura degli eventi Auth:
+il middleware backend da solo non dimostra che le modifiche avviate nell'IdP compaiano nella vista comune.
 
-#### 2.2.1 Registro consultabile delle modifiche a ruoli, permessi e persone
+### 2.3 Ricerca
 
-**Da realizzare — priorità High, interna:** rendere lo storico leggibile da interfaccia anche a chi non è del Team IT, senza dover consultare database o log tecnici. Viene prima delle aree associazioni partner, eventi esterni, aziende e alloggi (§12–§15). La registrazione RBAC già presente è una base da riusare; non equivale alla disponibilità di questa vista.
+La palette ⌘K esiste: naviga alle sezioni e avvia ricerche tramite `?q=`. Una ricerca unica che restituisca
+record di più domini resta futura; non ricostruire la palette per implementarla.
 
-- Vista cronologica paginata, con ricerca e filtri per attore, persona/oggetto interessato, tipo di azione e intervallo di date; consultabile nella dashboard dai ruoli autorizzati alla lettura dell'audit.
-- Copertura iniziale: assegnazione e revoca di ruoli alle persone, modifica dei permessi di un ruolo, modifica delle definizioni/implicazioni dei permessi e rimozione di account o record amministrativi. Le modifiche fatte nell'IdP devono essere consultabili anche se non sono state avviate dalla dashboard.
-- Ogni riga deve spiegare **chi ha fatto cosa, a chi/su cosa e quando**, in linguaggio comprensibile: «Gabriele ha tolto il ruolo HR a Lucia», «Gabriele ha rimosso il permesso di gestione gruppi dal ruolo Moderatori». Il dettaglio mostra prima/dopo, motivo quando richiesto ed esito, distinguendo una rimozione di ruolo dalla cancellazione di una persona.
-- Sono tracciate anche le azioni di operatori delegati **non Owner/Master Admin**: ogni modifica resta attribuita al suo attore. La lettura dell'audit è un permesso distinto dalla scrittura dei ruoli, assegnabile a chi deve verificare le modifiche; il catalogo e i destinatari vanno definiti.
-- Gli eventi non sono modificabili o cancellabili dall'interfaccia. La vista non deve esporre segreti o ripristinare dati personali già eliminati: usa gli identificativi e i metadati conservati dall'audit quando nomi/dettagli non sono più disponibili.
+### 2.4 Overview
 
-**Criteri di accettazione:** un revisore autorizzato può trovare la revoca di un ruolo a una persona, identificare l'operatore anche se delegato, confrontare i permessi prima/dopo una modifica e ricostruire una rimozione con i dati ancora disponibili, senza accesso tecnico al database. Un revisore privo dei permessi di scrittura può consultare lo storico senza poter modificare i ruoli.
+Conteggi, segnalazioni, grant e andamento della creazione utenti Telegram sono implementati secondo i permessi.
+Quest'ultimo non misura utenti attivi o audience. Indicatori People/quote richiedono i nuovi domini stabili.
 
-### 2.3 Ricerca globale
+### 2.5 Consensi
 
-**Da realizzare:** command palette che cerca trasversalmente soci, utenti Telegram, gruppi, membri Azure, FAQ e contenuti. Le ricerche presenti sono di sezione (inclusa ricerca utenti Telegram per ID), non una ricerca globale.
+Esistono UI e contratto People della prima iterazione, ma non certificano un processo definitivo di informative,
+consensi versionati e retention. Il cleanup toglie i flussi collegati al censimento. Progettare il processo futuro
+con testi, prova di accettazione, revoca e destinatari prima di collegarlo a eSign. Una firma PDF generica non
+completa da sola il processo privacy.
 
-### 2.4 Home come centro operativo
+### 2.6 Identity Provider
 
-**Implementato:** nuova shell e overview con conteggi di gruppi/utenti Telegram, segnalazioni aperte e grant attivi secondo i permessi; grafico basato sulle date di creazione dei record utenti Telegram (non membri attivi o audience dei gruppi).
+Auth è autonomo; admin è un consumer OIDC con sessioni Redis dedicate e token solo server-side.
+Google/Entra, passkey, Telegram collegato e verifica studente vivono nell'IdP. Socio/Direttivo derivano da Entra.
+Il sito usa credenziali di servizio per le letture: questo non è login personale dei visitatori.
+Non ricostruire autenticazione o RBAC dentro admin.
 
-**Da realizzare:** indicatori su soci in scadenza, account non riconciliati, grant in scadenza, contenuti da pubblicare e attività recenti, con apertura della lista filtrata corrispondente.
+### 2.7 eSign
 
-### 2.5 Gestione dei consensi e firma della privacy policy in dashboard
+La firma CIE passa dall'app locale: il PIN resta nella sua pagina, mai nel BFF. Da telefono/tablet si consulta;
+la firma richiede computer e lettore. La dashboard non permette upload di un PDF firmato altrove nel flusso generico.
+Riusare viewer, compositore, firma multipla e gestione drive. Il ponte ricevute People oggi presente sarà rimosso
+nel cleanup; la sua eventuale reintroduzione è una decisione della fase Soci, non una dipendenza della fase 1.
+Prima di dichiarare il servizio operativo, raccogliere evidenza di configurazione Graph/drive, permessi,
+installazione dell'agent e firma con CIE reale sui sistemi supportati ([tracker](docs/esign/TRACKER.md)).
 
-**Da realizzare:** raccolta associativa dei consensi e firma del testo versionato; il consenso OAuth delle applicazioni IdP è un flusso distinto.
+## 3. People: cleanup e fase 1
 
-Oggi le autorizzazioni privacy vengono raccolte tramite vari form esterni inviati caso per caso: le domande possono cambiare o diventare obsolete nel tempo, e la perdita di un form comporta la perdita della possibilità di dimostrare/recuperare il consenso raccolto con quella versione.
+Il programma corrente è [#146](https://github.com/PoliNetworkOrg/admin/issues/146).
+[Specifica dettagliata](Persone_Volontari_Soci.md).
 
-- La firma della privacy policy (e di altre informative) avviene **dentro il flusso della dashboard** (iscrizione socio, §3.1; onboarding/censimento admin, §8), non più solo tramite form esterni scollegati.
-- Ogni consenso è legato a una **versione specifica del testo firmato**, con data e revoca tracciabili: un cambiamento futuro del testo non invalida né sovrascrive lo storico dei consensi già raccolti.
-- La firma passa per l'audit unificato (§2.2).
-- Richiede l'Identity Provider (§2.6) per autenticare con certezza chi sta firmando.
+- **Cleanup #142:** admin#147 implementa #138: soci, quote, ricevute e censimento restano mockup espliciti,
+  senza backend e con azioni disabilitate. Vengono rimossi matching, gruppi Telegram e ponte ricevute/eSign.
+  Distribuire prima di backend#104; poi rimuovere i permessi obsoleti secondo auth#77.
+- **Fase 1 #143:** Auth#73 va rielaborata secondo auth#78 e nuovamente revisionata; segue configurazione auth#79.
+  Backend#101 costruisce record, incarichi e sincronizzazione; #102 inviti/link; #103 import CSV.
+  Admin#139/#140/#141 consumano quei contratti.
+- **Non mergiare #132/#136 o backend#99 come soluzione finale:** #146 li supera; recuperare solo le parti richieste
+  dalle nuove issue. Le revisioni People sono sospese finché le sottoissue non le riaprono.
 
-### 2.6 Identity Provider PoliNetwork
-
-**Implementato in una repository autonoma `auth`**, con Better Auth e `@better-auth/oauth-provider` 1.7.2, Postgres/Drizzle; non è un'estensione del server Better Auth legacy del backend.
-
-- Login/registrazione via Google o PoliNetwork Entra, passkey aggiungibili dopo il login; non è previsto il vecchio login email OTP. Entra ammette membri del tenant, respingendo guest e token senza `acct: 0`.
-- Telegram si collega nell'account IdP tramite OIDC ufficiale, non tramite il codice legacy del bot; il collegamento non assegna ruoli.
-- Verifica studente via codice email solo per `@mail.polimi.it`; `@polimi.it` non è oggi ammesso. Socio e Direttivo sono evidenze da gruppi Entra PoliNetwork, indipendenti da Telegram e Student.
-- OIDC già integrato in `polinet.cc` e nella dashboard admin. `web` usa OAuth client credentials per leggere dal backend: il login personale sul sito resta un'integrazione futura.
-- Directory utenti, ruoli/permessi, applicazioni (client di servizio e interattivi), chiavi e risorse sono amministrati nell'IdP. L'account personale gestisce identità collegate, passkey e sessioni.
-
-**Da realizzare:** collegamento al registro associativo indipendente da Entra, flussi di censimento/onboarding e firma documenti, e futuro accesso esterno multi-tenant. La base di autenticazione esiste; non implica che questi flussi siano già disponibili. Design e contratti correnti in [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) e [`IdentityProvider_DataModel.md`](./IdentityProvider_DataModel.md).
-
----
-
-## 3. Anagrafica Soci e Censimento Admin/Team
-
-**Da realizzare:** i due registri descritti qui non sono le directory utenti IdP o Microsoft 365.
-
-Due registri distinti, coerenti con l'indipendenza delle categorie di §1.2:
-
-- **Anagrafica Soci**: registro dei **soci attivi e paganti**, con **storico** dei soci passati. Per un socio l'azione ricorrente è il **rinnovo della quota associativa** (§6), non una rilevazione periodica di interesse.
-- **Censimento Admin/Team**: rilevazione rivolta ad **admin e membri dei team**, il cui scopo è **rinnovare l'interesse/la disponibilità** a continuare il proprio ruolo — non una quota. Si integra con l'Onboarding (§8).
-
-Una persona può comparire in entrambi, in uno solo, o in nessuno dei due.
-
-### 3.1 Anagrafica Soci — campi
-
-| Blocco | Campi | Note |
-|---|---|---|
-| Identità | nome, cognome, email, telefono (opzionale) | |
-| Identificativo | ID interno, numero associativo univoco | proprietà di questo registro (database PoliNetwork); Azure lo referenzia se presente |
-| Stato | attivo pagante, sospeso, scaduto, ex socio | |
-| Iscrizione | data ingresso, anno associativo (iscrizione annuale), data scadenza, stato rinnovo | |
-| Profilo associativo | corso di studi, anno di corso, sede, competenze/interessi (opzionali) | |
-| Consensi | consenso privacy policy, fonte, data, versione firmata, revoca | firma diretta in dashboard, §2.5 |
-
-Alcuni campi sono obbligatori, altri opzionali (l'elenco puntuale, incluso se serva il codice fiscale, resta da definire). HR può leggere l'Anagrafica Soci; il dettaglio dei permessi granulari campo per campo resta da definire.
-
-Vincoli: numero associativo univoco; storicizzazione degli stati (non sovrascrittura: i soci scaduti/ex soci restano nello storico); nessuna cancellazione bulk senza anteprima e conferma; ogni lettura/scrittura sensibile passa per l'audit (§2.2).
-
-Flusso: richiesta/iscrizione → verifica dati → deduplica → firma privacy policy → approvazione → numero socio → invio del codice di claim all'email di iscrizione (il socio lo usa per collegare il tesseramento alla propria identità, §2.6) → collegamento opzionale a Telegram/Azure → rinnovo annuale della quota (§6) → storico.
-
-### 3.2 Censimento Admin/Team — campi
-
-Rivolto a chi ha un ruolo organizzativo (Admin, Capo Admin, Direttivo, membro di team), indipendentemente dall'essere anche Socio.
-
-| Blocco | Campi | Note |
-|---|---|---|
-| Identità | nome, cognome, email, telefono | |
-| Relazioni | ruolo organizzativo (§1.3), team (§7), Capo Admin/responsabile di riferimento | |
-| Integrazioni | Telegram ID/username, Azure user ID, ultimo sync | collega senza duplicare |
-| Rinnovo interesse | data ultima conferma, prossima scadenza conferma, esito | sostituisce il concetto di "quota" per questa popolazione |
-| Consensi | consenso privacy policy, fonte, data, versione firmata | §2.5 |
-
-Flusso: rilevazione periodica (periodicità da definire, es. legata all'anno accademico) → conferma interesse/disponibilità tramite il flusso di Onboarding/Censimento in dashboard (§8) → aggiornamento stato → storico.
-
-### 3.3 Permessi
-
-**Requisito futuro, chiavi da definire nel catalogo IdP:** creazione/modifica per Direttivo/Owner/President inizialmente; lettura assegnabile anche a HR in sola lettura. Un operatore può creare un socio o un record del Censimento Admin/Team senza dover prima creare un account Azure.
-
----
+Accettazione: record creato con soli nome/cognome; incarichi non collegati in attesa; dopo il link Auth applica
+oppure rifiuta con motivo; la UI distingue attesa dal successo. Invito utilizzabile anche da un account
+senza permessi dashboard, su una pagina esterna alla shell protetta. Nessuna assegnazione a sé stessi.
 
 ## 4. Governance e Direttivo
 
-Non verrà realizzata come area dedicata separata. La composizione del Direttivo, il ruolo organizzativo e l'incarico sono coperti dal Censimento Admin/Team (§3.2) e dalla gerarchia ruoli (§1.3).
+Nessuna nuova area separata impegnata in questo ciclo. Auth gestisce ruoli e permessi; lo stato associativo
+proviene da Entra. Storico degli organi e contenuti pubblici non vanno dedotti dai record People.
 
----
+## 5. Admin e Capo Admin
 
-## 5. Dashboard Admin e Capo Admin
+Le pagine esistono in main, ma hanno residui del vecchio modello Telegram. Il cleanup li rimuove;
+admin#139 le ricostruisce sui ruoli Auth e sulla relazione «Capo di riferimento».
+Il corso personale non determina automaticamente l'ambito di responsabilità. La vista del Capo deve escludere
+admin altrui anche chiamando direttamente il backend; approvare ingressi nei gruppi non è nella fase 1.
 
-**Da realizzare:** vista organizzativa con scope sui record.
+## 6. Soci, quote e ricevute
 
-- Vista Capo Admin: elenco degli admin del proprio corso di studi con nome, cognome, anno di corso, data di ingresso, flag rappresentante, altre associazioni di appartenenza, telefono, username/contatto Telegram, link rapido WhatsApp/Telegram.
-- Filtri: nome/cognome, anno, rappresentanza, altre associazioni.
-- Sezione link ai gruppi Telegram di competenza del Capo Admin.
-- Permessi: il Capo Admin vede **solo** i dati e i gruppi del proprio ambito (scoping, §2.1).
+[Fase 2 #144](https://github.com/PoliNetworkOrg/admin/issues/144): non iniziata, design necessario.
+Entra ID è fonte dei soci, object ID chiave del dominio quote e `employeeId` numero associativo.
+Nessuna condivisione con People o claim del record socio. L'ammissione resta nel workflow Azure esistente.
 
-Il modello dati separa il corso personale (Censimento Admin/Team, §3.2) dallo/dagli scope assegnati come Capo Admin (§1.3).
+Bonifico esterno, caricamento prova, revisione, ricevuta numerata, firma CIE e reminder sono bisogni da
+riesaminare usando #100 come riferimento storico. Definire annualità, importi, numerazione, firmatari,
+annullamento, destinatari e permessi prima di ricostruirli. `soci:*` è un namespace proposto, non un catalogo già attivo.
 
----
+## 7. Team
 
-## 6. Gestione Soci e Rinnovi
+UI team e vista Lead sono in main; sincronizzazione dei ruoli Auth e stati degli incarichi sono nella fase 1.
+Chiavi previste: `it`, `hr`, `design`, `intl`, `events`, da validare contro i binding Auth.
+Un team senza binding non è assegnabile. Il nome «Design & Marketing» è un riuso richiesto da #139.
+I tool specifici dei team non sono parte del primo rilascio.
 
-**Da realizzare:** flusso associativo di ricevute e rinnovi.
+## 8. Censimento e onboarding
 
-Il pagamento della quota resta un **bonifico bancario fuori dashboard**; il flusso di verifica del pagamento è in-dashboard:
-
-- Il socio può caricare la ricevuta del bonifico in dashboard; il caricamento avvia una richiesta di approvazione.
-- Il Direttivo/ruolo autorizzato approva la ricevuta caricata, oppure segna il rinnovo come effettuato manualmente se la ricevuta non viene caricata.
-- **Ricevuta automatizzata**: quando un rinnovo viene approvato, la dashboard genera e invia automaticamente la ricevuta al socio.
-- Per i rinnovi del Direttivo verso l'associazione stessa, la ricevuta viene generata/automatizzata allo stesso modo; quando è richiesta una firma, il flusso notifica il Presidente, che deve firmarla.
-- Reminder via email poco prima della scadenza.
-- Vista Direttivo sullo stato dei soci: da verificare, ricevuta caricata in attesa di approvazione, pagamento effettuato, pagamento non effettuato.
-- Azioni: "Approva ricevuta"/"Segna come pagato" (aggiorna stato + genera ricevuta + email di conferma), "Invia reminder".
-- Storico delle azioni (chi ha approvato/segnato pagato, reminder inviati, ricevute generate), tracciato nell'audit (§2.2).
-- Resta da decidere se il permesso di segnare come pagato/approvare ricevute sia riservato al solo Direttivo o esteso a un futuro ruolo Finance dedicato.
-
----
-
-## 7. Aree Team interni
-
-**Da realizzare:** struttura dei team e separazione degli accessi.
-
-Ogni team (IT, Design & Social, International, HR, Events & Partnerships, ...) è un'entità del Censimento Admin/Team (§3.2, blocco "Relazioni"), con pagina/area indipendente e permesso dedicato (§2.1). Obiettivo iniziale: struttura, ruoli e separazione degli accessi, non le funzionalità specifiche di ciascun team.
-
----
-
-## 8. Onboarding e Censimento Admin — flusso self-service in dashboard
-
-**Da realizzare:** il login IdP esiste, il flusso organizzativo seguente resta un requisito.
-
-Sia il censimento di nuovi candidati admin, sia il censimento periodico di admin già attivi, avvengono tramite un **flusso automatizzato della dashboard**, attivabile tramite un link o una mail inviata alla persona — non più tramite Telegram e scambio di messaggi manuale.
-
-- Autenticazione preventiva obbligatoria sull'Identity Provider PoliNetwork (§2.6) prima di poter proseguire nel flusso — identifica la persona e determina il tipo di candidatura/censimento applicabile.
-- Una volta autenticato, l'utente accede a un'area personale dove può: firmare i documenti richiesti (§2.5), consultare le proprie statistiche, vedere il proprio Capo Admin di riferimento.
-- Permessi differenziati per ruolo: ogni membro di PoliNetwork ha un livello di accesso diverso in base a cosa fa/è, ma tutti hanno accesso a qualcosa nella propria area.
-- Richieste che risalgono la gerarchia: un admin può presentare dalla propria area la richiesta di diventare admin di un determinato gruppo, e la richiesta arriva al proprio Capo Admin di riferimento per l'approvazione.
-
-Ambito: link/mail di attivazione → autenticazione (Identity Provider) → candidatura o conferma censimento periodico → firma documenti → colloquio/approvazione (per i nuovi) → creazione/aggiornamento profilo (Censimento Admin/Team) → assegnazione corso/ruoli/team → passaggi di ingresso operativo. Il dettaglio del processo (candidatura, colloquio, criteri) resta da definire con HR e Team IT.
-
----
+[Fase 3 #145](https://github.com/PoliNetworkOrg/admin/issues/145): design necessario dopo la fase 1.
+Chiede ai Group Admin se continuano; chi non è collegato riceve prima un invito. L'uscita usa lo stesso
+comando di revoca ruolo della fase 1. Il vecchio wizard Forms non è il contratto futuro.
+Candidature, colloqui HR, richieste ai gruppi e firma dei documenti restano processi da definire separatamente.
 
 ## 9. Email di compleanno
 
-**Da realizzare.**
+Backlog, dopo il design Soci: richiede uno scopo per la raccolta della data, destinatari e regole di invio.
+Non è motivo per aggiungere dati di nascita alla fase 1 People.
 
-Riguarda solo i soci. Dipende dall'Anagrafica Soci (data di nascita) e da un motore email.
+## 10. FAQ
 
----
+CRUD bilingue e categorie sono presenti. Matricole seleziona cinque FAQ dal catalogo.
+Import da file e popolamento editoriale restano da fare; riordino e bozza/pubblicazione sono estensioni
+future da validare anche sul contratto backend, non blocchi automatici del lancio.
 
-## 10. FAQ pubbliche
+## 11. Aree operative e CMS
 
-**Implementato:** categorie e CRUD FAQ bilingue IT/EN, ricerca di sezione e modifica inline, con `web:content:write` sulle mutazioni.
+- **Telegram/WhatsApp:** gruppi, visibilità, etichette e pubblicazione sono presenti. Telegram non crea gruppi
+  dalla dashboard. Grant attivi/programmati esistono; storico completo e reminder restano backlog.
+- **Microsoft 365:** directory (`azure:members:read`), nuovo socio (`azure:members:create`), cambio numero
+  (`azure:members:write`, conferma e email opzionale). Il backend rifiuta numeri occupati e richiede un token utente
+  per il cambio. Gruppi (`azure:groups:read`) sempre in sola lettura: Soci determina ruoli IdP.
+  Modifiche generiche a utenti, licenze o membership non sono il prossimo incremento autorizzato.
+- **Matricole:** risorse, hub Telegram, cinque FAQ e tab Guida; vecchio URL guide rediretto.
+  Titoli/struttura restano fissi. Verificare il ciclo admin → backend → web con dati effettivi.
+- **Progetti/associazioni:** CRUD interno disponibile. Risorse per piattaforma: backend#72 ancora aperta,
+  poi servono editor admin e lettura web. Non confondere questo con il singolo link progetto esistente.
 
-**Da realizzare:** riordino drag&drop e workflow bozza/pubblicata; lo schema backend attuale non ha un campo stato di pubblicazione o ordinamento delle FAQ.
+## 12. Associazioni partner
 
----
+Backlog dopo il lavoro interno: referenti multipli, ownership dell'organizzazione, richieste di creazione/modifica,
+approvazione editoriale e pubblicazioni sui canali. Il CRUD interno non offre accesso esterno scoped.
+Definire isolamento dei record e successione dei referenti, senza trasferire account personali.
+Canali (Telegram/WhatsApp), crediti e responsabilità di approvazione restano da concordare.
 
-## 11. Miglioramenti alle aree esistenti
+## 13. Eventi / PoliTamTam
 
-- **Telegram grants**: storico dei grant terminati/interrotti; reminder sulle scadenze imminenti.
-- **Telegram groups**: creazione/import di gruppi dalla dashboard, indicatori di salute (gruppo senza owner, invito rotto), statistiche.
-- **Microsoft 365/Azure — implementato:** directory in sola lettura (`azure:members:read`), creazione tramite workflow dedicato (`azure:members:create`), lettura gruppi (`azure:groups:read`) e aggiunta/rimozione di utenti esistenti dai gruppi (`azure:groups:write`; il picker richiede anche lettura directory). Nessuna modifica generica di utenti/gruppi. **Residuo:** gestione licenze dalla UI e access review periodico sui gruppi.
-- **Guide**: workflow bozza/pubblicazione, anteprima PDF, storico versioni invece di sola sostituzione.
+Backlog: inserimento da partner o PoliNetwork e approvazione prima della pubblicazione.
+Dipende dal design di ownership e revisione dei contenuti; non è parte del MVP interno.
 
----
+## 14. Aziende
 
-## 12. Area Associazioni Partner
+Da progettare con un referente di prodotto; nessun incremento assegnabile finché manca lo scope.
 
-**Da realizzare:** accesso esterno e workflow di approvazione. Il CRUD interno delle pagine associazioni è già disponibile e non equivale a questa area.
+## 15. Casa e coinquilini
 
-- Accesso e gestione account per decine di associazioni: si può creare l'account a **uno o più referenti** della stessa associazione fin dal MVP, e i referenti possono **nominare un successore trasferendo l'ownership** del proprio account.
-- Richieste di pubblicazione nei gruppi Telegram: le associazioni presentano la richiesta dalla propria pagina/area e PoliNetwork approva. Le richieste possono riguardare più gruppi contemporaneamente; il flusso dovrà mostrare l'elenco completo dei gruppi tra cui scegliere. Resta da chiarire se serva anche l'integrazione WhatsApp.
-- Gestione della pagina pubblica dell'associazione con flusso di richiesta/approvazione, al posto dell'attuale CRUD diretto di PoliNetwork.
-- Eventuale sistema a crediti: logica ancora non definita.
-- Eventi delle associazioni / "PoliTamTam" (§13).
-
-Richiede l'Identity Provider PoliNetwork (§2.6) per l'accesso esterno multi-tenant.
-
----
-
-## 13. Eventi delle associazioni — PoliTamTam
-
-**Da realizzare.**
-
-Le associazioni partner inseriscono gli eventi dalla propria pagina/area; PoliNetwork può inoltre aggiungere propri eventi, o eventualmente eventi per conto di altre associazioni. Ogni evento richiede approvazione prima di comparire pubblicamente — nessuna pubblicazione diretta.
-
----
-
-## 14. Area Aziende
-
-Da progettare in dettaglio prima dello sviluppo.
-
----
-
-## 15. Area proprietari di casa / Bacheca casa e coinquilini
-
-**Da realizzare.**
-
-Riguarda esclusivamente soggetti esterni (proprietari, cercatori di stanza).
-
----
+Backlog esterno: definire identità degli inserzionisti, moderazione e ciclo di vita degli annunci.
 
 ## 16. Newsletter
 
-**Da realizzare.**
+Backlog: segmenti, consensi, disiscrizione e invio. Non usare automaticamente contatti People come mailing list.
 
-Dipende dall'Anagrafica Soci (segmentazione destinatari) ed eventualmente dagli eventi (§13) come fonte di contenuti.
+## 17. Vincoli e verifica
 
----
+Permessi puntuali su UI/BFF/backend, dati personali limitati allo scopo, nessun token nel client.
+Le mutazioni ricaricano i loader prima di chiudere/toast; errore di reload dopo salvataggio non invita a ripetere.
+Nessuna azione distruttiva su più righe senza istruzione esplicita dell'utente (AGENTS.md).
+La cancellazione dei dati di test pianificata dal cleanup è lavoro della PR backend, non di questi documenti.
 
-## 17. Vincoli
+Agent mode non prova autenticazione o accesso al backend reale: People usa il fake; gli altri domini possono
+ricevere `UNAUTHORIZED` dal backend main. Per integrazioni usare staging con token reali e fixture isolate.
+Verificare anche ruoli limitati, desktop/mobile e failure di Auth, non solo l'account con tutti i permessi.
+UI admin prevalentemente inglese; localizzazione IT/EN resta un requisito futuro distinto dai contenuti bilingui.
 
-- Nessuna azione distruttiva su più righe senza anteprima e conferma esplicita.
-- Minimizzazione dei dati: ogni campo su soci/admin ha uno scopo dichiarato, un responsabile e un'ipotesi di retention; dati sensibili (es. codice fiscale) solo se realmente necessari.
-- Audit prima di esporre dati personali a più ruoli.
-- **Requisito residuo:** interfaccia amministrativa bilingue IT/EN con preferenza impostabile per singolo utente. I contenuti FAQ/guide bilingui non equivalgono a una UI amministrativa localizzata, oggi prevalentemente in inglese.
+## 18. Fuori scope del ciclo
 
----
+Contabilità completa, gateway pagamenti, modifica dello statuto, gestione libera dei gruppi Entra e migrazione
+dei dati People di test. MCP admin è un filone separato in [#137](https://github.com/PoliNetworkOrg/admin/pull/137):
+OAuth personale e permessi correnti, ancora da integrare e attivare; la firma richiede comunque la persona.
 
-## 18. Fuori scope
+## 19. Decisioni residue e prossimo ordine
 
-- Non ridefinisce lo statuto, gli organi sociali o le regole di voto dell'associazione.
-- Non decide se e come integrare un gateway di pagamento (Stripe, altro): il pagamento resta un bonifico bancario eseguito fuori dashboard. È invece in scope la verifica del pagamento in dashboard (upload ricevuta, approvazione, ricevuta automatizzata, §6).
-- Non propone una contabilità completa (fatture, bilanci).
+1. Completare e distribuire il cleanup nell'ordine #142; verificare che i mockup non facciano chiamate.
+2. Stabilizzare binding/delega e provisioning Auth (#78/#79), poi tipi backend e pagine fase 1.
+3. Collaudare inviti senza permessi, link/unlink, revoche, attori e comandi idempotenti.
+4. Portare avanti audit (#76/#90/#123) e collaudo Matricole come filoni separati.
+5. Definire design Soci (#144) e censimento (#145), senza ripristinare il vecchio dominio unificato.
+6. Decidere retention, visibilità dei contatti, processo consensi, candidatura HR e localizzazione.
+7. Concordare scope partner/eventi, newsletter e casa solo dopo le priorità interne.
 
----
+Non riaprire come decisioni tecniche il metodo di login, il matching automatico o la fonte dei soci:
+sono già fissati rispettivamente dal BFF e dalla roadmap #146.
 
-## 19. Decisioni aperte
+## 20. Fonti della revisione
 
-**§1 — Ruoli e gerarchie**
-1. Come estendere il RBAC globale IdP con scope corso/team e controlli sui record nel backend per Capo Admin e Team Lead? La precedente proposta `capability_grant.scopeType` non è implementata.
-2. Con quale periodicità viene rinnovato il ruolo di Capo Admin (es. legato all'anno accademico)?
+Snapshot consultato il **30 ottobre 2026**; stato delle PR distinto dal loro eventuale deploy.
 
-**§2 — Fondamenta**
-3. **Decisione architetturale attuata:** IdP autonomo, dashboard OIDC/BFF. Restano da verificare operativamente riconciliazione e cutover coordinato (`LEGACY_ANONYMOUS=deny`, bot enforce), poi rimozione di API/tabelle legacy secondo RFC fasi 5–6.
-4. Il consenso privacy raccolto in dashboard (§2.5) sostituisce integralmente i form esterni oggi in uso, o convive con essi durante una fase di transizione?
+| Fonte                                                                                                                                                                                                                                                                         | Baseline / uso                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [admin main c4b5abf](https://github.com/PoliNetworkOrg/admin/tree/c4b5abfe8078d2fcecb958924d162278b7b26dd6)                                                                                                                                                                   | Codice, route, permessi, lockfile, test; #97/#100/#124/#130/#133/#134/#135 integrati |
+| [backend main 1c9f937](https://github.com/PoliNetworkOrg/backend/tree/1c9f937e77866a59d950dd28384c2f435016f494)                                                                                                                                                               | README autenticazione, policy e `src/people/router.ts`; chiamate anonime eliminate   |
+| [auth main 720e8bc](https://github.com/PoliNetworkOrg/auth/tree/720e8bcf36f696cc819e952bbe6365e6b9fd119a)                                                                                                                                                                     | README, schema RBAC; MCP Auth integrato, binding People ancora in PR                 |
+| [web main 0e04231](https://github.com/PoliNetworkOrg/web/tree/0e042311a3b21e442b14ebd2d3d769d84cc55762)                                                                                                                                                                       | README, client backend e pagina Matricole; token di servizio obbligatorio            |
+| [Roadmap People #146](https://github.com/PoliNetworkOrg/admin/issues/146)                                                                                                                                                                                                     | Decisioni del 29 ottobre e precedenza sui vecchi piani                               |
+| [Cleanup #142](https://github.com/PoliNetworkOrg/admin/issues/142), [fase 1 #143](https://github.com/PoliNetworkOrg/admin/issues/143), [Soci #144](https://github.com/PoliNetworkOrg/admin/issues/144), [censimento #145](https://github.com/PoliNetworkOrg/admin/issues/145) | Ordine, sottoissue e criteri di accettazione                                         |
 
-**§3 — Anagrafica Soci e Censimento Admin/Team**
-5. Quali dati sono realmente necessari per il tesseramento (es. il codice fiscale è richiesto o va escluso)?
-6. Un ruolo HR read-only può leggere tutti i campi del socio, o alcuni campi (es. dati di contatto personali) devono essere mascherati anche per HR?
-7. Con quale periodicità si svolge il Censimento Admin/Team — es. una volta per anno accademico, o legato a un altro evento?
-
-**§5 — Dashboard Admin e Capo Admin**
-8. Come si definisce "corso di studi" nel sistema (elenco chiuso dei corsi del Politecnico, testo libero, altro)?
-
-**§6 — Gestione Soci e Rinnovi**
-9. Chi ha il permesso di segnare come pagato/approvare ricevute: solo Direttivo, o anche un ruolo Finance dedicato non ancora esistente?
-
-**§8 — Onboarding e Censimento Admin**
-10. Il processo di candidatura/colloquio va definito nel dettaglio con HR e Team IT (criteri, colloquio, tempistiche).
-
-**§12 — Area Associazioni Partner**
-11. Le richieste di pubblicazione riguardano solo Telegram, o resta necessaria anche l'integrazione WhatsApp?
-12. Il sistema a crediti per le pubblicazioni resta previsto, e con quale logica di ricarica/consumo?
-
-**Identity Provider** (da [`IdentityProvider_Design.md`](./IdentityProvider_Design.md) §7)
-13. Il codice di claim del tesseramento viene generato in automatico all'approvazione dell'iscrizione, o con un'azione manuale di chi approva?
-14. Se l'email di iscrizione è diversa da quella dell'identità PoliNetwork, è permesso re-inviare il codice a un nuovo indirizzo, e chi lo autorizza?
-15. Chi approva la riconciliazione dei titolari legacy e assegna i ruoli personalizzati IdP prima del cutover? Le assegnazioni usano `user_role`, non `capability_grant`.
-16. **Risolta nel codice:** provider OAuth/OIDC 1.7.2, registrazione applicazioni e client di servizio implementati. Restano provisioning e collaudo dei consumer nell’ambiente di destinazione.
-17. **Ordine reale aggiornato:** polinet.cc e admin hanno già il login OIDC; web usa un token di servizio. Quali funzionalità del sito richiederanno il login personale, e quando?
-18. Se estendere la verifica studente oltre il solo dominio attualmente ammesso `@mail.polimi.it` (in particolare `@polimi.it`): modifica da progettare, non una configurazione già disponibile.
-19. Come riconciliare lo stato `socio` attuale da Entra con il futuro registro associativo paganti/storico e il claim del tesseramento, senza confondere account Microsoft 365 e iscrizione annuale?
-
----
-
-## 20. Fonti della revisione (12 ottobre 2026)
-
-Riferimenti al codice verificato, fissati allo SHA dopo il fetch:
-
-- **admin** (origin/main): [27a09690](https://github.com/PoliNetworkOrg/admin/tree/27a0969052cf8e846f46642e2c74f6f24f1d3eb1). Login OIDC/BFF e controlli (`src/server/permissions.ts`); shell e overview (`src/features/dashboard/`); FAQ e Microsoft 365 (`src/features/faqs/`, `src/features/azure/`).
-- **auth** (origin/main): [7ae7521f](https://github.com/PoliNetworkOrg/auth/tree/7ae7521f895c342fe33ee77264f4f9ef1531055c). Identità e RBAC (`src/db/evidence.ts`, `src/db/rbac.ts`); contratti e migrazione (`docs/idp-telegram-integration-rfc-v3.md`). Le frasi introduttive di README/RFC che descrivono caller non ancora migrati sono precedenti ai commit dei consumer: lo stato qui riportato segue il codice di ciascuno.
-- **backend** (origin/main): [84da4cf7](https://github.com/PoliNetworkOrg/backend/tree/84da4cf716210aae371e2aae2de829c651222c6b). Policy (`src/idp/policies.ts`), attori/audit/grant v2, directory e membership Azure, `tg.users.getCreationHistory`; compatibilità legacy documentata nel README.
-- **telegram** (origin/main): [cca89904](https://github.com/PoliNetworkOrg/telegram/tree/cca89904267103576285db31e1b646dddd7798ae). Migrazione fase 4b, token/attori, shadow/enforce e audit outbox; README e `docs/idp-phase4b-handoff.md` distinguono implementazione e attività operative.
-- **web** (origin/main): [d6b801e7](https://github.com/PoliNetworkOrg/web/tree/d6b801e7a8c8b0728fe073e52a5b45af9c439b29). Fase 4a: token di servizio in `src/lib/backend.ts`; guide, contatti e segnalazioni link. Non risulta introdotto un login personale sul sito.
-- **polinet.cc** (origin/main): [d8803264](https://github.com/PoliNetworkOrg/polinet.cc/tree/d88032645cb098128f4187d23840bbb85a9fcdca). Login OIDC già integrato; ultima correzione al callback configurato. Le feature su branch non integrati (alias, analytics) non sono considerate completate.
-- **aule** (origin/main): [da941567](https://github.com/PoliNetworkOrg/aule/tree/da941567474cabf6f14ae469a47e044a0cfdd600). PoliAule v2, campus multipli, stanze non prenotabili e orari sconosciuti; progetto separato, senza nuovi requisiti implementati per la dashboard admin.
-- **polinetwork.github.io** (origin/master): [a7195b8c](https://github.com/PoliNetworkOrg/polinetwork.github.io/tree/a7195b8cef1bae55f7f281fbf2a3341bd22244e5). Documenti associativi aggiornati e rimando al nuovo sito gruppi; nessun registro soci o flusso rinnovi applicativo.
-- **skills** (origin/main): [ed5a52e0](https://github.com/PoliNetworkOrg/skills/tree/ed5a52e021320f69b07745741e38a97fadb57e1e). Cataloghi/template e miglioramenti alle slide; tooling, non funzionalità della dashboard.
-- **slides-polinetwork** (origin/main): [bd3953ca](https://github.com/viganogabriele/slides-polinetwork/tree/bd3953ca19cbdf086553d37afaeb6feefc14c187). Aggiornamenti alle presentazioni; materiale di comunicazione, non prova di feature applicative.
-- **manifesti:** fetch non riuscito (`Repository not found`); disponibile solo la baseline locale `ba45063` del 30 agosto 2026, documenti di architettura e integrità della pubblicazione. Nessuna conclusione sulle modifiche remote successive.
-
-I checkout e le modifiche locali preesistenti non sono stati aggiornati o inclusi in questa revisione. La PR #68 resta dedicata alla documentazione; non porta nel proprio branch il codice applicativo recente di main.
+Consultate le PR aperte di admin, auth, backend e web; inventario operativo nella classificazione.
+I documenti `docs/people/*` descrivono la prima implementazione: usarli per leggere main, non per contraddire #146.
+I vecchi SHA di bot, polinet.cc, aule, slide e altri progetti non sono una verifica aggiornata di quei repository.
+Questa PR aggiorna documenti e incorpora main per verificarli sul codice attuale; non distribuisce servizi.

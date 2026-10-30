@@ -1,66 +1,58 @@
-# Checklist sito PoliNetwork
+# MVP interno — prossimo rilascio
 
-Ultimo aggiornamento: 17/10/2026
+**Aggiornamento:** 30 ottobre 2026 · [PRD](PRD_Admin_Dashboard_PoliNetwork.md) ·
+[roadmap](PRD_Classificazione_Feature.md) · [lancio sito](Checklist_Sito_Web.md).
 
-`[x]` fatto · `[ ]` da fare · 🔀 PR aperta · 👤 chi se ne occupa
+Questo file definisce il prossimo risultato utilizzabile della dashboard. La vecchia copia parziale della
+checklist web è sostituita dal rimando sopra, per evitare due elenchi di lancio divergenti.
 
-## Generale
-- [x] Footer corretto
-- [ ] Footer: collegare i link legali (privacy, cookie, termini) alla pagina Documenti — 👤
-- [x] Header: "Appunti" → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Sfondo animato — 🔀 [web#183](https://github.com/PoliNetworkOrg/web/pull/183) da aggiornare, ora rompe le pagine nuove — 👤
-- [ ] Animazioni dei componenti (es. "mostra di più") — 👤
-- [ ] Spaziature uniformi tra le sezioni — 🔀 [web#179](https://github.com/PoliNetworkOrg/web/pull/179) da aggiornare alle pagine nuove — 👤
+## Obiettivo
 
-## Home
-- [x] Sezione Appunti → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Numeri con counter automatico basato sui dati attivi (es. progetti) — 👤
+Direttivo e Lead gestiscono Group Admin, Capo Admin e team dalla dashboard; gli account collegati ricevono
+solo i ruoli Auth autorizzati. Una persona può essere censita prima del login, senza creare utenti fittizi in Auth.
+La base è [fase 1 #143](https://github.com/PoliNetworkOrg/admin/issues/143), preceduta dal cleanup #142.
 
-## Gruppi (ricerca in home e /groups)
-- [ ] **[CONTENT]** Ripensare la nomenclatura: non si capisce piattaforma/anno (es. "Ingegneria Informatica" è il WhatsApp 26/27 ma sembra il generale). Capire se è un problema dei dati salvati o del sito — 👤
-- [ ] **[CONTENT]** Il gruppo Telegram generale di Ingegneria Informatica non compare nella ricerca — 👤
+## Gate di rilascio
 
-## Appunti
-- [x] Per ora: tutti i link "Appunti" (header, home, matricole) → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Linkare la repo di GitLab nell'header? - 👤
+- [ ] **Cleanup frontend:** #147/#138 distribuita; soci, ricevute e censimento mostrano il banner mockup,
+      dati di esempio separati e azioni disabilitate, senza loader/API. Nessun badge della shell legge procedure rimosse.
+- [ ] **Cleanup backend/IdP:** backend#104 dopo dashboard; auth#77 rimuove i permessi obsoleti.
+      Nessuna migrazione dei record People di test prevista da #146.
+- [ ] **Auth:** #78 e setup #79, binding `admin`, `capo`, membri/Lead; nessun ruolo legato con `idp:*`;
+      nuova review di #73. Catalogo e risorsa del client backend configurati nell'ambiente di destinazione.
+- [ ] **Record e incarichi:** backend#101 e admin#139; creazione con nome/cognome, stati attesa/invio/applicato/rifiutato,
+      motivo Auth leggibile. Una revoca in Auth si riflette nella scheda e nella vista Capo.
+- [ ] **Link:** backend#102 e admin#140; invito monouso, reinvio/revoca e link manuale con `people:link`.
+      Account privo di permessi accetta l'invito fuori dalla shell dashboard; email di login anche diversa.
+- [ ] **Unlink:** revoca effettiva dei ruoli in Auth prima dello scollegamento; storico metodo/attore;
+      collegamenti recenti consultabili per correggere errori.
+- [ ] **CSV:** backend#103 e admin#141; template, anteprima errori/duplicati/deleghe, commit esplicito,
+      retry senza duplicati e inviti opzionali. Nessuna scrittura all'upload.
 
-## Matricole
-- [ ] **[CONTENT]** Aggiornare i contenuti (card senza link, link Telegram vecchi) — 👤
-- [ ] Rendere la pagina modificabile da admin (ora si carica solo il PDF della guida) — 👤
+## Prove di accettazione
 
-## Progetti
-- [ ] **[CONTENT]** Rivedere l'elenco: aggiungere i progetti nuovi, rimuovere quelli vecchi — 👤
-- [ ] **[CONTENT]** Lista: aggiornare i contatti (ci sono ancora quelli personali di Lorenzo e Tommaso) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192), tolti i contatti personali, resta info@polinetwork.org — 👤
-- [x] Pagina dettaglio /projects/… — 🔀 [web#189](https://github.com/PoliNetworkOrg/web/pull/189), manca la visualizzazione dei link per piattaforma — 👤
-- [ ] Link per piattaforma (linux, mac, windows, web, ecc.) — 🔀 [backend#72](https://github.com/PoliNetworkOrg/backend/pull/72), fatto solo lato backend — 👤
-- [ ] Admin: gestione dei link per piattaforma — 👤
+1. Creare una persona senza account con un incarico consentito: rimane pending solo nel backend.
+2. Accettare l'invito con un account nuovo: applicazione con attore originario dell'assegnazione;
+   se nel frattempo ha perso la delega, mostrare il rifiuto senza dichiarare il ruolo assegnato.
+3. Ripetere una consegna del comando: nessuna doppia assegnazione. Simulare indisponibilità Auth:
+   mostrare l'attesa e non usare dati obsoleti oltre la policy backend.
+4. Un Lead gestisce solo i membri del proprio team, non promuove Lead e non assegna ruoli a sé stesso.
+   Un Capo legge soltanto i propri admin; accessi diretti a record altrui vengono rifiutati dal backend.
+5. Scollegare con conferma e permesso: verificare revoca ruoli, cronologia e incarichi pending.
+6. Provare il flusso con backend + Auth reali in staging; agent mode copre solo UI/fixture.
 
-## Su di noi (/chi-siamo)
-- [x] Pagina — 🔀 [web#188](https://github.com/PoliNetworkOrg/web/pull/188), manca: numeri coerenti con la Storia ("100+" vs "200+" admin) — 👤
+Ogni PR esegue `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build` e verifica desktop/mobile.
+Il deploy segue i gate sopra; codice in main e screenshot con fixture non bastano a spuntare questi esiti.
 
-## Storia
-- [x] Titolo, freccia "Conosci le persone", card della timeline, organigramma in codice — 🔀 [web#190](https://github.com/PoliNetworkOrg/web/pull/190), copre tutto — 👤
-- [ ] **[CONTENT]** Dati dei direttivi passati — 👤
-- [ ] **[CONTENT]** Ringraziamenti completi (mancano admin e collaboratori) — 👤
+## Filoni che possono avanzare separatamente
 
-## Struttura (/about)
-- [x] Pagina — 🔀 [web#186](https://github.com/PoliNetworkOrg/web/pull/186) e [web#191](https://github.com/PoliNetworkOrg/web/pull/191) fanno la stessa cosa, tenerne una — 👤
-- [ ] Organigramma: stesso componente in codice della Storia — 👤
+- Audit auth#76/backend#90/admin#123: registro leggibile e permesso disponibile.
+- eSign: configurazione drive/Graph, installazione e firma reale; conservare il flusso generico durante il cleanup.
+- Matricole: modifica autorizzata da admin visibile alla successiva richiesta web; errori e FAQ protette.
+- MCP #137: registrazione OAuth, review e collaudo personale dopo riallineamento al nuovo People.
 
-## Team
-- [x] Togliere sezione Direttivo, trafiletto Growth, team International e foto dei membri — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
+## Dopo il MVP
 
-## Unisciti
-- [ ] Più spazio tra le sezioni (risolto da web#179 se aggiornata) — 👤
-- [x] Comprimere l'immagine dei membri (22 MB) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-
-## Contatti
-- [x] Sistemare il link rotto "Collabora con noi" — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-
-## Documenti (da creare)
-- [ ] Progettare la pagina (design) con statuto, regolamenti interni, regole utenti, privacy, cookie e bilanci (valutare 5x1000 e donazioni) — 👤 Simone (designer), da progettare
-- [ ] Implementare la pagina dopo il design — 👤
-
-## FAQs ??????
-- [ ] Popolare con le FAQ dei gruppi e del vecchio sito — 👤 @L3ox64
-- [ ] Admin: import FAQ da file — 👤 @L3ox64
+Soci/quote su Entra (#144) e censimento admin (#145) richiedono design prima di sviluppo. Il primo non condivide
+record con People; il secondo usa gli incarichi fase 1. Restano fuori candidature HR, gestione gruppi dal Capo,
+partner/eventi, newsletter, aziende e casa. Nessuna di queste funzioni è necessaria per ricostruire auth o RBAC.

@@ -1,92 +1,100 @@
-# Checklist sito PoliNetwork
+# Checklist lancio sito PoliNetwork
 
-Ultimo aggiornamento: 17/10/2026
+**Aggiornamento:** 30 ottobre 2026.
+Fonte codice: [web main 0e04231](https://github.com/PoliNetworkOrg/web/tree/0e042311a3b21e442b14ebd2d3d769d84cc55762).
+[PRD admin](PRD_Admin_Dashboard_PoliNetwork.md), [roadmap](PRD_Classificazione_Feature.md).
 
-`[x]` fatto · `[ ]` da fare · 🔀 PR aperta · 👤 chi se ne occupa
+`[x]` codice integrato verificato; `[ ]` lavoro o verifica da completare. Non certifica il deploy né la qualità
+dei dati di produzione. Responsabili personali sotto riportati ereditati dalla checklist, da riconfermare.
+MVP.md contiene il MVP interno admin: questa è l'unica checklist per il lancio pubblico.
 
-## Generale
-- [x] Footer corretto
-- [ ] Footer: collegare i link legali (privacy, cookie, termini) alla pagina Documenti — 👤
-- [ ] Header: "Appunti" → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Sfondo animato — 🔀 [web#183](https://github.com/PoliNetworkOrg/web/pull/183) da aggiornare, ora rompe le pagine nuove — 👤
-- [ ] Animazioni dei componenti (es. "mostra di più") — 👤
-- [ ] Spaziature uniformi tra le sezioni — 🔀 [web#179](https://github.com/PoliNetworkOrg/web/pull/179) da aggiornare alle pagine nuove — 👤
+## Base già integrata
 
-## Home
-- [ ] Sezione Appunti → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Numeri con counter automatico basato sui dati attivi (es. progetti) — 👤
+- [x] Correzioni rapide [web#192](https://github.com/PoliNetworkOrg/web/pull/192): link Appunti nel sito,
+      contatti progetto ripuliti, Team, immagine Unisciti compressa e link Collabora corretto.
+- [x] Sfondo procedurale [web#183](https://github.com/PoliNetworkOrg/web/pull/183): non è più una PR da aggiornare.
+- [x] Pagine Su di noi [#188](https://github.com/PoliNetworkOrg/web/pull/188), dettaglio progetto
+      [#189](https://github.com/PoliNetworkOrg/web/pull/189), Storia [#190](https://github.com/PoliNetworkOrg/web/pull/190)
+      e Struttura [#186](https://github.com/PoliNetworkOrg/web/pull/186).
+      L'alternativa [#191](https://github.com/PoliNetworkOrg/web/pull/191) è chiusa senza merge: non scegliere più tra due PR aperte.
+- [x] Matricole legge risorse, hub Telegram e FAQ da `web.freshman`; admin #124 permette modifica e riordino
+      degli slot previsti e scelta FAQ, oltre alla gestione PDF Guida.
+- [x] Web #198 rende obbligatorio il token IdP di servizio per tutte le chiamate backend.
 
-## Gruppi (ricerca in home e /groups)
-- [ ] Ripensare la nomenclatura: non si capisce piattaforma/anno (es. "Ingegneria Informatica" è il WhatsApp 26/27 ma sembra il generale). Capire se è un problema dei dati salvati o del sito — 👤
-- [ ] Il gruppo Telegram generale di Ingegneria Informatica non compare nella ricerca — 👤
+## Raffinamento visuale aperto
 
-## Appunti
-- [ ] Per ora: tutti i link "Appunti" (header, home, matricole) → https://polinetwork.org/it/materials/view/ — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-- [ ] Da creare: caricamento e visualizzazione appunti sul nuovo sito — 👤
+La serie **#199 → #213 è ancora aperta**, impilata: review e merge dal basso, rispettando le basi.
+Non segnare le correzioni come concluse perché esistono screenshot nelle PR.
 
-## Guide
-- [ ] Decidere quali guide vecchie tenere e come strutturarle — 👤
-- [ ] Sostituire il contenuto finto con le guide — 👤
-- [ ] Admin: gestione guide (come per i gruppi) — 👤
+| PR web                                                 | Area e prossimo controllo                                 |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| [#199](https://github.com/PoliNetworkOrg/web/pull/199) | Home: proporzioni, card, tipografia                       |
+| [#200](https://github.com/PoliNetworkOrg/web/pull/200) | Storia: gerarchia e timeline                              |
+| [#201](https://github.com/PoliNetworkOrg/web/pull/201) | Su di noi: decidere con designer v1/v2, la PR mantiene v1 |
+| [#202](https://github.com/PoliNetworkOrg/web/pull/202) | Struttura: organigramma condiviso con Storia              |
+| [#203](https://github.com/PoliNetworkOrg/web/pull/203) | Team: sezioni e specializzazioni                          |
+| [#204](https://github.com/PoliNetworkOrg/web/pull/204) | Unisciti: ritmo e sezioni                                 |
+| [#205](https://github.com/PoliNetworkOrg/web/pull/205) | Collabora e ritmo condiviso                               |
+| [#206](https://github.com/PoliNetworkOrg/web/pull/206) | Contatti: griglia e layout                                |
+| [#207](https://github.com/PoliNetworkOrg/web/pull/207) | Progetti: card, ricerca e fallback                        |
+| [#208](https://github.com/PoliNetworkOrg/web/pull/208) | Gruppi: risultati e link                                  |
+| [#209](https://github.com/PoliNetworkOrg/web/pull/209) | Matricole: layout e CardIcon responsive                   |
+| [#210](https://github.com/PoliNetworkOrg/web/pull/210) | Associazioni: fallback logo e accordion                   |
+| [#211](https://github.com/PoliNetworkOrg/web/pull/211) | FAQ: categoria iniziale non vuota e layout                |
+| [#212](https://github.com/PoliNetworkOrg/web/pull/212) | Guide: hub e rimozione placeholder lorem                  |
+| [#213](https://github.com/PoliNetworkOrg/web/pull/213) | Guida Matricola: pagina download                          |
 
-## FAQs
-- [ ] Popolare con le FAQ dei gruppi e del vecchio sito — 👤 @L3ox64
-- [ ] Admin: import FAQ da file — 👤 @L3ox64
+- [ ] Confrontare [web#179](https://github.com/PoliNetworkOrg/web/pull/179), ancora aperta, con il ritmo condiviso
+      della serie #199–#213. Risolvere sovrapposizione prima di integrare due sistemi di spaziatura.
+- [ ] Dopo lo stack, verificare desktop/mobile, navigazione tastiera e movimento ridotto, inclusi sfondo e accordion.
+      Nuove animazioni decorative non sono un gate autonomo di lancio.
+- [ ] #163 (easter egg) e #145 (gioco CFU), ancora aperte, sono extra e non dipendenze del lancio.
 
-## Matricole
-- [ ] Aggiornare i contenuti (card senza link, link Telegram vecchi) — 👤
-- [ ] Rendere la pagina modificabile da admin (ora si carica solo il PDF della guida) — 👤
+## Contenuti e gestione admin
 
-## Associazioni
-- [ ] Aggiungere tutti i campi del vecchio sito (mancano Twitch e più canali Telegram) — 👤
-- [ ] L'associazione invia la richiesta di aggiunta → approvazione in admin (stesso sistema dei progetti e delle segnalazioni link) — 👤
-- [ ] L'associazione può richiedere modifiche ai propri dati — 👤
+- [ ] **Gruppi:** verificare nomi, piattaforma e anno (es. Informatica WhatsApp 26/27), il generale Telegram assente
+      dalla ricerca e i link reali. Prima distinguere errore di dati/etichette da errore della ricerca.
+- [ ] **Matricole:** aggiornare card senza destinazione e link vecchi. Provare modifica admin → ricaricamento web
+      senza fallback statico, errori backend e FAQ selezionate. Struttura e titoli restano fissi.
+- [ ] **FAQ:** popolare catalogo da gruppi/vecchio sito e definire import da file; riferimento precedente @L3ox64.
+      Non confondere CRUD admin esistente con import ancora mancante.
+- [ ] **Guide:** decidere quali contenuti conservare e migrare. La gestione PDF Matricole non è un CMS generico
+      delle guide; #212 sistema il sito ma non completa produzione/migrazione dei testi.
+- [ ] **Progetti:** rivedere elenco, archiviare contenuti vecchi e aggiungere nuovi progetti tramite le funzioni esistenti.
+      Verificare riferimenti pubblici a `info@polinetwork.org` invece di contatti personali.
+- [ ] **Link progetto per piattaforma:** [backend#72](https://github.com/PoliNetworkOrg/backend/pull/72) ancora aperta;
+      poi pubblicare i tipi, implementare editor admin e visualizzazione web. La pagina dettaglio già integrata non basta.
+- [ ] **Associazioni:** verificare campi richiesti dal vecchio sito (Twitch, più canali Telegram). Richieste di aggiunta,
+      modifica e approvazione da esterni sono un nuovo workflow, non il CRUD interno attuale.
+- [ ] **Storia/Su di noi/Team:** dati direttivi passati, ringraziamenti, numeri coerenti e testi approvati.
+      #202 condivide l'organigramma nel codice; non dedurre aggiornamento dei dati da quel refactor.
+- [ ] **Home:** numeri derivati da dati attivi o contenuti editoriali verificati, senza contatori dimostrativi.
+- [ ] **Appunti:** verificare tutti i link alla destinazione attuale; valutare link GitLab. Upload/archivio sul nuovo sito
+      e dashboard personale sono backlog separati, da definire prima di sviluppo.
 
-## Progetti
-- [ ] Rivedere l'elenco: aggiungere i progetti nuovi, rimuovere quelli vecchi — 👤
-- [ ] Lista: aggiornare i contatti (ci sono ancora quelli personali di Lorenzo e Tommaso) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192), tolti i contatti personali, resta info@polinetwork.org — 👤
-- [ ] Pagina dettaglio /projects/… — 🔀 [web#189](https://github.com/PoliNetworkOrg/web/pull/189), manca la visualizzazione dei link per piattaforma — 👤
-- [ ] Link per piattaforma (linux, mac, windows, web, ecc.) — 🔀 [backend#72](https://github.com/PoliNetworkOrg/backend/pull/72), fatto solo lato backend — 👤
-- [ ] Admin: gestione dei link per piattaforma — 👤
-- [ ] L'utente invia la richiesta di aggiunta progetto → approvazione in admin (stesso sistema delle associazioni) — 👤
-- [ ] Chi ha proposto il progetto può richiederne modifica o rimozione — 👤
-- [ ] (Secondario) Riscatto progetto: l'autore chiede "è mio" → se approvato può modificare solo quel progetto dalla dashboard. Da capire se gestirlo nei permessi admin o in auth — 👤
+## Documenti e processi esterni
 
-## Su di noi (/chi-siamo)
-- [ ] Pagina — 🔀 [web#188](https://github.com/PoliNetworkOrg/web/pull/188), manca: numeri coerenti con la Storia ("100+" vs "200+" admin) — 👤
+- [ ] **Design Documenti:** statuto, regolamenti, regole utenti, privacy/cookie e bilanci; valutare donazioni/5x1000.
+      Riferimento precedente: Simone (designer), incarico da riconfermare.
+- [ ] Implementare Documenti dopo il design e collegare il footer alle versioni approvate.
+- [ ] Definire referenti, ownership e moderazione di richieste associazioni/progetti; non assegnare ownership
+      trasferendo account personali. È backlog esterno del PRD, non gate del MVP People.
+- [ ] Valutare il Figma della dashboard utente (riferimento precedente Enrico) e il bisogno di login personale.
+      Il token di servizio del sito non offre già quel login.
 
-## Storia
-- [ ] Titolo, freccia "Conosci le persone", card della timeline, organigramma in codice — 🔀 [web#190](https://github.com/PoliNetworkOrg/web/pull/190), copre tutto — 👤
-- [ ] Dati dei direttivi passati — 👤
-- [ ] Ringraziamenti completi (mancano admin e collaboratori) — 👤
+## Verifiche prima del lancio
 
-## Struttura (/about)
-- [ ] Pagina — 🔀 [web#186](https://github.com/PoliNetworkOrg/web/pull/186) e [web#191](https://github.com/PoliNetworkOrg/web/pull/191) fanno la stessa cosa, tenerne una — 👤
-- [ ] Organigramma: stesso componente in codice della Storia — 👤
+- [ ] Inventario URL vecchi e redirect `/it/…`, `/en/…`, graduatorie, eventi; verificare destinazione e codici HTTP.
+- [ ] Piano passaggio beta → dominio principale, DNS, certificati e rollback del sito.
+- [ ] Google Search Console, sitemap, robots, canonical e anteprime social sui nuovi URL.
+- [ ] Italiano coerente; decidere scope e responsabilità dell'eventuale versione inglese.
+- [ ] Backend non disponibile: messaggi e retry comprensibili sulle pagine, senza cataloghi finti.
+- [ ] Configurare client web, chiave e risorsa `backend:public:read`; senza token il backend rifiuta la richiesta.
+- [ ] Allineare tipi e versione distribuita del backend. La vecchia nota README sul pacchetto 1.4.0 non è
+      prova di un blocco attuale: admin risolve 4.0.0; verificare separatamente il lockfile web.
+- [ ] Controllare con i responsabili i contenuti di produzione e gli eventuali dati di prova.
+      Non eliminare righe in massa durante il controllo.
+- [ ] Smoke test pubblico: ricerca gruppi, Appunti, FAQ, Matricole/PDF, progetto e link, contatti e Documenti;
+      ripetere su telefono e verificare i failure del backend.
 
-## Team
-- [ ] Togliere sezione Direttivo, trafiletto Growth, team International e foto dei membri — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-
-## Unisciti
-- [ ] Più spazio tra le sezioni (risolto da web#179 se aggiornata) — 👤
-- [ ] Comprimere l'immagine dei membri (22 MB) — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-
-## Contatti
-- [ ] Sistemare il link rotto "Collabora con noi" — 🔀 [web#192](https://github.com/PoliNetworkOrg/web/pull/192) — 👤
-
-## Documenti (da creare)
-- [ ] Progettare la pagina (design) con statuto, regolamenti interni, regole utenti, privacy, cookie e bilanci (valutare 5x1000 e donazioni) — 👤 Simone (designer), da progettare
-- [ ] Implementare la pagina dopo il design — 👤
-
-## Dashboard utente
-- [ ] Valutare il Figma di Enrico e, se ha senso, implementarla — 👤
-
-## SEO e lancio
-- [ ] Redirect dai link del vecchio sito (/it/…, /en/…, /graduatorie, /events, ecc.) — 👤
-- [ ] Passaggio da beta.polinetwork.org a polinetwork.org — 👤
-- [ ] Mantenere la verifica di Google Search Console — 👤
-- [ ] Anteprime social, sitemap e robots — 👤
-- [ ] Sito impostato in italiano, sistemare i testi misti italiano/inglese — 👤
-- [ ] Decidere se fare la versione inglese — 👤
-- [ ] Gestire gli errori quando il backend è giù (ora pagine in errore o vuote) — 👤
-- [ ] Controllare che il database di produzione non contenga dati di prova — 👤
+Nessuna casella operativa viene spuntata da questa revisione senza evidenza dell'ambiente di destinazione.
