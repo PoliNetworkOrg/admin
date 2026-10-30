@@ -1,6 +1,7 @@
 import { Check, ChevronRight, Minus, Search, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { CustomScrollbar } from "@/components/primitives/custom-scrollbar"
 import {
   buildLabelTree,
   collectSubtreeLabels,
@@ -204,7 +205,7 @@ export function LabelTreeSelector({
       {selectedLabels.length > 0 && (
         // Own block under the search: two 24px lines (plus the 4px gap) then it scrolls; 8px below the chips.
         <div className="shrink-0 border-b border-(--pn-line) px-2 pt-2 pb-2">
-          <div className="flex max-h-[52px] flex-wrap content-start gap-1 overflow-y-auto">
+          <CustomScrollbar className="max-h-[52px]" viewportClassName="flex max-h-[52px] flex-wrap content-start gap-1">
             {selectedLabels.map((label) => (
               <button
                 key={label.label}
@@ -218,11 +219,11 @@ export function LabelTreeSelector({
                 <X aria-hidden className="size-3 text-(--pn-fg-muted)" />
               </button>
             ))}
-          </div>
+          </CustomScrollbar>
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-1">
+      <CustomScrollbar className="min-h-0 flex-1" viewportClassName="p-1">
         {showTree && (
           <section>
             <SectionTitle>Categories</SectionTitle>
@@ -266,7 +267,7 @@ export function LabelTreeSelector({
             className="px-2 py-6"
           />
         )}
-      </div>
+      </CustomScrollbar>
     </div>
   )
 }

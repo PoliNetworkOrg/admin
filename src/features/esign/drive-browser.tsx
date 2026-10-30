@@ -1,8 +1,8 @@
 import { useServerFn } from "@tanstack/react-start"
 import { ArrowUp, FileText, Folder, LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 
-import { IconButton, InlineAlert } from "@/components/primitives"
+import { buttonMotion, IconButton, InlineAlert } from "@/components/primitives"
 import { floatingMotion, raisedSurface } from "@/components/primitives/motion"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,11 +24,17 @@ type DriveBrowserProps = {
   drives: EsignDrive[]
   /** The drive opened first, the first one by default. */
   initialDriveId?: string
+  /** The folder opened first in the initial drive, its top folder by default; ignored when initialDriveId is not one of drives. */
+  initialFolderId?: string
   /** A PDF, with the folder it is in. */
   onPickFile?: (item: EsignDriveItem, folder: DriveFolder) => void
   onPickFolder?: (folder: DriveFolder) => void
   /** The item being imported, shown with a spinner. */
   busyId?: string | null
+  /** Inside a form whose primary action is elsewhere: "Save here" is an outline button. */
+  embedded?: boolean
+  /** Folder mode: a control at the start of the footer, before "Save here". */
+  footerStart?: ReactNode
   className?: string
 }
 
@@ -44,18 +50,47 @@ export function DriveBrowser({
   label,
   drives,
   initialDriveId,
+  initialFolderId,
   onPickFile,
   onPickFolder,
   busyId,
+  embedded = false,
+  footerStart,
   className,
 }: DriveBrowserProps) {
   const listFn = useServerFn(listEsignDrive)
-  const [driveId, setDriveId] = useState(drives.some((d) => d.id === initialDriveId) ? initialDriveId : drives[0]?.id)
-  const [folderId, setFolderId] = useState<string | undefined>(undefined)
+  const initialDrive = drives.some((d) => d.id === initialDriveId)
+  const [driveId, setDriveId] = useState(initialDrive ? initialDriveId : drives[0]?.id)
+  const [folderId, setFolderId] = useState(initialDrive ? initialFolderId : undefined)
+  /** The initial folder until a listing loads: if it was moved or deleted, the drive's top folder opens instead. */
+  const initialFolder = useRef(folderId)
   const drive = drives.find((d) => d.id === driveId)
   const [listing, setListing] = useState<EsignDriveListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const root = useRef<HTMLDivElement>(null)
+  /** A folder was opened from the browser: once it lists, the focus its row or "Up" held comes back in. */
+  const navigated = useRef(false)
+
+  function openFolder(id: string | undefined) {
+    navigated.current = true
+    setFolderId(id)
+  }
+
+  // The rows of the folder just left are gone, and "Up" is disabled at the top: whatever had the focus no longer
+  // exists or can't hold it. The first row takes it, else "Up", else the list, unless it moved on meanwhile.
+  useEffect(() => {
+    if (!listing || !navigated.current) return
+    navigated.current = false
+    const active = document.activeElement
+    const kept = active instanceof HTMLElement && active !== document.body && !active.matches(":disabled")
+    if (kept) return
+    const target =
+      root.current?.querySelector<HTMLElement>("li button:not(:disabled)") ??
+      root.current?.querySelector<HTMLElement>("[data-up]:not(:disabled)") ??
+      root.current?.querySelector<HTMLElement>("ul")
+    target?.focus()
+  }, [listing])
 
   useEffect(() => {
     if (!driveId) return
@@ -64,11 +99,17 @@ export function DriveBrowser({
     setError(null)
     listFn({ data: { driveId, folderId } })
       .then((result) => {
-        if (!cancelled) setListing(result)
+        if (cancelled) return
+        initialFolder.current = undefined
+        setListing(result)
       })
       .catch((cause: unknown) => {
         console.error(cause)
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Couldn't open the folder.")
+        if (cancelled) return
+        if (folderId !== undefined && folderId === initialFolder.current) {
+          initialFolder.current = undefined
+          setFolderId(undefined)
+        } else setError(cause instanceof Error ? cause.message : "Couldn't open the folder.")
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -83,6 +124,7 @@ export function DriveBrowser({
 
   return (
     <div
+      ref={root}
       className={cn("flex min-h-0 flex-col overflow-hidden rounded-(--pn-r-4) border border-(--pn-line)", className)}
     >
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-(--pn-line) bg-(--pn-surface) pr-2 pl-1">
@@ -99,9 +141,12 @@ export function DriveBrowser({
           >
             <SelectTrigger
               aria-label="Drive"
-              className="h-8 max-w-[45%] shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
+              className="h-8 max-w-[45%] min-w-0 shrink-0 border-(--pn-line-strong) bg-(--pn-muted) text-[13px] text-(--pn-fg)"
             >
-              <SelectValue />
+              {/* The trigger lays its value out as a flex box, which can't end in an ellipsis: the name's span does. */}
+              <SelectValue className="min-w-0">
+                {(value: string) => <span className="truncate">{drives.find((d) => d.id === value)?.label}</span>}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className={cn(raisedSurface, floatingMotion)}>
               {drives.map((d) => (
@@ -113,13 +158,15 @@ export function DriveBrowser({
           </Select>
         )}
         <IconButton
+          data-up
           label="Up one folder"
           icon={ArrowUp}
           disabled={!listing || listing.folder.isRoot}
-          onClick={() => setFolderId(listing?.folder.parentId ?? undefined)}
+          onClick={() => openFolder(listing?.folder.parentId ?? undefined)}
         />
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-(--pn-fg-muted)">
-          /{listing?.path ?? ""}
+        {/* Cut at the start, so the open folder stays in view. */}
+        <span className="min-w-0 flex-1 truncate text-left font-mono text-[12px] text-(--pn-fg-muted) [direction:rtl]">
+          <bdi>/{listing?.path ?? ""}</bdi>
         </span>
         {loading && <LoaderCircle aria-label="Loading" className="size-4 animate-spin text-(--pn-fg-muted)" />}
       </div>
@@ -130,7 +177,8 @@ export function DriveBrowser({
       ) : (
         <ul
           aria-label={`${label} in ${drive?.label ?? "the drive"}`}
-          className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto bg-(--pn-surface) py-1 outline-none"
         >
           {listing && items.length === 0 && (
             <li className="px-4 py-6 text-center text-[13px] text-(--pn-fg-muted)">
@@ -142,8 +190,8 @@ export function DriveBrowser({
               <button
                 type="button"
                 disabled={Boolean(busyId)}
-                onClick={() => (item.kind === "folder" ? setFolderId(item.id) : here && onPickFile?.(item, here))}
-                className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) disabled:opacity-60"
+                onClick={() => (item.kind === "folder" ? openFolder(item.id) : here && onPickFile?.(item, here))}
+                className="flex h-11 w-full items-center gap-3 px-3 text-left text-[14px] transition-colors duration-120 hover:bg-(--pn-hover) focus-visible:outline-offset-[-2px] disabled:opacity-60"
               >
                 {item.kind === "folder" ? (
                   <Folder aria-hidden className="size-4 shrink-0 text-(--pn-fg-muted)" />
@@ -163,9 +211,16 @@ export function DriveBrowser({
           ))}
         </ul>
       )}
-      {mode === "folder" && here && (
-        <div className="flex shrink-0 items-center justify-end border-t border-(--pn-line) bg-(--pn-surface) p-2">
-          <Button size="sm" disabled={loading} onClick={() => onPickFolder?.(here)}>
+      {mode === "folder" && (
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-(--pn-line) bg-(--pn-surface) p-2">
+          {footerStart && <div className="mr-auto flex">{footerStart}</div>}
+          <Button
+            size="sm"
+            variant={embedded ? "outline" : "default"}
+            className={buttonMotion}
+            disabled={loading || !here}
+            onClick={() => here && onPickFolder?.(here)}
+          >
             Save here
           </Button>
         </div>

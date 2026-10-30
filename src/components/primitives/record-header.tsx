@@ -18,7 +18,10 @@ type RecordHeaderProps = {
   className?: string
 }
 
-/** The only `h1` on a deep page: optional avatar or label dot, the title with a status badge, meta and description. */
+/**
+ * The only `h1` on a deep page: optional avatar or label dot, the title with a status badge, meta and description.
+ * Below the shell breakpoint the actions take their own line, so they never squeeze the title and meta.
+ */
 export function RecordHeader({
   title,
   avatar,
@@ -31,7 +34,7 @@ export function RecordHeader({
   className,
 }: RecordHeaderProps) {
   return (
-    <header className={cn("flex items-center gap-4", className)}>
+    <header className={cn("flex flex-wrap items-center gap-4", className)}>
       {avatar && <div className="shrink-0">{avatar}</div>}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -45,7 +48,7 @@ export function RecordHeader({
         {description && <p className="mt-1 text-[14px] leading-5 text-pretty text-(--pn-fg)">{description}</p>}
         {chips && <div className="mt-2 flex flex-wrap items-center gap-2">{chips}</div>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 max-shell:basis-full">{actions}</div>}
     </header>
   )
 }

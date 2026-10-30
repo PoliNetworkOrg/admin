@@ -184,7 +184,7 @@ export function TelegramUserDetailPage({ data }: { data: TelegramUserDetail }) {
 
 type GrantWindow = Pick<TgGrant, "validSince" | "validUntil">
 
-type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { key: string })[] }
+type GrantsSectionProps = { ongoing: GrantWindow | null; scheduled: (GrantWindow & { id: number })[] }
 
 function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
   // `tg.grants.checkUser` returns the ongoing grant without a key or reason; a user has at most one.
@@ -214,7 +214,7 @@ function GrantsSection({ ongoing, scheduled }: GrantsSectionProps) {
           ) : null}
           {scheduled.map((grant) => (
             <li
-              key={grant.key}
+              key={grant.id}
               className="flex flex-col gap-1.5 rounded-(--pn-r-4) border border-dashed border-(--pn-line-strong) p-3.5"
             >
               <div className="flex items-center justify-between gap-2">
@@ -292,7 +292,6 @@ type AuditActor = { name: string; title?: string }
 function auditActor(audit: Audit): AuditActor {
   if (audit.admin) return { name: telegramUserName(audit.admin) }
   if (audit.actorTgId !== null) return { name: `User ${audit.actorTgId}` }
-  if (audit.adminId !== null) return { name: `User ${audit.adminId}` }
   if (audit.actorSub) {
     return {
       name: audit.client === "dashboard" ? "Dashboard admin" : "PoliNetwork account",
