@@ -5,9 +5,6 @@ import { useOpenGeneration } from "@/components/primitives"
 import { appToast } from "@/components/shell"
 import { errorMessage as backendMessage } from "@/lib/errors"
 
-import { saveFile } from "./people-files"
-import type { FilePayload } from "./people.contract"
-
 /**
  * After a successful mutation: reload every loader, then confirm. A failed reload is not a failed mutation, so it
  * warns instead of offering to repeat it.
@@ -85,23 +82,4 @@ export function useLoaded<T>(load: (() => Promise<T>) | null, keepPrevious = fal
   }, [load])
   if (load && result.load === load) return { data: result.data, failed: result.failed }
   return { data: keepPrevious ? result.data : null, failed: false }
-}
-
-/** Downloads one file at a time; `busy` names the one in flight so its button shows a spinner. */
-export function useFileDownload() {
-  const [busy, setBusy] = useState<string | null>(null)
-  async function download(id: string, load: () => Promise<FilePayload>, failure: string) {
-    setBusy(id)
-    try {
-      saveFile(await load())
-      return true
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, failure))
-      return false
-    } finally {
-      setBusy(null)
-    }
-  }
-  return { busy, download }
 }

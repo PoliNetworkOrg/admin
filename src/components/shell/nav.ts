@@ -181,12 +181,13 @@ const people: Service = {
       permission: "people:read",
       searchPlaceholder: "Search by name, email or Telegram…",
     },
+    // Member register, Receipts and Census are unconnected mockups (Phase 2, #144; Phase 3, #145).
     {
       id: "members",
       title: "Member register",
       icon: IdCard,
       path: "/dashboard/people/members",
-      permission: "people:members:read",
+      permission: "people:read",
       searchPlaceholder: "Search by name, number or email…",
     },
     {
@@ -194,7 +195,7 @@ const people: Service = {
       title: "Receipts",
       icon: Receipt,
       path: "/dashboard/people/receipts",
-      permission: "people:members:read",
+      permission: "people:read",
       searchPlaceholder: "Search by name or receipt number…",
     },
     {
@@ -203,7 +204,7 @@ const people: Service = {
       icon: UserCog,
       path: "/dashboard/people/admins",
       permission: "people:read",
-      searchPlaceholder: "Search by name, course or group…",
+      searchPlaceholder: "Search by name, course or username…",
     },
     {
       id: "teams",
@@ -704,8 +705,6 @@ export function documentTitle(match: PageMatch): string {
 export type PendingCounts = {
   reports: Promise<number | null>
   signatures: Promise<number | null>
-  receipts: Promise<number | null>
-  linking: Promise<number | null>
 }
 
 const NO_COUNT: Promise<number | null> = Promise.resolve(null)
@@ -728,7 +727,5 @@ export function sectionPending(
 ): Promise<number | null> {
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
-  if (serviceId === "people" && sectionId === "linking") return pending.linking
-  if (serviceId === "people" && sectionId === "receipts") return pending.receipts
   return NO_COUNT
 }

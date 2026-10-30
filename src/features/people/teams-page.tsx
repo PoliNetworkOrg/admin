@@ -24,16 +24,7 @@ import { Count, PageBar, PageContent, Toolbar, useCan, useHasAdminAccess, usePeo
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
-import {
-  CENSUS_ANSWER,
-  censusEntry,
-  currentYear,
-  formatDay,
-  NO_ANSWER,
-  personName,
-  PHOTO_CONSENT,
-  teamName,
-} from "./people-format"
+import { formatDay, personName, PHOTO_CONSENT, teamName } from "./people-format"
 import { useDialog, useDialogState } from "./people-hooks"
 import { ActionMenu, PersonCell, StateBadge } from "./people-ui"
 import { type PersonRow, type TeamId, type TeamMembership, type TeamSummary, teamFields } from "./people.contract"
@@ -71,12 +62,6 @@ function matchesQuery(row: TeamRow, query: string) {
   return [personName(row.person), row.person.profile.telegramUsername ?? "", ...fieldValues].some((value) =>
     value.toLocaleLowerCase().includes(query)
   )
-}
-
-function CensusBadge({ person }: { person: PersonRow }) {
-  const entry = censusEntry(person, currentYear())
-  if (!entry) return <Unset />
-  return <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
 }
 
 function PhotoBadge({ person }: { person: PersonRow }) {
@@ -210,7 +195,6 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
             <Chip>{teamName(row.membership.team)}</Chip>
             {row.membership.role === "lead" ? <Chip>Lead</Chip> : null}
-            <CensusBadge person={row.person} />
           </span>
         </>
       ),
@@ -231,14 +215,6 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
       priority: 3,
       mobile: "hidden",
       cell: (row) => <span className="whitespace-nowrap">{formatDay(row.membership.since)}</span>,
-    },
-    {
-      id: "census",
-      label: `Census ${currentYear()}`,
-      width: 152,
-      priority: 4,
-      mobile: "hidden",
-      cell: (row) => <CensusBadge person={row.person} />,
     },
     {
       id: "photo",
@@ -268,7 +244,6 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           <nav aria-label="Teams" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {teams.map((summary) => {
               const active = rowsOf(summary, false)
-              const missing = active.filter((row) => !censusEntry(row.person, currentYear())?.answer).length
               return (
                 <NavCard
                   key={summary.id}
@@ -276,14 +251,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
                   count={active.length}
                   noun="member"
                   description={
-                    <>
-                      <span className="block truncate">{summary.lead ? `Lead: ${summary.lead.name}` : "No lead"}</span>
-                      {missing ? (
-                        <span className="block text-(--pn-warning-fg)">
-                          {pluralize(missing, "missing census answer")}
-                        </span>
-                      ) : null}
-                    </>
+                    <span className="block truncate">{summary.lead ? `Lead: ${summary.lead.name}` : "No lead"}</span>
                   }
                   render={<Link to="/dashboard/people/teams/$teamId" params={{ teamId: summary.id }} />}
                 />
@@ -446,7 +414,6 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
       minWidth: 220,
       mobile: "main",
       cell: (row) => (
-        // The course for everyone: member emails need people:members:read, and a mix would read as inconsistent.
         <PersonCell name={personName(row.person)} secondary={row.person.profile.course} muted={scope === "former"} />
       ),
     },
@@ -534,14 +501,6 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
                 } satisfies DataTableColumn<TeamRow>,
               ]
             : []),
-          {
-            id: "census",
-            label: `Census ${currentYear()}`,
-            width: 152,
-            priority: 4,
-            mobile: "hidden",
-            cell: (row) => <CensusBadge person={row.person} />,
-          } satisfies DataTableColumn<TeamRow>,
           {
             id: "photo",
             label: "Photo and video",

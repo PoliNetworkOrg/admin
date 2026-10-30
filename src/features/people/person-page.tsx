@@ -1,21 +1,13 @@
 import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
-  Banknote,
-  Bell,
   Camera,
-  ClipboardList,
   Crown,
-  EllipsisVertical,
-  FileDown,
-  FileSearch,
   FileText,
-  IdCard,
   Link2,
   Mail,
   NotebookPen,
   Pencil,
-  Plus,
   RefreshCw,
   Unlink,
   UserMinus,
@@ -28,15 +20,10 @@ import { useState } from "react"
 import {
   buttonMotion,
   Chip,
-  IconButton,
   InlineAlert,
   KeyValueList,
   type KeyValueItem,
   LoadingButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   PlatformGlyph,
   RecordHeader,
   SectionCard,
@@ -46,39 +33,26 @@ import {
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { formatDateTime, pluralize } from "@/lib/format"
+import { formatDateTime } from "@/lib/format"
 
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
 import { CapoOfReferenceDialog, CapoScopeDialog, EndAdminDialog, EndCapoDialog } from "./admin-dialogs"
-import { CensusAnswersDialog } from "./census-answers-dialog"
-import { type FeeTarget, MarkPaidDialog, ReviewReceiptDialog, useSendFeeReminder } from "./fee-dialogs"
 import { LinkAccountDialog } from "./link-account-dialog"
-import { MemberNumberDialog, MemberStatusDialog } from "./member-dialogs"
 import { NotesDialog } from "./notes-dialog"
-import { formatCents } from "./people-fees"
 import {
   ACCOUNT_STATUS,
   activeTeams,
-  CENSUS_ANSWER,
-  CENSUS_SOURCE,
-  currentYear,
-  FEE_STATUS,
   formatDay,
   hasNoRoles,
-  PAYMENT_METHOD,
-  RECEIPT_STATUS,
   isExpired,
-  MEMBER_STATUS,
-  NO_ANSWER,
   personName,
   PHOTO_CONSENT,
   roleLabels,
   teamName,
   yearOf,
 } from "./people-format"
-import { errorMessage, useDialog, useDialogState, useFileDownload, useRefreshAfter } from "./people-hooks"
-import { downloadReceipt } from "./people-receipts.functions"
-import { ActionMenu, MonoChip, PersonAvatar, Row, RowIcon, Rows, StateBadge, SubHeading } from "./people-ui"
+import { errorMessage, useDialog, useDialogState, useRefreshAfter } from "./people-hooks"
+import { ActionMenu, PersonAvatar, Row, RowIcon, Rows, StateBadge } from "./people-ui"
 import { updatePerson } from "./people-write.functions"
 import { type PersonRecord, TEAM_IDS, type TeamMembership, teamFields } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
@@ -92,35 +66,23 @@ const BACK = { label: "people", link: { to: "/dashboard/people" } } as const
 export function PersonPage({ person }: { person: PersonRecord }) {
   const canWrite = useCan("people:write")
   const canRead = useCan("people:read")
-  const canReadMembers = useCan("people:members:read")
-  const canWriteMembers = useCan("people:members:write") && canReadMembers
   const canAppoint = useCan("people:appoint")
-  const canFees = useCan("people:fees:write")
-  const sendReminder = useSendFeeReminder()
-  const download = useServerFn(downloadReceipt)
   const update = useServerFn(updatePerson)
   const refresh = useRefreshAfter()
   const name = personName(person)
   const archived = hasNoRoles(person)
   const roles = roleLabels(person)
-  const { profile, admin, member, account } = person
-  const adminTarget = { personId: person.id, name, groups: admin?.groups.length ?? 0 }
+  const { profile, admin, account } = person
+  const adminTarget = { personId: person.id, name }
 
-  const { busy: downloading, download: downloadFile } = useFileDownload()
   const edit = useDialogState()
   const notes = useDialogState()
   const link = useDialogState()
   const addTeam = useDialogState()
-  const answers = useDialog<string>()
   const accountDialog = useDialog<AccountAction>()
-  const memberDialog = useDialog<"status" | "number">()
-  const feeDialog = useDialog<"review" | "paid">()
   const adminDialog = useDialog<AdminDialogKind>()
   const teamDialog = useDialog<{ kind: "fields" | "end"; target: TeamMemberTarget }>()
   const [applyingTelegram, setApplyingTelegram] = useState(false)
-  // A person already on the register (even one whose details this viewer can't read) isn't offered Add member.
-  const canAddMember = canWriteMembers && !member && !person.isMember
-  const feeTarget: FeeTarget | null = member ? { id: person.id, name, number: member.number } : null
 
   function openTeam(kind: "fields" | "end", membership: TeamMembership) {
     teamDialog.show({ kind, target: { personId: person.id, name, team: membership.team, fields: membership.fields } })
@@ -208,50 +170,13 @@ export function PersonPage({ person }: { person: PersonRecord }) {
               </span>
             }
             chips={roles.length ? roles.map((role) => <Chip key={role}>{role}</Chip>) : undefined}
-            actions={
-              // A menu only when both roles can be added; one role is a plain button.
-              canAddMember && canWrite ? (
-                <Menu>
-                  <MenuTrigger
-                    render={
-                      <Button variant="outline" size="sm" className={buttonMotion}>
-                        <Plus data-icon="inline-start" />
-                        Add role
-                      </Button>
-                    }
-                  />
-                  <MenuContent>
-                    <MenuItem render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}>
-                      <IdCard />
-                      Member
-                    </MenuItem>
-                    <MenuItem onClick={addTeam.show}>
-                      <Users />
-                      Team member
-                    </MenuItem>
-                  </MenuContent>
-                </Menu>
-              ) : canAddMember ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={buttonMotion}
-                  nativeButton={false}
-                  render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}
-                >
-                  <IdCard data-icon="inline-start" />
-                  Add member
-                </Button>
-              ) : undefined
-            }
           />
 
           {archived || person.discrepancies.length ? (
             <div className="flex flex-col gap-2">
               {archived ? (
                 <InlineAlert tone="neutral">
-                  No active roles left. The record stays for history and future census campaigns; it no longer appears
-                  in team or admin lists.
+                  No active roles left. The record stays for history; it no longer appears in team or admin lists.
                 </InlineAlert>
               ) : null}
               {person.discrepancies.map((discrepancy, index) => (
@@ -272,36 +197,6 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       >
                         Use @{discrepancy.suggestedTelegram}
                       </LoadingButton>
-                    ) : discrepancy.kind === "declared-member" && canWriteMembers && member ? (
-                      // A former member is reactivated, not admitted again.
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={buttonMotion}
-                        onClick={() => memberDialog.show("status")}
-                      >
-                        Change status
-                      </Button>
-                    ) : discrepancy.kind === "declared-member" && canWriteMembers ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={buttonMotion}
-                        nativeButton={false}
-                        render={<Link to="/dashboard/people/members" search={{ add: person.id }} />}
-                      >
-                        Add member
-                      </Button>
-                    ) : discrepancy.kind === "needs-review" && canWrite ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={buttonMotion}
-                        nativeButton={false}
-                        render={<Link to="/dashboard/people/linking" />}
-                      >
-                        Open Linking
-                      </Button>
                     ) : undefined
                   }
                 >
@@ -408,38 +303,6 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       ]}
                     />
                   </div>
-                  {admin.status === "active" || admin.requested.length ? (
-                    <Rows>
-                      {admin.status === "active" ? (
-                        <SubHeading>Groups they administer · detected by the bot</SubHeading>
-                      ) : null}
-                      {admin.status === "active" && admin.groups.length === 0 ? (
-                        <Row
-                          lead={<RowIcon icon={Users} />}
-                          title="No groups"
-                          meta="The bot hasn't seen them as admin in any group."
-                        />
-                      ) : null}
-                      {admin.groups.map((group) => (
-                        <Row
-                          key={group.chatId}
-                          lead={<PlatformGlyph platform="tg" className="size-5" />}
-                          title={group.title}
-                          meta={<span className="font-mono">{group.chatId}</span>}
-                        />
-                      ))}
-                      {admin.requested.length ? <SubHeading>Asked to join</SubHeading> : null}
-                      {admin.requested.map((group) => (
-                        <Row
-                          key={group.chatId}
-                          lead={<PlatformGlyph platform="tg" className="size-5" />}
-                          title={group.title}
-                          meta={`Asked ${formatDay(group.requestedOn)}`}
-                          end={<StatusBadge tone="brand">Pending</StatusBadge>}
-                        />
-                      ))}
-                    </Rows>
-                  ) : null}
                 </SectionCard>
               ) : null}
 
@@ -524,51 +387,13 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                   </Rows>
                 </SectionCard>
               ) : null}
-
-              <SectionCard title="Census history" padding="flush">
-                {person.census.length === 0 ? (
-                  <SectionEmpty title="Not expected in any campaign yet" />
-                ) : (
-                  <Rows>
-                    {person.census.map((entry) => (
-                      <Row
-                        key={entry.year}
-                        lead={<RowIcon icon={ClipboardList} />}
-                        title={<span className="font-mono">{entry.year}</span>}
-                        meta={
-                          entry.answer && entry.source && entry.answeredOn
-                            ? `${CENSUS_SOURCE[entry.source]} · ${formatDay(entry.answeredOn)}`
-                            : entry.year === currentYear()
-                              ? `Waiting for an answer${entry.reminders ? ` · ${pluralize(entry.reminders, "reminder")} sent` : ""}`
-                              : "No answer"
-                        }
-                        end={
-                          <>
-                            {entry.answer && canRead ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className={buttonMotion}
-                                onClick={() => answers.show(entry.year)}
-                              >
-                                View answers
-                              </Button>
-                            ) : null}
-                            <StateBadge state={entry.answer ? CENSUS_ANSWER[entry.answer] : NO_ANSWER} />
-                          </>
-                        }
-                      />
-                    ))}
-                  </Rows>
-                )}
-              </SectionCard>
             </div>
 
             <div className="flex min-w-0 flex-col gap-4">
               <SectionCard
                 title="Account"
                 footer={
-                  canWrite && account.status !== "review" ? (
+                  canWrite ? (
                     <div className="flex flex-wrap gap-2">
                       {account.status === "none" && profile.personalEmail ? (
                         <Button
@@ -661,93 +486,7 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                     ]}
                   />
                 ) : null}
-                {account.status === "review" ? (
-                  <InlineAlert
-                    tone="warning"
-                    action={
-                      canWrite ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={buttonMotion}
-                          nativeButton={false}
-                          render={<Link to="/dashboard/people/linking" />}
-                        >
-                          Resolve
-                        </Button>
-                      ) : undefined
-                    }
-                  >
-                    {account.issue}
-                  </InlineAlert>
-                ) : null}
               </SectionCard>
-
-              {member ? (
-                <SectionCard
-                  title="Member"
-                  action={
-                    canWriteMembers ? (
-                      <Menu>
-                        <MenuTrigger
-                          render={
-                            <IconButton label="Member actions" ariaLabel="Member actions" icon={EllipsisVertical} />
-                          }
-                        />
-                        <MenuContent>
-                          <MenuItem onClick={() => memberDialog.show("status")}>
-                            <Pencil />
-                            Change status
-                          </MenuItem>
-                          <MenuItem onClick={() => memberDialog.show("number")}>
-                            <IdCard />
-                            Change member number
-                          </MenuItem>
-                        </MenuContent>
-                      </Menu>
-                    ) : undefined
-                  }
-                >
-                  <KeyValueList
-                    items={[
-                      { key: "Member number", value: <MonoChip>{member.number}</MonoChip> },
-                      { key: "Status", value: <StateBadge state={MEMBER_STATUS[member.status]} /> },
-                      { key: "Admitted on", value: formatDay(member.admittedOn) },
-                      // With the fees in their own card, the fee status is said there only.
-                      ...(person.fees
-                        ? []
-                        : [
-                            {
-                              key: `Fee ${currentYear()}`,
-                              value: member.fee ? <StateBadge state={FEE_STATUS[member.fee]} /> : null,
-                            },
-                          ]),
-                      {
-                        key: "Microsoft 365",
-                        value: <span className="font-mono [overflow-wrap:anywhere]">{member.m365Email}</span>,
-                      },
-                    ]}
-                  />
-                </SectionCard>
-              ) : null}
-
-              {person.fees ? (
-                <FeesCard
-                  fees={person.fees}
-                  canFees={canFees && member !== null && member.status !== "former"}
-                  onReview={() => feeDialog.show("review")}
-                  onMarkPaid={() => feeDialog.show("paid")}
-                  onRemind={() => void sendReminder({ id: person.id, name })}
-                  downloading={downloading}
-                  onDownload={(receipt) =>
-                    void downloadFile(
-                      receipt.id,
-                      () => download({ data: { receiptId: receipt.id } }),
-                      `Couldn't download receipt ${receipt.number}.`
-                    )
-                  }
-                />
-              ) : null}
 
               <SectionCard title="Consents" padding="flush">
                 {person.consents.privacy || person.consents.photo ? (
@@ -764,13 +503,13 @@ export function PersonPage({ person }: { person: PersonRecord }) {
                       <Row
                         lead={<RowIcon icon={Camera} />}
                         title="Photo and video"
-                        meta={`${PHOTO_CONSENT[person.consents.photo.status].label} ${formatDay(person.consents.photo.on)} · revocable from My area`}
+                        meta={`${PHOTO_CONSENT[person.consents.photo.status].label} ${formatDay(person.consents.photo.on)}`}
                         end={<StateBadge state={PHOTO_CONSENT[person.consents.photo.status]} />}
                       />
                     ) : null}
                   </Rows>
                 ) : (
-                  <SectionEmpty title="No consents yet" hint="They're collected with the census." />
+                  <SectionEmpty title="No consents yet" />
                 )}
               </SectionCard>
 
@@ -901,174 +640,6 @@ export function PersonPage({ person }: { person: PersonRecord }) {
           />
         )
       ) : null}
-      {canWriteMembers && member && memberDialog.target ? (
-        memberDialog.target === "status" ? (
-          <MemberStatusDialog
-            key={`status-${memberDialog.key}`}
-            open={memberDialog.open}
-            onOpenChange={memberDialog.onOpenChange}
-            member={{ personId: person.id, name, ...member }}
-          />
-        ) : (
-          <MemberNumberDialog
-            key={`number-${memberDialog.key}`}
-            open={memberDialog.open}
-            onOpenChange={memberDialog.onOpenChange}
-            member={{ personId: person.id, name, ...member }}
-          />
-        )
-      ) : null}
-      {canFees && feeTarget && feeDialog.target ? (
-        feeDialog.target === "review" ? (
-          <ReviewReceiptDialog
-            key={`review-${feeDialog.key}`}
-            open={feeDialog.open}
-            onOpenChange={feeDialog.onOpenChange}
-            person={feeTarget}
-          />
-        ) : (
-          <MarkPaidDialog
-            key={`paid-${feeDialog.key}`}
-            open={feeDialog.open}
-            onOpenChange={feeDialog.onOpenChange}
-            person={feeTarget}
-          />
-        )
-      ) : null}
-      {canRead && answers.target ? (
-        <CensusAnswersDialog
-          key={`answers-${answers.key}`}
-          open={answers.open}
-          onOpenChange={answers.onOpenChange}
-          personId={person.id}
-          name={name}
-          year={answers.target}
-        />
-      ) : null}
     </>
-  )
-}
-
-/** The current fee year, what to do about it, and every receipt ever issued (voided ones too). */
-function FeesCard({
-  fees,
-  canFees,
-  onReview,
-  onMarkPaid,
-  onRemind,
-  downloading,
-  onDownload,
-}: {
-  fees: NonNullable<PersonRecord["fees"]>
-  canFees: boolean
-  onReview: () => void
-  onMarkPaid: () => void
-  onRemind: () => void
-  /** The receipt being downloaded. */
-  downloading: string | null
-  onDownload: (receipt: NonNullable<PersonRecord["fees"]>["receipts"][number]) => void
-}) {
-  const fee = fees.current
-  const owing = fee?.status === "due" || fee?.status === "unpaid"
-  const items: KeyValueItem[] = fee
-    ? [
-        { key: `Fee ${fee.year}`, value: <StateBadge state={FEE_STATUS[fee.status]} /> },
-        { key: "Amount", value: <span className="tabular-nums">{formatCents(fee.amountCents)}</span> },
-        ...(fee.status === "paid" && fee.payment
-          ? [
-              {
-                key: "Paid on",
-                value: `${formatDay(fee.payment.paidOn)} · ${PAYMENT_METHOD[fee.payment.method]}${fee.payment.amountCents !== fee.amountCents ? ` · ${formatCents(fee.payment.amountCents)}` : ""}`,
-              },
-            ]
-          : [{ key: "Due by", value: formatDay(fee.dueOn) }]),
-        ...(fee.upload
-          ? [
-              {
-                key: "Transfer receipt",
-                value: `${fee.upload.fileName} · uploaded ${formatDateTime(new Date(fee.upload.uploadedAt))}`,
-              },
-            ]
-          : []),
-        ...(fee.rejection && owing
-          ? [
-              {
-                key: "Rejected",
-                value: `${formatDay(fee.rejection.at.slice(0, 10))} by ${fee.rejection.by}: “${fee.rejection.reason}”`,
-              },
-            ]
-          : []),
-        ...(owing
-          ? [{ key: "Last reminder", value: fee.lastReminder ? formatDateTime(new Date(fee.lastReminder)) : null }]
-          : []),
-      ]
-    : []
-  return (
-    <SectionCard
-      title="Fees and receipts"
-      padding="flush"
-      action={
-        canFees && fee?.status === "receipt" ? (
-          <Button size="sm" variant="outline" className={buttonMotion} onClick={onReview}>
-            <FileSearch data-icon="inline-start" />
-            Review receipt
-          </Button>
-        ) : canFees && owing ? (
-          <span className="flex items-center gap-1">
-            <IconButton label="Send reminder" icon={Bell} onClick={onRemind} />
-            <Button size="sm" variant="outline" className={buttonMotion} onClick={onMarkPaid}>
-              <Banknote data-icon="inline-start" />
-              Mark as paid
-            </Button>
-          </span>
-        ) : undefined
-      }
-    >
-      {fee ? (
-        <div className="border-b border-(--pn-line) px-4 py-3">
-          <KeyValueList items={items} />
-        </div>
-      ) : null}
-      <Rows>
-        <SubHeading>Receipts</SubHeading>
-        {fees.receipts.length === 0 ? (
-          <li className="px-4 pb-3 text-[13px] text-(--pn-fg-muted)">
-            None yet. A receipt is issued when the fee is paid.
-          </li>
-        ) : null}
-        {fees.receipts.map((receipt) => (
-          <Row
-            key={receipt.id}
-            lead={<RowIcon icon={FileText} />}
-            title={
-              <>
-                <span className={receipt.status === "voided" ? "font-mono line-through" : "font-mono"}>
-                  {receipt.number}
-                </span>
-                <StateBadge state={RECEIPT_STATUS[receipt.status]} />
-              </>
-            }
-            meta={
-              receipt.voided
-                ? `Voided ${formatDay(receipt.voided.on)}: ${receipt.voided.reason}`
-                : receipt.status === "sent" && receipt.sentAt
-                  ? `Fee ${receipt.year} · sent ${formatDay(receipt.sentAt.slice(0, 10))}`
-                  : receipt.status === "failed"
-                    ? `Fee ${receipt.year} · ${receipt.failure ?? "the email failed"}`
-                    : `Fee ${receipt.year} · issued ${formatDay(receipt.issuedOn)}`
-            }
-            end={
-              <IconButton
-                label="Download PDF"
-                ariaLabel={`Download ${receipt.number}`}
-                icon={FileDown}
-                pending={downloading === receipt.id}
-                onClick={() => onDownload(receipt)}
-              />
-            }
-          />
-        ))}
-      </Rows>
-    </SectionCard>
   )
 }

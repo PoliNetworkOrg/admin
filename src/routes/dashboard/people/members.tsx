@@ -1,35 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { z } from "zod"
 
-import { TableSkeleton } from "@/components/primitives"
-import { PageBar, PageContent } from "@/components/shell"
 import { MembersPage } from "@/features/people/members-page"
-import { getMemberRegister } from "@/features/people/people-members.functions"
 
+// An unconnected mockup (Phase 2, #144): no loader, nothing is read from the backend.
 export const Route = createFileRoute("/dashboard/people/members")({
-  validateSearch: z.object({ add: z.string().optional() }),
-  loader: () => getMemberRegister(),
-  pendingComponent: () => (
-    <>
-      <PageBar />
-      <PageContent>
-        <TableSkeleton columns={6} label="Loading members…" />
-      </PageContent>
-    </>
-  ),
-  component: MembersRoute,
+  component: MembersPage,
 })
-
-function MembersRoute() {
-  const { add } = Route.useSearch()
-  const navigate = Route.useNavigate()
-  return (
-    <MembersPage
-      people={Route.useLoaderData()}
-      addPersonId={add}
-      onAddHandled={() => {
-        navigate({ search: {}, replace: true }).catch((error) => console.error(error))
-      }}
-    />
-  )
-}

@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
 
 import { computerOnly, phoneOnly } from "./action-card"
 import { MAX_BATCH } from "./agent"
-import { ReceiptRequestLink } from "./receipt-request-link"
 import { RequestStatusBadge, type StatusFilter, signedProgress } from "./request-status"
 import { useSigningDevice } from "./signing-device"
 
@@ -61,11 +60,7 @@ const columns: DataTableColumn<EsignRequest>[] = [
     cell: (r) => (
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-medium">{r.title}</span>
-        {r.peopleReceipt ? (
-          <ReceiptRequestLink source={r.peopleReceipt} />
-        ) : (
-          <span className="truncate text-xs text-(--pn-fg-muted)">Requested by {r.createdByName}</span>
-        )}
+        <span className="truncate text-xs text-(--pn-fg-muted)">Requested by {r.createdByName}</span>
       </span>
     ),
   },
@@ -118,7 +113,6 @@ export function EsignRequestsPage({
   onStatusChange?: (status: StatusFilter) => void
 }) {
   const canManage = useCan("esign:requests:manage")
-  const canSignReceipts = useCan("people:receipts:sign")
   // Until hydration a Mac may be an iPad: both the button and the note render, and CSS shows one.
   const device = useSigningDevice()
   const navigate = useNavigate()
@@ -139,7 +133,7 @@ export function EsignRequestsPage({
     [requests, status, deferred]
   )
   const narrowed = visible.length !== requests.length
-  const waiting = inbox ? requests.filter((r) => r.myTurn && (!r.peopleReceipt || canSignReceipts)).length : 0
+  const waiting = inbox ? requests.filter((r) => r.myTurn).length : 0
 
   const description = inbox
     ? requests.length

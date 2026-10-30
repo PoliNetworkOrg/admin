@@ -3,6 +3,15 @@
 Settled decisions on top of [`brief.md`](brief.md). When the brief, the prototype and this file disagree, this file
 wins; when this file and [`docs/design.md`](../design.md) disagree on visuals, `docs/design.md` wins.
 
+> [!IMPORTANT]
+> **Cleanup (#138).** Soci (the member register), fees and receipts, and the census are now **unconnected UI
+> mockups**: their pages render static sample data from `src/features/people/mockup-data.ts`, make no backend call,
+> disable every action and show a banner. Soci, fees and receipts will be rebuilt from scratch on Microsoft 365 members
+> in Phase 2 (#144), the census in Phase 3 (#145). Record matching (the Linking review queue, merging, My area's "Is
+> this you?", Ask to be added) and Telegram group tracking (group columns, join requests) are removed. The permissions
+> `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign` are gone; the mockups
+> open with `people:read`. Sections below that describe these features describe the mockup or the removed design.
+
 ## Decisions made with the owner
 
 1. **Dashboard only.** `@polinetwork/backend` 1.4.0 has no People procedures (only `auth`, `azure`, `groups`, `me`,
@@ -52,8 +61,7 @@ Known prototype defects to not reproduce:
   and Sign-in & security (today's `/dashboard/account`, unchanged content).
 - A **Team Lead** without people rights gets People with only Teams, which opens their team directly.
 - People with only `people:self`: the logo links to My area instead of Overview.
-- Linking shows its needs-review count in the panel, like Reports › Open, because it is a queue. Receipts does the
-  same with the receipts waiting for the signed-in officer.
+- Linking and Receipts showed a pending count in the panel; both went with the review queue and receipt signing (#138).
 
 ## Data and display
 
@@ -117,19 +125,17 @@ Known prototype defects to not reproduce:
 
 ## Roles to permissions
 
-| Viewer      | Permissions (IdP)                                                                                                             | Sees                                              |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Direttivo   | `admin:access`, `people:read`, `people:write`, `people:members:read`, `people:members:write`, `people:appoint`, `people:self` | Everything                                        |
-| HR          | `admin:access`, `people:read`, `people:write`, `people:members:read`, `people:self`                                           | All People sections; member register read-only    |
-| Capo Admin  | `people:self` (+ Capo Admin scope on their record)                                                                            | Telegram › Capo Admin, My area                    |
-| Team Lead   | `people:self` (+ Lead role on their record)                                                                                   | People › Teams (their team, full fields), My area |
-| Team member | `people:self`                                                                                                                 | My area with their team roster                    |
-| Admin only  | `people:self`                                                                                                                 | My area                                           |
+| Viewer      | Permissions (IdP)                                                              | Sees                                              |
+| ----------- | ------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Direttivo   | `admin:access`, `people:read`, `people:write`, `people:appoint`, `people:self` | Everything                                        |
+| HR          | `admin:access`, `people:read`, `people:write`, `people:self`                   | All People sections                               |
+| Capo Admin  | `people:self` (+ Capo Admin scope on their record)                             | Telegram › Capo Admin, My area                    |
+| Team Lead   | `people:self` (+ Lead role on their record)                                    | People › Teams (their team, full fields), My area |
+| Team member | `people:self`                                                                  | My area with their team roster                    |
+| Admin only  | `people:self`                                                                  | My area                                           |
 
-Fees add `people:fees:write` (the Direttivo, or whoever handles payments) and `people:receipts:sign` (the President
-and the Vice-president, who sign only as the officer on their own record). Direct CIE signing also needs `esign:sign`;
-it reuses PoliNetwork eSign with a durable backend receipt/request association. ZIP download and signed-file upload
-remain an option.
+The fee permissions (`people:fees:write`, `people:receipts:sign`) and the eSign receipt bridge were removed in #138;
+the Member register, Receipts and Census mockups open with `people:read`.
 
-Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes and
-full census answers need `people:read`. The backend enforces all of this again; the dashboard only hides.
+Contacts (phone, personal email) need `people:read`, or Capo Admin scope / Team Lead role over that person. HR notes
+need `people:read`. The backend enforces all of this again; the dashboard only hides.
