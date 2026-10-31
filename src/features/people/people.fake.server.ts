@@ -27,8 +27,9 @@ import {
  * Agent mode's stand-in for the backend's `people.*` procedures, over `people.fixtures.server.ts`. State lives for the
  * dev server's lifetime, so mutations show up on reload. It follows the backend's rules where a page depends on them:
  * contacts and notes only with `people:read`; `people:write` for admins and team members, `people:appoint` for Leads
- * and Capo Admins, a Lead for their team's members; nobody changes their own roles. Fake Auth confirms a change to a
- * linked record a few seconds after it is sent, and refuses every change for `REFUSING_ACCOUNTS`.
+ * and Capo Admins, a Lead for their team's members; nobody gives themselves a role, though anyone may give one up.
+ * Fake Auth confirms a change to a linked record a few seconds after it is sent, and refuses every change for
+ * `REFUSING_ACCOUNTS`.
  */
 
 let store: PeopleStore | null = null
@@ -43,7 +44,10 @@ function data() {
   return store
 }
 
-/** Fake Auth answers: changes sent long enough ago are confirmed. */
+/**
+ * Fake Auth answers: changes sent long enough ago are confirmed. As in the backend, a confirmed end of a Capo Admin
+ * role leaves their admins without a Capo Admin of reference.
+ */
 function settle(current: PeopleStore) {
   const now = Date.now()
   for (const person of current.people)
@@ -51,7 +55,18 @@ function settle(current: PeopleStore) {
       if (assignment.status === "sent" && assignment.settlesAt !== null && assignment.settlesAt <= now) {
         Object.assign(assignment, { status: "applied", settlesAt: null })
         log(person, "system", "PoliNetwork Auth confirmed the change")
+        if (assignment.kind === "capo" && assignment.change === "end") clearCapoReferences(current, person, "system")
       }
+}
+
+/** Once a Capo Admin's role has ended, the admins who had them as reference have none. */
+function clearCapoReferences(current: PeopleStore, capo: StoredPerson, actor: string) {
+  for (const other of current.people) {
+    const admin = other.assignments.find((a) => a.endedOn === null && a.kind === "admin")
+    if (admin?.capoOfReference?.id !== capo.id) continue
+    admin.capoOfReference = null
+    log(other, actor, `Their Capo Admin of reference, ${capo.id}, ended`)
+  }
 }
 
 function today() {
@@ -99,10 +114,21 @@ function current(person: StoredPerson, kind: Assignment["kind"], team?: TeamId) 
   )
 }
 
+/** Current and in effect, as the backend's `confirmed`: not ended, and not a start still waiting for Auth. */
+function confirmed(assignment: Assignment) {
+  return assignment.endedOn === null && !(assignment.change === "start" && assignment.status === "sent")
+}
+
+/** The current assignment of a kind (and team) when it is in effect. */
+function confirmedOf(person: StoredPerson, kind: Assignment["kind"], team?: TeamId) {
+  const assignment = current(person, kind, team)
+  return assignment && confirmed(assignment) ? assignment : undefined
+}
+
 function leadsOf(person: StoredPerson | null): TeamId[] {
   if (!person) return []
   return person.assignments.flatMap((a) =>
-    a.kind === "team" && a.teamRole === "lead" && a.endedOn === null && a.status !== "pending" && a.team ? [a.team] : []
+    a.kind === "team" && a.teamRole === "lead" && confirmed(a) && a.team ? [a.team] : []
   )
 }
 
@@ -172,15 +198,21 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     }
   }
 
-  /** The same gate as the backend's `rules.ts`, for the bindings agent mode knows. */
-  function authorize(person: StoredPerson, binding: Binding) {
-    if (binding.kind === "team" && !BOUND_TEAM_ROLES[binding.team][binding.role])
+  /**
+   * The same gate as the backend's `rules.ts`, for the bindings agent mode knows. Nobody gives themselves a role, but
+   * giving one up is always allowed; a role that isn't bound can still be ended.
+   */
+  function authorize(person: StoredPerson, binding: Binding, action: "assign" | "unassign") {
+    if (action === "assign" && binding.kind === "team" && !BOUND_TEAM_ROLES[binding.team][binding.role])
       throw new Error(
         `No role is bound to team:${binding.team}:${binding.role} in PoliNetwork Auth, so it can't be assigned.`
       )
-    if (person.accountSub && person.accountSub === sub()) throw new Error("Nobody can change their own roles.")
+    const own = person.accountSub !== null && person.accountSub === sub()
+    if (own && action === "assign") throw new Error("Nobody can give themselves a role.")
     const appointment = binding.kind === "capo" || (binding.kind === "team" && binding.role === "lead")
-    if (appointment) require(viewer, "people:appoint")
+    if (own) {
+      // Giving up one's own role.
+    } else if (appointment) require(viewer, "people:appoint")
     else if (!viewer.permissions.includes("people:write") && !(binding.kind === "team" && leads(binding.team)))
       throw new Error("UNAUTHORIZED")
     if (person.accountSub && person.assignments.some((a) => a.status === "sent"))
@@ -347,7 +379,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     assignAdmin: async (input) => {
       const person = find(input.personId)
-      authorize(person, { kind: "admin" })
+      authorize(person, { kind: "admin" }, "assign")
       if (current(person, "admin")) throw new Error("Already an admin")
       const assignment = start(person, {
         kind: "admin",
@@ -361,7 +393,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const person = find(input.personId)
       const assignment = current(person, "admin")
       if (!assignment) throw new Error("Not a current admin")
-      authorize(person, { kind: "admin" })
+      authorize(person, { kind: "admin" }, "unassign")
       if (current(person, "capo")) throw new Error("End their Capo Admin appointment first")
       end(person, assignment, input.reason)
       log(person, sub(), `Ended admin: ${input.reason}`)
@@ -392,7 +424,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     appointCapo: async (input) => {
       const person = find(input.personId)
-      authorize(person, { kind: "capo" })
+      authorize(person, { kind: "capo" }, "assign")
       if (!current(person, "admin")) throw new Error("Make them an admin first")
       if (current(person, "capo")) throw new Error("Already a Capo Admin")
       const assignment = start(person, { kind: "capo", since: input.since, capoScope: input.scope })
@@ -412,15 +444,10 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const person = find(input.personId)
       const assignment = current(person, "capo")
       if (!assignment) throw new Error("Not a current Capo Admin")
-      authorize(person, { kind: "capo" })
+      authorize(person, { kind: "capo" }, "unassign")
       end(person, assignment, input.reason)
-      for (const other of data().people) {
-        const admin = current(other, "admin")
-        if (admin?.capoOfReference?.id === person.id) {
-          admin.capoOfReference = null
-          log(other, sub(), `Their Capo Admin of reference, ${person.id}, ended`)
-        }
-      }
+      // For a linked record, once Auth confirms (`settle`): a refusal keeps them Capo Admin of the same admins.
+      if (!person.accountSub) clearCapoReferences(data(), person, sub())
       log(person, sub(), `Ended Capo Admin: ${input.reason}`)
       push(person, assignment)
     },
@@ -430,7 +457,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       if (!allowed.length) throw new Error("UNAUTHORIZED")
       return allowed.map((id) => {
         const members = data().people.filter((person) =>
-          person.assignments.some((a) => a.team === id && (canRead || a.status !== "pending"))
+          person.assignments.some((a) => a.team === id && (canRead || confirmed(a)))
         )
         const lead = members.find((person) => leadsOf(person).includes(id))
         return {
@@ -454,7 +481,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     },
     addTeamMember: async (input) => {
       const person = find(input.personId)
-      authorize(person, { kind: "team", team: input.teamId, role: input.role })
+      authorize(person, { kind: "team", team: input.teamId, role: input.role }, "assign")
       if (current(person, "team", input.teamId)) throw new Error("Already in this team")
       if (
         input.role === "lead" &&
@@ -484,7 +511,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const person = find(input.personId)
       const assignment = current(person, "team", input.teamId)
       if (!assignment?.teamRole) throw new Error("Not in this team")
-      authorize(person, { kind: "team", team: input.teamId, role: assignment.teamRole })
+      authorize(person, { kind: "team", team: input.teamId, role: assignment.teamRole }, "unassign")
       end(person, assignment, input.reason)
       log(person, sub(), `Left ${input.teamId}: ${input.reason}`)
       push(person, assignment)
@@ -555,7 +582,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         throw new Error("A change for this person is waiting for PoliNetwork Auth: try again once it answers.")
       for (const assignment of person.assignments)
         if (assignment.endedOn === null) {
-          authorize(person, bindingOf(assignment))
+          authorize(person, bindingOf(assignment), "unassign")
         }
       // Fake Auth takes the roles back at once; the assignments wait for the next link.
       log(person, sub(), `Unlinked account ${person.accountSub}: ${input.reason}`)
@@ -569,44 +596,34 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     getCapoArea: async () => {
       require(viewer, "people:self")
       const person = mine()
-      const scope = person ? current(person, "capo")?.capoScope : null
+      const scope = person ? confirmedOf(person, "capo")?.capoScope : null
       if (!person || !scope) throw new Error("UNAUTHORIZED")
       return {
         scope,
         admins: data()
-          .people.filter((other) => {
-            const admin = current(other, "admin")
-            return admin?.capoOfReference?.id === person.id && admin.status !== "pending"
-          })
+          .people.filter((other) => confirmedOf(other, "admin")?.capoOfReference?.id === person.id)
           .map((other) => ({ ...row(other, true), contactEmail: null, phone: null })),
       }
     },
     getMyRoles: async () => {
       require(viewer, "people:self")
       const person = mine()
-      const capo = person ? current(person, "capo") : null
-      return { capoScope: capo && capo.status !== "pending" ? capo.capoScope : null, leads: leadsOf(person) }
+      return { capoScope: (person && confirmedOf(person, "capo")?.capoScope) ?? null, leads: leadsOf(person) }
     },
     getMyArea: async (): Promise<MyArea> => {
       require(viewer, "people:self")
       const person = mine()
       if (!person) return { state: "none" }
-      const confirmed = (other: StoredPerson, kind: Assignment["kind"], team?: TeamId) => {
-        const assignment = current(other, kind, team)
-        return assignment && assignment.status !== "pending" ? assignment : undefined
-      }
-      const teams = person.assignments.flatMap((a) =>
-        a.kind === "team" && a.endedOn === null && a.status !== "pending" && a.team ? [a.team] : []
-      )
+      const teams = person.assignments.flatMap((a) => (a.kind === "team" && confirmed(a) && a.team ? [a.team] : []))
       const contacts: Extract<MyArea, { state: "linked" }>["contacts"] = []
-      const capoId = confirmed(person, "admin")?.capoOfReference?.id
+      const capoId = confirmedOf(person, "admin")?.capoOfReference?.id
       const capo = capoId ? data().byId.get(capoId) : undefined
-      if (capo && confirmed(capo, "capo"))
+      if (capo && confirmedOf(capo, "capo"))
         contacts.push({ role: "capo", name: fullName(capo), telegram: capo.telegramUsername, team: null })
       for (const other of data().people) {
         for (const team of leadsOf(other).filter((led) => teams.includes(led)))
           contacts.push({ role: "lead", name: fullName(other), telegram: other.telegramUsername, team })
-        if (confirmed(other, "team", "hr"))
+        if (confirmedOf(other, "team", "hr"))
           contacts.push({ role: "hr", name: fullName(other), telegram: other.telegramUsername, team: "hr" })
       }
       const [team] = teams
@@ -618,7 +635,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
           ? {
               team,
               members: data().people.flatMap((other) => {
-                const assignment = confirmed(other, "team", team)
+                const assignment = confirmedOf(other, "team", team)
                 return assignment?.teamRole
                   ? [{ ...ref(other), role: assignment.teamRole, telegram: other.telegramUsername }]
                   : []

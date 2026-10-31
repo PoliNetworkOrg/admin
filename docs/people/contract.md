@@ -65,8 +65,10 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
 | `me.roles` / `me.get`                 | query            | —                                                                      | `people:self`                                                  |
 | `me.invite` / `me.acceptInvite`       | query / mutation | `{ token }`                                                            | any signed-in account                                          |
 
-Nobody changes their own roles, and nobody hands out a role granting permissions they don't hold; the backend applies
-the same rules as Auth (`src/people/rules.ts`) to pending assignments, and Auth checks linked ones again.
+Nobody gives themselves a role (giving one up is always allowed), and nobody hands out a role granting permissions they
+don't hold; the backend applies the same rules as Auth (`src/people/rules.ts`) to pending assignments, and Auth checks
+linked ones again. A Capo Admin of reference must be in effect: not an appointment still waiting for Auth. Start dates
+can't be later than today in Europe/Rome.
 
 **Linking** sends every pending assignment to Auth: by hand, acting as whoever links; by invite, acting as each
 assignment's `assignedBy`. **Unlinking** asks Auth to take the record's roles back first; once it confirms, the account

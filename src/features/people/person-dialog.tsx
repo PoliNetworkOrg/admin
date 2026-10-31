@@ -148,7 +148,8 @@ export function PersonDialog({
     "aria-describedby": fieldHintId(id),
   })
 
-  const assignableTeams = teams.filter((team) => team.assignable.member || (canAppoint && team.assignable.lead))
+  const leadOpen = (team: TeamSummary) => canAppoint && team.assignable.lead && !team.lead
+  const assignableTeams = teams.filter((team) => team.assignable.member || leadOpen(team))
 
   return (
     <FormDialog
@@ -257,9 +258,7 @@ export function PersonDialog({
                     options={[
                       { value: NO_TEAM, label: "Not in the team" },
                       ...(team.assignable.member ? [{ value: "member" as const, label: "Member" }] : []),
-                      ...(canAppoint && team.assignable.lead && !team.lead
-                        ? [{ value: "lead" as const, label: "Lead" }]
-                        : []),
+                      ...(leadOpen(team) ? [{ value: "lead" as const, label: "Lead" }] : []),
                     ]}
                     onChange={(role) =>
                       setTeamRoles((current) => {
