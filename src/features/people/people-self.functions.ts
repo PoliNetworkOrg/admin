@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { peopleSelfMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
-import { acceptInviteInputSchema } from "./people.contract"
+import { inviteTokenInputSchema } from "./people.contract"
 
 /** Account › My area: the signed-in person's record, or nothing yet. */
 export const getMyArea = createServerFn({ method: "GET" })
@@ -13,5 +13,5 @@ export const getMyArea = createServerFn({ method: "GET" })
 /** The invite link HR emails: links the signed-in account to the invited record. */
 export const acceptMyInvite = createServerFn({ method: "POST" })
   .middleware([peopleSelfMiddleware])
-  .validator(acceptInviteInputSchema)
+  .validator(inviteTokenInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).acceptInvite(data))

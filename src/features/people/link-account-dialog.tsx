@@ -6,7 +6,6 @@ import {
   fieldHintId,
   FormDialog,
   FormField,
-  PlatformGlyph,
   RadioCard,
   RadioCardGroup,
   Spinner,
@@ -17,19 +16,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { linkPersonAccount, searchPeopleAccounts, unlinkPersonAccount } from "./people-link.functions"
 import { PersonAvatar } from "./people-ui"
-import { linkPersonAccount } from "./people-write.functions"
-import { searchPeopleAccounts } from "./people.functions"
+import { UNLINK_REASON } from "./people.contract"
 
 const LINK_ERROR = "Couldn't link account."
 
-const REASONS = {
-  "same-telegram": { label: "Same verified Telegram account", tone: "success" },
-  "same-email": { label: "Same email", tone: "success" },
-  "similar-name": { label: "Similar name — check before linking", tone: "warning" },
-} as const
-
-/** Connect a sign-in account to a person's record, with the reason saved in its activity. */
+/**
+ * Links a sign-in account from the IdP directory to a record, with the reason saved in its activity. Nothing is
+ * matched automatically: whoever links checks the account is theirs. The record's pending roles then go to Auth.
+ */
 export function LinkAccountDialog({
   open,
   onOpenChange,
@@ -49,10 +45,7 @@ export function LinkAccountDialog({
   const [submitted, setSubmitted] = useState(false)
 
   const { data: accounts, failed } = useLoaded(
-    useMemo(
-      () => (open ? () => search({ data: { personId: person.id, query: deferredQuery } }) : null),
-      [open, person.id, deferredQuery, search]
-    ),
+    useMemo(() => (open ? () => search({ data: { query: deferredQuery } }) : null), [open, deferredQuery, search]),
     true
   )
   const loadError = failed ? "Couldn't load accounts. Try again." : null
@@ -62,6 +55,8 @@ export function LinkAccountDialog({
   async function submit() {
     setSubmitted(true)
     if (!selected) throw new Error("Choose an account to link.")
+    if (accounts?.find((account) => account.id === selected)?.linkedTo)
+      throw new Error("That account is linked to another record.")
     if (!reason.trim()) return
     try {
       await link({ data: { personId: person.id, accountId: selected, reason: reason.trim() } })
@@ -69,7 +64,7 @@ export function LinkAccountDialog({
       console.error(caught)
       throw new Error(`${LINK_ERROR} ${errorMessage(caught, "")}`.trim(), { cause: caught })
     }
-    await refresh("Account linked.")
+    await refresh("Account linked. PoliNetwork Auth applies the record's roles shortly.")
     onOpenChange(false)
   }
 
@@ -78,7 +73,7 @@ export function LinkAccountDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Link account"
-      description={`Connect a PoliNetwork sign-in to ${person.name} (${person.id}). They can then see their record in My area.`}
+      description={`Connect a sign-in account to ${person.name} (${person.id}). Their pending roles go to PoliNetwork Auth, acting as you, and they can see their record in My area.`}
       noun="link"
       dirty={selected !== null || reason.trim() !== ""}
       submitLabel="Link account"
@@ -90,7 +85,7 @@ export function LinkAccountDialog({
           value={query}
           onChange={setQuery}
           label="Search accounts"
-          placeholder="Search accounts by name, email or Telegram…"
+          placeholder="Search accounts by name or email…"
           className="w-full max-w-none"
         />
         <div className="flex flex-col gap-2">
@@ -98,15 +93,11 @@ export function LinkAccountDialog({
           {accounts === null && !loadError ? <Spinner className="size-4" /> : null}
           {accounts?.length === 0 ? (
             <p className="text-[13px] text-(--pn-fg-muted)">
-              No accounts match. Check the spelling, or send an invite.
+              No accounts match. Check the spelling, or send an invite: they can accept it with any account.
             </p>
           ) : null}
           {accounts?.length ? (
-            <RadioCardGroup
-              label={deferredQuery ? "Accounts" : "Suggested matches"}
-              value={selected}
-              onValueChange={setSelected}
-            >
+            <RadioCardGroup label="Accounts" value={selected} onValueChange={setSelected}>
               {accounts.map((account) => (
                 <RadioCard
                   key={account.id}
@@ -115,20 +106,15 @@ export function LinkAccountDialog({
                   label={account.name}
                   description={
                     <span className="flex flex-col gap-0.5">
-                      <span className="font-mono [overflow-wrap:anywhere]">{account.email}</span>
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        {account.telegram ? (
-                          <>
-                            <PlatformGlyph platform="tg" className="size-3" />
-                            <span className="font-mono">{account.telegram}</span>
-                            <span aria-hidden>·</span>
-                          </>
-                        ) : null}
-                        {account.linkedTo ? `Linked to ${account.linkedTo.name} (${account.linkedTo.id})` : account.via}
-                      </span>
+                      <span className="font-mono [overflow-wrap:anywhere]">{account.email || account.id}</span>
+                      {account.linkedTo ? (
+                        <span>
+                          Linked to {account.linkedTo.name} ({account.linkedTo.id})
+                        </span>
+                      ) : null}
                     </span>
                   }
-                  end={<StatusBadge tone={REASONS[account.reason].tone}>{REASONS[account.reason].label}</StatusBadge>}
+                  end={account.linkedTo ? <StatusBadge tone="neutral">Linked</StatusBadge> : undefined}
                 />
               ))}
             </RadioCardGroup>
@@ -146,6 +132,81 @@ export function LinkAccountDialog({
           />
         </FormField>
       </div>
+    </FormDialog>
+  )
+}
+
+/**
+ * Unlinks a record's account. Auth takes the record's roles back first; once it confirms, the account is detached and
+ * the roles wait as pending for the next link. If Auth refuses, the account stays linked with its roles.
+ */
+export function UnlinkAccountDialog({
+  open,
+  onOpenChange,
+  person,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  person: { id: string; name: string; roles: number }
+}) {
+  const unlink = useServerFn(unlinkPersonAccount)
+  const refresh = useRefreshAfter()
+  const [reason, setReason] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  const max = 500 - UNLINK_REASON.length
+  const reasonError = submitted && !reason.trim() ? "Enter a reason." : undefined
+
+  async function submit() {
+    setSubmitted(true)
+    if (!reason.trim()) return
+    try {
+      await unlink({ data: { personId: person.id, reason: reason.trim() } })
+    } catch (caught) {
+      console.error(caught)
+      throw new Error(errorMessage(caught, "Couldn't unlink the account."), { cause: caught })
+    }
+    await refresh(
+      person.roles
+        ? "Unlinking: PoliNetwork Auth takes the roles back, then the account is detached."
+        : "Account unlinked."
+    )
+    onOpenChange(false)
+  }
+
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Unlink account?"
+      description={
+        person.roles
+          ? `PoliNetwork Auth revokes ${person.name}'s roles from this account, then the account is detached. The roles stay on the record as pending, and are given again when an account is linked. If Auth refuses, nothing changes.`
+          : `The account is detached from ${person.name}'s record. The record and its history stay.`
+      }
+      noun="unlink"
+      dirty={reason.trim() !== ""}
+      submitLabel="Unlink account"
+      tone="danger"
+      onSubmit={submit}
+    >
+      <FormField
+        label="Reason"
+        htmlFor="unlink-reason"
+        hint="Saved in the record's activity and sent to PoliNetwork Auth."
+        error={reasonError}
+        counter={{ length: reason.length, max }}
+      >
+        <Textarea
+          id="unlink-reason"
+          value={reason}
+          maxLength={max}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="e.g. Linked to the wrong account"
+          aria-invalid={reasonError ? true : undefined}
+          aria-describedby={fieldHintId("unlink-reason")}
+          className={cn(fieldControl, "min-h-20")}
+        />
+      </FormField>
     </FormDialog>
   )
 }
