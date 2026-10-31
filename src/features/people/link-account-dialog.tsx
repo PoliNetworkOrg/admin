@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter, useReloadAfterFailure } from "./people-hooks"
 import { linkPersonAccount, searchPeopleAccounts, unlinkPersonAccount } from "./people-link.functions"
 import { PersonAvatar } from "./people-ui"
 import { UNLINK_REASON } from "./people.contract"
@@ -41,6 +41,7 @@ export function LinkAccountDialog({
   const search = useServerFn(searchPeopleAccounts)
   const link = useServerFn(linkPersonAccount)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim())
   const [selected, setSelected] = useState<string | null>(null)
@@ -66,6 +67,7 @@ export function LinkAccountDialog({
       await link({ data: { personId: person.id, accountId: selected, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(`${LINK_ERROR} ${errorMessage(caught, "")}`.trim(), { cause: caught })
     }
     await refresh("Account linked. PoliNetwork Auth applies the record's roles shortly.")
@@ -166,6 +168,7 @@ export function UnlinkAccountDialog({
 }) {
   const unlink = useServerFn(unlinkPersonAccount)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [reason, setReason] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const max = 500 - UNLINK_REASON.length
@@ -178,6 +181,8 @@ export function UnlinkAccountDialog({
       await unlink({ data: { personId: person.id, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
+      // Auth's refusal, or a lost answer, is recorded on the record before the error arrives.
+      reload()
       throw new Error(errorMessage(caught, "Couldn't unlink the account."), { cause: caught })
     }
     await refresh(
