@@ -3,10 +3,13 @@ import { createFileRoute } from "@tanstack/react-router"
 import { TableSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { LinkingPage } from "@/features/people/linking-page"
-import { getPendingInvites } from "@/features/people/people.functions"
+import { getPendingInvites, getPeople, getRecentLinks } from "@/features/people/people.functions"
 
 export const Route = createFileRoute("/dashboard/people/linking")({
-  loader: () => getPendingInvites(),
+  loader: async () => {
+    const [people, invites, recent] = await Promise.all([getPeople(), getPendingInvites(), getRecentLinks()])
+    return { people, invites, recent }
+  },
   pendingComponent: () => (
     <>
       <PageBar />
@@ -19,5 +22,6 @@ export const Route = createFileRoute("/dashboard/people/linking")({
 })
 
 function LinkingRoute() {
-  return <LinkingPage invites={Route.useLoaderData()} />
+  const { people, invites, recent } = Route.useLoaderData()
+  return <LinkingPage people={people} invites={invites} recent={recent} />
 }
