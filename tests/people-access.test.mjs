@@ -144,3 +144,23 @@ void test("My area shows the record, or nothing yet for a sign-in without one", 
   assert.deepEqual(await fakePeopleApi({ permissions: SELF, personId: "none" }).getMyArea(), { state: "none" })
   await assert.rejects(fakePeopleApi({ permissions: [], personId: capo.id }).getMyArea(), unauthorized)
 })
+
+// Last: accepting an invite makes agent mode act as the invited record from then on.
+void test("an account with no permissions can preview and accept an invite, which works once", async () => {
+  const { createHash } = await import("node:crypto")
+  const invited = records.find((person) => person.account.status === "none" && person.contactEmail)
+  await hr.sendInvite({ personId: invited.id })
+  const { account } = await hr.getPerson(invited.id)
+  assert.equal(account.status, "invite")
+  const token = createHash("sha256").update(`people-invite:${invited.id}:${account.sentOn}`).digest("base64url")
+  const nobody = fakePeopleApi({ permissions: [], personId: "none" })
+  const preview = await nobody.previewInvite({ token })
+  assert.equal(preview.personId, invited.id)
+  await nobody.acceptInvite({ token })
+  const linked = await hr.getPerson(invited.id)
+  assert.equal(linked.account.status, "linked")
+  assert.equal(linked.account.method, "invite")
+  assert.ok(linked.assignments.filter((a) => a.endedOn === null).every((a) => a.status === "sent"))
+  await assert.rejects(nobody.previewInvite({ token }), /no longer valid/)
+  assert.ok((await hr.listRecentLinks()).some((link) => link.person.id === invited.id && link.method === "invite"))
+})

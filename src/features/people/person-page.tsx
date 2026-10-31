@@ -586,7 +586,7 @@ export function PersonPage({
             key={`link-${link.key}`}
             open={link.open}
             onOpenChange={link.onOpenChange}
-            person={{ id: person.id, name, firstName: person.firstName }}
+            person={{ id: person.id, name, firstName: person.firstName, roles: roles.length }}
           />
           <UnlinkAccountDialog
             key={`unlink-${unlink.key}`}

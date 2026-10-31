@@ -25,6 +25,7 @@ import { LinkAccountDialog } from "./link-account-dialog"
 import {
   ACCOUNT_STATUS,
   currentAdmin,
+  currentAssignments,
   currentCapo,
   currentTeams,
   hasNoRoles,
@@ -385,7 +386,12 @@ export function PeopleOverviewPage({ people, teams }: { people: PersonRow[]; tea
           key={`${linkTarget.id}-${linkKey}`}
           open={linkOpen}
           onOpenChange={setLinkOpen}
-          person={{ id: linkTarget.id, name: personName(linkTarget), firstName: linkTarget.firstName }}
+          person={{
+            id: linkTarget.id,
+            name: personName(linkTarget),
+            firstName: linkTarget.firstName,
+            roles: currentAssignments(linkTarget).length,
+          }}
         />
       ) : null}
     </>

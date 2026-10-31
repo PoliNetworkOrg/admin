@@ -5,6 +5,7 @@ import {
   fieldControl,
   fieldHintId,
   FormDialog,
+  InlineAlert,
   FormField,
   RadioCard,
   RadioCardGroup,
@@ -13,6 +14,7 @@ import {
 } from "@/components/primitives"
 import { SearchField } from "@/components/shell"
 import { Textarea } from "@/components/ui/textarea"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
@@ -33,7 +35,8 @@ export function LinkAccountDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  person: { id: string; name: string; firstName: string }
+  /** `roles`: how many roles the record holds, which go to Auth once linked. */
+  person: { id: string; name: string; firstName: string; roles?: number }
 }) {
   const search = useServerFn(searchPeopleAccounts)
   const link = useServerFn(linkPersonAccount)
@@ -51,6 +54,7 @@ export function LinkAccountDialog({
   const loadError = failed ? "Couldn't load accounts. Try again." : null
 
   const reasonError = submitted && !reason.trim() ? "Enter a reason." : undefined
+  const chosen = accounts?.find((account) => account.id === selected) ?? null
 
   async function submit() {
     setSubmitted(true)
@@ -120,6 +124,17 @@ export function LinkAccountDialog({
             </RadioCardGroup>
           ) : null}
         </div>
+        {chosen ? (
+          <InlineAlert tone={chosen.linkedTo ? "danger" : "info"}>
+            {chosen.linkedTo
+              ? `${chosen.name} is linked to ${chosen.linkedTo.name} (${chosen.linkedTo.id}). Unlink it there first.`
+              : `Link ${chosen.email || chosen.name} to ${person.name}? ${
+                  person.roles
+                    ? `${pluralize(person.roles, "role")} go${person.roles === 1 ? "es" : ""} to PoliNetwork Auth, acting as you; Auth refuses any you can't give.`
+                    : "The record has no roles yet."
+                }`}
+          </InlineAlert>
+        ) : null}
         <FormField label="Reason" htmlFor="link-reason" hint="Saved in the record's activity." error={reasonError}>
           <Textarea
             id="link-reason"

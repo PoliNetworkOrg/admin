@@ -15,6 +15,11 @@ export const Route = createFileRoute("/dashboard")({
   // from the person's People record go into the route context for `useCan` and the navigation; pages the user can't
   // open send them to their own area. The backend enforces every call regardless.
   beforeLoad: async ({ location }) => {
+    // Invites sent before the landing page moved out of the dashboard link here; the gate would turn away someone
+    // whose roles aren't applied yet.
+    const invite =
+      location.pathname === "/dashboard/account/me" ? new URLSearchParams(location.searchStr).get("peopleInvite") : null
+    if (invite) throw redirect({ to: "/people/invite", search: { token: invite } })
     const access = await getDashboardAccess()
     if (access.status === "unauthenticated") throw signInRedirect(location.href)
     if (access.status === "forbidden") throw redirect({ to: "/unauthorized" })

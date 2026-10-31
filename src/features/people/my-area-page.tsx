@@ -1,10 +1,7 @@
-import { Link, useNavigate } from "@tanstack/react-router"
-import { useServerFn } from "@tanstack/react-start"
+import { Link } from "@tanstack/react-router"
 import { ChevronRight, Crown, Send, ShieldUser, UserRound, Users, UsersRound } from "lucide-react"
-import { useState } from "react"
 
 import {
-  buttonMotion,
   Chip,
   DataTable,
   type DataTableColumn,
@@ -17,8 +14,7 @@ import {
   SectionHeading,
   Unset,
 } from "@/components/primitives"
-import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
-import { Button } from "@/components/ui/button"
+import { PageBar, PageContent, useCan } from "@/components/shell"
 
 import { MyFeeCard } from "./my-fee-card"
 import {
@@ -31,67 +27,15 @@ import {
   teamName,
   telegramUrl,
 } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { acceptMyInvite } from "./people-self.functions"
 import { AssignmentBadge, PersonAvatar, PersonCell, RefusalText, Row, RowIcon, Rows } from "./people-ui"
 import type { MyArea } from "./people.contract"
 
 type Linked = Extract<MyArea, { state: "linked" }>
 
 /** Account › My area: what the signed-in person's record says. */
-export function MyAreaPage({ area, invite }: { area: MyArea; invite: string | null }) {
-  if (invite && area.state !== "linked") return <InviteView token={invite} />
+export function MyAreaPage({ area }: { area: MyArea }) {
   if (area.state === "none") return <NoRecordView />
   return <LinkedView area={area} />
-}
-
-/** Opened from the invite link HR emails. */
-function InviteView({ token }: { token: string }) {
-  const accept = useServerFn(acceptMyInvite)
-  const navigate = useNavigate()
-  const refresh = useRefreshAfter()
-  const [pending, setPending] = useState(false)
-  const dropInvite = () => navigate({ to: "/dashboard/account/me", search: {}, replace: true })
-
-  async function link() {
-    setPending(true)
-    try {
-      await accept({ data: { token } })
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, "Couldn't link your account. Try again."))
-      setPending(false)
-      return
-    }
-    await refresh("Account linked.")
-    await dropInvite()
-  }
-
-  return (
-    <>
-      <PageBar title="Welcome" width="settings" />
-      <PageContent width="settings">
-        <SectionCard
-          title="Link your account"
-          footer={
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" className={buttonMotion} disabled={pending} onClick={() => void dropInvite()}>
-                Not now
-              </Button>
-              <Button className={buttonMotion} disabled={pending} onClick={link}>
-                Link my account
-              </Button>
-            </div>
-          }
-        >
-          <p className="text-[14px] text-(--pn-fg-muted)">
-            HR invited you to link this sign-in to your PoliNetwork record, so you get your roles. You can use any
-            account, not only the one at the address the invite was sent to. The link works once.
-          </p>
-        </SectionCard>
-      </PageContent>
-    </>
-  )
 }
 
 function NoRecordView() {
@@ -102,7 +46,7 @@ function NoRecordView() {
         <EmptyState
           icon={UserRound}
           title="You're not on the volunteer lists"
-          text="If you administer groups or belong to a team, ask HR to add you. They link your sign-in to your record with an invite or by hand."
+          text="If you administer groups or belong to a team, ask HR to add you. They link your account to your record with an email invite, which you can accept with any account, or by hand."
         />
       </PageContent>
     </>

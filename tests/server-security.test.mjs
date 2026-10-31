@@ -224,6 +224,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-self.functions.ts",
     "src/features/people/people-invites.functions.ts",
     "src/features/people/people-link.functions.ts",
+    "src/features/people/people-invite-landing.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -235,7 +236,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
           serverFunction.middleware.some((name) =>
-            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Sign)Middleware$/.test(name)
+            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Invite|Sign)Middleware$/.test(name)
           ),
         `${file}:${serverFunction.name} must authorize access`
       )
@@ -274,7 +275,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
       ["src/features/people/people-teams.functions.ts", "src/features/people/people-invites.functions.ts"],
     ],
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
-    ["peopleSelfMiddleware", ["src/features/people/people-self.functions.ts"]],
+    ["peopleInviteMiddleware", ["src/features/people/people-invite-landing.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -332,7 +333,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/person-dialog.tsx": "people:appoint",
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
-    "src/features/people/linking-page.tsx": "people:write",
+    "src/features/people/linking-page.tsx": ["people:write", "people:link"],
     "src/features/people/my-area-page.tsx": "people:read",
   }
   const directory = new URL("../src", import.meta.url).pathname
@@ -378,7 +379,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/people/notes-dialog.tsx": ["setPersonNote"],
     "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite"],
     "src/features/people/link-account-dialog.tsx": ["linkPersonAccount", "unlinkPersonAccount"],
-    "src/features/people/my-area-page.tsx": ["acceptMyInvite"],
+    "src/features/people/invite-landing-page.tsx": ["acceptPeopleInvite"],
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
     "src/features/people/admin-dialogs.tsx": [
       "assignAdmin",

@@ -28,7 +28,9 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   Admin, team member or Lead, nothing else): `pending` until the record is linked to an account, then held by
   PoliNetwork Auth, which may refuse a change; pages show each assignment's status and Auth's refusal word for word.
   `people:write` edits records, admins and invites, `people:appoint` Capo Admins and Leads, `people:link` links and
-  unlinks by hand. `/dashboard` admits `people:self` without `admin:access`; Capo Admin and Team Lead come from the
+  unlinks by hand. Invite links open `/people/invite`, outside the dashboard shell and its gate, so an account with no
+  permissions yet can accept one (`peopleInviteMiddleware`: signed in, the token is the proof); the old
+  `/dashboard/account/me?peopleInvite=` links redirect there. `/dashboard` admits `people:self` without `admin:access`; Capo Admin and Team Lead come from the
   person's own record (`peopleRoles` in the route context) and only open their sections. Member register, Receipts,
   Census and My area's fee card are unconnected mockups (#138): static sample data from `mockup-data.ts`, no server
   functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt in Phase 2 (#144) and
