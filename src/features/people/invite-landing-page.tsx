@@ -137,7 +137,8 @@ function Confirm({ token, check }: { token: string; check: Extract<InviteCheck, 
           </p>
           <p>
             You can use any account: your PoliNetwork one if you are a member, otherwise any Google account. It doesn't
-            have to be the one at the address the invite was sent to.
+            have to be the one at the address the invite was sent to. To use another one, sign out, then open the link
+            in the email again.
           </p>
           <p>
             The link works once and expires on {formatDay(preview.expiresOn)}. If it stops working, ask whoever invited

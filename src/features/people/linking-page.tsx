@@ -105,6 +105,11 @@ export function LinkingPage({
     recent: recent.length,
   }
   const shown = { unlinked: unlinked.length, invites: inviteRows.length, recent: recentRows.length }
+  const nouns = {
+    unlinked: ["record", "records"],
+    invites: ["invite", "invites"],
+    recent: ["link", "links"],
+  } as const satisfies Record<Tab, readonly [string, string]>
 
   function openInvite(kind: AccountAction["kind"], personId: string, name: string, email: string) {
     setAccountAction({ kind, personId, name, email })
@@ -267,7 +272,7 @@ export function LinkingPage({
             }
             count={
               deferredQuery ? (
-                <Count value={shown[tab]} total={totals[tab]} noun="result" plural="results" />
+                <Count value={shown[tab]} total={totals[tab]} noun={nouns[tab][0]} plural={nouns[tab][1]} />
               ) : undefined
             }
           />

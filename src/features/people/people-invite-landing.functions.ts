@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { TRPCClientError } from "@trpc/client"
 
 import { errorMessage } from "@/lib/errors"
 import { peopleInviteMiddleware } from "@/server/auth.middleware"
@@ -30,6 +31,11 @@ export const checkPeopleInvite = createServerFn({ method: "GET" })
       return { status: "valid", preview, account }
     } catch (error) {
       console.error(error)
+      // A spent, revoked or expired token is the backend's NOT_FOUND (the agent-mode fake throws a plain error).
+      // Anything else, such as the backend being down, isn't the link's fault: the route's error state offers a
+      // retry instead of telling the person to ask for a new invite.
+      const deadLink = error instanceof TRPCClientError ? error.data?.code === "NOT_FOUND" : context.agentMode
+      if (!deadLink) throw error
       return { status: "invalid", message: errorMessage(error, "This invite link doesn't work."), account }
     }
   })
