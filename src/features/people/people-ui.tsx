@@ -23,6 +23,9 @@ import {
 import { Hint } from "@/components/primitives/hint"
 import { cn } from "@/lib/utils"
 
+import { assignmentState } from "./people-format"
+import type { Assignment } from "./people.contract"
+
 /** 32px initials avatar, name and an optional 12px secondary line; muted when the person has no roles left. */
 export function PersonCell({
   name,
@@ -97,7 +100,28 @@ export function StateBadge({ state }: { state: { label: string; tone: StatusTone
   return <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
 }
 
-/** Identifiers (member numbers, person IDs) as a mono chip. */
+/**
+ * Where an assignment stands with PoliNetwork Auth. Applied ones show nothing unless `showApplied`: on a current role
+ * it is the normal state.
+ */
+export function AssignmentBadge({
+  assignment,
+  showApplied = false,
+}: {
+  assignment: Pick<Assignment, "status" | "change">
+  showApplied?: boolean
+}) {
+  if (assignment.status === "applied" && !showApplied) return null
+  return <StateBadge state={assignmentState(assignment)} />
+}
+
+/** Auth's refusal, word for word. */
+export function RefusalText({ refusal }: { refusal: string | null }) {
+  if (!refusal) return null
+  return <span className="text-[13px] text-(--pn-danger-fg) [overflow-wrap:anywhere]">{refusal}</span>
+}
+
+/** Identifiers (account IDs, person IDs) as a mono chip. */
 export function MonoChip({ children }: { children: ReactNode }) {
   return <Chip className="font-mono tabular-nums">{children}</Chip>
 }

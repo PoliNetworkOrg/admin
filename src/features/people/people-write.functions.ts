@@ -1,22 +1,55 @@
 import { createServerFn } from "@tanstack/react-start"
 
+import { dateOnlyValue } from "@/lib/date-only"
+import { errorMessage } from "@/lib/errors"
 import { peopleWriteMiddleware } from "@/server/auth.middleware"
 
 import { peopleApi } from "./people.api.server"
 import {
+  assignAdminInputSchema,
   capoRefInputSchema,
-  createPersonInputSchema,
-  endAdminInputSchema,
-  linkAccountInputSchema,
-  personRefInputSchema,
+  endAssignmentInputSchema,
+  type NewPersonResult,
+  newPersonInputSchema,
   setNoteInputSchema,
+  TEAMS,
   updatePersonInputSchema,
 } from "./people.contract"
 
+/**
+ * Creates the record, then starts each role it was given, from today. A role the backend refuses (no clearance, no
+ * role bound in Auth) doesn't undo the record: the result lists it, with the backend's words, so the page can say so.
+ */
 export const createPerson = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
-  .validator(createPersonInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).createPerson(data))
+  .validator(newPersonInputSchema)
+  .handler(async ({ data, context }): Promise<NewPersonResult> => {
+    const api = await peopleApi(context)
+    const { admin, capoScope, teams, ...fields } = data
+    const { id } = await api.createPerson(fields)
+    const since = dateOnlyValue(new Date())
+    const refused: NewPersonResult["refused"] = []
+    const attempt = async (role: string, start: () => Promise<void>) => {
+      try {
+        await start()
+        return true
+      } catch (error) {
+        console.error(error)
+        refused.push({ role, message: errorMessage(error, "Refused.") })
+        return false
+      }
+    }
+    const isAdmin = admin && (await attempt("Admin", () => api.assignAdmin({ personId: id, since, capoId: null })))
+    if (capoScope !== null) {
+      if (isAdmin) await attempt("Capo Admin", () => api.appointCapo({ personId: id, since, scope: capoScope }))
+      else refused.push({ role: "Capo Admin", message: "A Capo Admin must be an admin first." })
+    }
+    for (const { team, role } of teams)
+      await attempt(`${TEAMS[team].name}${role === "lead" ? " Lead" : ""}`, () =>
+        api.addTeamMember({ teamId: team, personId: id, role, since, fields: {} })
+      )
+    return { id, refused }
+  })
 
 export const updatePerson = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
@@ -28,31 +61,15 @@ export const setPersonNote = createServerFn({ method: "POST" })
   .validator(setNoteInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).setNote(data))
 
-/** Sends an invite, or a new one replacing the pending invite (its link stops working). */
-export const sendPersonInvite = createServerFn({ method: "POST" })
+/** Pending until the record is linked; for a linked record, sent to PoliNetwork Auth, which may refuse it. */
+export const assignAdmin = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
-  .validator(personRefInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).sendInvite(data))
+  .validator(assignAdminInputSchema)
+  .handler(async ({ data, context }) => (await peopleApi(context)).assignAdmin(data))
 
-export const revokePersonInvite = createServerFn({ method: "POST" })
-  .middleware([peopleWriteMiddleware])
-  .validator(personRefInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).revokeInvite(data))
-
-export const linkPersonAccount = createServerFn({ method: "POST" })
-  .middleware([peopleWriteMiddleware])
-  .validator(linkAccountInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).linkAccount(data))
-
-export const unlinkPersonAccount = createServerFn({ method: "POST" })
-  .middleware([peopleWriteMiddleware])
-  .validator(personRefInputSchema)
-  .handler(async ({ data, context }) => (await peopleApi(context)).unlinkAccount(data))
-
-/** The bot removes their admin rights in every group; the record keeps the history. */
 export const endAdminRole = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
-  .validator(endAdminInputSchema)
+  .validator(endAssignmentInputSchema)
   .handler(async ({ data, context }) => (await peopleApi(context)).endAdmin(data))
 
 export const setCapoOfReference = createServerFn({ method: "POST" })

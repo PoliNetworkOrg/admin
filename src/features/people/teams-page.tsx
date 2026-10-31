@@ -20,31 +20,48 @@ import {
   type TableSort,
   Unset,
 } from "@/components/primitives"
+import { Hint } from "@/components/primitives/hint"
 import { Count, PageBar, PageContent, Toolbar, useCan, useHasAdminAccess, usePeopleRoles } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { pluralize } from "@/lib/format"
 
-import { formatDay, personName, PHOTO_CONSENT, teamName } from "./people-format"
+import {
+  assignmentState,
+  formatDay,
+  isTeamAssignment,
+  personName,
+  type TeamAssignment,
+  teamName,
+  waitingForAuth,
+} from "./people-format"
 import { useDialog, useDialogState } from "./people-hooks"
-import { ActionMenu, PersonCell, StateBadge } from "./people-ui"
-import { type PersonRow, type TeamId, type TeamMembership, type TeamSummary, teamFields } from "./people.contract"
+import { ActionMenu, AssignmentBadge, PersonCell } from "./people-ui"
+import { type PersonRow, type TeamId, type TeamRole, type TeamSummary, teamFields } from "./people.contract"
 import { AddToTeamDialog, EditTeamFieldsDialog, EndTeamMembershipDialog, type TeamMemberTarget } from "./team-dialogs"
 
 /** One person's membership of one team: a table row on the Teams pages. */
-type TeamRow = { person: PersonRow; membership: TeamMembership }
-type Role = TeamMembership["role"]
+type TeamRow = { person: PersonRow; membership: TeamAssignment }
+type Role = TeamRole
 type TeamDialog = { kind: "fields" | "end"; target: TeamMemberTarget }
 
+/**
+ * A team's current memberships (`ended` false), or its past ones. An ending Auth hasn't confirmed yet stays with the
+ * current ones, with its badge.
+ */
 function rowsOf(team: TeamSummary, ended: boolean): TeamRow[] {
   return team.members.flatMap((person) =>
-    person.teams
-      .filter((membership) => membership.team === team.id && (membership.endedOn !== null) === ended)
+    person.assignments
+      .filter(isTeamAssignment)
+      .filter(
+        (membership) =>
+          membership.team === team.id && (membership.endedOn !== null && membership.status !== "sent") === ended
+      )
       .map((membership) => ({ person, membership }))
   )
 }
 
 function rowId(row: TeamRow) {
-  return `${row.person.id}-${row.membership.team}-${row.membership.since}`
+  return row.membership.id
 }
 
 function targetOf(row: TeamRow): TeamMemberTarget {
@@ -53,21 +70,35 @@ function targetOf(row: TeamRow): TeamMemberTarget {
     name: personName(row.person),
     team: row.membership.team,
     fields: row.membership.fields,
+    linked: row.person.account.status === "linked",
   }
 }
 
 function matchesQuery(row: TeamRow, query: string) {
   if (!query) return true
   const fieldValues = Object.values(row.membership.fields).flat()
-  return [personName(row.person), row.person.profile.telegramUsername ?? "", ...fieldValues].some((value) =>
-    value.toLocaleLowerCase().includes(query)
+  return [personName(row.person), row.person.telegramUsername ?? "", ...fieldValues].some((value) =>
+    value.toLocaleLowerCase().includes(query.replace(/^@/, ""))
   )
 }
 
-function PhotoBadge({ person }: { person: PersonRow }) {
-  const photo = person.consents.photo
-  if (!photo) return <Unset />
-  return <StateBadge state={PHOTO_CONSENT[photo.status]} />
+/** Where the membership stands with Auth; a refusal's reason is the badge's tooltip, and on the person's record. */
+function MembershipStatus({ membership }: { membership: TeamAssignment }) {
+  return (
+    <Hint label={membership.status === "refused" ? membership.refusal : null}>
+      <span className="inline-flex min-w-0">
+        <AssignmentBadge assignment={membership} />
+      </span>
+    </Hint>
+  )
+}
+
+/** Why nobody, or no Lead, can be added: Auth binds no role for it. */
+function bindingNote(team: TeamSummary) {
+  if (!team.assignable.member && !team.assignable.lead) return "No role bound in PoliNetwork Auth: nobody can be added"
+  if (!team.assignable.lead) return "No Lead role bound in PoliNetwork Auth"
+  if (!team.assignable.member) return "No member role bound in PoliNetwork Auth"
+  return null
 }
 
 function RoleChip({ role }: { role: Role }) {
@@ -86,7 +117,10 @@ function MemberActions({
   onOpen: (dialog: TeamDialog) => void
 }) {
   const name = personName(row.person)
-  const canEnd = row.membership.role !== "lead" || canAppoint
+  // Nothing to end while Auth hasn't answered: the backend refuses another change until it does.
+  const ending = row.membership.endedOn !== null
+  const canEnd = !ending && !waitingForAuth(row.person) && (row.membership.teamRole !== "lead" || canAppoint)
+  if (ending) return <span aria-hidden className="size-9" />
   return (
     <RowActions>
       <IconButton
@@ -167,7 +201,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
   const filtered = all.filter(
     (row) =>
       (team === null || row.membership.team === team) &&
-      (role === null || row.membership.role === role) &&
+      (role === null || row.membership.teamRole === role) &&
       matchesQuery(row, deferredQuery)
   )
   const sorted = sortRows(filtered, sort)
@@ -191,10 +225,11 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
       mobile: "main",
       cell: (row) => (
         <>
-          <PersonCell name={personName(row.person)} secondary={row.person.profile.course} />
+          <PersonCell name={personName(row.person)} />
           <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
             <Chip>{teamName(row.membership.team)}</Chip>
-            {row.membership.role === "lead" ? <Chip>Lead</Chip> : null}
+            {row.membership.teamRole === "lead" ? <Chip>Lead</Chip> : null}
+            <AssignmentBadge assignment={row.membership} />
           </span>
         </>
       ),
@@ -206,7 +241,13 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
       mobile: "hidden",
       cell: (row) => <Chip>{teamName(row.membership.team)}</Chip>,
     },
-    { id: "role", label: "Role", width: 104, mobile: "hidden", cell: (row) => <RoleChip role={row.membership.role} /> },
+    {
+      id: "role",
+      label: "Role",
+      width: 104,
+      mobile: "hidden",
+      cell: (row) => <RoleChip role={row.membership.teamRole} />,
+    },
     {
       id: "since",
       label: "Since",
@@ -217,12 +258,12 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
       cell: (row) => <span className="whitespace-nowrap">{formatDay(row.membership.since)}</span>,
     },
     {
-      id: "photo",
-      label: "Photo and video",
-      width: 144,
-      priority: 5,
+      id: "status",
+      label: "With Auth",
+      width: 200,
+      priority: 4,
       mobile: "hidden",
-      cell: (row) => <PhotoBadge person={row.person} />,
+      cell: (row) => <MembershipStatus membership={row.membership} />,
     },
   ]
 
@@ -251,7 +292,12 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
                   count={active.length}
                   noun="member"
                   description={
-                    <span className="block truncate">{summary.lead ? `Lead: ${summary.lead.name}` : "No lead"}</span>
+                    <span className="flex flex-col">
+                      <span className="block truncate">{summary.lead ? `Lead: ${summary.lead.name}` : "No Lead"}</span>
+                      {bindingNote(summary) ? (
+                        <span className="block truncate text-xs text-(--pn-fg-muted)">{bindingNote(summary)}</span>
+                      ) : null}
+                    </span>
                   }
                   render={<Link to="/dashboard/people/teams/$teamId" params={{ teamId: summary.id }} />}
                 />
@@ -358,6 +404,7 @@ export function TeamsPage({ teams }: { teams: TeamSummary[] }) {
           open={add.open}
           onOpenChange={add.onOpenChange}
           teams={teams.map((summary) => summary.id)}
+          availability={teams}
           canAppoint={canAppoint}
         />
       ) : null}
@@ -413,11 +460,22 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
       fill: true,
       minWidth: 220,
       mobile: "main",
+      // The Auth column drops first on narrow tables, so a change still waiting or refused also shows here.
       cell: (row) => (
-        <PersonCell name={personName(row.person)} secondary={row.person.profile.course} muted={scope === "former"} />
+        <PersonCell
+          name={personName(row.person)}
+          secondary={row.membership.status === "applied" ? null : assignmentState(row.membership).label}
+          muted={scope === "former"}
+        />
       ),
     },
-    { id: "role", label: "Role", width: 104, mobile: "meta", cell: (row) => <RoleChip role={row.membership.role} /> },
+    {
+      id: "role",
+      label: "Role",
+      width: 104,
+      mobile: "meta",
+      cell: (row) => <RoleChip role={row.membership.teamRole} />,
+    },
     {
       id: "since",
       label: scope === "former" ? "Ended" : "Since",
@@ -464,7 +522,12 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
             label: "Reason",
             width: 184,
             mobile: "text",
-            cell: (row) => row.membership.endReason ?? <Unset />,
+            cell: (row) =>
+              row.membership.status === "refused" ? (
+                <MembershipStatus membership={row.membership} />
+              ) : (
+                (row.membership.endReason ?? <Unset />)
+              ),
           } satisfies DataTableColumn<TeamRow>,
         ]
       : [
@@ -477,10 +540,10 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
                   priority: 3,
                   mobile: "meta",
                   cell: (row) =>
-                    row.person.profile.telegramUsername ? (
+                    row.person.telegramUsername ? (
                       <span className="flex min-w-0 items-center gap-1.5">
                         <PlatformGlyph platform="tg" className="size-3.5 shrink-0" />
-                        <span className="truncate font-mono text-[13px]">@{row.person.profile.telegramUsername}</span>
+                        <span className="truncate font-mono text-[13px]">@{row.person.telegramUsername}</span>
                       </span>
                     ) : (
                       <Unset />
@@ -493,31 +556,28 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
                   priority: 5,
                   mobile: "meta",
                   cell: (row) =>
-                    row.person.profile.phone ? (
-                      <span className="whitespace-nowrap">{row.person.profile.phone}</span>
-                    ) : (
-                      <Unset />
-                    ),
+                    row.person.phone ? <span className="whitespace-nowrap">{row.person.phone}</span> : <Unset />,
                 } satisfies DataTableColumn<TeamRow>,
               ]
             : []),
           {
-            id: "photo",
-            label: "Photo and video",
-            width: 144,
-            priority: 5,
-            mobile: "hidden",
-            cell: (row) => <PhotoBadge person={row.person} />,
+            id: "status",
+            label: "With Auth",
+            width: 200,
+            priority: 4,
+            mobile: "meta",
+            cell: (row) => <MembershipStatus membership={row.membership} />,
           } satisfies DataTableColumn<TeamRow>,
         ]),
   ]
 
-  const addButton = canEdit ? (
-    <Button size="sm" className={buttonMotion} onClick={add.show}>
-      <UserPlus data-icon="inline-start" />
-      Add to team
-    </Button>
-  ) : undefined
+  const addButton =
+    canEdit && (team.assignable.member || (canAppoint && team.assignable.lead && !team.lead)) ? (
+      <Button size="sm" className={buttonMotion} onClick={add.show}>
+        <UserPlus data-icon="inline-start" />
+        Add to team
+      </Button>
+    ) : undefined
 
   const toolbar = (
     <Toolbar
@@ -622,7 +682,13 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
             <div className="flex flex-col gap-6">
               <RecordHeader
                 title={team.name}
-                meta={`${pluralize(active.length, "active member")} · ${team.lead ? `Lead: ${team.lead.name}` : "No lead"}`}
+                meta={[
+                  pluralize(active.length, "active member"),
+                  team.lead ? `Lead: ${team.lead.name}` : "No Lead",
+                  bindingNote(team),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
                 actions={addButton}
               />
               {toolbar}
@@ -637,6 +703,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
           open={add.open}
           onOpenChange={add.onOpenChange}
           team={team.id}
+          availability={[team]}
           canAppoint={canAppoint}
         />
       ) : null}
