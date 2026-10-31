@@ -1,5 +1,4 @@
 import type { StatusTone } from "@/components/primitives"
-import { dateOnlyValue } from "@/lib/date-only"
 import { formatDate } from "@/lib/format"
 
 import {
@@ -124,9 +123,12 @@ export function formatDay(value: string) {
   return formatDate(new Date(value.length === 10 ? `${value}T12:00:00Z` : value))
 }
 
-/** Today in the browser's timezone, as an ISO date: date inputs start from it. */
+/**
+ * Today in Europe/Rome as an ISO date, the calendar the backend checks start dates against ("in the future" is later
+ * than this): date inputs and the roles Add person starts with use it.
+ */
 export function todayIso() {
-  return dateOnlyValue(new Date())
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date())
 }
 
 export function isExpired(date: string) {

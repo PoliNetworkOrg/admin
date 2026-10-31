@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { dateOnlyValue } from "@/lib/date-only"
 import { errorMessage } from "@/lib/errors"
 import { peopleWriteMiddleware } from "@/server/auth.middleware"
 
+import { todayIso } from "./people-format"
 import { peopleApi } from "./people.api.server"
 import {
   assignAdminInputSchema,
@@ -17,8 +17,9 @@ import {
 } from "./people.contract"
 
 /**
- * Creates the record, then starts each role it was given, from today. A role the backend refuses (no clearance, no
- * role bound in Auth) doesn't undo the record: the result lists it, with the backend's words, so the page can say so.
+ * Creates the record, then starts each role it was given, from today in Europe/Rome (the backend's calendar for start
+ * dates, whatever the server's timezone). A role the backend refuses (no clearance, no role bound in Auth) doesn't
+ * undo the record: the result lists it, with the backend's words, so the page can say so.
  */
 export const createPerson = createServerFn({ method: "POST" })
   .middleware([peopleWriteMiddleware])
@@ -27,7 +28,7 @@ export const createPerson = createServerFn({ method: "POST" })
     const api = await peopleApi(context)
     const { admin, capoScope, teams, ...fields } = data
     const { id } = await api.createPerson(fields)
-    const since = dateOnlyValue(new Date())
+    const since = todayIso()
     const refused: NewPersonResult["refused"] = []
     const attempt = async (role: string, start: () => Promise<void>) => {
       try {

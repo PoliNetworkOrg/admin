@@ -17,8 +17,9 @@ count only once PoliNetwork Auth holds them (the record is linked and the role a
 
 `people:write` enables record, admin-role, team and invite mutations on readable pages;
 `people:appoint` enables Capo/Lead appointments and ending those roles; `people:link` enables linking by hand and
-unlinking. Nobody changes their own roles: P-0007 (agent mode's default `AGENT_PERSON`) can't edit their own. Without their read prerequisites, write
-permissions alone do not open a page. Buttons and row links follow these same rules; one available action is direct.
+unlinking. Nobody gives themselves a role, though anyone may give one up: P-0007 (agent mode's default `AGENT_PERSON`)
+can't add roles to their own record. Without their read prerequisites, write permissions alone do not open a page.
+Buttons and row links follow these same rules; one available action is direct.
 
 ## Verification
 

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils"
 
 import { changeOutcome } from "./admin-dialogs"
 import { teamName, todayIso } from "./people-format"
-import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter, useReloadAfterFailure } from "./people-hooks"
 import { addTeamMember, endTeamMembership, getTeamCandidates, updateTeamFields } from "./people-teams.functions"
 import { ChoiceChips, type PersonOption, PersonPicker } from "./people-ui"
 import { TEAM_IDS, type TeamFields, teamFields, type TeamId, type TeamRole, type TeamSummary } from "./people.contract"
@@ -111,6 +111,7 @@ export function AddToTeamDialog({
   const add = useServerFn(addTeamMember)
   const loadCandidates = useServerFn(getTeamCandidates)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [team, setTeam] = useState<TeamId | null>(fixedTeam ?? null)
   const [person, setPerson] = useState<PersonOption | null>(fixedPerson ?? null)
   const [role, setRole] = useState<Role>("member")
@@ -133,7 +134,9 @@ export function AddToTeamDialog({
     return canAppoint && (entry ? entry.assignable.lead && !entry.lead : true)
   }
   const choosable = teams.filter((id) => memberBound(id) || leadOpen(id))
-  const roleChoice: Role = team && !memberBound(team) ? "lead" : role
+  // A team that only binds a Lead role takes a Lead; one that can't take a Lead (another team chosen after "Team Lead")
+  // takes a member.
+  const roleChoice: Role = !team ? role : !memberBound(team) ? "lead" : leadOpen(team) ? role : "member"
 
   const teamError = submitted && !team ? "Choose a team." : undefined
   const personError = submitted && !person ? "Choose a person." : undefined
@@ -147,6 +150,7 @@ export function AddToTeamDialog({
       await add({ data: { teamId: team, personId: person.id, role: roleChoice, since, fields: cleanFields(fields) } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't add the person to the team."), { cause: caught })
     }
     await refresh(
@@ -315,6 +319,7 @@ export function EndTeamMembershipDialog({
 }) {
   const end = useServerFn(endTeamMembership)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [reason, setReason] = useState<EndReason | null>(null)
   const [note, setNote] = useState("")
   const [submitted, setSubmitted] = useState(false)
@@ -329,6 +334,7 @@ export function EndTeamMembershipDialog({
       await end({ data: { teamId: target.team, personId: target.personId, reason: text } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't end the membership."), { cause: caught })
     }
     await refresh(

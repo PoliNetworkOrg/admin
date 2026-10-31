@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 
 import { appointCapo, endCapo, setCapoScope } from "./people-appoint.functions"
 import { personName, todayIso } from "./people-format"
-import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter, useReloadAfterFailure } from "./people-hooks"
 import { type PersonOption, PersonPicker } from "./people-ui"
 import { assignAdmin, endAdminRole, setCapoOfReference } from "./people-write.functions"
 import type { CapoSummary } from "./people.contract"
@@ -29,10 +29,13 @@ export type AdminTarget = { personId: string; name: string }
 
 const NONE = "none"
 
-/** "Giulia Rossi · Ingegneria Informatica", for choosing a Capo Admin. */
+/**
+ * "Giulia Rossi · Ingegneria Informatica", for choosing a Capo Admin. Not one whose appointment Auth hasn't confirmed
+ * yet: the backend only accepts a Capo Admin in effect.
+ */
 function capoOptions(capos: readonly CapoSummary[], exclude?: string) {
   return capos
-    .filter((capo) => capo.person.id !== exclude)
+    .filter((capo) => capo.person.id !== exclude && !(capo.capo.change === "start" && capo.capo.status === "sent"))
     .map((capo) => ({
       value: capo.person.id,
       label: `${personName(capo.person)}${capo.capo.capoScope ? ` · ${capo.capo.capoScope}` : ""}`,
@@ -73,6 +76,7 @@ export function AssignAdminDialog({
 }) {
   const assign = useServerFn(assignAdmin)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [person, setPerson] = useState<PersonOption | null>(fixedPerson ?? null)
   const [since, setSince] = useState(todayIso())
   const [capo, setCapo] = useState(NONE)
@@ -88,6 +92,7 @@ export function AssignAdminDialog({
       await assign({ data: { personId: person.id, since, capoId: capo === NONE ? null : capo } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't make them an admin."), { cause: caught })
     }
     const linked = fixedPerson?.linked ?? candidates.find((candidate) => candidate.id === person.id)?.linked ?? false
@@ -230,6 +235,7 @@ function EndRoleDialog({
   end: (data: { personId: string; reason: string }) => Promise<void>
 }) {
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [reason, setReason] = useState<EndReason | null>(null)
   const [details, setDetails] = useState("")
   const [submitted, setSubmitted] = useState(false)
@@ -241,6 +247,7 @@ function EndRoleDialog({
       await end({ personId: target.personId, reason: reasonText(reason, details) })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, `Couldn't end the ${role} role.`), { cause: caught })
     }
     await refresh(
@@ -416,6 +423,7 @@ export function AppointCapoDialog({
 }) {
   const appoint = useServerFn(appointCapo)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [person, setPerson] = useState<PersonOption | null>(fixedPerson ?? null)
   const [since, setSince] = useState(todayIso())
   const [scope, setScope] = useState("")
@@ -431,6 +439,7 @@ export function AppointCapoDialog({
       await appoint({ data: { personId: person.id, since, scope: scope.trim() } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't appoint the Capo Admin."), { cause: caught })
     }
     const linked = fixedPerson?.linked ?? candidates.find((candidate) => candidate.id === person.id)?.linked ?? false

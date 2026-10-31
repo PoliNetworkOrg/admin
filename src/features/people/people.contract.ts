@@ -2,7 +2,7 @@ import { z } from "zod"
 
 /**
  * The `people.*` backend contract (docs/people/contract.md), a copy of the backend's `src/people/contract.ts` (Phase 1,
- * PoliNetworkOrg/backend#101 and #102). Agent mode answers from `people.fake.server.ts`; real responses are parsed with
+ * PoliNetworkOrg/backend#105 and #106). Agent mode answers from `people.fake.server.ts`; real responses are parsed with
  * these schemas before they reach a page. Keep both copies in step.
  *
  * A person is a record with a name and contacts; their roles are assignments (Group Admin, Capo Admin, member or Lead

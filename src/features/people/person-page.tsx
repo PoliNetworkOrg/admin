@@ -169,9 +169,12 @@ export function PersonPage({
     return { personId: person.id, name, team: assignment.team, fields: assignment.fields, linked }
   }
 
-  /** The actions on one current role. Nothing while a change waits for Auth: the backend would refuse it. */
+  /**
+   * The actions on one current role. While a change waits for Auth, only those that stay in People (Capo Admin of
+   * reference, scope, team fields): the backend refuses another role change until Auth answers.
+   */
   function roleActions(assignment: Assignment): (MenuAction | false)[] {
-    if (assignment.endedOn !== null || waiting) return []
+    if (assignment.endedOn !== null) return []
     if (assignment.kind === "admin")
       return [
         canWrite && {
@@ -180,14 +183,16 @@ export function PersonPage({
           onClick: () => roleDialog.show({ kind: "capoRef" }),
         },
         canAppoint &&
-          !capo && {
+          !capo &&
+          !waiting && {
             label: "Appoint as Capo Admin",
             icon: Crown,
             onClick: () => roleDialog.show({ kind: "appointCapo" }),
           },
         // The backend ends the Capo Admin role first: offering it here would only fail.
         canWrite &&
-          !capo && {
+          !capo &&
+          !waiting && {
             label: "End admin role",
             icon: UserMinus,
             destructive: true,
@@ -197,12 +202,13 @@ export function PersonPage({
     if (assignment.kind === "capo")
       return [
         canAppoint && { label: "Change scope", icon: Pencil, onClick: () => roleDialog.show({ kind: "capoScope" }) },
-        canAppoint && {
-          label: "End Capo Admin role",
-          icon: Crown,
-          destructive: true,
-          onClick: () => roleDialog.show({ kind: "endCapo" }),
-        },
+        canAppoint &&
+          !waiting && {
+            label: "End Capo Admin role",
+            icon: Crown,
+            destructive: true,
+            onClick: () => roleDialog.show({ kind: "endCapo" }),
+          },
       ]
     if (!isTeamAssignment(assignment)) return []
     return [
@@ -212,13 +218,14 @@ export function PersonPage({
         icon: Pencil,
         onClick: () => roleDialog.show({ kind: "teamFields", target: teamTarget(assignment) }),
       },
-      (assignment.teamRole === "lead" ? canAppoint : canWrite) && {
-        label: "End membership",
-        ariaLabel: `End the ${teamName(assignment.team)} membership`,
-        icon: UserMinus,
-        destructive: true,
-        onClick: () => roleDialog.show({ kind: "endTeam", target: teamTarget(assignment) }),
-      },
+      (assignment.teamRole === "lead" ? canAppoint : canWrite) &&
+        !waiting && {
+          label: "End membership",
+          ariaLabel: `End the ${teamName(assignment.team)} membership`,
+          icon: UserMinus,
+          destructive: true,
+          onClick: () => roleDialog.show({ kind: "endTeam", target: teamTarget(assignment) }),
+        },
     ]
   }
 
@@ -276,7 +283,8 @@ export function PersonPage({
               {refusals.map((assignment) => (
                 <InlineAlert key={assignment.id} tone="danger">
                   PoliNetwork Auth refused to {assignment.change === "start" ? "give" : "take back"} the{" "}
-                  {assignmentLabel(assignment)} role: {assignment.refusal ?? "no reason given"}.
+                  {assignmentLabel(assignment)} role: {assignment.refusal ?? "no reason given"}
+                  {/[.!?]$/.test(assignment.refusal ?? "") ? "" : "."}
                   {assignment.change === "start" ? " Someone with clearance can assign it again." : ""}
                 </InlineAlert>
               ))}

@@ -148,14 +148,14 @@ export function ActionMenu({
   /** The ⋮ button's accessible name ("More actions for Giulia Rossi"). */
   label: string
   actions: readonly (MenuAction | false)[]
-  /** In tables: an empty 36px slot when no action applies, so the icons of every row stay aligned. */
+  /** In tables: an empty 36px slot when no action applies, so every row's icons stay aligned (not on mobile cards). */
   keepSlot?: boolean
 }) {
   const available = actions.filter((action) => action !== false)
   const regular = available.filter((action) => !action.destructive)
   const destructive = available.filter((action) => action.destructive)
   const [only] = available
-  if (!only) return keepSlot ? <span aria-hidden className="size-9 shrink-0" /> : null
+  if (!only) return keepSlot ? <span aria-hidden className="size-9 shrink-0 max-shell:hidden" /> : null
   if (available.length === 1) {
     return <IconButton label={only.label} ariaLabel={only.ariaLabel} icon={only.icon} onClick={only.onClick} />
   }

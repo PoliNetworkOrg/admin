@@ -77,14 +77,40 @@ void test("a Lead manages their team's members, but appointing or ending a Lead 
   const asLead = fakePeopleApi({ permissions: SELF, personId: lead.id })
   const end = (api, personId) => api.endTeamMembership({ teamId, personId, reason: "Test" })
 
-  // Nobody changes their own roles, and a Lead is no Lead of Leads.
-  await assert.rejects(end(asLead, lead.id))
+  // Nobody gives themselves a role, and a Lead is no Lead of Leads.
+  const otherTeam = ["it", "hr", "design", "intl"].find((team) => team !== teamId)
+  await assert.rejects(
+    asLead.addTeamMember({ teamId: otherTeam, personId: lead.id, role: "member", since: "2026-01-01", fields: {} }),
+    /give themselves/
+  )
   await assert.rejects(end(fakePeopleApi({ permissions: ["people:write"], personId: null }), lead.id), unauthorized)
   await end(asLead, teammate.id)
   const after = await hr.getPerson(teammate.id)
   const ended = after.assignments.find((a) => a.team === teamId && a.change === "end")
   assert.ok(ended?.endedOn, "the membership ended")
   assert.equal(ended.status, after.account.status === "linked" ? "sent" : "pending")
+  // Giving up one's own role is always allowed, as in Auth.
+  await end(asLead, lead.id)
+  assert.ok(leadOf(await hr.getPerson(lead.id)) === undefined, "the Lead role ended")
+})
+
+void test("a Lead's team lists the memberships in effect, pending ones of unlinked records included", async () => {
+  // A team whose Lead is linked and has a member whose record isn't: P-0030 leads Design & Marketing.
+  const designLead = records.find((person) => leadOf(person)?.team === "design")
+  const [design] = await fakePeopleApi({ permissions: SELF, personId: designLead.id }).listTeams()
+  assert.equal(design.id, "design")
+  const pending = records.find((person) =>
+    person.assignments.some((a) => a.team === "design" && a.endedOn === null && a.status === "pending")
+  )
+  assert.ok(pending, "the fixtures have an unlinked Design & Marketing member")
+  assert.ok(design.members.some((member) => member.id === pending.id))
+  for (const member of design.members) {
+    assert.ok(member.assignments.length > 0, member.id)
+    assert.ok(
+      member.assignments.every((a) => a.team === "design" && a.endedOn === null),
+      member.id
+    )
+  }
 })
 
 void test("Auth's refusal reaches the record and the caller", async () => {

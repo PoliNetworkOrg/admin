@@ -65,8 +65,10 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
 | `me.roles` / `me.get`                 | query            | —                                                                      | `people:self`                                                  |
 | `me.invite` / `me.acceptInvite`       | query / mutation | `{ token }`                                                            | any signed-in account                                          |
 
-Nobody changes their own roles, and nobody hands out a role granting permissions they don't hold; the backend applies
-the same rules as Auth (`src/people/rules.ts`) to pending assignments, and Auth checks linked ones again.
+Nobody gives themselves a role (giving one up is always allowed), and nobody hands out a role granting permissions they
+don't hold; the backend applies the same rules as Auth (`src/people/rules.ts`) to pending assignments, and Auth checks
+linked ones again. A Capo Admin of reference must be in effect: not an appointment still waiting for Auth. Start dates
+can't be later than today in Europe/Rome.
 
 **Invites** link to `/people/invite?token=<token>` (PoliNetworkOrg/backend#109), a dashboard page outside the gated
 shell: it calls `me.invite` to ask "Link this account to <name>?", then `me.acceptInvite`. Older emails link to

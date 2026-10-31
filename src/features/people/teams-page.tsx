@@ -171,12 +171,14 @@ function useTeamDialog() {
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-function sortRows(rows: TeamRow[], sort: TableSort) {
+/** By name, or by the date column: the start, or the end for former members (`ended`). */
+function sortRows(rows: TeamRow[], sort: TableSort, ended = false) {
   const sign = sort.direction === "asc" ? 1 : -1
+  const date = (row: TeamRow) => (ended ? row.membership.endedOn : null) ?? row.membership.since
   return rows.toSorted(
     (a, b) =>
       (sort.column === "since"
-        ? a.membership.since.localeCompare(b.membership.since)
+        ? date(a).localeCompare(date(b))
         : personName(a.person).localeCompare(personName(b.person))) * sign
   )
 }
@@ -449,7 +451,7 @@ export function TeamPage({ team, asSection = false }: { team: TeamSummary; asSec
     }
     return matchesQuery(row, deferredQuery)
   })
-  const rows = sortRows(filtered, sort)
+  const rows = sortRows(filtered, sort, scope === "former")
   const narrowed = deferredQuery !== "" || option !== null
 
   const columns: DataTableColumn<TeamRow>[] = [
