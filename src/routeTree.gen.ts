@@ -45,6 +45,7 @@ import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esi
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
+import { Route as ApiMcpConfigRouteImport } from './routes/api/mcp/config'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardPeopleTeamsIndexRouteImport } from './routes/dashboard/people/teams/index'
@@ -56,6 +57,7 @@ import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashb
 import { Route as DashboardPeopleTeamsTeamIdRouteImport } from './routes/dashboard/people/teams/$teamId'
 import { Route as DashboardPeopleCensusCampaignIdRouteImport } from './routes/dashboard/people/census/$campaignId'
 import { Route as DashboardEsignRequestsRequestIdRouteImport } from './routes/dashboard/esign/requests/$requestId'
+import { Route as ApiMcpRpcSplatRouteImport } from './routes/api/mcp/rpc/$'
 import { Route as ApiEsignAgentSplatRouteImport } from './routes/api/esign/agent/$'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -241,6 +243,11 @@ const DashboardAccountMeRoute = DashboardAccountMeRouteImport.update({
   path: '/account/me',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ApiMcpConfigRoute = ApiMcpConfigRouteImport.update({
+  id: '/api/mcp/config',
+  path: '/api/mcp/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
     id: '/groups-by-label/',
@@ -306,6 +313,11 @@ const DashboardEsignRequestsRequestIdRoute =
     path: '/esign/requests/$requestId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const ApiMcpRpcSplatRoute = ApiMcpRpcSplatRouteImport.update({
+  id: '/api/mcp/rpc/$',
+  path: '/api/mcp/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiEsignAgentSplatRoute = ApiEsignAgentSplatRouteImport.update({
   id: '/api/esign/agent/$',
   path: '/api/esign/agent/$',
@@ -322,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -350,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/api/mcp/rpc/$': typeof ApiMcpRpcSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
@@ -371,6 +385,7 @@ export interface FileRoutesByTo {
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -399,6 +414,7 @@ export interface FileRoutesByTo {
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/api/mcp/rpc/$': typeof ApiMcpRpcSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
@@ -422,6 +438,7 @@ export interface FileRoutesById {
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -450,6 +467,7 @@ export interface FileRoutesById {
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/api/mcp/rpc/$': typeof ApiMcpRpcSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
@@ -474,6 +492,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -502,6 +521,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/api/esign/agent/$'
+    | '/api/mcp/rpc/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/teams/$teamId'
@@ -523,6 +543,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/dashboard/web'
     | '/dashboard'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -551,6 +572,7 @@ export interface FileRouteTypes {
     | '/dashboard/account'
     | '/dashboard/people'
     | '/api/esign/agent/$'
+    | '/api/mcp/rpc/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/teams/$teamId'
@@ -573,6 +595,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/dashboard/web'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -601,6 +624,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/api/esign/agent/$'
+    | '/api/mcp/rpc/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/teams/$teamId'
@@ -622,7 +646,9 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
+  ApiMcpConfigRoute: typeof ApiMcpConfigRoute
   ApiEsignAgentSplatRoute: typeof ApiEsignAgentSplatRoute
+  ApiMcpRpcSplatRoute: typeof ApiMcpRpcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -879,6 +905,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountMeRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/api/mcp/config': {
+      id: '/api/mcp/config'
+      path: '/api/mcp/config'
+      fullPath: '/api/mcp/config'
+      preLoaderRoute: typeof ApiMcpConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
       path: '/groups-by-label'
@@ -955,6 +988,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/esign/requests/$requestId'
       preLoaderRoute: typeof DashboardEsignRequestsRequestIdRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/api/mcp/rpc/$': {
+      id: '/api/mcp/rpc/$'
+      path: '/api/mcp/rpc/$'
+      fullPath: '/api/mcp/rpc/$'
+      preLoaderRoute: typeof ApiMcpRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/esign/agent/$': {
       id: '/api/esign/agent/$'
@@ -1074,7 +1114,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
+  ApiMcpConfigRoute: ApiMcpConfigRoute,
   ApiEsignAgentSplatRoute: ApiEsignAgentSplatRoute,
+  ApiMcpRpcSplatRoute: ApiMcpRpcSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

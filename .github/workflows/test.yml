@@ -25,6 +25,8 @@ jobs:
         run: pnpm run typecheck
       - name: Run Vite+ checks
         run: pnpm check
+      - name: Tests
+        run: pnpm test
       - name: Build
         run: pnpm run build
         env:

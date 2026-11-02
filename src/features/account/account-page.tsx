@@ -1,5 +1,6 @@
 import {
   Cloud,
+  Download,
   ExternalLink,
   Globe,
   Info,
@@ -21,6 +22,7 @@ import { PageBar, PageContent, useSignOut } from "@/components/shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import type { DashboardUser } from "@/lib/auth"
+import { MCP_DOWNLOAD } from "@/mcp/protocol"
 
 type AccountPageProps = {
   user: DashboardUser
@@ -39,12 +41,41 @@ export function AccountPage({ user, permissions, accountUrl }: AccountPageProps)
           <div className="flex flex-col gap-6">
             <ProfileCard user={user} accountUrl={accountUrl} />
             <TelegramCard telegramId={user.telegramId} accountUrl={accountUrl} />
+            <McpCard />
             <PermissionsCard permissions={permissions} />
           </div>
           <SignOutCard />
         </div>
       </PageContent>
     </>
+  )
+}
+
+function McpCard() {
+  return (
+    <SectionCard
+      title="AI agents"
+      padding="settings"
+      action={
+        <Button variant="outline" size="sm" nativeButton={false} render={<a href={MCP_DOWNLOAD} download />}>
+          <Download aria-hidden data-icon="inline-start" />
+          Download MCP
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-(--pn-fg-muted)">
+          Connect a local AI agent to the dashboard with your account and permissions. Requires Node.js 22 or newer.
+        </p>
+        <pre className="overflow-x-auto rounded-md border border-(--pn-line) p-3 font-mono text-xs leading-6">
+          {"npm install -g ./polinetwork-admin-mcp.tgz\npolinetwork-admin-mcp login"}
+        </pre>
+        <p className="text-xs text-(--pn-fg-muted)">
+          Then configure your agent to run <code className="font-mono">polinetwork-admin-mcp serve</code>. Installation
+          instructions are included in the download.
+        </p>
+      </div>
+    </SectionCard>
   )
 }
 
