@@ -2,11 +2,17 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
-  capoAreaSchema,
+  adminSummarySchema,
+  ASSIGNMENT_STATUSES,
+  assignmentSchema,
   linkAccountInputSchema,
   myAreaSchema,
+  newPersonInputSchema,
   personInputSchema,
   personRecordSchema,
+  TEAMS,
+  unlinkAccountInputSchema,
+  UNLINK_REASON,
 } from "../src/features/people/people.contract.ts"
 
 void test("People IDs, reasons and emails have bounded inputs", () => {
@@ -15,111 +21,118 @@ void test("People IDs, reasons and emails have bounded inputs", () => {
     false
   )
   assert.equal(
-    personInputSchema.pick({ personalEmail: true }).safeParse({ personalEmail: `${"a".repeat(250)}@example.org` })
+    personInputSchema.pick({ contactEmail: true }).safeParse({ contactEmail: `${"a".repeat(250)}@example.org` })
       .success,
     false
   )
+  // Auth takes a 500-character reason, and the backend prefixes it.
+  const reason = "x".repeat(500 - UNLINK_REASON.length)
+  assert.equal(unlinkAccountInputSchema.safeParse({ personId: "P-0001", reason }).success, true)
+  assert.equal(unlinkAccountInputSchema.safeParse({ personId: "P-0001", reason: `${reason}x` }).success, false)
 })
 
-// What the backend sends until its own cleanup (PoliNetworkOrg/backend#100) deploys.
-const legacyProfile = {
-  firstName: "Giulia",
-  lastName: "Rossi",
-  personalEmail: null,
+void test("a person needs only a name; contacts may be empty", () => {
+  const empty = { contactEmail: "", phone: "", telegramUsername: "" }
+  assert.deepEqual(personInputSchema.parse({ firstName: " Giulia ", lastName: "Rossi", ...empty }), {
+    firstName: "Giulia",
+    lastName: "Rossi",
+    ...empty,
+  })
+  assert.equal(personInputSchema.safeParse({ firstName: "", lastName: "Rossi", ...empty }).success, false)
+  assert.equal(
+    personInputSchema.parse({ firstName: "Giulia", lastName: "Rossi", ...empty, telegramUsername: "@giulia_r" })
+      .telegramUsername,
+    "giulia_r"
+  )
+})
+
+void test("Add person's roles: a Capo Admin is an admin too, and each team appears once", () => {
+  const person = { firstName: "Giulia", lastName: "Rossi", contactEmail: "", phone: "", telegramUsername: "" }
+  const valid = { ...person, admin: true, capoScope: "Informatica", teams: [{ team: "it", role: "member" }] }
+  assert.equal(newPersonInputSchema.safeParse(valid).success, true)
+  assert.equal(newPersonInputSchema.safeParse({ ...valid, admin: false }).success, false)
+  assert.equal(
+    newPersonInputSchema.safeParse({
+      ...valid,
+      teams: [
+        { team: "it", role: "member" },
+        { team: "it", role: "lead" },
+      ],
+    }).success,
+    false
+  )
+  // Only the predetermined kinds: no other role can be named.
+  assert.equal(newPersonInputSchema.safeParse({ ...valid, teams: [{ team: "board", role: "member" }] }).success, false)
+  assert.equal(newPersonInputSchema.safeParse({ ...valid, teams: [{ team: "it", role: "owner" }] }).success, false)
+})
+
+const assignment = {
+  id: "A-1",
+  kind: "admin",
+  team: null,
+  teamRole: null,
+  capoScope: null,
+  capoOfReference: { id: "P-0007", name: "Giulia Rossi" },
+  fields: {},
+  since: "2026-01-10",
+  endedOn: null,
+  endReason: null,
+  assignedBy: "sub-0002",
+  change: "start",
+  status: "refused",
+  refusal: "The actor can't give a role with permissions they don't hold",
+}
+const row = {
+  id: "P-0012",
+  firstName: "Luca",
+  lastName: "Bianchi",
+  contactEmail: null,
   phone: null,
-  telegramUsername: "giuliarossi",
-  telegramId: null,
-  course: "Ingegneria Informatica",
-  year: "2nd year",
-  campus: "Leonardo",
-  otherAssociations: [],
-  studentRepresentative: null,
-}
-const legacyRecord = {
-  id: "P-0142",
-  profile: legacyProfile,
-  member: { number: "0290", status: "active", admittedOn: "2024-10-01", fee: "paid", m365Email: "g@polinetwork.org" },
-  isMember: true,
-  admin: {
-    status: "active",
-    since: "2024-10-03",
-    endedOn: null,
-    endReason: null,
-    groups: [{ chatId: "-1001", title: "Basi di Dati" }],
-    requested: [{ chatId: "-1002", title: "Reti Logiche", requestedOn: "2026-10-09" }],
-    availableAsCapo: true,
-    capoOfReference: null,
-    capoScope: null,
-  },
-  teams: [],
-  census: [{ year: "2026/27", answer: null, answeredOn: null, source: null, declaredMember: null, reminders: 1 }],
-  consents: { privacy: null, photo: null },
-  account: { status: "review", reviewId: "r1", issue: "Telegram account already linked to another record" },
-  notes: null,
-  discrepancies: [{ kind: "declared-member", message: "Declared a member", suggestedTelegram: null }],
-  activity: [],
-  fees: { current: null, receipts: [] },
+  telegramUsername: "lucab",
+  account: { status: "linked", sub: "sub-0012", method: "invite", linkedOn: "2026-10-01", linkedBy: "sub-0012" },
+  assignments: [assignment],
 }
 
-void test("records from the current backend parse, dropping what People no longer shows", () => {
-  const record = personRecordSchema.parse(legacyRecord)
-  for (const key of ["member", "isMember", "census", "fees"]) assert.ok(!(key in record), key)
-  assert.ok(!("groups" in record.admin))
-  assert.ok(!("requested" in record.admin))
-  // Record matching is gone: a record held for review reads as not linked.
-  assert.deepEqual(record.account, { status: "none" })
-  assert.equal(record.discrepancies[0].kind, "declared-member")
+void test("records from the Phase 1 backend parse, with each assignment's status and Auth's refusal", () => {
+  const record = personRecordSchema.parse({
+    ...row,
+    notes: null,
+    activity: [],
+    createdBy: "sub-0002",
+    createdAt: "2026-01-10T09:00:00.000Z",
+    updatedBy: "sub-0002",
+    updatedAt: "2026-01-10T09:00:00.000Z",
+  })
+  assert.equal(record.assignments[0].status, "refused")
+  assert.equal(record.assignments[0].refusal, assignment.refusal)
+  assert.equal(
+    adminSummarySchema.parse({ person: row, admin: assignment, capo: null }).admin.capoOfReference.id,
+    "P-0007"
+  )
+  for (const status of ASSIGNMENT_STATUSES)
+    assert.equal(assignmentSchema.safeParse({ ...assignment, status }).success, true)
+  assert.equal(assignmentSchema.safeParse({ ...assignment, status: "review" }).success, false)
 })
 
-void test("My area from the current backend parses, and a first-sign-in match reads as no record", () => {
+void test("My area parses a linked record or no record", () => {
+  assert.deepEqual(myAreaSchema.parse({ state: "none" }), { state: "none" })
   const linked = myAreaSchema.parse({
     state: "linked",
-    person: legacyRecord,
-    feeInstructions: { beneficiary: "PoliNetwork", iban: "IT00", reference: "Quota" },
-    campaign: { id: "2026", year: "2026/27", closesOn: "2026-10-31" },
-    contacts: [{ role: "hr", name: "HR team", telegram: null, email: "hr@polinetwork.org", team: null }],
-    roster: {
-      team: "it",
-      members: [{ id: "P-0142", name: "Giulia Rossi", role: "member", telegram: null, email: "g@polinetwork.org" }],
+    person: {
+      ...row,
+      notes: null,
+      activity: [],
+      createdBy: "auth",
+      createdAt: "2026-01-10T09:00:00.000Z",
+      updatedBy: "auth",
+      updatedAt: "2026-01-10T09:00:00.000Z",
     },
+    contacts: [{ role: "hr", name: "Sara Colombo", telegram: null, team: "hr" }],
+    roster: null,
   })
   assert.equal(linked.state, "linked")
-  assert.ok(!("feeInstructions" in linked))
-  assert.ok(!("campaign" in linked))
-  assert.ok(!("email" in linked.contacts[0]))
-  assert.ok(!("email" in linked.roster.members[0]))
-  // The old backend's "none" carries the request to be added; the new one sends the state alone.
-  assert.deepEqual(myAreaSchema.parse({ state: "none", request: { sentOn: "2026-10-01" } }), { state: "none" })
-  assert.deepEqual(myAreaSchema.parse({ state: "none" }), { state: "none" })
-  const match = myAreaSchema.parse({
-    state: "match",
-    candidate: { id: "P-0142", name: "Giulia Rossi", course: "", year: "", campus: "Leonardo", roles: [] },
-    reason: "Matched on your email address.",
-  })
-  assert.deepEqual(match, { state: "none" })
 })
 
-void test("the Capo area from the current backend parses without its Telegram groups and join requests", () => {
-  const area = capoAreaSchema.parse({
-    scope: "Informatica",
-    groups: [{ chatId: "-1001", title: "Analisi 1", admins: null }],
-    admins: [],
-    requests: [],
-  })
-  assert.deepEqual(area, { scope: "Informatica", admins: [] })
-})
-
-void test("records from the cleaned-up backend parse without the dropped fields", () => {
-  const { member, isMember, census, fees, ...rest } = legacyRecord
-  const { groups, requested, ...admin } = legacyRecord.admin
-  void [member, isMember, census, fees, groups, requested]
-  const record = personRecordSchema.parse({
-    ...rest,
-    admin,
-    account: { status: "none" },
-    discrepancies: [{ kind: "needs-review", message: "Check the sign-in", suggestedTelegram: null }],
-  })
-  assert.equal(record.admin.availableAsCapo, true)
-  assert.equal(record.discrepancies[0].kind, "needs-review")
-  assert.deepEqual(capoAreaSchema.parse({ scope: "Informatica", admins: [] }), { scope: "Informatica", admins: [] })
+void test("the Design team is called Design & Marketing", () => {
+  assert.equal(TEAMS.design.name, "Design & Marketing")
 })

@@ -208,3 +208,15 @@ Newest last. One line per commit or session: date, what was done, what is next.
   `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign`. The schemas strip the
   fields the current backend still sends until its own cleanup deploys.
   The backend counterpart is PoliNetworkOrg/backend#104, which deploys after this.
+
+- 2026-10-31: Phase 1 pages (#139), on the API from PoliNetworkOrg/backend#105 and #106. The contract is a copy of
+  the backend's: records with a name and contacts, and assignments (Admin, Capo Admin, team member or Lead) whose
+  status says where each stands with PoliNetwork Auth (pending until linked, waiting for Auth, applied, refused with
+  Auth's reason). Overview filters by role, team, account and status; the person page lists each role with its status,
+  the past roles and the history, with actors named from linked records. Add person needs only a name, and can start
+  with roles. Admins shows admins with their Capo Admin of reference and the Capo Admins with their scope; the Capo
+  Admin area is read-only. Teams honour which roles Auth binds. New permission `people:link` for linking by hand and
+  unlinking (with a reason; Auth revokes the roles first). Course, year and campus are gone from records, so #132's
+  "—" handling has nothing left to apply to; the Design team is Design & Marketing. Agent-mode fixtures cover linked,
+  invited and unlinked records and every assignment status; fake Auth confirms changes after a few seconds and refuses
+  every change for P-0012.

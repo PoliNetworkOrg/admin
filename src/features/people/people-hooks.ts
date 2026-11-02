@@ -23,6 +23,18 @@ export function useRefreshAfter() {
   }
 }
 
+/**
+ * After a failed role change: when PoliNetwork Auth refuses, the backend records the refusal (a refused start ends the
+ * assignment) before it answers with Auth's words, so the page behind the dialog reloads to show it. It doesn't wait:
+ * the dialog shows the error meanwhile.
+ */
+export function useReloadAfterFailure() {
+  const router = useRouter()
+  return () => {
+    router.invalidate().catch((error) => console.error(error))
+  }
+}
+
 /** The message to show for a failed call: the backend's own words, or the fallback (also for a bare UNAUTHORIZED). */
 export function errorMessage(cause: unknown, fallback: string) {
   const message = backendMessage(cause, fallback)

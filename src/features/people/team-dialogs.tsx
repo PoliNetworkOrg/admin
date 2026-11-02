@@ -16,13 +16,16 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
+import { changeOutcome } from "./admin-dialogs"
 import { teamName, todayIso } from "./people-format"
-import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter, useReloadAfterFailure } from "./people-hooks"
 import { addTeamMember, endTeamMembership, getTeamCandidates, updateTeamFields } from "./people-teams.functions"
 import { ChoiceChips, type PersonOption, PersonPicker } from "./people-ui"
-import { TEAM_IDS, type TeamFields, teamFields, type TeamId } from "./people.contract"
+import { TEAM_IDS, type TeamFields, teamFields, type TeamId, type TeamRole, type TeamSummary } from "./people.contract"
 
-type Role = "member" | "lead"
+type Role = TeamRole
+/** Which roles PoliNetwork Auth binds for each team, and whether it already has a Lead. */
+export type TeamAvailability = Pick<TeamSummary, "id" | "assignable" | "lead">
 
 function emptyFields(team: TeamId): TeamFields {
   return Object.fromEntries(teamFields(team).map((field) => [field.key, field.kind === "multi" ? [] : ""]))
@@ -84,13 +87,14 @@ function TeamFieldInputs({
 
 /**
  * Adds an existing person to a team. `team` fixes the team (a team page); `person` fixes the person (their record).
- * The Lead role is offered only with `people:appoint`.
+ * Only roles Auth binds are offered, and the Lead role only with `people:appoint` to a team without one.
  */
 export function AddToTeamDialog({
   open,
   onOpenChange,
   team: fixedTeam,
   teams = TEAM_IDS,
+  availability = [],
   person: fixedPerson,
   canAppoint,
 }: {
@@ -99,12 +103,15 @@ export function AddToTeamDialog({
   team?: TeamId
   /** Teams to choose from when `team` isn't fixed. */
   teams?: readonly TeamId[]
-  person?: PersonOption
+  /** What Auth binds per team; a team missing here is offered as assignable. */
+  availability?: readonly TeamAvailability[]
+  person?: PersonOption & { linked: boolean }
   canAppoint: boolean
 }) {
   const add = useServerFn(addTeamMember)
   const loadCandidates = useServerFn(getTeamCandidates)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [team, setTeam] = useState<TeamId | null>(fixedTeam ?? null)
   const [person, setPerson] = useState<PersonOption | null>(fixedPerson ?? null)
   const [role, setRole] = useState<Role>("member")
@@ -120,6 +127,17 @@ export function AddToTeamDialog({
   )
   const candidates = candidateRows?.map((row) => ({ id: row.id, name: row.name })) ?? null
 
+  const available = (id: TeamId | null) => availability.find((entry) => entry.id === id)
+  const memberBound = (id: TeamId) => available(id)?.assignable.member ?? true
+  const leadOpen = (id: TeamId | null) => {
+    const entry = available(id)
+    return canAppoint && (entry ? entry.assignable.lead && !entry.lead : true)
+  }
+  const choosable = teams.filter((id) => memberBound(id) || leadOpen(id))
+  // A team that only binds a Lead role takes a Lead; one that can't take a Lead (another team chosen after "Team Lead")
+  // takes a member.
+  const roleChoice: Role = !team ? role : !memberBound(team) ? "lead" : leadOpen(team) ? role : "member"
+
   const teamError = submitted && !team ? "Choose a team." : undefined
   const personError = submitted && !person ? "Choose a person." : undefined
   const sinceError = submitted && !since ? "Choose the start date." : undefined
@@ -129,12 +147,17 @@ export function AddToTeamDialog({
     setSubmitted(true)
     if (!team || !person || !since) return
     try {
-      await add({ data: { teamId: team, personId: person.id, role, since, fields: cleanFields(fields) } })
+      await add({ data: { teamId: team, personId: person.id, role: roleChoice, since, fields: cleanFields(fields) } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't add the person to the team."), { cause: caught })
     }
-    await refresh(`${person.name} added to ${teamName(team)}.`)
+    await refresh(
+      fixedPerson
+        ? changeOutcome(fixedPerson.linked, `${person.name} added to ${teamName(team)}.`)
+        : `${person.name} added to ${teamName(team)}.`
+    )
     onOpenChange(false)
   }
 
@@ -162,7 +185,7 @@ export function AddToTeamDialog({
             <SelectField<TeamId>
               id="team-add-team"
               value={team}
-              options={teams.map((value) => ({ value, label: teamName(value) }))}
+              options={choosable.map((value) => ({ value, label: teamName(value) }))}
               onChange={(next) => {
                 setTeam(next)
                 setFields(emptyFields(next))
@@ -195,11 +218,11 @@ export function AddToTeamDialog({
           </FormField>
         )}
         <div className="grid grid-cols-1 gap-4 shell:grid-cols-2">
-          {canAppoint ? (
+          {leadOpen(team) && (!team || memberBound(team)) ? (
             <div className="shell:col-span-2">
               <RadioCardGroup
                 label="Role"
-                value={role}
+                value={roleChoice}
                 onValueChange={setRole}
                 className="grid grid-cols-1 gap-2 shell:grid-cols-2"
               >
@@ -224,7 +247,13 @@ export function AddToTeamDialog({
   )
 }
 
-export type TeamMemberTarget = { personId: string; name: string; team: TeamId; fields: TeamFields }
+export type TeamMemberTarget = {
+  personId: string
+  name: string
+  team: TeamId
+  fields: TeamFields
+  linked: boolean
+}
 
 export function EditTeamFieldsDialog({
   open,
@@ -278,7 +307,7 @@ const END_REASONS = [
 ] as const
 type EndReason = (typeof END_REASONS)[number]
 
-/** Ends a team membership with its last day and reason; the history stays. */
+/** Ends a team membership with a reason; the history stays. A linked record's role is taken back in Auth. */
 export function EndTeamMembershipDialog({
   open,
   onOpenChange,
@@ -290,32 +319,27 @@ export function EndTeamMembershipDialog({
 }) {
   const end = useServerFn(endTeamMembership)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [reason, setReason] = useState<EndReason | null>(null)
-  const [lastDay, setLastDay] = useState(todayIso())
   const [note, setNote] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const reasonError = submitted && !reason ? "Choose a reason." : undefined
   const noteError = submitted && reason === "Other" && !note.trim() ? "Describe the reason." : undefined
-  const lastDayError = submitted && !lastDay ? "Choose the last day." : undefined
 
   async function submit() {
     setSubmitted(true)
-    if (!reason || !lastDay || (reason === "Other" && !note.trim())) return
+    if (!reason || (reason === "Other" && !note.trim())) return
+    const text = reason === "Other" ? note.trim() : note.trim() ? `${reason}: ${note.trim()}` : reason
     try {
-      await end({
-        data: {
-          teamId: target.team,
-          personId: target.personId,
-          lastDay,
-          reason: reason === "Other" ? note.trim() : reason,
-          note: reason === "Other" ? "" : note.trim(),
-        },
-      })
+      await end({ data: { teamId: target.team, personId: target.personId, reason: text } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(errorMessage(caught, "Couldn't end the membership."), { cause: caught })
     }
-    await refresh("Membership ended.")
+    await refresh(
+      target.linked ? "Membership ending. PoliNetwork Auth takes the role back shortly." : "Membership ended."
+    )
     onOpenChange(false)
   }
 
@@ -324,7 +348,7 @@ export function EndTeamMembershipDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="End membership?"
-      description={`${target.name} leaves ${teamName(target.team)} on the last day below. Their history stays.`}
+      description={`${target.name} leaves ${teamName(target.team)} today. Their history stays.`}
       noun="change"
       dirty={reason !== null || note.trim() !== ""}
       submitLabel="End membership"
@@ -332,27 +356,16 @@ export function EndTeamMembershipDialog({
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 shell:grid-cols-2">
-          <FormField label="Reason" htmlFor="end-team-reason" error={reasonError}>
-            <SelectField<EndReason>
-              id="end-team-reason"
-              value={reason}
-              options={END_REASONS.map((value) => ({ value, label: value }))}
-              onChange={setReason}
-              placeholder="Choose a reason"
-              invalid={!!reasonError}
-            />
-          </FormField>
-          <FormField label="Last day" htmlFor="end-team-last-day" error={lastDayError}>
-            <DateField
-              id="end-team-last-day"
-              value={lastDay}
-              onChange={setLastDay}
-              invalid={!!lastDayError}
-              describedBy={lastDayError ? fieldHintId("end-team-last-day") : undefined}
-            />
-          </FormField>
-        </div>
+        <FormField label="Reason" htmlFor="end-team-reason" error={reasonError}>
+          <SelectField<EndReason>
+            id="end-team-reason"
+            value={reason}
+            options={END_REASONS.map((value) => ({ value, label: value }))}
+            onChange={setReason}
+            placeholder="Choose a reason"
+            invalid={!!reasonError}
+          />
+        </FormField>
         <FormField
           label="Note"
           htmlFor="end-team-note"
@@ -364,7 +377,7 @@ export function EndTeamMembershipDialog({
             id="end-team-note"
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            maxLength={500}
+            maxLength={400}
             aria-invalid={noteError ? true : undefined}
             aria-describedby={fieldHintId("end-team-note")}
             className={cn(fieldControl, "min-h-20")}

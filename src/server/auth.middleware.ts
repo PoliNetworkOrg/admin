@@ -75,7 +75,7 @@ export const peopleSelfMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** People: every record, admins, teams, census and linking, with contacts and HR notes. */
+/** People: every record, admins, Capo Admins, teams and linking, with contacts and HR notes. */
 export const peopleReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
@@ -83,7 +83,7 @@ export const peopleReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** People: add and edit people, admin roles, team memberships and account linking. */
+/** People: add and edit records, make and end admins, and set their Capo Admin of reference. */
 export const peopleWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
@@ -92,8 +92,8 @@ export const peopleWriteMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
- * People › Teams writes: `people:write`, or a Team Lead (`people:self`) on their own team, which only the backend
- * can tell from the record.
+ * People writes a Team Lead may make too: team memberships, and invites to their team's members. `people:write`, or a
+ * Team Lead (`people:self`) on their own team, which only the backend can tell.
  */
 export const peopleTeamWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
@@ -131,6 +131,14 @@ export const peopleAppointMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:appoint")
+    return next()
+  })
+
+/** People: search the IdP's accounts, and link or unlink one by hand. Linking hands the account the record's roles. */
+export const peopleLinkMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:link")
     return next()
   })
 

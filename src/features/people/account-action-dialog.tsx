@@ -1,20 +1,20 @@
 import { useServerFn } from "@tanstack/react-start"
-import { Mail, RefreshCw, Unlink, X } from "lucide-react"
+import { Mail, RefreshCw, X } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/primitives"
 
 import { useRefreshAfter } from "./people-hooks"
-import { revokePersonInvite, sendPersonInvite, unlinkPersonAccount } from "./people-write.functions"
+import { revokePersonInvite, sendPersonInvite } from "./people-invites.functions"
 
 export type AccountAction = {
-  kind: "invite" | "resend" | "revoke" | "unlink"
+  kind: "invite" | "resend" | "revoke"
   personId: string
   name: string
-  /** The invite address, or the linked sign-in for `unlink`. */
+  /** The invite address: the record's contact email. */
   email: string
 }
 
-/** Send, resend or revoke an invite, or unlink an account. Keep `action` after closing so the text survives the exit. */
+/** Send, resend or revoke an invite. Keep `action` after closing so the text survives the exit. */
 export function AccountActionDialog({
   action,
   open,
@@ -26,7 +26,6 @@ export function AccountActionDialog({
 }) {
   const send = useServerFn(sendPersonInvite)
   const revoke = useServerFn(revokePersonInvite)
-  const unlink = useServerFn(unlinkPersonAccount)
   const refresh = useRefreshAfter()
   if (!action) return null
   const data = { personId: action.personId }
@@ -40,7 +39,7 @@ export function AccountActionDialog({
         tone="primary"
         icon={resend ? RefreshCw : Mail}
         title={resend ? "Resend invite?" : "Send invite?"}
-        description={`${action.name} gets an email at ${action.email} with a link to sign in and link their account. The link expires in 14 days${resend ? " and the previous one stops working." : "."}`}
+        description={`${action.name} gets an email at ${action.email} with a link that works once. They can sign in with any account, not only this address. It expires in 14 days${resend ? ", and the previous link stops working." : "."}`}
         confirmLabel={resend ? "Resend invite" : "Send invite"}
         onConfirm={async () => {
           await send({ data })
@@ -49,33 +48,17 @@ export function AccountActionDialog({
       />
     )
   }
-  if (action.kind === "revoke") {
-    return (
-      <ConfirmDialog
-        open={open}
-        onOpenChange={onOpenChange}
-        icon={X}
-        title="Revoke invite?"
-        description={`The link sent to ${action.email} stops working. ${action.name} stays on the list as Not linked.`}
-        confirmLabel="Revoke invite"
-        onConfirm={async () => {
-          await revoke({ data })
-          await refresh("Invite revoked.")
-        }}
-      />
-    )
-  }
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      icon={Unlink}
-      title="Unlink account?"
-      description={`${action.email} can no longer see ${action.name}'s record. The record and its history stay.`}
-      confirmLabel="Unlink account"
+      icon={X}
+      title="Revoke invite?"
+      description={`The link sent to ${action.email} stops working. ${action.name} stays on the list as Not linked.`}
+      confirmLabel="Revoke invite"
       onConfirm={async () => {
-        await unlink({ data })
-        await refresh("Account unlinked.")
+        await revoke({ data })
+        await refresh("Invite revoked.")
       }}
     />
   )

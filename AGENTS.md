@@ -10,8 +10,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `openid-client`. ID tokens are signature-checked. Tokens remain in the dedicated Redis server session store.
   `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
 - **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
-  grants, Telegram groups, WhatsApp groups, labels, website content, reports, and Microsoft 365 member creation and
-  member-number changes.
+  grants, Telegram groups, WhatsApp groups, labels, website content, reports, People (write, appoint, link, team), and
+  Microsoft 365 member creation and member-number changes.
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
 - **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through
@@ -23,12 +23,16 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   the Socio role, so adding or removing anyone in a group would grant or revoke IdP roles. Nothing else about users or
   groups can be edited from the dashboard.
 - **People** (`src/features/people/`): every page reads and writes through `peopleApi(context)`, which parses the
-  backend's `people.*` responses with `people.contract.ts` and, in agent mode, uses the in-memory fake
-  (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). `/dashboard` admits `people:self` without `admin:access`;
-  Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and only open their
-  sections. Member register, Receipts, Census and My area's fee card are unconnected mockups (#138): static sample data
-  from `mockup-data.ts`, no server functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be
-  rebuilt in Phase 2 (#144) and Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+  backend's `people.*` responses with `people.contract.ts` (a copy of the backend's) and, in agent mode, uses the
+  in-memory fake (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). A person's roles are assignments (Admin, Capo
+  Admin, team member or Lead, nothing else): `pending` until the record is linked to an account, then held by
+  PoliNetwork Auth, which may refuse a change; pages show each assignment's status and Auth's refusal word for word.
+  `people:write` edits records, admins and invites, `people:appoint` Capo Admins and Leads, `people:link` links and
+  unlinks by hand. `/dashboard` admits `people:self` without `admin:access`; Capo Admin and Team Lead come from the
+  person's own record (`peopleRoles` in the route context) and only open their sections. Member register, Receipts,
+  Census and My area's fee card are unconnected mockups (#138): static sample data from `mockup-data.ts`, no server
+  functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt in Phase 2 (#144) and
+  Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

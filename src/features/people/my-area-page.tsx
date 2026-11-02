@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Camera, ChevronRight, Crown, FileText, Send, UserRound, Users, UsersRound } from "lucide-react"
+import { ChevronRight, Crown, Send, ShieldUser, UserRound, Users, UsersRound } from "lucide-react"
 import { useState } from "react"
 
 import {
@@ -15,7 +15,6 @@ import {
   PlatformGlyph,
   SectionCard,
   SectionHeading,
-  StatusBadge,
   Unset,
 } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
@@ -23,17 +22,18 @@ import { Button } from "@/components/ui/button"
 
 import { MyFeeCard } from "./my-fee-card"
 import {
-  activeTeams,
+  assignmentLabel,
   formatDay,
-  isActiveAdmin,
+  isTeamAssignment,
+  LINK_METHOD,
+  openAssignments,
   personName,
-  PHOTO_CONSENT,
   teamName,
   telegramUrl,
 } from "./people-format"
 import { errorMessage, useRefreshAfter } from "./people-hooks"
 import { acceptMyInvite } from "./people-self.functions"
-import { PersonAvatar, PersonCell, Row, RowIcon, Rows, StateBadge } from "./people-ui"
+import { AssignmentBadge, PersonAvatar, PersonCell, RefusalText, Row, RowIcon, Rows } from "./people-ui"
 import type { MyArea } from "./people.contract"
 
 type Linked = Extract<MyArea, { state: "linked" }>
@@ -85,8 +85,8 @@ function InviteView({ token }: { token: string }) {
           }
         >
           <p className="text-[14px] text-(--pn-fg-muted)">
-            HR invited you to link this sign-in to your PoliNetwork record, so you can see your roles. Use the account
-            with the email address the invite was sent to.
+            HR invited you to link this sign-in to your PoliNetwork record, so you get your roles. You can use any
+            account, not only the one at the address the invite was sent to. The link works once.
           </p>
         </SectionCard>
       </PageContent>
@@ -113,32 +113,32 @@ function LinkedView({ area }: { area: Linked }) {
   const { person, contacts, roster } = area
   // The fee card is an unconnected mockup (Phase 2, #144), shown only to People readers.
   const canRead = useCan("people:read")
-  const { profile, admin, consents } = person
-  const teams = activeTeams(person)
+  const roles = openAssignments(person)
   const name = personName(person)
 
   const profileItems: KeyValueItem[] = [
     {
-      key: "Personal email",
-      value: profile.personalEmail ? <span className="[overflow-wrap:anywhere]">{profile.personalEmail}</span> : null,
+      key: "Contact email",
+      value: person.contactEmail ? <span className="[overflow-wrap:anywhere]">{person.contactEmail}</span> : null,
     },
-    { key: "Phone", value: profile.phone },
+    { key: "Phone", value: person.phone },
     {
       key: "Telegram",
-      value: profile.telegramUsername ? (
+      value: person.telegramUsername ? (
         <span className="inline-flex items-center gap-1.5 font-mono">
-          <PlatformGlyph platform="tg" className="size-3.5" />@{profile.telegramUsername}
+          <PlatformGlyph platform="tg" className="size-3.5" />@{person.telegramUsername}
         </span>
       ) : null,
     },
-    { key: "Course", value: profile.course },
-    { key: "Year", value: profile.year },
-    { key: "Campus", value: <Chip>{profile.campus}</Chip> },
     ...(person.account.status === "linked"
       ? [
           {
-            key: "PoliNetwork account",
-            value: <span className="font-mono [overflow-wrap:anywhere]">{person.account.email}</span>,
+            key: "Linked account",
+            value: <span className="font-mono [overflow-wrap:anywhere]">{person.account.sub}</span>,
+          },
+          {
+            key: "Linked",
+            value: `${LINK_METHOD[person.account.method]}${person.account.linkedOn ? ` · ${formatDay(person.account.linkedOn)}` : ""}`,
           },
         ]
       : []),
@@ -192,52 +192,87 @@ function LinkedView({ area }: { area: Linked }) {
           <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-4">
               <SectionCard title="My roles" padding="flush">
-                {isActiveAdmin(person) || admin?.capoScope || teams.length ? (
+                {roles.length ? (
                   <Rows>
-                    {admin && isActiveAdmin(person) ? (
+                    {roles.map((assignment) => (
                       <Row
+                        key={assignment.id}
                         lead={
-                          <span className="grid size-8 place-items-center rounded-(--pn-r-3) bg-(--pn-muted)">
-                            <PlatformGlyph platform="tg" className="size-4" />
-                          </span>
-                        }
-                        title="Admin"
-                        meta={`Since ${formatDay(admin.since)}`}
-                      />
-                    ) : null}
-                    {admin?.capoScope ? (
-                      <Row
-                        lead={<RowIcon icon={Crown} />}
-                        title="Capo Admin"
-                        meta={admin.capoScope}
-                        end={
-                          <IconButton
-                            label="Open Capo Admin"
-                            icon={ChevronRight}
-                            nativeButton={false}
-                            render={<Link to="/dashboard/telegram/capo" />}
+                          <RowIcon
+                            icon={assignment.kind === "admin" ? ShieldUser : assignment.kind === "capo" ? Crown : Users}
                           />
                         }
-                      />
-                    ) : null}
-                    {teams.map((membership) => (
-                      <Row
-                        key={membership.team}
-                        lead={<RowIcon icon={Users} />}
                         title={
+                          isTeamAssignment(assignment) ? (
+                            <>
+                              {teamName(assignment.team)}
+                              <Chip>{assignment.teamRole === "lead" ? "Lead" : "Member"}</Chip>
+                            </>
+                          ) : (
+                            assignmentLabel(assignment)
+                          )
+                        }
+                        meta={`Since ${formatDay(assignment.since)}`}
+                        detail={
+                          assignment.status === "refused" ? <RefusalText refusal={assignment.refusal} /> : undefined
+                        }
+                        end={
                           <>
-                            {teamName(membership.team)}
-                            <Chip>{membership.role === "lead" ? "Lead" : "Member"}</Chip>
+                            <AssignmentBadge assignment={assignment} />
+                            {assignment.status === "applied" && assignment.kind === "capo" ? (
+                              <IconButton
+                                label="Open Capo Admin"
+                                icon={ChevronRight}
+                                nativeButton={false}
+                                render={<Link to="/dashboard/telegram/capo" />}
+                              />
+                            ) : null}
+                            {assignment.status === "applied" &&
+                            isTeamAssignment(assignment) &&
+                            assignment.teamRole === "lead" ? (
+                              <IconButton
+                                label="Open your team"
+                                icon={ChevronRight}
+                                nativeButton={false}
+                                render={<Link to="/dashboard/people/teams" />}
+                              />
+                            ) : null}
                           </>
                         }
-                        meta={`Since ${formatDay(membership.since)}`}
+                      />
+                    ))}
+                  </Rows>
+                ) : (
+                  <p className="px-4 py-3 text-[13px] text-(--pn-fg-muted)">No current roles.</p>
+                )}
+              </SectionCard>
+
+              <SectionCard title="People to contact" padding="flush">
+                {contacts.length ? (
+                  <Rows>
+                    {contacts.map((contact) => (
+                      <Row
+                        key={`${contact.role}-${contact.name}-${contact.team ?? ""}`}
+                        lead={
+                          contact.role === "hr" ? <RowIcon icon={UsersRound} /> : <PersonAvatar name={contact.name} />
+                        }
+                        title={contact.name}
+                        meta={
+                          contact.role === "capo"
+                            ? "Your Capo Admin"
+                            : contact.role === "lead"
+                              ? `Your Team Lead · ${contact.team ? teamName(contact.team) : ""}`
+                              : "HR, for anything about your record"
+                        }
                         end={
-                          membership.role === "lead" ? (
+                          contact.telegram ? (
                             <IconButton
-                              label="Open your team"
-                              icon={ChevronRight}
+                              label="Open in Telegram"
+                              ariaLabel={`Open ${contact.name} in Telegram`}
+                              icon={Send}
+                              iconNode={<PlatformGlyph platform="tg" className="size-4" />}
                               nativeButton={false}
-                              render={<Link to="/dashboard/people/teams" />}
+                              render={<a href={telegramUrl(contact.telegram)} target="_blank" rel="noreferrer" />}
                             />
                           ) : undefined
                         }
@@ -245,70 +280,14 @@ function LinkedView({ area }: { area: Linked }) {
                     ))}
                   </Rows>
                 ) : (
-                  <p className="px-4 py-3 text-[13px] text-(--pn-fg-muted)">No active roles.</p>
+                  <p className="px-4 py-3 text-[13px] text-(--pn-fg-muted)">Nobody to list yet.</p>
                 )}
-              </SectionCard>
-
-              <SectionCard title="People to contact" padding="flush">
-                <Rows>
-                  {contacts.map((contact) => (
-                    <Row
-                      key={`${contact.role}-${contact.name}-${contact.team ?? ""}`}
-                      lead={
-                        contact.role === "hr" ? <RowIcon icon={UsersRound} /> : <PersonAvatar name={contact.name} />
-                      }
-                      title={contact.name}
-                      meta={
-                        contact.role === "capo"
-                          ? "Your Capo Admin"
-                          : contact.role === "lead"
-                            ? `Your Team Lead · ${contact.team ? teamName(contact.team) : ""}`
-                            : "For anything about your record"
-                      }
-                      end={
-                        contact.telegram ? (
-                          <IconButton
-                            label="Open in Telegram"
-                            ariaLabel={`Open ${contact.name} in Telegram`}
-                            icon={Send}
-                            iconNode={<PlatformGlyph platform="tg" className="size-4" />}
-                            nativeButton={false}
-                            render={<a href={telegramUrl(contact.telegram)} target="_blank" rel="noreferrer" />}
-                          />
-                        ) : undefined
-                      }
-                    />
-                  ))}
-                </Rows>
               </SectionCard>
             </div>
 
             <div className="flex min-w-0 flex-col gap-4">
-              <SectionCard title="My profile">
+              <SectionCard title="My record">
                 <KeyValueList items={profileItems} />
-              </SectionCard>
-
-              <SectionCard title="My consents" padding="flush">
-                <Rows>
-                  {consents.privacy ? (
-                    <Row
-                      lead={<RowIcon icon={FileText} />}
-                      title="Volunteer privacy policy"
-                      meta={`Version ${consents.privacy.version} · accepted ${formatDay(consents.privacy.acceptedOn)}`}
-                      end={<StatusBadge tone="success">Accepted</StatusBadge>}
-                    />
-                  ) : null}
-                  <Row
-                    lead={<RowIcon icon={Camera} />}
-                    title="Photo and video"
-                    meta={
-                      consents.photo
-                        ? `${PHOTO_CONSENT[consents.photo.status].label} ${formatDay(consents.photo.on)}`
-                        : "Not granted"
-                    }
-                    end={<StateBadge state={PHOTO_CONSENT[consents.photo?.status ?? "denied"]} />}
-                  />
-                </Rows>
               </SectionCard>
             </div>
           </div>

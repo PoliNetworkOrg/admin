@@ -222,6 +222,8 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-teams.functions.ts",
     "src/features/people/people-capo.functions.ts",
     "src/features/people/people-self.functions.ts",
+    "src/features/people/people-invites.functions.ts",
+    "src/features/people/people-link.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -233,7 +235,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
           serverFunction.middleware.some((name) =>
-            /(?:Read|Write|Manage|Create|Self|Appoint|Sign)Middleware$/.test(name)
+            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Sign)Middleware$/.test(name)
           ),
         `${file}:${serverFunction.name} must authorize access`
       )
@@ -267,7 +269,11 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["reportsManageMiddleware", ["src/features/group-link-reports/reports.functions.ts"]],
     ["peopleWriteMiddleware", ["src/features/people/people-write.functions.ts"]],
     ["peopleAppointMiddleware", ["src/features/people/people-appoint.functions.ts"]],
-    ["peopleTeamWriteMiddleware", ["src/features/people/people-teams.functions.ts"]],
+    [
+      "peopleTeamWriteMiddleware",
+      ["src/features/people/people-teams.functions.ts", "src/features/people/people-invites.functions.ts"],
+    ],
+    ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleSelfMiddleware", ["src/features/people/people-self.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
@@ -321,8 +327,9 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/guides/guides-page.tsx": "web:content:write",
     "src/features/freshman/freshman-page.tsx": "web:content:write",
     "src/features/projects/projects-page.tsx": "web:content:write",
-    "src/features/people/overview-page.tsx": "people:write",
-    "src/features/people/person-page.tsx": ["people:write", "people:read", "people:appoint"],
+    "src/features/people/overview-page.tsx": ["people:write", "people:link"],
+    "src/features/people/person-page.tsx": ["people:write", "people:read", "people:appoint", "people:link"],
+    "src/features/people/person-dialog.tsx": "people:appoint",
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": "people:write",
@@ -368,13 +375,19 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/azure/member-dialog.tsx": ["createAzureMember"],
     "src/features/azure/member-number-dialog.tsx": ["setAzureMemberNumber"],
     "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],
-    "src/features/people/person-page.tsx": ["updatePerson"],
     "src/features/people/notes-dialog.tsx": ["setPersonNote"],
-    "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite", "unlinkPersonAccount"],
-    "src/features/people/link-account-dialog.tsx": ["linkPersonAccount"],
+    "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite"],
+    "src/features/people/link-account-dialog.tsx": ["linkPersonAccount", "unlinkPersonAccount"],
     "src/features/people/my-area-page.tsx": ["acceptMyInvite"],
     "src/features/people/team-dialogs.tsx": ["addTeamMember", "updateTeamFields", "endTeamMembership"],
-    "src/features/people/admin-dialogs.tsx": ["endAdminRole", "setCapoOfReference", "setCapoScope"],
+    "src/features/people/admin-dialogs.tsx": [
+      "assignAdmin",
+      "endAdminRole",
+      "setCapoOfReference",
+      "appointCapo",
+      "setCapoScope",
+      "endCapo",
+    ],
     "src/features/esign/new-request-page.tsx": [
       "uploadEsignDocument",
       "importEsignDriveDocument",
