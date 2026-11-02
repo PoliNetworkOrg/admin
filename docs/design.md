@@ -608,8 +608,9 @@ Rules that the templates above don't imply.
   itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
 - **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
   saves nothing before Confirm. Reminders report sent and skipped counts after sending.
-- **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has
-  its own resolutions and a required reason.
+- **Linking**: segments Not linked, Invites and Recently linked (last 30 days), each with its total. Send invite
+  needs a contact email (an empty slot otherwise); Unlink is left out while a change for the record waits for Auth.
+  The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
 

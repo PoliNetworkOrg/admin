@@ -70,6 +70,10 @@ don't hold; the backend applies the same rules as Auth (`src/people/rules.ts`) t
 linked ones again. A Capo Admin of reference must be in effect: not an appointment still waiting for Auth. Start dates
 can't be later than today in Europe/Rome.
 
+**Invites** link to `/people/invite?token=<token>` (PoliNetworkOrg/backend#109), a dashboard page outside the gated
+shell: it calls `me.invite` to ask "Link this account to <name>?", then `me.acceptInvite`. Older emails link to
+`/dashboard/account/me?peopleInvite=<token>`, which redirects there before the dashboard's gate.
+
 **Linking** sends every pending assignment to Auth: by hand, acting as whoever links; by invite, acting as each
 assignment's `assignedBy`. **Unlinking** asks Auth to take the record's roles back first; once it confirms, the account
 is detached and the assignments wait as `pending` again.

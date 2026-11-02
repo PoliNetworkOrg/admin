@@ -39,6 +39,21 @@ export const authenticatedMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
+ * People › invite landing page: any signed-in account, even one without dashboard permissions, since someone new has
+ * no People role yet. The single-use invite token is the proof; the backend checks it. The permissions are whatever
+ * the account holds, for the views that need them once its roles arrive.
+ */
+export const peopleInviteMiddleware = createMiddleware({ type: "function" })
+  .middleware([authenticatedMiddleware])
+  .server(async ({ next, context }) => {
+    const { loadAccess } = await import("@/server/auth.server")
+    const access = await loadAccess(context.session, context.backend)
+    return next({
+      context: { user: access.user, permissions: access.status === "authorized" ? access.permissions : [] },
+    })
+  })
+
+/**
  * Any dashboard user: `admin:access`, or `people:self` alone for the restricted People view. Functions add their own
  * permission on top; the backend checks every procedure again.
  */

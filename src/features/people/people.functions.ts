@@ -32,3 +32,8 @@ export const getAdminsAndCapos = createServerFn({ method: "GET" })
 export const getPendingInvites = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).listInvites())
+
+/** Links made in the last 30 days, so a mistake or a forwarded invite is easy to spot and undo. */
+export const getRecentLinks = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listRecentLinks())

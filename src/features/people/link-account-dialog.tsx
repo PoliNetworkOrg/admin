@@ -5,6 +5,7 @@ import {
   fieldControl,
   fieldHintId,
   FormDialog,
+  InlineAlert,
   FormField,
   RadioCard,
   RadioCardGroup,
@@ -13,9 +14,10 @@ import {
 } from "@/components/primitives"
 import { SearchField } from "@/components/shell"
 import { Textarea } from "@/components/ui/textarea"
+import { pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { errorMessage, useLoaded, useRefreshAfter, useReloadAfterFailure } from "./people-hooks"
 import { linkPersonAccount, searchPeopleAccounts, unlinkPersonAccount } from "./people-link.functions"
 import { PersonAvatar } from "./people-ui"
 import { UNLINK_REASON } from "./people.contract"
@@ -33,11 +35,13 @@ export function LinkAccountDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  person: { id: string; name: string; firstName: string }
+  /** `roles`: how many roles the record holds, which go to Auth once linked. */
+  person: { id: string; name: string; firstName: string; roles?: number }
 }) {
   const search = useServerFn(searchPeopleAccounts)
   const link = useServerFn(linkPersonAccount)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim())
   const [selected, setSelected] = useState<string | null>(null)
@@ -51,6 +55,7 @@ export function LinkAccountDialog({
   const loadError = failed ? "Couldn't load accounts. Try again." : null
 
   const reasonError = submitted && !reason.trim() ? "Enter a reason." : undefined
+  const chosen = accounts?.find((account) => account.id === selected) ?? null
 
   async function submit() {
     setSubmitted(true)
@@ -62,6 +67,7 @@ export function LinkAccountDialog({
       await link({ data: { personId: person.id, accountId: selected, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
+      reload()
       throw new Error(`${LINK_ERROR} ${errorMessage(caught, "")}`.trim(), { cause: caught })
     }
     await refresh("Account linked. PoliNetwork Auth applies the record's roles shortly.")
@@ -120,6 +126,17 @@ export function LinkAccountDialog({
             </RadioCardGroup>
           ) : null}
         </div>
+        {chosen ? (
+          <InlineAlert tone={chosen.linkedTo ? "danger" : "info"}>
+            {chosen.linkedTo
+              ? `${chosen.name} is linked to ${chosen.linkedTo.name} (${chosen.linkedTo.id}). Unlink it there first.`
+              : `Link ${chosen.email || chosen.name} to ${person.name}? ${
+                  person.roles
+                    ? `${pluralize(person.roles, "role")} go${person.roles === 1 ? "es" : ""} to PoliNetwork Auth, acting as you; Auth refuses any you can't give.`
+                    : "The record has no roles yet."
+                }`}
+          </InlineAlert>
+        ) : null}
         <FormField label="Reason" htmlFor="link-reason" hint="Saved in the record's activity." error={reasonError}>
           <Textarea
             id="link-reason"
@@ -151,6 +168,7 @@ export function UnlinkAccountDialog({
 }) {
   const unlink = useServerFn(unlinkPersonAccount)
   const refresh = useRefreshAfter()
+  const reload = useReloadAfterFailure()
   const [reason, setReason] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const max = 500 - UNLINK_REASON.length
@@ -163,6 +181,8 @@ export function UnlinkAccountDialog({
       await unlink({ data: { personId: person.id, reason: reason.trim() } })
     } catch (caught) {
       console.error(caught)
+      // Auth's refusal, or a lost answer, is recorded on the record before the error arrives.
+      reload()
       throw new Error(errorMessage(caught, "Couldn't unlink the account."), { cause: caught })
     }
     await refresh(

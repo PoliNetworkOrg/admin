@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as PeopleInviteRouteImport } from './routes/people/invite'
 import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -82,6 +83,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const PeopleInviteRoute = PeopleInviteRouteImport.update({
+  id: '/people/invite',
+  path: '/people/invite',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardWebRoute = DashboardWebRouteImport.update({
   id: '/web',
@@ -321,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
+  '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
+  '/people/invite': typeof PeopleInviteRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/web': typeof DashboardWebRouteWithChildren
+  '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/dashboard/web'
+    | '/people/invite'
     | '/dashboard/'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/dashboard/web'
+    | '/people/invite'
     | '/dashboard'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/dashboard/web'
+    | '/people/invite'
     | '/dashboard/'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
@@ -622,6 +634,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
+  PeopleInviteRoute: typeof PeopleInviteRoute
   ApiEsignAgentSplatRoute: typeof ApiEsignAgentSplatRoute
 }
 
@@ -661,6 +674,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/people/invite': {
+      id: '/people/invite'
+      path: '/people/invite'
+      fullPath: '/people/invite'
+      preLoaderRoute: typeof PeopleInviteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/web': {
       id: '/dashboard/web'
@@ -1074,6 +1094,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
+  PeopleInviteRoute: PeopleInviteRoute,
   ApiEsignAgentSplatRoute: ApiEsignAgentSplatRoute,
 }
 export const routeTree = rootRouteImport

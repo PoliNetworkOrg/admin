@@ -220,3 +220,11 @@ Newest last. One line per commit or session: date, what was done, what is next.
   "—" handling has nothing left to apply to; the Design team is Design & Marketing. Agent-mode fixtures cover linked,
   invited and unlinked records and every assignment status; fake Auth confirms changes after a few seconds and refuses
   every change for P-0012.
+
+- 2026-10-31: Linking and the invite landing page (#140), on PoliNetworkOrg/backend#106 and #109. Linking has three
+  views: records without an account (send an invite, link by hand), open invites (resend, revoke, expiry) and links of
+  the last 30 days (account, method, date, who; Unlink with a reason, explaining that Auth revokes the roles first).
+  The link dialog confirms the account and how many roles go to Auth. `/people/invite` stands outside the dashboard
+  shell: sign in, "Link this account to <name>?", confirm, then the roles as they arrive (applied, waiting, refused with
+  Auth's reason), or "being applied" while the account can't read My area yet. The old My area invite link redirects
+  there, and My area no longer accepts invites.
