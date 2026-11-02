@@ -10,7 +10,9 @@ const BACK = { label: "bozze", link: { to: "/dashboard/regulations/drafts" } } a
 export const Route = createFileRoute("/dashboard/regulations/drafts/$draftId/procedure")({
   loader: async ({ params }) => {
     const data = { draftId: params.draftId }
-    const [{ draft, members }, emanation] = await Promise.all([getDraftWithMembers({ data }), getEmanation({ data })])
+    const { draft, members } = await getDraftWithMembers({ data })
+    // Only an emanation that started has a status to show.
+    const emanation = draft.emanationStatus === "none" ? null : await getEmanation({ data })
     return { draft, members, emanation }
   },
   pendingComponent: () => (
