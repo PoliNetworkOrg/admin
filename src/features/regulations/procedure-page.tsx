@@ -57,7 +57,7 @@ const TRANSITION_TEXT = {
   bozza: {
     title: "Riportare in bozza?",
     description: "Il testo torna modificabile dai membri. Il documento delle differenze generato si scarta.",
-    done: "Bozza riportata in bozza.",
+    done: "Riportata in bozza: il testo si può di nuovo modificare.",
   },
 } satisfies Partial<Record<StateKey, { title: string; description: string; done: string }>>
 
