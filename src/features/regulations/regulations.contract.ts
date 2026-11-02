@@ -2,7 +2,7 @@ import { z } from "zod"
 
 /**
  * The `regulations.*` backend contract (docs/regulations/contract.md), a verbatim copy of the backend's
- * `src/regulations/contract.ts` (PoliNetworkOrg/backend#110, 20ca321). Agent mode answers from
+ * `src/regulations/contract.ts` (PoliNetworkOrg/backend#117, 0249ba0). Agent mode answers from
  * `regulations.fake.server.ts`; real responses are parsed with these schemas before they reach a page. Keep both
  * copies in step.
  *
@@ -295,6 +295,11 @@ export const capabilitiesSchema = z.object({
   approve: z.boolean(),
   /** "Emana e notifica" (or, for a rettifica, "Emana rettifica"). */
   emanate: z.boolean(),
+  /**
+   * Why the caller, who could otherwise emanate in this state, can't right now (e.g. a superseded base, text that
+   * doesn't parse, missing differences), or `null`. `null` too when emanation isn't an option at all.
+   */
+  emanateBlockedBy: z.string().nullable(),
   /** The caller may emanate rettifiche of this document (permission or delega). */
   rectify: z.boolean(),
   regenerateDiff: z.boolean(),
@@ -645,3 +650,14 @@ export const createDelegaInputSchema = z.object({
   note: z.string().trim().max(500).nullish(),
 })
 export const delegaRefInputSchema = z.object({ delegaId: z.string().min(1) })
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Input types (parsed)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type CreateDraftInput = z.output<typeof createDraftInputSchema>
+export type TransitionInput = z.output<typeof transitionInputSchema>
+export type CreateCommentInput = z.output<typeof createCommentInputSchema>
+export type MergeSource = z.output<typeof mergeSourceSchema>
+export type ApplyMergeInput = z.output<typeof applyMergeInputSchema>
+export type CreateDelegaInput = z.output<typeof createDelegaInputSchema>

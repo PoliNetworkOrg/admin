@@ -1,4 +1,5 @@
-import { Circle, CircleCheck, CircleMinus, CircleX, ExternalLink, RotateCcw } from "lucide-react"
+import { Circle, CircleCheck, CircleMinus, CircleX, ExternalLink, RefreshCw, RotateCcw } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { inlineLink, LoadingButton, SectionCard, Spinner, StatusBadge } from "@/components/primitives"
 import { cn } from "@/lib/utils"
@@ -67,6 +68,7 @@ export function EmanationCard({
   retrying: boolean
 }) {
   const status = STATUS[emanation.status]
+  const stalled = useStalledStep(emanation)
   return (
     <SectionCard
       title="Emanazione"
@@ -79,6 +81,15 @@ export function EmanationCard({
             </p>
             <LoadingButton size="sm" icon={RotateCcw} pending={retrying} onClick={onRetry}>
               Riprova
+            </LoadingButton>
+          </div>
+        ) : stalled && onRetry ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[13px] text-(--pn-fg-muted)">
+              Il passaggio è fermo da un po': GitHub può metterci qualche minuto.
+            </p>
+            <LoadingButton size="sm" variant="outline" icon={RefreshCw} pending={retrying} onClick={onRetry}>
+              Controlla ora
             </LoadingButton>
           </div>
         ) : undefined
@@ -178,4 +189,22 @@ export function EmanationCard({
       </div>
     </SectionCard>
   )
+}
+
+/** How long a step may run before the card offers to check GitHub again (the backend polls every 30 s anyway). */
+const STALL_MS = 20_000
+
+/** Whether the running step has been running, as seen from this page, for longer than `STALL_MS`. */
+function useStalledStep(emanation: Emanation) {
+  const running = emanation.status === "running" || emanation.status === "waiting"
+  const step = running ? (emanation.steps.find((candidate) => candidate.state === "running")?.key ?? null) : null
+  const [since, setSince] = useState<{ step: string | null; at: number }>({ step, at: Date.now() })
+  const [now, setNow] = useState(() => Date.now())
+  if (since.step !== step) setSince({ step, at: Date.now() })
+  useEffect(() => {
+    if (!step) return
+    const timer = setInterval(() => setNow(Date.now()), 5000)
+    return () => clearInterval(timer)
+  }, [step])
+  return step !== null && since.step === step && now - since.at > STALL_MS
 }

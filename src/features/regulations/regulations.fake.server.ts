@@ -508,6 +508,15 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       emanate,
       rectify: mayRectify(draft.documentKey),
       regenerateDiff: can("regulations:manage") && draft.diff !== null && draft.notifiedAt === null,
+      emanateBlockedBy:
+        !emanate &&
+        draft.emanation === null &&
+        draft.kind === "rettifica" &&
+        draft.state === "bozza" &&
+        mayRectify(draft.documentKey) &&
+        !parses
+          ? "Il testo non è valido: correggi gli errori prima di emanare la rettifica."
+          : null,
       delete: (writer || (draft.kind === "rettifica" && draft.createdBy.id === me.id)) && draft.state === "bozza",
       rename: (writer || (draft.kind === "rettifica" && draft.createdBy.id === me.id)) && draft.state !== "emanata",
       snapshot: role === "editor",

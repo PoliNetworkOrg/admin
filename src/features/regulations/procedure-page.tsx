@@ -350,7 +350,7 @@ export function ProcedurePage({
               <SectionCard title="Procedura">
                 <div className="flex flex-col gap-4">
                   <Stepper draft={draft} />
-                  {plain.length || approval || draft.can.emanate ? (
+                  {plain.length || approval || draft.can.emanate || draft.can.emanateBlockedBy ? (
                     <div className="flex flex-col gap-3 border-t border-(--pn-line) pt-4">
                       <div className="flex flex-wrap gap-2">
                         {draft.can.emanate ? (
@@ -358,6 +358,15 @@ export function ProcedurePage({
                             <Landmark data-icon="inline-start" />
                             {rettifica ? "Emana rettifica" : "Emana e notifica"}
                           </Button>
+                        ) : draft.can.emanateBlockedBy ? (
+                          <Hint label={draft.can.emanateBlockedBy}>
+                            <span tabIndex={0} className="inline-flex rounded-(--pn-r-3)">
+                              <Button className={buttonMotion} disabled>
+                                <Landmark data-icon="inline-start" />
+                                {rettifica ? "Emana rettifica" : "Emana e notifica"}
+                              </Button>
+                            </span>
+                          </Hint>
                         ) : null}
                         {approval ? (
                           <TransitionButton
@@ -378,6 +387,14 @@ export function ProcedurePage({
                           />
                         ))}
                       </div>
+                      {draft.can.emanateBlockedBy ? (
+                        <p className="text-[13px] text-(--pn-fg-muted)">
+                          <span className="font-medium text-(--pn-fg)">
+                            {rettifica ? "Emana rettifica" : "Emana e notifica"}:
+                          </span>{" "}
+                          {draft.can.emanateBlockedBy}
+                        </p>
+                      ) : null}
                       {[approval, ...plain].map((option) =>
                         option?.blockedBy ? (
                           <p key={option.to} className="text-[13px] text-(--pn-fg-muted)">
