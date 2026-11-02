@@ -19,6 +19,7 @@ import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DashboardAuditLogIndexRouteImport } from './routes/dashboard/audit-log/index'
 import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
@@ -109,6 +110,9 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardAuditLogIndexRoute = DashboardAuditLogIndexRouteImport.update({
+  id: '/audit-log/',
+  path: '/audit-log/',
 const DashboardPeopleIndexRoute = DashboardPeopleIndexRouteImport.update({
   id: '/people/',
   path: '/people/',
@@ -354,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log/': typeof DashboardAuditLogIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -404,6 +409,7 @@ export interface FileRoutesByTo {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log': typeof DashboardAuditLogIndexRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -456,6 +462,7 @@ export interface FileRoutesById {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/dashboard/audit-log/': typeof DashboardAuditLogIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -509,6 +516,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/api/esign/agent/$'
@@ -559,6 +567,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log'
     | '/dashboard/account'
     | '/dashboard/people'
     | '/api/esign/agent/$'
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/dashboard/audit-log/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/api/esign/agent/$'
@@ -710,6 +720,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/audit-log/': {
+      id: '/dashboard/audit-log/'
+      path: '/audit-log'
+      fullPath: '/dashboard/audit-log/'
+      preLoaderRoute: typeof DashboardAuditLogIndexRouteImport
     '/dashboard/people/': {
       id: '/dashboard/people/'
       path: '/people'
@@ -1036,6 +1051,7 @@ interface DashboardRouteChildren {
   DashboardTelegramGrantsRoute: typeof DashboardTelegramGrantsRoute
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
+  DashboardAuditLogIndexRoute: typeof DashboardAuditLogIndexRoute
   DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
   DashboardPeopleIndexRoute: typeof DashboardPeopleIndexRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
@@ -1070,6 +1086,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTelegramGrantsRoute: DashboardTelegramGrantsRoute,
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
+  DashboardAuditLogIndexRoute: DashboardAuditLogIndexRoute,
   DashboardAccountIndexRoute: DashboardAccountIndexRoute,
   DashboardPeopleIndexRoute: DashboardPeopleIndexRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
