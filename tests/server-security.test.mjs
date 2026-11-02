@@ -224,6 +224,11 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-self.functions.ts",
     "src/features/people/people-invites.functions.ts",
     "src/features/people/people-link.functions.ts",
+    "src/features/regulations/regulations.functions.ts",
+    "src/features/regulations/regulations-draft.functions.ts",
+    "src/features/regulations/regulations-write.functions.ts",
+    "src/features/regulations/regulations-manage.functions.ts",
+    "src/features/regulations/regulations-rectify.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -235,7 +240,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
           serverFunction.middleware.some((name) =>
-            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Sign)Middleware$/.test(name)
+            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Sign|Assignee|Rectify)Middleware$/.test(name)
           ),
         `${file}:${serverFunction.name} must authorize access`
       )
@@ -275,6 +280,11 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ],
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleSelfMiddleware", ["src/features/people/people-self.functions.ts"]],
+    // Per-draft access (assignments, deleghe) is backend data: the backend authorizes each of these.
+    ["regulationsAssigneeMiddleware", ["src/features/regulations/regulations-draft.functions.ts"]],
+    ["regulationsWriteMiddleware", ["src/features/regulations/regulations-write.functions.ts"]],
+    ["regulationsManageMiddleware", ["src/features/regulations/regulations-manage.functions.ts"]],
+    ["regulationsRectifyMiddleware", ["src/features/regulations/regulations-rectify.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -334,6 +344,10 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": "people:write",
     "src/features/people/my-area-page.tsx": "people:read",
+    "src/features/regulations/documents-page.tsx": "regulations:manage",
+    "src/features/regulations/document-page.tsx": ["regulations:write", "regulations:rectify"],
+    "src/features/regulations/drafts-page.tsx": "regulations:write",
+    "src/features/regulations/deleghe-page.tsx": "regulations:rectify",
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -431,6 +445,21 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/telegram/user-detail/grant-dialogs.tsx": ["interruptTelegramGrant"],
     "src/features/whatsapp/delete-group-dialog.tsx": ["deleteWhatsappGroup"],
     "src/features/whatsapp/whatsapp-group-dialog.tsx": ["createWhatsappGroup", "editWhatsappGroup"],
+    "src/features/regulations/documents-page.tsx": ["syncRegulationDocuments"],
+    "src/features/regulations/new-draft-dialog.tsx": ["createDraft", "createRectification"],
+    "src/features/regulations/delega-dialog.tsx": ["createDelega"],
+    "src/features/regulations/deleghe-page.tsx": ["revokeDelega"],
+    "src/features/regulations/draft-actions.tsx": ["renameDraft", "deleteDraft"],
+    "src/features/regulations/members-dialog.tsx": ["setDraftAssignment", "removeDraftAssignment"],
+    "src/features/regulations/procedure-page.tsx": [
+      "transitionDraft",
+      "emanateDraft",
+      "emanateRectification",
+      "retryEmanation",
+    ],
+    "src/features/regulations/approve-dialog.tsx": ["approveDraft"],
+    "src/features/regulations/diff-page.tsx": ["regenerateDiff"],
+    "src/features/regulations/merge-page.tsx": ["applyMerge"],
   }
 
   for (const [file, serverFunctions] of Object.entries(consumers)) {

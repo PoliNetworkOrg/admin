@@ -41,6 +41,7 @@ export function DateField({
   disabled = false,
   pastYears = 10,
   futureYears = 1,
+  placeholder = "Choose a date",
 }: {
   id: string
   value: string
@@ -50,6 +51,7 @@ export function DateField({
   disabled?: boolean
   pastYears?: number
   futureYears?: number
+  placeholder?: string
 }) {
   const selected = parseDateOnly(value)
   const [open, setOpen] = useState(false)
@@ -87,7 +89,7 @@ export function DateField({
       >
         <CalendarIcon aria-hidden className="text-(--pn-fg-muted)" />
         <span className={cn("tabular-nums", !selected && "text-(--pn-fg-subtle)")}>
-          {selected ? formatDate(selected, "local") : "Choose a date"}
+          {selected ? formatDate(selected, "local") : placeholder}
         </span>
       </PopoverTrigger>
       <PopoverContent

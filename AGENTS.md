@@ -33,6 +33,13 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   Census and My area's fee card are unconnected mockups (#138): static sample data from `mockup-data.ts`, no server
   functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt in Phase 2 (#144) and
   Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+- **Regolamenti** (`src/features/regulations/`): pages talk to `regulations.*` through `regulationsApi(context)`,
+  which parses responses with `regulations.contract.ts` (a copy of the backend's) and, in agent mode, uses the fake with
+  its local Hocuspocus server and `xelatex`. Per-draft access (viewer, commenter, editor) and deleghe are backend data:
+  `regulations.me.get` admits users without `admin:access` to Bozze only, draft-scoped server functions use
+  `regulationsAssigneeMiddleware`, and pages act on the draft's `can` from the backend. The editor connects to the
+  collab service with a single-use ticket from a server function, never a token. UI copy is Italian. Details:
+  `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions

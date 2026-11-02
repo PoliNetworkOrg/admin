@@ -26,6 +26,10 @@ export const PERMISSIONS = [
   "esign:sign",
   "esign:requests:manage",
   "esign:drives:manage",
+  "regulations:read",
+  "regulations:write",
+  "regulations:manage",
+  "regulations:rectify",
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
@@ -36,7 +40,8 @@ export function hasPermission(permissions: readonly string[], permission: Permis
 
 /**
  * Whether these permissions open the dashboard: `admin:access` for the full dashboard, or `people:self` alone for the
- * restricted view (My area, plus Capo Admin or a team page when the person's record gives them that role).
+ * restricted view (My area, plus Capo Admin or a team page when the person's record gives them that role). Without
+ * either, a draft assignment or a delega to rectify still opens Regolamenti (`loadAccess` asks the backend).
  */
 export function canEnterDashboard(permissions: readonly string[]) {
   return hasPermission(permissions, "admin:access") || hasPermission(permissions, "people:self")

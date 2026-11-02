@@ -10,7 +10,7 @@ import { isRailService, type DashboardPath, type PageMatch, type PendingCounts, 
 import { ServiceDot } from "./rail"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
-import { useHasAdminAccess, useVisibleServices } from "./use-can"
+import { useHome, useVisibleServices } from "./use-can"
 
 const barButton = "size-10 text-(--pn-fg-muted) hover:text-(--pn-fg) active:not-aria-[haspopup]:translate-y-0"
 
@@ -29,7 +29,7 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
   const service = serviceFor(match)
   const { theme, toggleTheme } = useTheme()
   const title = service.id === "overview" ? "PoliNetwork Admin" : service.title
-  const hasAdminAccess = useHasAdminAccess()
+  const home = useHome()
   const accountPath = useVisibleServices().find((candidate) => candidate.id === "account")?.path ?? "/dashboard/account"
 
   return (
@@ -40,8 +40,8 @@ export function MobileTopBar({ match, onOpenPalette, user, className }: MobileTo
       )}
     >
       <Link
-        to={hasAdminAccess ? "/dashboard" : "/dashboard/account/me"}
-        aria-label={hasAdminAccess ? "Overview" : "My area"}
+        to={home.path}
+        aria-label={home.label}
         aria-current={service.id === "overview" ? "page" : undefined}
         className="grid size-9 shrink-0 place-items-center rounded-full"
       >
@@ -85,6 +85,8 @@ export type MobileBottomNavProps = {
 export function MobileBottomNav({ match, serviceHref, pending, className }: MobileBottomNavProps) {
   const services = useVisibleServices().filter(isRailService)
   const compactLabels = services.length > 6
+  // Eight services (with Regolamenti) leave even less room: Telegram shortens from 420px.
+  const crowded = services.length > 7
   const activeId = serviceFor(match).id
 
   return (
@@ -121,8 +123,8 @@ export function MobileBottomNav({ match, serviceHref, pending, className }: Mobi
                 </>
               ) : service.id === "telegram" && compactLabels ? (
                 <>
-                  <span className="min-[360px]:hidden">TG</span>
-                  <span className="max-[360px]:hidden">{service.short}</span>
+                  <span className={crowded ? "min-[420px]:hidden" : "min-[360px]:hidden"}>TG</span>
+                  <span className={crowded ? "max-[420px]:hidden" : "max-[360px]:hidden"}>{service.short}</span>
                 </>
               ) : (
                 service.short
