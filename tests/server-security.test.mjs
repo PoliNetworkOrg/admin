@@ -226,6 +226,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-link.functions.ts",
     "src/features/regulations/regulations.functions.ts",
     "src/features/regulations/regulations-draft.functions.ts",
+    "src/features/regulations/regulations-editor.functions.ts",
     "src/features/regulations/regulations-write.functions.ts",
     "src/features/regulations/regulations-manage.functions.ts",
     "src/features/regulations/regulations-rectify.functions.ts",
@@ -281,7 +282,13 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleSelfMiddleware", ["src/features/people/people-self.functions.ts"]],
     // Per-draft access (assignments, deleghe) is backend data: the backend authorizes each of these.
-    ["regulationsAssigneeMiddleware", ["src/features/regulations/regulations-draft.functions.ts"]],
+    [
+      "regulationsAssigneeMiddleware",
+      [
+        "src/features/regulations/regulations-draft.functions.ts",
+        "src/features/regulations/regulations-editor.functions.ts",
+      ],
+    ],
     ["regulationsWriteMiddleware", ["src/features/regulations/regulations-write.functions.ts"]],
     ["regulationsManageMiddleware", ["src/features/regulations/regulations-manage.functions.ts"]],
     ["regulationsRectifyMiddleware", ["src/features/regulations/regulations-rectify.functions.ts"]],
@@ -449,6 +456,15 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/regulations/new-draft-dialog.tsx": ["createDraft", "createRectification"],
     "src/features/regulations/delega-dialog.tsx": ["createDelega"],
     "src/features/regulations/deleghe-page.tsx": ["revokeDelega"],
+    "src/features/regulations/editor/use-collab.ts": ["issueCollabTicket"],
+    "src/features/regulations/editor/comments-panel.tsx": [
+      "createComment",
+      "replyComment",
+      "resolveComment",
+      "reopenComment",
+      "deleteComment",
+    ],
+    "src/features/regulations/editor/history-panel.tsx": ["createSnapshot", "restoreSnapshot"],
     "src/features/regulations/draft-actions.tsx": ["renameDraft", "deleteDraft"],
     "src/features/regulations/members-dialog.tsx": ["setDraftAssignment", "removeDraftAssignment"],
     "src/features/regulations/procedure-page.tsx": [
