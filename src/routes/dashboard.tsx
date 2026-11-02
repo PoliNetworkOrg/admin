@@ -7,30 +7,47 @@ import { getEsignPendingCount } from "@/features/esign/esign.functions"
 import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { getMyPeopleRoles } from "@/features/people/people.functions"
+import { getMyRegulations } from "@/features/regulations/regulations.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard")({
-  // Signed in, then `admin:access` or `people:self` from `me.access` (RFC v3 §11.3). The permissions and the roles
-  // from the person's People record go into the route context for `useCan` and the navigation; pages the user can't
-  // open send them to their own area. The backend enforces every call regardless.
+  // Signed in, then `admin:access` or `people:self` from `me.access` (RFC v3 §11.3), or a Regolamenti draft assignment
+  // or delega. The permissions, the roles from the person's People record and their way into Regolamenti go into the
+  // route context for `useCan` and the navigation; pages the user can't open send them to their own area. The
+  // backend enforces every call regardless.
   beforeLoad: async ({ location }) => {
     const access = await getDashboardAccess()
     if (access.status === "unauthenticated") throw signInRedirect(location.href)
     if (access.status === "forbidden") throw redirect({ to: "/unauthorized" })
-    const peopleRoles = hasPermission(access.permissions, "people:self")
-      ? await getMyPeopleRoles().catch((error) => {
-          console.error(error)
-          return NO_PEOPLE_ROLES
-        })
-      : NO_PEOPLE_ROLES
+    const [roles, regulations] = await Promise.all([
+      hasPermission(access.permissions, "people:self")
+        ? getMyPeopleRoles().catch((error) => {
+            console.error(error)
+            return NO_PEOPLE_ROLES
+          })
+        : NO_PEOPLE_ROLES,
+      // `regulations:read` already opens Bozze; anyone else needs a draft assignment or a delega.
+      hasPermission(access.permissions, "regulations:read")
+        ? false
+        : getMyRegulations().then(
+            (me) => me.assignedDrafts + me.deleghe > 0,
+            (error) => {
+              console.error(error)
+              return false
+            }
+          ),
+    ])
+    const peopleRoles = { ...roles, regulations }
     if (!canOpenPage(matchPath(location.pathname), access.permissions, peopleRoles)) {
       throw redirect({
         to: hasPermission(access.permissions, "people:self")
           ? "/dashboard/account/me"
           : hasPermission(access.permissions, "admin:access")
             ? "/dashboard"
-            : "/unauthorized",
+            : regulations
+              ? "/dashboard/regulations/drafts"
+              : "/unauthorized",
       })
     }
     return { user: access.user, permissions: access.permissions, peopleRoles }

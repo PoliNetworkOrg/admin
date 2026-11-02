@@ -117,7 +117,7 @@ service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and th
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
 font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
 accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
-bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. Section pills and bottom nav are the only navigation; there
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. With eight (Regolamenti, "Regole"), Telegram uses "TG" below 420px. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -406,6 +406,10 @@ the theme reveal and the skeleton pulse switch off; the signed box is removed at
 
 ## 7. Copy
 
+Regolamenti is the one Italian part of the dashboard: its pages, dialogs, toasts and empty states follow these rules in
+Italian ("Crea bozza", "Bozza creata.", "Non è stato possibile creare la bozza."), dates as the documents print them
+("12/03/2026", `regulations-format.ts`), and pass `locale="it"` to the primitives that print their own words.
+
 - Sentence case everywhere. Verb first, object named: "Delete passkey", "Save labels".
 - No "please", "successfully", exclamation marks or "Are you sure". Contractions are fine in errors.
 - "Microsoft 365", never "Azure" or "Office 365", in user-facing text ("Microsoft Entra" when naming the directory).
@@ -612,5 +616,12 @@ Rules that the templates above don't imply.
   its own resolutions and a required reason.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
+
+- **Regolamenti**: Documenti is a card per document; a document page lists its versions (the newest carries "In vigore",
+  each has its PDF, release, differences and "Nuova bozza da qui") and its drafts. Bozze adds "Il tuo accesso" for people
+  admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
+  procedure page is a record with the states as a stepper, disabled transitions showing why, and the emanation's steps
+  live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
+  Deleghe is a list with a segmented Attive/Tutte filter.
 
 Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.
