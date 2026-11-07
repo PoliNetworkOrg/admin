@@ -22,6 +22,9 @@ come from `me.access`. Identity, Telegram linking, passkeys and session manageme
 
 ## Development
 
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through the setup step by step, in agent mode or signed in through a local
+PoliNetwork Auth and backend.
+
 ```bash
 pnpm install
 pnpm dev
