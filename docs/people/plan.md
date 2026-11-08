@@ -228,3 +228,8 @@ Newest last. One line per commit or session: date, what was done, what is next.
   shell: sign in, "Link this account to <name>?", confirm, then the roles as they arrive (applied, waiting, refused with
   Auth's reason), or "being applied" while the account can't read My area yet. The old My area invite link redirects
   there, and My area no longer accepts invites.
+
+- 2026-11-08: Phase 1 closes without the bulk import (#141, PoliNetworkOrg/backend#103 not planned). The census is
+  imported once with `scripts/people-seed/`: an agent turns the spreadsheets into a reviewed seed file
+  (`AGENT_PROMPT.md`), and a script creates the records and roles through `people.*` as the signed-in person, then
+  sends invites in a separate run. Next: Phase 2 (#144) and Phase 3 (#145) design.

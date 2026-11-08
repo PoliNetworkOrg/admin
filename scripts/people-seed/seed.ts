@@ -1,0 +1,291 @@
+import { execFile } from "node:child_process"
+import { readFile, writeFile } from "node:fs/promises"
+import { createServer } from "node:http"
+import { parseArgs } from "node:util"
+
+import { createTRPCUntypedClient, httpLink } from "@trpc/client"
+import * as oidc from "openid-client"
+import { SuperJSON } from "superjson"
+import { z } from "zod"
+
+import { createdSchema, personRowSchema, type PersonRow } from "../../src/features/people/people.contract.ts"
+import { describeStep, planSeed, type SeedState, seedFileSchema, type Step } from "./seed-plan.ts"
+
+/**
+ * One-off: seeds People from a reviewed seed file (README.md). Signs in as you, so every change is yours and the
+ * backend and Auth check it as if you made it in the dashboard.
+ *
+ *   node scripts/people-seed/seed.ts <file.json>            plan only, writes <file>.plan.json
+ *   node scripts/people-seed/seed.ts <file.json> --apply    creates the records and starts the roles
+ *   node scripts/people-seed/seed.ts <file.json> --invite   emails an invite to every row with invite: true
+ */
+
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: { apply: { type: "boolean", default: false }, invite: { type: "boolean", default: false } },
+})
+const path = positionals[0]
+if (!path || positionals.length > 1 || (values.apply && values.invite)) {
+  console.error("Usage: node scripts/people-seed/seed.ts <file.json> [--apply | --invite]")
+  process.exit(2)
+}
+const statePath = `${path}.state.json`
+
+// The seed file is checked before signing in, so a malformed one fails fast.
+const parsed = seedFileSchema.safeParse(JSON.parse(await readFile(path, "utf8")))
+if (!parsed.success) {
+  console.error(`${path} is not a valid seed file:\n${z.prettifyError(parsed.error)}`)
+  process.exit(1)
+}
+const file = parsed.data
+const state: SeedState = await readFile(statePath, "utf8").then(
+  (text) => z.record(z.string(), z.string()).parse(JSON.parse(text)),
+  (error: NodeJS.ErrnoException): SeedState => {
+    if (error.code === "ENOENT") return {}
+    console.error(error)
+    throw error
+  }
+)
+
+const env = z
+  .object({
+    IDP_URL: z.url().default("https://auth.polinetwork.org"),
+    /** The backend the dashboard talks to, e.g. the production one: no default, so a run never hits the wrong one. */
+    BACKEND_URL: z.url(),
+    BACKEND_RESOURCE: z.url().default("https://backend.internal.polinetwork.org"),
+    SEED_CLIENT_ID: z.string().min(1),
+    /** Only for a client registered with a secret; a public client has none. */
+    SEED_CLIENT_SECRET: z.string().min(1).optional(),
+    SEED_REDIRECT_PORT: z.coerce.number().int().min(1024).max(65535).default(53682),
+  })
+  .parse(process.env)
+
+// Sign-in: the authorization code flow with PKCE on a loopback redirect, asking for the backend's audience.
+
+type Tokens = { access: string; refresh: string | null; expiresAt: number }
+
+async function signIn(): Promise<{ config: oidc.Configuration; tokens: Tokens }> {
+  const issuer = new URL("/api/auth", env.IDP_URL)
+  const config = await oidc.discovery(
+    issuer,
+    env.SEED_CLIENT_ID,
+    undefined,
+    env.SEED_CLIENT_SECRET ? oidc.ClientSecretBasic(env.SEED_CLIENT_SECRET) : oidc.None(),
+    issuer.protocol === "http:" ? { execute: [oidc.allowInsecureRequests] } : undefined
+  )
+  const redirectUri = `http://127.0.0.1:${env.SEED_REDIRECT_PORT}/callback`
+  const checks = {
+    pkceCodeVerifier: oidc.randomPKCECodeVerifier(),
+    expectedState: oidc.randomState(),
+    expectedNonce: oidc.randomNonce(),
+  }
+  const url = oidc.buildAuthorizationUrl(config, {
+    redirect_uri: redirectUri,
+    scope: "openid offline_access backend:admin",
+    prompt: "consent",
+    resource: env.BACKEND_RESOURCE,
+    code_challenge: await oidc.calculatePKCECodeChallenge(checks.pkceCodeVerifier),
+    code_challenge_method: "S256",
+    state: checks.expectedState,
+    nonce: checks.expectedNonce,
+  })
+
+  const callback = await new Promise<URL>((resolve, reject) => {
+    const server = createServer((request, response) => {
+      const received = new URL(request.url ?? "/", redirectUri)
+      if (received.pathname !== "/callback") {
+        response.writeHead(404).end()
+        return
+      }
+      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end("Signed in. Close this tab.")
+      server.close()
+      resolve(received)
+    })
+    server.on("error", reject)
+    server.listen(env.SEED_REDIRECT_PORT, "127.0.0.1", () => {
+      console.log(`Sign in to continue: ${url.href}`)
+      execFile("open", [url.href], (error) => {
+        if (error) console.error(error)
+      })
+    })
+  })
+
+  const requestedAt = Date.now()
+  const response = await oidc.authorizationCodeGrant(
+    config,
+    callback,
+    { ...checks, idTokenExpected: true },
+    { resource: env.BACKEND_RESOURCE }
+  )
+  const claims = z.object({ sub: z.string(), email: z.string().optional() }).parse(response.claims())
+  console.log(`Signed in as ${claims.email ?? claims.sub}.`)
+  return { config, tokens: toTokens(response, requestedAt, null) }
+}
+
+function toTokens(
+  response: Awaited<ReturnType<typeof oidc.refreshTokenGrant>>,
+  requestedAt: number,
+  previousRefresh: string | null
+): Tokens {
+  return {
+    access: response.access_token,
+    refresh: response.refresh_token ?? previousRefresh,
+    expiresAt: requestedAt + (response.expiresIn() ?? 300) * 1000,
+  }
+}
+
+const session = await signIn()
+
+/** Access tokens last five minutes: refresh one that has less than a minute left. */
+async function accessToken() {
+  if (session.tokens.expiresAt - Date.now() > 60_000) return session.tokens.access
+  if (!session.tokens.refresh) throw new Error("The access token expired and there is no refresh token. Run again.")
+  const requestedAt = Date.now()
+  const response = await oidc.refreshTokenGrant(session.config, session.tokens.refresh, {
+    resource: env.BACKEND_RESOURCE,
+  })
+  session.tokens = toTokens(response, requestedAt, session.tokens.refresh)
+  return session.tokens.access
+}
+
+const backend = createTRPCUntypedClient({
+  links: [
+    httpLink({
+      url: `${env.BACKEND_URL}/api/trpc`,
+      headers: async () => ({ authorization: `Bearer ${await accessToken()}` }),
+      transformer: SuperJSON,
+    }),
+  ],
+})
+
+async function listPeople(): Promise<PersonRow[]> {
+  return personRowSchema.array().parse(await backend.query("people.persons.list"))
+}
+
+// The run.
+
+const existing = await listPeople()
+const plan = planSeed(file, existing, state)
+
+if (values.invite) await sendInvites()
+else if (values.apply) await apply()
+else await writePlan()
+
+async function writePlan() {
+  await writeFile(`${path}.plan.json`, `${JSON.stringify(plan, null, 2)}\n`)
+  const created = plan.steps.filter((step) => step.kind === "create").length
+  console.log(
+    `${file.people.length} rows: ${plan.matches.length - created} match existing records, ${created} new; ` +
+      `${plan.steps.length} calls planned.`
+  )
+  for (const warning of plan.warnings) console.log(`warning: ${warning}`)
+  for (const problem of plan.problems) console.log(`problem: ${problem}`)
+  console.log(plan.problems.length ? "Fix the problems before --apply." : "No problems: ready for --apply.")
+  console.log(`Plan written to ${path}.plan.json`)
+}
+
+async function apply() {
+  if (plan.problems.length) {
+    for (const problem of plan.problems) console.error(`problem: ${problem}`)
+    console.error("Nothing written: fix the problems first (run without --apply to see the plan).")
+    process.exit(1)
+  }
+  const ids = new Map(plan.matches.flatMap((match) => (match.id ? [[match.key, match.id] as const] : [])))
+  const failed = new Set<string>()
+  const results: { key: string; step: string; ok: boolean; error?: string }[] = []
+
+  for (const step of plan.steps) {
+    const personId = ids.get(step.key)
+    if (step.kind !== "create" && !personId) {
+      results.push({ key: step.key, step: describeStep(step), ok: false, error: "skipped: the record wasn't created" })
+      continue
+    }
+    try {
+      await run(step, personId ?? "", ids)
+      results.push({ key: step.key, step: describeStep(step), ok: true })
+    } catch (error) {
+      console.error(error)
+      failed.add(step.key)
+      const message = error instanceof Error ? error.message : String(error)
+      results.push({ key: step.key, step: describeStep(step), ok: false, error: message })
+    }
+    console.log(`${results.at(-1)?.ok ? "ok    " : "FAILED"} ${step.key}: ${describeStep(step)}`)
+  }
+
+  await writeFile(`${path}.report.json`, `${JSON.stringify(results, null, 2)}\n`)
+  const failures = results.filter((result) => !result.ok).length
+  console.log(`${results.length - failures} calls succeeded, ${failures} failed. Report: ${path}.report.json`)
+  if (failures) {
+    console.log("The run can be repeated: what succeeded is skipped.")
+    process.exit(1)
+  }
+}
+
+async function run(step: Step, personId: string, ids: Map<string, string>) {
+  switch (step.kind) {
+    case "create": {
+      const { id } = createdSchema.parse(await backend.mutation("people.persons.create", step.input))
+      ids.set(step.key, id)
+      // Saved after every record, so an interrupted run never creates one twice.
+      state[step.key] = id
+      await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`)
+      return
+    }
+    case "admin":
+      await backend.mutation("people.admins.assign", { personId, since: step.since, capoId: null })
+      return
+    case "capo":
+      await backend.mutation("people.capos.appoint", { personId, since: step.since, scope: step.scope })
+      return
+    case "capoRef": {
+      const capoId = "id" in step.capo ? step.capo.id : ids.get(step.capo.key)
+      if (!capoId) throw new Error(`The Capo Admin's record (${"key" in step.capo ? step.capo.key : ""}) is missing.`)
+      await backend.mutation("people.admins.setCapoOfReference", { personId, capoId })
+      return
+    }
+    case "team":
+      await backend.mutation("people.teams.addMember", {
+        teamId: step.team,
+        personId,
+        role: step.role,
+        since: step.since,
+        fields: {},
+      })
+      return
+  }
+}
+
+async function sendInvites() {
+  const byId = new Map(existing.map((row) => [row.id, row]))
+  let sent = 0
+  let failures = 0
+  for (const entry of file.people) {
+    if (!entry.invite) continue
+    const id = plan.matches.find((match) => match.key === entry.key)?.id
+    const row = id ? byId.get(id) : undefined
+    const skip = !row
+      ? "no record yet: run --apply first"
+      : row.account.status === "linked"
+        ? "already linked"
+        : row.account.status === "invite"
+          ? `invite already open until ${row.account.expiresOn}`
+          : !row.contactEmail
+            ? "no contact email"
+            : null
+    if (skip) {
+      console.log(`skip   ${entry.key}: ${skip}`)
+      continue
+    }
+    try {
+      await backend.mutation("people.linking.sendInvite", { personId: id })
+      sent++
+      console.log(`sent   ${entry.key}`)
+    } catch (error) {
+      console.error(error)
+      failures++
+      console.log(`FAILED ${entry.key}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  console.log(`${sent} invites sent, ${failures} failed.`)
+  if (failures) process.exit(1)
+}
