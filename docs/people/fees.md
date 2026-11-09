@@ -5,6 +5,9 @@
 > fee card render static sample data, make no backend call and disable every action. The procedures, permissions
 > (`people:fees:write`, `people:receipts:sign`) and the eSign receipt bridge below are removed. Soci, fees and receipts
 > will be rebuilt from scratch on Microsoft 365 members in Phase 2 (#144); this file stays as the design reference.
+>
+> **Superseded by [`soci.md`](soci.md)** (9 November 2026): Phase 2 issues no receipts, uses the Regolamento's rules
+> (€5, renewals until 31 December) and the `soci:*` permissions.
 
 How a member renews and gets a receipt. Shapes and procedures are in [`contract.md`](contract.md) ("Fees and
 receipts"); `src/features/people/people.contract.ts` stays the source of truth. The design canvas (desktop and mobile,
