@@ -1,28 +1,24 @@
-import { useRouter } from "@tanstack/react-router"
-import { Check, Pencil, Plus, UsersRound } from "lucide-react"
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
+import { Link } from "@tanstack/react-router"
+import { Check, UsersRound } from "lucide-react"
+import { useDeferredValue, useState } from "react"
 
 import {
   buttonMotion,
   DataTable,
   type DataTableColumn,
   EmptyState,
-  IconButton,
+  InlineAlert,
+  inlineLink,
   initialsOf,
-  RowActions,
   type TableSort,
   ToggleFilter,
   Unset,
 } from "@/components/primitives"
 import { Hint } from "@/components/primitives/hint"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import type { AzureMember } from "@/lib/api/types"
 import { formatLicense, pluralize } from "@/lib/format"
-
-import { MemberDialog } from "./member-dialog"
-import { reconcileMemberNumbers } from "./member-number"
-import { MemberNumberDialog } from "./member-number-dialog"
 
 const DEFAULT_SORT: TableSort = { column: "employeeId", direction: "asc" }
 
@@ -151,88 +147,22 @@ const columns: DataTableColumn<AzureMember>[] = [
   },
 ]
 
-/** Microsoft 365 members: the directory with member IDs and who is still a member. */
-export function AzureMembersPage({ members }: { members: AzureMember[] | null }) {
-  const router = useRouter()
-  const canCreate = useCan("azure:members:create")
-  const canWrite = useCan("azure:members:write")
+/**
+ * Microsoft 365 members: the directory with member IDs and who is in Soci, read-only. Admitting a socio and changing a
+ * member number happen in People › Soci, which keeps the register and Microsoft 365 together.
+ */
+export function AzureMembersPage({ members }: { members: AzureMember[] }) {
+  const canSoci = useCan("soci:read")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [membersOnly, setMembersOnly] = useState(false)
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogKey, setDialogKey] = useState(0)
-  /** Kept after closing so the dialog's content survives the exit animation. */
-  const [numberTarget, setNumberTarget] = useState<AzureMember | null>(null)
-  const [numberOpen, setNumberOpen] = useState(false)
-  /** Member IDs saved in this session, shown until the reloaded directory has them. */
-  const [optimisticIds, setOptimisticIds] = useState<ReadonlyMap<string, string>>(new Map())
-  useEffect(() => {
-    setOptimisticIds((current) => reconcileMemberNumbers(current, members))
-  }, [members])
-  const shown = useMemo(
-    () =>
-      (members ?? []).map((member) => {
-        const employeeId = optimisticIds.get(member.id)
-        return employeeId === undefined ? member : { ...member, employeeId }
-      }),
-    [members, optimisticIds]
-  )
-  const filtered = shown.filter((member) => (!membersOnly || member.isMember) && matches(member, deferredQuery))
+  const filtered = members.filter((member) => (!membersOnly || member.isMember) && matches(member, deferredQuery))
   const sorted = filtered.toSorted((a, b) => compareMembers(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
   const filteredView = deferredQuery !== "" || membersOnly
-
-  async function onSaved(welcomeMailSent: boolean) {
-    try {
-      await router.invalidate({ sync: true })
-    } catch (caught) {
-      console.error(caught)
-      appToast.warning("The member was created, but the latest directory data could not be refreshed.")
-    }
-    if (welcomeMailSent) appToast.success("Member created and welcome email sent.")
-    else appToast.warning("Member created, but the welcome email couldn't be sent.")
-  }
-
-  const applyOptimistic = useCallback(
-    (memberId: string, employeeId: string) => {
-      const previous = optimisticIds.get(memberId)
-      setOptimisticIds((current) => new Map(current).set(memberId, employeeId))
-      return () =>
-        setOptimisticIds((current) => {
-          const next = new Map(current)
-          if (previous === undefined) next.delete(memberId)
-          else next.set(memberId, previous)
-          return next
-        })
-    },
-    [optimisticIds]
-  )
-
-  async function onNumberSaved(notified: boolean | null) {
-    try {
-      await router.invalidate({ sync: true })
-    } catch (caught) {
-      // The saved member ID stays on screen; only the rest of the directory is stale.
-      console.error(caught)
-      appToast.warning("The member ID was changed, but the latest directory data could not be refreshed.")
-    }
-    if (notified === false) appToast.warning("Member ID changed, but the email to the member couldn't be sent.")
-    else appToast.success(notified ? "Member ID changed and email sent." : "Member ID changed.")
-  }
-
-  function openNumberDialog(member: AzureMember) {
-    setNumberTarget(member)
-    setDialogKey((key) => key + 1)
-    setNumberOpen(true)
-  }
-
-  function openDialog() {
-    setDialogKey((key) => key + 1)
-    setDialogOpen(true)
-  }
 
   function changeQuery(value: string) {
     setQuery(value)
@@ -244,68 +174,45 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
     setMembersOnly(false)
   }
 
-  // The empty state repeats the header primary as outline.
-  const addMember = (variant: "default" | "outline") => (
-    <Button variant={variant} size="sm" className={buttonMotion} onClick={openDialog}>
-      <Plus data-icon="inline-start" />
-      Add member
-    </Button>
-  )
-
   return (
     <>
       <PageBar
-        description={
-          members === null ? "Create association members in Microsoft Entra" : pluralize(shown.length, "member")
-        }
+        description={pluralize(members.length, "member")}
         left={
-          members !== null ? (
-            <Toolbar
-              search={{ value: query, onChange: changeQuery }}
-              filters={
-                <ToggleFilter
-                  label="Members only"
-                  pressed={membersOnly}
-                  onPressedChange={(pressed) => {
-                    setMembersOnly(pressed)
-                    setPage(1)
-                  }}
-                />
-              }
-              count={filteredView ? <Count value={filtered.length} total={shown.length} noun="member" /> : undefined}
-            />
-          ) : undefined
+          <Toolbar
+            search={{ value: query, onChange: changeQuery }}
+            filters={
+              <ToggleFilter
+                label="Members only"
+                pressed={membersOnly}
+                onPressedChange={(pressed) => {
+                  setMembersOnly(pressed)
+                  setPage(1)
+                }}
+              />
+            }
+            count={filteredView ? <Count value={filtered.length} total={members.length} noun="member" /> : undefined}
+          />
         }
-        right={canCreate ? addMember("default") : undefined}
       />
       <PageContent>
-        {members === null ? (
-          <EmptyState
-            icon={UsersRound}
-            title="Create a new member"
-            text="You can create members. Viewing the directory requires the member read permission."
-          />
-        ) : (
+        <div className="flex flex-col gap-4">
+          <InlineAlert tone="info">
+            Soci are admitted, and their member numbers changed, in{" "}
+            {canSoci ? (
+              <Link to="/dashboard/people/soci" className={inlineLink}>
+                People › Soci
+              </Link>
+            ) : (
+              "People › Soci"
+            )}
+            , which keeps the register and Microsoft 365 together.
+          </InlineAlert>
           <DataTable
             label="Microsoft 365 members"
             columns={columns}
             rows={rows}
             getRowId={(member) => member.id}
-            actions={
-              canWrite
-                ? (member) => (
-                    <RowActions>
-                      <IconButton
-                        label="Change member ID"
-                        ariaLabel={`Change member ID of ${memberName(member)}`}
-                        icon={Pencil}
-                        onClick={() => openNumberDialog(member)}
-                      />
-                    </RowActions>
-                  )
-                : undefined
-            }
-            actionsWidth={60}
             sort={sort}
             onSort={(next) => {
               setSort(next)
@@ -338,26 +245,12 @@ export function AzureMembersPage({ members }: { members: AzureMember[] | null })
                   icon={UsersRound}
                   title="No members yet"
                   text="No members were returned from Microsoft Entra."
-                  action={canCreate ? addMember("outline") : undefined}
                 />
               )
             }
           />
-        )}
+        </div>
       </PageContent>
-      {canCreate ? (
-        <MemberDialog key={dialogKey} open={dialogOpen} onOpenChange={setDialogOpen} onSaved={onSaved} />
-      ) : null}
-      {canWrite && numberTarget ? (
-        <MemberNumberDialog
-          key={`number-${dialogKey}`}
-          member={numberTarget}
-          open={numberOpen}
-          onOpenChange={setNumberOpen}
-          onOptimisticUpdate={applyOptimistic}
-          onSaved={onNumberSaved}
-        />
-      ) : null}
     </>
   )
 }

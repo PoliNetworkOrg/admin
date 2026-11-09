@@ -1,4 +1,4 @@
-/** Mirrors the backend's `src/azure/mailbox.ts`, which builds and checks the address again. */
+/** Mirrors the backend's `src/azure/mailbox.ts`, which builds and checks a new socio's address again. */
 export const MAIL_DOMAIN = "polinetwork.org"
 
 const LOCAL_PART = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/

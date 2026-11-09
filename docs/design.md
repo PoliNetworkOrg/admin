@@ -91,7 +91,10 @@ else its first. Theme toggle and the account avatar (the same active fill and in
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
-Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
+Web, Reports); WhatsApp, Overview and Account have none. A service may group its sections (`group` on `Section`): the
+panel draws each group's title, 11px uppercase and subtle, above its first visible section, and the mobile pills only
+keep the order. People groups Volunteers (Overview, Admins, Teams, Census, Linking) and Soci (Register, then Fees and
+Deletion pending). A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
 and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
 small accent pill.

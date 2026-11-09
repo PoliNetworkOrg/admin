@@ -225,6 +225,8 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-invites.functions.ts",
     "src/features/people/people-link.functions.ts",
     "src/features/people/people-invite-landing.functions.ts",
+    "src/features/soci/soci.functions.ts",
+    "src/features/soci/soci-write.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -248,8 +250,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
   // Mutations that join two domains list every middleware they need.
   const combinedScopes = {}
   const entries = [
-    ["azureMembersCreateMiddleware", ["src/features/azure/azure.functions.ts#createAzureMember"]],
-    ["azureMembersWriteMiddleware", ["src/features/azure/azure.functions.ts#setAzureMemberNumber"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
     ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
@@ -276,6 +276,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ],
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleInviteMiddleware", ["src/features/people/people-invite-landing.functions.ts"]],
+    ["sociWriteMiddleware", ["src/features/soci/soci-write.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -307,7 +308,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
 
 test("dashboard mutation controls use their server's write scope", async () => {
   const scopes = {
-    "src/features/azure/members-page.tsx": ["azure:members:create", "azure:members:write"],
+    "src/features/azure/members-page.tsx": "soci:read",
     "src/features/esign/requests-page.tsx": "esign:requests:manage",
     "src/features/esign/request-page.tsx": "esign:requests:manage",
     "src/features/esign/drives-page.tsx": "esign:drives:manage",
@@ -335,6 +336,8 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": ["people:write", "people:link"],
     "src/features/people/my-area-page.tsx": "people:read",
+    "src/features/soci/register-page.tsx": "soci:write",
+    "src/features/soci/socio-page.tsx": "soci:write",
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -373,8 +376,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
-    "src/features/azure/member-dialog.tsx": ["createAzureMember"],
-    "src/features/azure/member-number-dialog.tsx": ["setAzureMemberNumber"],
+    "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
     "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],
     "src/features/people/notes-dialog.tsx": ["setPersonNote"],
     "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite"],
@@ -666,7 +668,7 @@ test("every caught runtime error is written to the console", async () => {
   assert.deepEqual(failures, [], `Caught errors must be logged at: ${failures.join(", ")}`)
 })
 
-void test("the Azure directory read has its own permission boundary", async () => {
+void test("the Azure directory is read-only, behind its own permission", async () => {
   const source = await readFile(new URL("../src/features/azure/azure.functions.ts", import.meta.url), "utf8")
   const read = exportedServerFunctions(source, "azure.functions.ts").find((fn) => fn.name === "getAzureMembers")
   assert.ok(read)
@@ -675,8 +677,14 @@ void test("the Azure directory read has its own permission boundary", async () =
   const middleware = await readFile(new URL("../src/server/auth.middleware.ts", import.meta.url), "utf8")
   const readMiddleware = middleware.slice(
     middleware.indexOf("export const azureMembersReadMiddleware"),
-    middleware.indexOf("export const azureMembersCreateMiddleware")
+    middleware.indexOf("export const azureGroupsReadMiddleware")
   )
   assert.match(readMiddleware, /middleware\(\[adminMiddleware\]\)/)
   assert.match(readMiddleware, /requirePermission\(context.permissions, "azure:members:read"\)/)
+  // Admitting and renumbering soci moved to People › Soci: nothing in the dashboard writes to the directory.
+  assert.deepEqual(
+    exportedServerFunctions(source, "azure.functions.ts").filter((fn) => fn.isPost),
+    []
+  )
+  assert.doesNotMatch(middleware, /azureMembers(Create|Write)Middleware/)
 })
