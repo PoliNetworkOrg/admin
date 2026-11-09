@@ -135,6 +135,21 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (Sign-in & security)
 - [x] Person record Fees and receipts card; My area Membership fee card and Upload transfer receipt
 - [ ] Backend: implement the procedures, the officers, automatic reminders, signature verification and email
 
+### Roadmap Phase 2: Soci ([`soci.md`](soci.md), #144)
+
+The design is agreed (9 November 2026). Each item is an issue under #144, in order; see `soci.md` for the details.
+
+- [ ] Auth: the Microsoft 365 object ID in the access snapshot; production config (`soci:*` for `direttivo`,
+      `people:self` for Socio)
+- [ ] Backend: register and admission (`soci_members`, `soci.members.*`, Graph remove/re-add/delete, `me.get`)
+- [ ] Admin: panel groups Volunteers / Soci; Soci › Register, socio page, Admit socio, Register existing socio;
+      Microsoft 365 › Members read-only; agent-mode fake for `soci.*`
+- [ ] Backend: fees, uploads, fee-year opening, reminders and fee emails
+- [ ] Admin: Soci › Fees (review, confirm, reject, mark as paid); My area Socio card (upload, complete details)
+- [ ] Backend: ending, automatic lapse (`SOCI_AUTO_LAPSE`), restore, account deletion; birthday emails
+- [ ] Admin: End status, Restore, Soci › Deletion pending; remove the mockups and `mockup-data.ts`
+- [ ] Production: register the existing soci, mark the 2026/27 payments, then switch on `SOCI_AUTO_LAPSE`
+
 ## Progress log
 
 Newest last. One line per commit or session: date, what was done, what is next.

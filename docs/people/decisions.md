@@ -12,6 +12,14 @@ wins; when this file and [`docs/design.md`](../design.md) disagree on visuals, `
 > `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign` are gone; the mockups
 > open with `people:read`. Sections below that describe these features describe the mockup or the removed design.
 
+> [!IMPORTANT]
+> **Phase 2 (#144), 9 November 2026.** Soci, fees and the My area Socio card follow [`soci.md`](soci.md), which wins
+> over the Member register, Receipts, fee and permission notes below. In short: a register of soci keyed on the
+> Microsoft 365 account and the member number, with the Libro Soci's bookkeeping data; automatic lapse out of the Soci
+> group and a Deletion pending list; no association receipts; `soci:read`, `soci:write` and `soci:delete` for the
+> Direttivo; `people:self` for the Socio role. People's panel groups its sections into Volunteers (Overview, Admins,
+> Teams, Census, Linking) and Soci (Register, Fees, Deletion pending).
+
 ## Decisions made with the owner
 
 1. **Dashboard only.** `@polinetwork/backend` 1.4.0 has no People procedures (only `auth`, `azure`, `groups`, `me`,
