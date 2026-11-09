@@ -77,11 +77,13 @@ node scripts/people-seed/seed.ts scripts/people-seed/data/census-seed.json --inv
 - **Plan** reads People and lists each row's match, every call and any problems. It writes nothing.
 - **Apply** refuses to start while there are problems. It records each new record in `<file>.state.json` as soon as
   it's created, and refuses a state file written for another `BACKEND_URL`, whose IDs would match the wrong people.
-  Keep that file until the import is finished. If a run stops before the backend answers a create, the next plan
-  asks you to check whether that record exists, and to set `existingId` if it does.
+  Keep that file until the import is finished. If a create gets no answer, or an error other than a refusal
+  (permissions, invalid input), the next plan asks you to check whether that record exists, and to set `existingId`
+  if it does.
 - **Invite** sends an invite to every row with `invite` (default `true`) whose record has a contact email, isn't
-  linked and has no open invite. An expired invite is sent again. It refuses to run while the plan has problems. These are emails to real people: run it only once the records look right in the
-  dashboard.
+  linked and has no open invite. An invite that expired, or expires today, is sent again, which revokes the old
+  link. It refuses to run while the plan has problems. These are emails to real people: run it only once the records
+  look right in the dashboard.
 
 Afterwards, check People › Overview and Admins in the dashboard, then delete the application from step 1 and the
 files in `data/`.

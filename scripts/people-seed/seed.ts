@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
-import { readFile, rename, writeFile } from "node:fs/promises"
+import { open, readFile, rename, writeFile } from "node:fs/promises"
 import { createServer } from "node:http"
+import { dirname } from "node:path"
 import { parseArgs } from "node:util"
 
 import { createTRPCUntypedClient, httpLink, TRPCClientError } from "@trpc/client"
@@ -79,11 +80,29 @@ if (state.backend !== env.BACKEND_URL) {
   process.exit(1)
 }
 
-/** Replaces the state file in one step, so an interrupted write never leaves it truncated. */
+/**
+ * Replaces the state file in one step, so an interrupted write never leaves it truncated, and flushes it to disk
+ * before returning, so a pending mark survives even a crash of the computer during the create that follows.
+ */
 async function saveState() {
-  await writeFile(`${statePath}.tmp`, `${JSON.stringify(state, null, 2)}\n`)
+  const temporary = await open(`${statePath}.tmp`, "w")
+  try {
+    await temporary.writeFile(`${JSON.stringify(state, null, 2)}\n`)
+    await temporary.sync()
+  } finally {
+    await temporary.close()
+  }
   await rename(`${statePath}.tmp`, statePath)
+  const directory = await open(dirname(statePath), "r")
+  try {
+    await directory.sync()
+  } finally {
+    await directory.close()
+  }
 }
+
+/** Errors the backend returns before the procedure runs: the create surely didn't happen. */
+const refusalSchema = z.object({ code: z.enum(["UNAUTHORIZED", "FORBIDDEN", "BAD_REQUEST", "PARSE_ERROR"]) })
 
 // Sign-in: the authorization code flow with PKCE on a loopback redirect, asking for the backend's audience.
 
@@ -264,8 +283,10 @@ async function run(step: Step, personId: string, ids: Map<string, string>) {
         ids.set(step.key, id)
         state.records[step.key] = id
       } catch (error) {
-        // The backend answered with an error, so nothing was created and the next run may try again.
-        if (error instanceof TRPCClientError && error.data) delete state.records[step.key]
+        // Only a refusal proves nothing was created. Any other error (a timeout, a server error) keeps the mark,
+        // and the next plan asks a person whether the record exists.
+        if (error instanceof TRPCClientError && refusalSchema.safeParse(error.data).success)
+          delete state.records[step.key]
         throw error
       } finally {
         await saveState()
@@ -302,7 +323,9 @@ async function sendInvites() {
     console.error("No invites sent: fix the problems first (run without --invite to see the plan).")
     process.exit(1)
   }
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date())
+  // The backend gives only the UTC date of an invite's expiry (`expiresOn`), not the time. An invite is surely
+  // still open before that day; on the day itself it may have expired, so it's sent again (which revokes it).
+  const today = new Date().toISOString().slice(0, 10)
   const byId = new Map(existing.map((row) => [row.id, row]))
   let sent = 0
   let failures = 0
@@ -314,7 +337,7 @@ async function sendInvites() {
       ? "no record yet: run --apply first"
       : row.account.status === "linked"
         ? "already linked"
-        : row.account.status === "invite" && row.account.expiresOn >= today
+        : row.account.status === "invite" && row.account.expiresOn > today
           ? `invite already open until ${row.account.expiresOn}`
           : !row.contactEmail
             ? "no contact email"
@@ -326,7 +349,9 @@ async function sendInvites() {
     try {
       await backend.mutation("people.linking.sendInvite", { personId: id })
       sent++
-      console.log(`sent   ${entry.key}${row?.account.status === "invite" ? " (its invite had expired)" : ""}`)
+      console.log(
+        `sent   ${entry.key}${row?.account.status === "invite" ? " (its invite expired or expires today)" : ""}`
+      )
     } catch (error) {
       console.error(error)
       failures++
