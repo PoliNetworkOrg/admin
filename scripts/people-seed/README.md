@@ -12,8 +12,9 @@ PoliNetworkOrg/backend#103), which we dropped. From Phase 3 on, the census runs 
 - [`seed.ts`](seed.ts): signs in, plans, applies, sends invites.
 - [`example.json`](example.json): a seed file with a Capo Admin, an admin under them and a row matched by hand.
 
-Spreadsheets, seed files and everything the script writes stay in `data/` or next to the seed file. Git ignores
-them: they hold personal data.
+Keep the spreadsheets and the seed file in `data/`: it's the only folder Git ignores here, and they hold personal
+data. A spreadsheet or seed file anywhere else, beside the script included, can be committed by mistake. The script
+writes its own files next to the seed file, so they land in `data/` too.
 
 ## What the script does, and doesn't
 
@@ -75,9 +76,11 @@ node scripts/people-seed/seed.ts scripts/people-seed/data/census-seed.json --inv
 
 - **Plan** reads People and lists each row's match, every call and any problems. It writes nothing.
 - **Apply** refuses to start while there are problems. It records each new record in `<file>.state.json` as soon as
-  it's created. Keep that file until the import is finished.
+  it's created, and refuses a state file written for another `BACKEND_URL`, whose IDs would match the wrong people.
+  Keep that file until the import is finished. If a run stops before the backend answers a create, the next plan
+  asks you to check whether that record exists, and to set `existingId` if it does.
 - **Invite** sends an invite to every row with `invite` (default `true`) whose record has a contact email, isn't
-  linked and has no open invite. These are emails to real people: run it only once the records look right in the
+  linked and has no open invite. An expired invite is sent again. It refuses to run while the plan has problems. These are emails to real people: run it only once the records look right in the
   dashboard.
 
 Afterwards, check People › Overview and Admins in the dashboard, then delete the application from step 1 and the

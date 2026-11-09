@@ -1,4 +1,5 @@
 data/
 *.state.json
+*.state.json.tmp
 *.plan.json
 *.report.json

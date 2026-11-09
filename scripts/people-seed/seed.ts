@@ -1,15 +1,28 @@
 import { execFile } from "node:child_process"
-import { readFile, writeFile } from "node:fs/promises"
+import { readFile, rename, writeFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import { parseArgs } from "node:util"
 
-import { createTRPCUntypedClient, httpLink } from "@trpc/client"
+import { createTRPCUntypedClient, httpLink, TRPCClientError } from "@trpc/client"
 import * as oidc from "openid-client"
 import { SuperJSON } from "superjson"
 import { z } from "zod"
 
-import { createdSchema, personRowSchema, type PersonRow } from "../../src/features/people/people.contract.ts"
-import { describeStep, planSeed, type SeedState, seedFileSchema, type Step } from "./seed-plan.ts"
+import {
+  createdSchema,
+  personRowSchema,
+  type PersonRow,
+  teamSummarySchema,
+} from "../../src/features/people/people.contract.ts"
+import {
+  describeStep,
+  PENDING,
+  planSeed,
+  type SeedState,
+  seedFileSchema,
+  type Step,
+  type TeamBindings,
+} from "./seed-plan.ts"
 
 /**
  * One-off: seeds People from a reviewed seed file (README.md). Signs in as you, so every change is yours and the
@@ -38,14 +51,6 @@ if (!parsed.success) {
   process.exit(1)
 }
 const file = parsed.data
-const state: SeedState = await readFile(statePath, "utf8").then(
-  (text) => z.record(z.string(), z.string()).parse(JSON.parse(text)),
-  (error: NodeJS.ErrnoException): SeedState => {
-    if (error.code === "ENOENT") return {}
-    console.error(error)
-    throw error
-  }
-)
 
 const env = z
   .object({
@@ -59,6 +64,26 @@ const env = z
     SEED_REDIRECT_PORT: z.coerce.number().int().min(1024).max(65535).default(53682),
   })
   .parse(process.env)
+
+const state: SeedState = await readFile(statePath, "utf8").then(
+  (text) => z.object({ backend: z.string(), records: z.record(z.string(), z.string()) }).parse(JSON.parse(text)),
+  (error: NodeJS.ErrnoException): SeedState => {
+    if (error.code === "ENOENT") return { backend: env.BACKEND_URL, records: {} }
+    console.error(error)
+    throw error
+  }
+)
+if (state.backend !== env.BACKEND_URL) {
+  console.error(`${statePath} belongs to ${state.backend}, not ${env.BACKEND_URL}: its record IDs would match the`)
+  console.error("wrong people. Use the right BACKEND_URL, or a copy of the seed file for this backend.")
+  process.exit(1)
+}
+
+/** Replaces the state file in one step, so an interrupted write never leaves it truncated. */
+async function saveState() {
+  await writeFile(`${statePath}.tmp`, `${JSON.stringify(state, null, 2)}\n`)
+  await rename(`${statePath}.tmp`, statePath)
+}
 
 // Sign-in: the authorization code flow with PKCE on a loopback redirect, asking for the backend's audience.
 
@@ -164,8 +189,15 @@ async function listPeople(): Promise<PersonRow[]> {
 
 // The run.
 
+/** Only fetched when the file asks for teams. */
+async function teamBindings(): Promise<TeamBindings> {
+  if (!file.people.some((entry) => entry.teams.length)) return {}
+  const teams = teamSummarySchema.array().parse(await backend.query("people.teams.list"))
+  return Object.fromEntries(teams.map((team) => [team.id, team.assignable]))
+}
+
 const existing = await listPeople()
-const plan = planSeed(file, existing, state)
+const plan = planSeed(file, existing, state.records, await teamBindings())
 
 if (values.invite) await sendInvites()
 else if (values.apply) await apply()
@@ -224,11 +256,20 @@ async function apply() {
 async function run(step: Step, personId: string, ids: Map<string, string>) {
   switch (step.kind) {
     case "create": {
-      const { id } = createdSchema.parse(await backend.mutation("people.persons.create", step.input))
-      ids.set(step.key, id)
-      // Saved after every record, so an interrupted run never creates one twice.
-      state[step.key] = id
-      await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`)
+      // Marked before the call: if no answer comes back, the next plan asks a person whether the record exists.
+      state.records[step.key] = PENDING
+      await saveState()
+      try {
+        const { id } = createdSchema.parse(await backend.mutation("people.persons.create", step.input))
+        ids.set(step.key, id)
+        state.records[step.key] = id
+      } catch (error) {
+        // The backend answered with an error, so nothing was created and the next run may try again.
+        if (error instanceof TRPCClientError && error.data) delete state.records[step.key]
+        throw error
+      } finally {
+        await saveState()
+      }
       return
     }
     case "admin":
@@ -256,6 +297,12 @@ async function run(step: Step, personId: string, ids: Map<string, string>) {
 }
 
 async function sendInvites() {
+  if (plan.problems.length) {
+    for (const problem of plan.problems) console.error(`problem: ${problem}`)
+    console.error("No invites sent: fix the problems first (run without --invite to see the plan).")
+    process.exit(1)
+  }
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date())
   const byId = new Map(existing.map((row) => [row.id, row]))
   let sent = 0
   let failures = 0
@@ -267,7 +314,7 @@ async function sendInvites() {
       ? "no record yet: run --apply first"
       : row.account.status === "linked"
         ? "already linked"
-        : row.account.status === "invite"
+        : row.account.status === "invite" && row.account.expiresOn >= today
           ? `invite already open until ${row.account.expiresOn}`
           : !row.contactEmail
             ? "no contact email"
@@ -279,7 +326,7 @@ async function sendInvites() {
     try {
       await backend.mutation("people.linking.sendInvite", { personId: id })
       sent++
-      console.log(`sent   ${entry.key}`)
+      console.log(`sent   ${entry.key}${row?.account.status === "invite" ? " (its invite had expired)" : ""}`)
     } catch (error) {
       console.error(error)
       failures++

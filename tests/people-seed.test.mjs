@@ -4,6 +4,9 @@ import test from "node:test"
 import { normalizeName, planSeed, seedFileSchema } from "../scripts/people-seed/seed-plan.ts"
 
 const SINCE = "2026-11-15"
+const BOUND = Object.fromEntries(
+  ["it", "hr", "design", "intl", "events"].map((team) => [team, { member: true, lead: true }])
+)
 
 function entry(fields) {
   return {
@@ -65,7 +68,8 @@ test("a new row is created and made admin, Capo Admins before their admins' refe
       entry({ key: "c@x.it", contactEmail: "c@x.it", firstName: "Chiara", capoScope: "Ingegneria" }),
     ]),
     [],
-    {}
+    {},
+    BOUND
   )
   assert.deepEqual(plan.problems, [])
   assert.deepEqual(kinds(plan), [
@@ -81,23 +85,26 @@ test("a new row is created and made admin, Capo Admins before their admins' refe
 
 test("an existing record matches by contact email, case-insensitively, and keeps the roles it holds", () => {
   const existing = [record("P-0001", { contactEmail: "A@X.it", assignments: [assignment({ kind: "admin" })] })]
-  const plan = planSeed(seed([entry({ key: "a@x.it", contactEmail: "a@x.it" })]), existing, {})
+  const plan = planSeed(seed([entry({ key: "a@x.it", contactEmail: "a@x.it" })]), existing, {}, BOUND)
   assert.deepEqual(plan.matches, [{ key: "a@x.it", id: "P-0001", how: "email" }])
   assert.deepEqual(plan.steps, [])
 })
 
 test("a previous run's state wins, so a repeated run creates nothing twice", () => {
-  const plan = planSeed(seed([entry({ key: "row:1" })]), [record("P-0002")], { "row:1": "P-0002" })
+  const plan = planSeed(seed([entry({ key: "row:1" })]), [record("P-0002")], { "row:1": "P-0002" }, BOUND)
   assert.deepEqual(plan.problems, [])
   assert.deepEqual(kinds(plan), ["admin:row:1"])
 })
 
 test("a same-name record is a problem until existingId or newRecord decides", () => {
   const existing = [record("P-0003", { firstName: "Màrio", lastName: "rossi" })]
-  assert.match(planSeed(seed([entry({})]), existing, {}).problems[0], /possibly P-0003/)
-  const linked = planSeed(seed([entry({ existingId: "P-0003" })]), existing, {})
+  assert.match(planSeed(seed([entry({})]), existing, {}, BOUND).problems[0], /possibly P-0003/)
+  const linked = planSeed(seed([entry({ existingId: "P-0003" })]), existing, {}, BOUND)
   assert.deepEqual(linked.matches[0], { key: "row:1", id: "P-0003", how: "existingId" })
-  assert.deepEqual(kinds(planSeed(seed([entry({ newRecord: true })]), existing, {})), ["create:row:1", "admin:row:1"])
+  assert.deepEqual(kinds(planSeed(seed([entry({ newRecord: true })]), existing, {}, BOUND)), [
+    "create:row:1",
+    "admin:row:1",
+  ])
 })
 
 test("rows that clash within the file are problems", () => {
@@ -108,7 +115,8 @@ test("rows that clash within the file are problems", () => {
       entry({ key: "j", firstName: "Luca" }),
     ]),
     [],
-    {}
+    {},
+    BOUND
   )
   assert.equal(plan.problems.length, 3)
 })
@@ -129,13 +137,48 @@ test("role rules: a Capo Admin is an admin, references point at Capo Admins, one
       entry({ key: "missing-ref", firstName: "E", capoOfReference: "nobody" }),
     ]),
     existing,
-    {}
+    {},
+    BOUND
   )
   assert.equal(plan.problems.length, 4)
   assert.ok(plan.problems.some((problem) => problem.includes("must be an admin")))
   assert.ok(plan.problems.some((problem) => problem.includes("won't be a Capo Admin")))
   assert.ok(plan.problems.some((problem) => problem.includes("already has a Lead")))
   assert.ok(plan.problems.some((problem) => problem.includes("no row key or record ID")))
+})
+
+test("a create interrupted before the backend answered needs a person to say whether the record exists", () => {
+  const pending = { "row:1": "pending" }
+  const plan = planSeed(seed([entry({ newRecord: true })]), [record("P-0004")], pending, BOUND)
+  assert.match(plan.problems[0], /interrupted run/)
+  const resolved = planSeed(seed([entry({ existingId: "P-0004" })]), [record("P-0004")], pending, BOUND)
+  assert.deepEqual(resolved.problems, [])
+  assert.deepEqual(kinds(resolved), ["admin:row:1"])
+})
+
+test("a Capo Admin referenced by record ID counts the appointment planned for that record's row", () => {
+  const existing = [record("P-0005", { firstName: "Chiara", contactEmail: "c@x.it" })]
+  const plan = planSeed(
+    seed([
+      entry({ key: "c@x.it", firstName: "Chiara", contactEmail: "c@x.it", capoScope: "Design" }),
+      entry({ key: "a@x.it", contactEmail: "a@x.it", capoOfReference: "P-0005" }),
+    ]),
+    existing,
+    {},
+    BOUND
+  )
+  assert.deepEqual(plan.problems, [])
+  assert.deepEqual(plan.steps.at(-1), { kind: "capoRef", key: "a@x.it", capo: { id: "P-0005" } })
+})
+
+test("a team role Auth doesn't bind stops the plan before anything is created", () => {
+  const plan = planSeed(
+    seed([entry({ teams: [{ team: "hr", role: "lead" }] })]),
+    [],
+    {},
+    { hr: { member: true, lead: false } }
+  )
+  assert.match(plan.problems[0], /binds no role to hr lead/)
 })
 
 test("the seed file validates contacts like the dashboard does", () => {

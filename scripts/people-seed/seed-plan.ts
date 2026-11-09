@@ -47,8 +47,15 @@ export const seedFileSchema = z.object({
 })
 export type SeedFile = z.infer<typeof seedFileSchema>
 
-/** Which record each row became, from earlier runs: `key` → `P-0000`. */
-export type SeedState = Record<string, string>
+/**
+ * Which record each row became in earlier runs, `key` → `P-0000`, or `pending` while a create's outcome is unknown.
+ * The file belongs to one backend: record IDs from another one would match the wrong people.
+ */
+export type SeedState = { backend: string; records: Record<string, string> }
+export const PENDING = "pending"
+
+/** Which roles PoliNetwork Auth binds for each team (`people.teams.list`): an unbound one can't be assigned. */
+export type TeamBindings = Partial<Record<TeamId, { member: boolean; lead: boolean }>>
 
 /** Another row of the file (whose record may not exist until its create step runs), or an existing record. */
 export type Ref = { key: string } | { id: string }
@@ -94,7 +101,12 @@ function currentOf(row: PersonRow | undefined) {
   }
 }
 
-export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: SeedState): Plan {
+export function planSeed(
+  file: SeedFile,
+  existing: readonly PersonRow[],
+  records: SeedState["records"],
+  bindings: TeamBindings
+): Plan {
   const problems: string[] = []
   const warnings: string[] = []
   const steps: Step[] = []
@@ -124,10 +136,11 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
   const claimed = new Map<string, string>()
   for (const entry of file.people) {
     let match: Match = { key: entry.key, id: null, how: "new" }
-    const fromState = state[entry.key]
+    const fromState = records[entry.key]
     const mail = email(entry.contactEmail)
     const sameEmail = mail ? existing.filter((row) => email(row.contactEmail) === mail) : []
-    if (fromState) {
+    const interrupted = fromState === PENDING
+    if (fromState && !interrupted) {
       if (byId.has(fromState)) match = { key: entry.key, id: fromState, how: "state" }
       else problems.push(`${label(entry)}: an earlier run created ${fromState}, which no longer exists.`)
     } else if (entry.existingId) {
@@ -139,6 +152,11 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
       )
     } else if (sameEmail.length === 1) {
       match = { key: entry.key, id: sameEmail[0].id, how: "email" }
+    } else if (interrupted) {
+      problems.push(
+        `${label(entry)}: an interrupted run may have created this record. Look for it in People and set ` +
+          "existingId, or remove the key from the state file if it isn't there."
+      )
     } else if (!entry.newRecord) {
       const name = normalizeName(entry.firstName, entry.lastName)
       const sameName = existing.filter((row) => normalizeName(row.firstName, row.lastName) === name)
@@ -159,6 +177,7 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
     matches.push(match)
   }
   const matchOf = new Map(matches.map((match) => [match.key, match]))
+  const entryOf = new Map(matches.flatMap((match) => (match.id ? [[match.id, keys.get(match.key)] as const] : [])))
   const rowOf = (key: string) => {
     const id = matchOf.get(key)?.id
     return id ? byId.get(id) : undefined
@@ -167,6 +186,9 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
   // Who ends up an admin and a Capo Admin, to check references and the one Lead per team.
   const willBeAdmin = (entry: SeedEntry) => entry.admin || currentOf(rowOf(entry.key)).admin !== null
   const willBeCapo = (entry: SeedEntry) => entry.capoScope !== null || currentOf(rowOf(entry.key)).capo !== null
+  /** A reference by key, or by the ID of a record a row is matched to, also counts the row's planned appointment. */
+  const willBeCapoRef = (entry: SeedEntry | undefined, target: string) =>
+    entry ? willBeCapo(entry) : currentOf(byId.get(target)).capo !== null
   const leads = new Map<TeamId, string>()
   for (const row of existing) {
     for (const a of row.assignments)
@@ -206,7 +228,7 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
       else if (!willBeAdmin(entry)) problems.push(`${label(entry)}: only an admin has a Capo Admin of reference.`)
       else if (target === entry.key || (capoId && capoId === match.id))
         problems.push(`${label(entry)}: can't be their own Capo Admin of reference.`)
-      else if (inFile ? !willBeCapo(inFile) : !currentOf(byId.get(target)).capo)
+      else if (!willBeCapoRef(inFile ?? entryOf.get(target), target))
         problems.push(`${label(entry)}: "${target}" isn't and won't be a Capo Admin.`)
       else if (!capoId || now.admin?.capoOfReference?.id !== capoId) {
         if (now.admin?.capoOfReference)
@@ -222,6 +244,10 @@ export function planSeed(file: SeedFile, existing: readonly PersonRow[], state: 
       if (held) {
         if (held.teamRole !== role)
           problems.push(`${label(entry)}: already ${held.teamRole} of ${team}; change it in the dashboard.`)
+        continue
+      }
+      if (!bindings[team]?.[role]) {
+        problems.push(`${label(entry)}: PoliNetwork Auth binds no role to ${team} ${role}, so it can't be assigned.`)
         continue
       }
       if (role === "lead") {
