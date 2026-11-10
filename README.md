@@ -1,19 +1,18 @@
 # PoliNetwork Admin
 
 The dashboard manages Telegram and WhatsApp groups, labels, Telegram users and grants, website content and reports.
-Microsoft 365 supports a member directory, creating a new association member through the backend's fixed workflow
-(with a standard `firstname.lastname` or custom address), changing a member's ID with an optional email to them, and a
-read-only list of groups. Directory access requires `azure:members:read`; creation independently requires
-`azure:members:create`, and changing member IDs `azure:members:write`. Groups require `azure:groups:read`. Group
-membership is never edited: creating a member adds only that new user to Soci, which gives them the Socio role.
+Microsoft 365 has a read-only member directory (`azure:members:read`) and a read-only list of groups
+(`azure:groups:read`). Group membership is never edited from Microsoft 365's pages: admitting a socio in People › Soci
+adds only that new user to Soci, which gives them the Socio role.
 
 **People** keeps one record per volunteer (Overview, Admins, Teams, Linking), plus Telegram › Capo Admin and Account ›
-My area for volunteers themselves. The dashboard talks to a typed `people.*` contract
-(`src/features/people/people.contract.ts`, documented in `docs/people/contract.md`); agent mode serves sample data from
-`people.fake.server.ts`. Member register, Receipts and Census are unconnected UI mockups with static sample data, to be
-rebuilt in Phase 2 (#144) and Phase 3 (#145). Permissions: `people:read` (which also opens the mockups),
-`people:write`, `people:appoint`, and `people:self`, which alone admits non-admins to My area and, by the role on their
-record, Capo Admin or their team. See `docs/people/README.md`.
+My area for volunteers themselves, and the Libro Soci (Soci › Register). The dashboard talks to typed `people.*` and
+`soci.*` contracts (`src/features/people/people.contract.ts`, documented in `docs/people/contract.md`, and
+`src/features/soci/soci.contract.ts`); agent mode serves sample data from `people.fake.server.ts` and
+`soci.fake.server.ts`. Receipts and Census are unconnected UI mockups with static sample data, to be rebuilt in Phase 2
+(#144) and Phase 3 (#145). Permissions: `people:read` (which also opens the mockups), `people:write`, `people:appoint`,
+`people:self`, which alone admits non-admins to My area and, by the role on their record, Capo Admin or their team, and
+`soci:read` and `soci:write` for the register. See `docs/people/README.md` and `docs/people/soci.md`.
 
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a

@@ -71,6 +71,11 @@ export type Section = {
   role?: PeopleRole
   /** Open with `people:self` alone (Account). Every other section also needs `admin:access`. */
   selfService?: boolean
+  /**
+   * The panel heading this section sits under (People: Volunteers, Soci). The panel draws it above the group's first
+   * visible section; the mobile pills only keep the order. Sections of a group are listed together.
+   */
+  group?: string
 }
 
 /** Roles that come from the person's record (`people.me.roles`), not from IdP permissions. */
@@ -102,7 +107,8 @@ export type PageMatch =
   | { kind: "account-me" }
   | { kind: "people-overview" }
   | { kind: "people-person"; personId: string }
-  | { kind: "people-members" }
+  | { kind: "people-soci" }
+  | { kind: "people-socio"; number: number }
   | { kind: "people-receipts" }
   | { kind: "people-admins" }
   | { kind: "people-teams" }
@@ -179,24 +185,8 @@ const people: Service = {
       icon: LayoutList,
       path: "/dashboard/people",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name, email or Telegram…",
-    },
-    // Member register, Receipts and Census are unconnected mockups (Phase 2, #144; Phase 3, #145).
-    {
-      id: "members",
-      title: "Member register",
-      icon: IdCard,
-      path: "/dashboard/people/members",
-      permission: "people:read",
-      searchPlaceholder: "Search by name, number or email…",
-    },
-    {
-      id: "receipts",
-      title: "Receipts",
-      icon: Receipt,
-      path: "/dashboard/people/receipts",
-      permission: "people:read",
-      searchPlaceholder: "Search by name or receipt number…",
     },
     {
       id: "admins",
@@ -204,6 +194,7 @@ const people: Service = {
       icon: UserCog,
       path: "/dashboard/people/admins",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name, course or username…",
     },
     {
@@ -213,14 +204,17 @@ const people: Service = {
       path: "/dashboard/people/teams",
       permission: "people:read",
       role: "lead",
+      group: "Volunteers",
       searchPlaceholder: "Search team members…",
     },
+    // Census is an unconnected mockup (Phase 3, #145).
     {
       id: "census",
       title: "Census",
       icon: ClipboardList,
       path: "/dashboard/people/census",
       permission: "people:read",
+      group: "Volunteers",
     },
     {
       id: "linking",
@@ -228,7 +222,27 @@ const people: Service = {
       icon: Link2,
       path: "/dashboard/people/linking",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name or email…",
+    },
+    {
+      id: "soci",
+      title: "Register",
+      icon: IdCard,
+      path: "/dashboard/people/soci",
+      permission: "soci:read",
+      group: "Soci",
+      searchPlaceholder: "Search by name, number or mailbox…",
+    },
+    // Receipts is an unconnected mockup, to be replaced by Fees (Phase 2, #144).
+    {
+      id: "receipts",
+      title: "Receipts",
+      icon: Receipt,
+      path: "/dashboard/people/receipts",
+      permission: "people:read",
+      group: "Soci",
+      searchPlaceholder: "Search by name or receipt number…",
     },
   ],
 }
@@ -310,7 +324,7 @@ const m365: Service = {
       title: "Members",
       icon: UserRound,
       path: "/dashboard/azure/members",
-      anyPermission: ["azure:members:read", "azure:members:create"],
+      permission: "azure:members:read",
       searchPlaceholder: "Search name, email or ID…",
     },
   ],
@@ -487,7 +501,7 @@ export function matchPath(pathname: string): PageMatch {
   if (head === "people") {
     if (second === undefined) return { kind: "people-overview" }
     if (third === undefined) {
-      if (second === "members") return { kind: "people-members" }
+      if (second === "soci") return { kind: "people-soci" }
       if (second === "receipts") return { kind: "people-receipts" }
       if (second === "admins") return { kind: "people-admins" }
       if (second === "teams") return { kind: "people-teams" }
@@ -496,6 +510,8 @@ export function matchPath(pathname: string): PageMatch {
       if (/^P-\d{4,}$/.test(second)) return { kind: "people-person", personId: second }
     }
     if (second === "teams" && third !== undefined) return { kind: "people-team", teamId: third }
+    if (second === "soci" && third !== undefined && /^[1-9]\d{0,5}$/.test(third))
+      return { kind: "people-socio", number: Number(third) }
     if (second === "census" && third !== undefined) return { kind: "people-campaign", campaignId: third }
   }
 
@@ -561,7 +577,8 @@ export function serviceFor(match: PageMatch): Service {
       return account
     case "people-overview":
     case "people-person":
-    case "people-members":
+    case "people-soci":
+    case "people-socio":
     case "people-receipts":
     case "people-admins":
     case "people-teams":
@@ -617,8 +634,9 @@ export function sectionFor(match: PageMatch): Section | null {
     case "people-overview":
     case "people-person":
       return section(people, "overview")
-    case "people-members":
-      return section(people, "members")
+    case "people-soci":
+    case "people-socio":
+      return section(people, "soci")
     case "people-receipts":
       return section(people, "receipts")
     case "people-admins":
@@ -686,6 +704,7 @@ export function isDeepPage(match: PageMatch): boolean {
     match.kind === "web-tag" ||
     match.kind === "people-person" ||
     match.kind === "people-team" ||
+    match.kind === "people-socio" ||
     match.kind === "people-campaign" ||
     match.kind === "esign-request" ||
     match.kind === "esign-new" ||

@@ -8,13 +8,9 @@ import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/azure/members")({
   beforeLoad: ({ context }) => {
-    if (
-      !hasPermission(context.permissions, "azure:members:read") &&
-      !hasPermission(context.permissions, "azure:members:create")
-    )
-      throw redirect({ to: "/unauthorized" })
+    if (!hasPermission(context.permissions, "azure:members:read")) throw redirect({ to: "/unauthorized" })
   },
-  loader: ({ context }) => (hasPermission(context.permissions, "azure:members:read") ? getAzureMembers() : null),
+  loader: () => getAzureMembers(),
   pendingComponent: () => (
     <>
       <PageBar />

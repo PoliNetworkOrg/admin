@@ -157,6 +157,25 @@ export const peopleLinkMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
+/** People › Soci: the Libro Soci, its bookkeeping data and the Soci group's accounts without a record. */
+export const sociReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:read")
+    return next()
+  })
+
+/**
+ * People › Soci: admit a socio (a new Microsoft 365 account in Soci, then the record), register an account already in
+ * Soci, edit the bookkeeping data and change a member number.
+ */
+export const sociWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:write")
+    return next()
+  })
+
 /** Telegram grants: create and interrupt. */
 export const grantsWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
@@ -210,22 +229,6 @@ export const azureMembersReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "azure:members:read")
-    return next()
-  })
-
-/** Microsoft 365: create a new member through the backend's fixed workflow. */
-export const azureMembersCreateMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:create")
-    return next()
-  })
-
-/** Microsoft 365: change the member number of an existing user, optionally emailing them. */
-export const azureMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:write")
     return next()
   })
 

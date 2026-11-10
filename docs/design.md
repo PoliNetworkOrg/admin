@@ -91,7 +91,10 @@ else its first. Theme toggle and the account avatar (the same active fill and in
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
-Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
+Web, Reports); WhatsApp, Overview and Account have none. A service may group its sections (`group` on `Section`): the
+panel draws each group's title, 11px uppercase and subtle, above its first visible section, and the mobile pills only
+keep the order. People groups Volunteers (Overview, Admins, Teams, Census, Linking) and Soci (Register, and the Receipts
+mockup until Fees replaces it; Deletion pending). A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
 and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
 small accent pill.
@@ -587,14 +590,15 @@ Rules that the templates above don't imply.
   request.".
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
-- **People**: one record per person whether or not they have an account; Overview, Member register, Admins, Teams,
-  Census and Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
+- **People**: one record per person whether or not they have an account; Overview, Admins, Teams, Census and
+  Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
   Not linked included. Mobile list cards replace unlabelled column values with one line of role chips or status
   badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
   use `FormDialog` with `tone="danger"`; plain confirmations stay `ConfirmDialog`.
-- **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
-  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Without `people:read`,
-  register/receipt rows have no full-record links; the register loads its own restricted projection.
+- **Soci › Register** (`docs/people/soci.md`): the Libro Soci, one record per admission. Status segments (Active /
+  Ended / All) scope the table; Number leads on desktop, the name on mobile. Alerts above the table list the Soci
+  group's accounts without a record (with Register) and each kind of mismatch. Rows open the socio page
+  (`/dashboard/people/soci/$number`), a deep page with Edit and Change number.
 - **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
   Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
   icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
