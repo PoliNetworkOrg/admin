@@ -11,7 +11,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
 - **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
   grants, Telegram groups, WhatsApp groups, labels, website content, reports, People (write, appoint, link, team), and
-  Microsoft 365 member creation and member-number changes.
+  Soci (`soci:write`: admit, register, edit, change number). Soci reads use `sociReadMiddleware` (`soci:read`).
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
 - **Microsoft 365**: read the member directory with `azure:members:read`, and list groups and their members with

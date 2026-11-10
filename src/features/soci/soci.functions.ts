@@ -26,7 +26,7 @@ export const getSocio = createServerFn({ method: "GET" })
   .validator(numberInputSchema)
   .handler(async ({ data, context }) => (await sociApi(context)).get(data))
 
-/** The register alone, without reading the Soci group: the socio page checks codici fiscali against it. */
+/** The register without the unregistered accounts: Edit on the socio page checks codici fiscali against it. */
 export const getSociList = createServerFn({ method: "GET" })
   .middleware([sociReadMiddleware])
   .handler(async ({ context }) => (await sociApi(context)).list())

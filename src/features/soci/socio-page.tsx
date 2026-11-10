@@ -135,7 +135,8 @@ export function SocioPage({
               ) : null}
               {numberDiffers ? (
                 <InlineAlert tone="warning">
-                  Microsoft 365 has number {socio.accountNumber} on the account. Change number sets both again.
+                  Microsoft 365 has number {socio.accountNumber} on the account, not {formatMemberNumber(socio.number)}.
+                  Correct it in Microsoft 365, or use Change number to give both a new number.
                 </InlineAlert>
               ) : null}
               {missing.length && !socio.endedOn ? (

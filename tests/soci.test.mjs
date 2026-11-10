@@ -82,3 +82,13 @@ void test("registering and editing need only the legal name", () => {
     false
   )
 })
+
+void test("an account name the backend refuses is reported on the account's field, not the legal name", () => {
+  const parsed = admitInputSchema.safeParse({ ...admission, account: { ...admission.account, lastName: "O’Brien" } })
+  assert.equal(parsed.success, false)
+  // `fieldErrors` in socio-form.tsx shows this path on the account's Last name field.
+  assert.deepEqual(
+    parsed.error.issues.map((issue) => issue.path.join(".")),
+    ["account.lastName"]
+  )
+})

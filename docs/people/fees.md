@@ -1,8 +1,8 @@
 # People area: fees and receipts
 
 > [!IMPORTANT]
-> **This describes an unconnected mockup.** Since #138, People › Member register, People › Receipts and My area's
-> fee card render static sample data, make no backend call and disable every action. The procedures, permissions
+> **This describes an unconnected mockup.** Since #138, People › Receipts and My area's fee card render static
+> sample data (the Member register mockup was replaced by Soci › Register in #155), make no backend call and disable every action. The procedures, permissions
 > (`people:fees:write`, `people:receipts:sign`) and the eSign receipt bridge below are removed. Soci, fees and receipts
 > will be rebuilt from scratch on Microsoft 365 members in Phase 2 (#144); this file stays as the design reference.
 >

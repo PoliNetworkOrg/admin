@@ -8,12 +8,13 @@ import { SocioPage } from "@/features/soci/socio-page"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard/people/soci/$number")({
-  // People records name who did what (the backend records account IDs), when the viewer may read them.
+  // People records name who did what (the backend records account IDs), when the viewer may read them. The register,
+  // which Edit checks codici fiscali against, is loaded only for those who may edit.
   loader: async ({ params, context }) => {
     if (!/^[1-9]\d{0,5}$/.test(params.number)) throw notFound()
     const [socio, register, people] = await Promise.all([
       getSocio({ data: { number: Number(params.number) } }),
-      getSociList(),
+      hasPermission(context.permissions, "soci:write") ? getSociList().then((list) => list.members) : [],
       hasPermission(context.permissions, "people:read")
         ? getPeople().catch((error) => {
             console.error(error)
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/dashboard/people/soci/$number")({
           })
         : [],
     ])
-    return { socio, register: register.members, people }
+    return { socio, register, people }
   },
   pendingComponent: SocioPending,
   component: SocioRoute,

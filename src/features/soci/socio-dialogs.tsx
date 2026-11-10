@@ -17,7 +17,7 @@ import {
 } from "@/components/primitives"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { formatDay, todayIso } from "@/features/people/people-format"
+import { formatDay, romeDay, todayIso } from "@/features/people/people-format"
 import { errorMessage, useRefreshAfter } from "@/features/people/people-hooks"
 import { cn } from "@/lib/utils"
 
@@ -188,6 +188,7 @@ export function AdmitSocioDialog({ open, onOpenChange, register }: DialogProps &
     setSubmitted(true)
     const parsed = admitInputSchema.safeParse(input())
     setErrors(fieldErrors(parsed.error))
+    if (!isMemberNumber(number) || takenNumber) return
     if (!parsed.success || localPart === null || sameAddress || detailsBlocked(details, register)) return
     // The welcome email carries the new account's credentials, so it normally goes to a personal address.
     if (isPoliNetworkAddress(recipient)) {
@@ -212,20 +213,29 @@ export function AdmitSocioDialog({ open, onOpenChange, register }: DialogProps &
     >
       <FormSection title="Microsoft 365 account">
         <div className="grid gap-4 min-[480px]:grid-cols-2">
-          <FormField label="First name" htmlFor="admit-first-name" hint="As the account shows it.">
+          <FormField
+            label="First name"
+            htmlFor="admit-first-name"
+            hint="As the account shows it."
+            error={errors.accountFirstName}
+          >
             <Input
               id="admit-first-name"
               value={firstName}
               autoComplete="off"
+              aria-invalid={errors.accountFirstName ? true : undefined}
+              aria-describedby={fieldHintId("admit-first-name")}
               onChange={(event) => setAccountName({ firstName: event.target.value })}
               className={cn("h-9", fieldControl)}
             />
           </FormField>
-          <FormField label="Last name" htmlFor="admit-last-name">
+          <FormField label="Last name" htmlFor="admit-last-name" error={errors.accountLastName}>
             <Input
               id="admit-last-name"
               value={lastName}
               autoComplete="off"
+              aria-invalid={errors.accountLastName ? true : undefined}
+              aria-describedby={errors.accountLastName ? fieldHintId("admit-last-name") : undefined}
               onChange={(event) => setAccountName({ lastName: event.target.value })}
               className={cn("h-9", fieldControl)}
             />
@@ -376,11 +386,13 @@ export function RegisterSocioDialog({
   const [errors, setErrors] = useState<FieldErrors>({})
   const fixedNumber = account?.employeeId && isMemberNumber(account.employeeId) ? account.employeeId : null
 
+  // Nothing but the name is known yet, so the country starts empty too.
   function prefill(next: Unregistered | null): DetailsDraft {
-    return { ...EMPTY_DETAILS, firstName: next?.givenName ?? "", lastName: next?.surname ?? "" }
+    return { ...EMPTY_DETAILS, country: "", firstName: next?.givenName ?? "", lastName: next?.surname ?? "" }
   }
+  // The day in Rome, as the hint shows it: the fee year turns on that calendar.
   function suggestedDate(next: Unregistered | null) {
-    return next?.createdDateTime ? next.createdDateTime.slice(0, 10) : todayIso()
+    return next?.createdDateTime ? romeDay(next.createdDateTime) : todayIso()
   }
   function choose(id: string) {
     const next = accounts.find((candidate) => candidate.entraObjectId === id) ?? null
@@ -426,7 +438,12 @@ export function RegisterSocioDialog({
       title="Register existing socio"
       description="For an account already in Soci without a record. Fields left empty can be completed later."
       noun="registration"
-      dirty={account !== null && accounts.length > 1}
+      dirty={
+        account !== null &&
+        (JSON.stringify(details) !== JSON.stringify(prefill(account)) ||
+          admittedOn !== suggestedDate(account) ||
+          number !== "")
+      }
       canSubmit={account !== null}
       submitLabel="Register socio"
       onSubmit={submit}
