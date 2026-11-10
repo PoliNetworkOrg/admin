@@ -125,8 +125,9 @@ export function AdmitSocioDialog({ open, onOpenChange, register }: DialogProps &
       : submitted && localPart === null
         ? "Use lowercase letters and digits, with single dots or hyphens between them."
         : undefined
+  // `errors.accountEmail`: the contract's stricter check, e.g. `a@b.c` has no real top-level domain.
   const emailError = submitted
-    ? !EMAIL_PATTERN.test(recipient)
+    ? !EMAIL_PATTERN.test(recipient) || errors.accountEmail
       ? "Enter a valid email address."
       : sameAddress
         ? "This is the address being created and has no mailbox yet. Use the person's personal email."

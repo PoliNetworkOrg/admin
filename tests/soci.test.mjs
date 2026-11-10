@@ -92,3 +92,13 @@ void test("an account name the backend refuses is reported on the account's fiel
     ["account.lastName"]
   )
 })
+
+void test("an email the contract refuses is reported on the welcome email field", () => {
+  const parsed = admitInputSchema.safeParse({ ...admission, account: { ...admission.account, sendEmailTo: "a@b.c" } })
+  assert.equal(parsed.success, false)
+  // `fieldErrors` maps this path to `accountEmail`, which the Admit dialog shows on the email field.
+  assert.deepEqual(
+    parsed.error.issues.map((issue) => issue.path.join(".")),
+    ["account.sendEmailTo"]
+  )
+})

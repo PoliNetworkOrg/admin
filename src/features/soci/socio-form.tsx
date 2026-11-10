@@ -91,22 +91,29 @@ const FIELD_KEYS = [
   "admittedOn",
   "accountFirstName",
   "accountLastName",
+  "accountEmail",
 ] as const
 type FieldKey = (typeof FIELD_KEYS)[number]
 export type FieldErrors = { [Key in FieldKey]?: string }
 
 /**
  * The first message per field from a failed parse of a contract input: `details.residence.city` becomes `city`, and
- * `account.firstName` becomes `accountFirstName`, apart from the legal name.
+ * `account.firstName` becomes `accountFirstName` (and `account.sendEmailTo` `accountEmail`), apart from the legal name.
  */
 export function fieldErrors(error: z.ZodError | undefined) {
   const errors: FieldErrors = {}
   for (const issue of error?.issues ?? []) {
     const [head, next] = issue.path
     const name =
-      head === "account" && (next === "firstName" || next === "lastName")
-        ? `account${next === "firstName" ? "FirstName" : "LastName"}`
-        : issue.path.find((part) => part !== "details" && part !== "residence")
+      head !== "account"
+        ? issue.path.find((part) => part !== "details" && part !== "residence")
+        : next === "firstName"
+          ? "accountFirstName"
+          : next === "lastName"
+            ? "accountLastName"
+            : next === "sendEmailTo"
+              ? "accountEmail"
+              : "account"
     const key = FIELD_KEYS.find((candidate) => candidate === name)
     if (key && !errors[key]) errors[key] = issue.message.startsWith("Invalid input") ? "Fill this in." : issue.message
   }
