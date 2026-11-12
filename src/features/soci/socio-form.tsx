@@ -225,6 +225,7 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
           value={draft.residence}
           autoComplete="off"
           aria-invalid={errors.residence ? true : undefined}
+          aria-required={required}
           aria-describedby={fieldHintId(`${id}-residence`)}
           onChange={(event) => set("residence")(event.target.value)}
           className={cn("h-9", fieldControl)}
