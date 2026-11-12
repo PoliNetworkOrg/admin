@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
+import { birthDateFor, birthDateOf } from "../src/features/soci/codice-fiscale-birth.ts"
 import { checkCharacter, codiceFiscaleProblem, matchesBirthDate } from "../src/features/soci/codice-fiscale.ts"
 import { isMemberNumber } from "../src/features/soci/member-number.ts"
 import {
@@ -40,6 +41,25 @@ void test("the codice fiscale is checked like the backend: format, omocodia, che
   assert.equal(codiceFiscaleProblem("RSSMRA80A01H501X"), "check")
   assert.equal(codiceFiscaleProblem("RSSMRA80A01H501"), "format")
   assert.equal(codiceFiscaleSchema.parse(" rssmra80a01 h501u "), "RSSMRA80A01H501U")
+})
+
+void test("a valid codice fiscale gives the birth date, in the latest century not after today", () => {
+  const today = "2026-11-12"
+  const code = (first15) => `${first15}${checkCharacter(first15)}`
+  assert.equal(birthDateOf("rssmra80a01h501u", today), "1980-01-01")
+  assert.equal(birthDateOf(code("RSSMRA05M41F205"), today), "2005-08-01")
+  assert.equal(birthDateOf(code("RSSMRA26S30F205"), today), "1926-11-30")
+  assert.equal(birthDateOf(code("RSSMRA26S12F205"), today), "2026-11-12")
+  // 29 February 2001 doesn't exist, 1901 neither; 2000 does.
+  assert.equal(birthDateOf(code("RSSMRA01B29F205"), today), null)
+  assert.equal(birthDateOf(code("RSSMRA00B69F205"), today), "2000-02-29")
+  assert.equal(birthDateOf(code("RSSMRA80A01H50M"), today), "1980-01-01")
+  for (const invalid of ["", "RSSMRA80A01H501", "RSSMRA80A01H501X"]) assert.equal(birthDateOf(invalid, today), null)
+
+  assert.equal(birthDateFor("RSSMRA80A01H501", "", today), "", "an incomplete code leaves the date")
+  assert.equal(birthDateFor("RSSMRA80A01H501U", "", today), "1980-01-01")
+  assert.equal(birthDateFor("RSSMRA80A01H501U", "1999-05-05", today), "1980-01-01", "a wrong date is replaced")
+  assert.equal(birthDateFor("RSSMRA80A01H501U", "1880-01-01", today), "1880-01-01", "a matching date is kept")
 })
 
 void test("admitting needs every detail but the alias and the phone, normalized as the backend stores it", () => {

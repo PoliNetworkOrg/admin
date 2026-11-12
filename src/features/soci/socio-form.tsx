@@ -3,10 +3,11 @@ import type { z } from "zod"
 
 import { DateField, fieldControl, fieldHintId, FormField, InlineAlert } from "@/components/primitives"
 import { Input } from "@/components/ui/input"
-import { formatDay } from "@/features/people/people-format"
+import { formatDay, todayIso } from "@/features/people/people-format"
 import { cn } from "@/lib/utils"
 
 import { codiceFiscaleProblem, matchesBirthDate, normalizeCodiceFiscale } from "./codice-fiscale"
+import { birthDateFor } from "./codice-fiscale-birth"
 import { formatMemberNumber, socioName } from "./soci-format"
 import type { SocioDetails, SocioRow } from "./soci.contract"
 
@@ -140,7 +141,11 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
     !codiceFiscaleProblem(code) &&
     !matchesBirthDate(code, draft.birthDate)
 
-  const text = (key: keyof DetailsDraft, label: string, props: { mono?: boolean; optional?: boolean } = {}) => (
+  const text = (
+    key: keyof DetailsDraft,
+    label: string,
+    props: { mono?: boolean; optional?: boolean; onChange?: (value: string) => void } = {}
+  ) => (
     <FormField label={label} htmlFor={`${id}-${key}`} optional={props.optional} error={errors[key]}>
       <Input
         id={`${id}-${key}`}
@@ -148,7 +153,7 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
         autoComplete="off"
         aria-invalid={errors[key] ? true : undefined}
         aria-describedby={errors[key] ? fieldHintId(`${id}-${key}`) : undefined}
-        onChange={(event) => set(key)(event.target.value)}
+        onChange={(event) => (props.onChange ?? set(key))(event.target.value)}
         className={cn("h-9", props.mono && "font-mono uppercase", fieldControl)}
       />
     </FormField>
@@ -176,7 +181,13 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
           className={cn("h-9", fieldControl)}
         />
       </FormField>
-      {text("codiceFiscale", "Codice fiscale", { mono: true, optional })}
+      {text("codiceFiscale", "Codice fiscale", {
+        mono: true,
+        optional,
+        // A valid code fills in the birth date it encodes, which stays editable.
+        onChange: (value) =>
+          onChange({ ...draft, codiceFiscale: value, birthDate: birthDateFor(value, draft.birthDate, todayIso()) }),
+      })}
       {holders.active ? (
         <InlineAlert tone="danger">
           This codice fiscale belongs to socio {formatMemberNumber(holders.active.number)}, {socioName(holders.active)},
@@ -199,6 +210,7 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
           label="Birth date"
           htmlFor={`${id}-birthDate`}
           optional={optional}
+          hint="Filled in from the codice fiscale."
           error={errors.birthDate ?? (dateMismatch ? "The birth date doesn't match the codice fiscale." : undefined)}
         >
           <DateField
@@ -208,7 +220,7 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
             pastYears={100}
             futureYears={0}
             invalid={!!errors.birthDate || dateMismatch}
-            describedBy={errors.birthDate || dateMismatch ? fieldHintId(`${id}-birthDate`) : undefined}
+            describedBy={fieldHintId(`${id}-birthDate`)}
           />
         </FormField>
         {text("birthPlace", "Birth place", { optional })}
