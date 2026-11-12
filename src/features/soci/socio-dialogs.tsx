@@ -387,9 +387,9 @@ export function RegisterSocioDialog({
   const [errors, setErrors] = useState<FieldErrors>({})
   const fixedNumber = account?.employeeId && isMemberNumber(account.employeeId) ? account.employeeId : null
 
-  // Nothing but the name is known yet, so the country starts empty too.
+  // Nothing but the name is known yet.
   function prefill(next: Unregistered | null): DetailsDraft {
-    return { ...EMPTY_DETAILS, country: "", firstName: next?.givenName ?? "", lastName: next?.surname ?? "" }
+    return { ...EMPTY_DETAILS, firstName: next?.givenName ?? "", lastName: next?.surname ?? "" }
   }
   // The day in Rome, as the hint shows it: the fee year turns on that calendar.
   function suggestedDate(next: Unregistered | null) {

@@ -18,11 +18,8 @@ export type DetailsDraft = {
   codiceFiscale: string
   birthDate: string
   birthPlace: string
-  street: string
-  postalCode: string
-  city: string
-  province: string
-  country: string
+  residence: string
+  phone: string
 }
 
 export const EMPTY_DETAILS: DetailsDraft = {
@@ -32,11 +29,8 @@ export const EMPTY_DETAILS: DetailsDraft = {
   codiceFiscale: "",
   birthDate: "",
   birthPlace: "",
-  street: "",
-  postalCode: "",
-  city: "",
-  province: "",
-  country: "IT",
+  residence: "",
+  phone: "",
 }
 
 export function draftOf(details: SocioDetails): DetailsDraft {
@@ -47,31 +41,14 @@ export function draftOf(details: SocioDetails): DetailsDraft {
     codiceFiscale: details.codiceFiscale ?? "",
     birthDate: details.birthDate ?? "",
     birthPlace: details.birthPlace ?? "",
-    street: details.residence.street ?? "",
-    postalCode: details.residence.postalCode ?? "",
-    city: details.residence.city ?? "",
-    province: details.residence.province ?? "",
-    country: details.residence.country ?? "",
+    residence: details.residence ?? "",
+    phone: details.phone ?? "",
   }
 }
 
-/** The contract's input shape; the schemas trim, upper-case and turn empty strings into `null`. */
+/** The contract's input shape; the schemas trim, normalize and turn empty strings into `null`. */
 export function detailsInput(draft: DetailsDraft) {
-  return {
-    firstName: draft.firstName,
-    lastName: draft.lastName,
-    alias: draft.alias,
-    codiceFiscale: draft.codiceFiscale,
-    birthDate: draft.birthDate,
-    birthPlace: draft.birthPlace,
-    residence: {
-      street: draft.street,
-      postalCode: draft.postalCode,
-      city: draft.city,
-      province: draft.province,
-      country: draft.country,
-    },
-  }
+  return { ...draft }
 }
 
 const FIELD_KEYS = [
@@ -81,11 +58,8 @@ const FIELD_KEYS = [
   "codiceFiscale",
   "birthDate",
   "birthPlace",
-  "street",
-  "postalCode",
-  "city",
-  "province",
-  "country",
+  "residence",
+  "phone",
   "account",
   "number",
   "admittedOn",
@@ -97,7 +71,7 @@ type FieldKey = (typeof FIELD_KEYS)[number]
 export type FieldErrors = { [Key in FieldKey]?: string }
 
 /**
- * The first message per field from a failed parse of a contract input: `details.residence.city` becomes `city`, and
+ * The first message per field from a failed parse of a contract input: `details.residence` becomes `residence`, and
  * `account.firstName` becomes `accountFirstName` (and `account.sendEmailTo` `accountEmail`), apart from the legal name.
  */
 export function fieldErrors(error: z.ZodError | undefined) {
@@ -106,7 +80,7 @@ export function fieldErrors(error: z.ZodError | undefined) {
     const [head, next] = issue.path
     const name =
       head !== "account"
-        ? issue.path.find((part) => part !== "details" && part !== "residence")
+        ? issue.path.find((part) => part !== "details")
         : next === "firstName"
           ? "accountFirstName"
           : next === "lastName"
@@ -146,7 +120,7 @@ type DetailsFieldsProps = {
   draft: DetailsDraft
   onChange: (draft: DetailsDraft) => void
   errors: FieldErrors
-  /** Admission needs everything but the alias; a socio registered afterwards may complete them later. */
+  /** Admission needs everything but the alias and the phone; a socio registered afterwards may complete them later. */
   required: boolean
   /** The register, to warn when the codice fiscale belongs to a former or active socio. */
   register: readonly SocioRow[]
@@ -154,11 +128,10 @@ type DetailsFieldsProps = {
   self?: number
 }
 
-/** The bookkeeping data the association keeps: legal name, alias, codice fiscale, birth and residence. */
+/** The bookkeeping data the association keeps: legal name, alias, codice fiscale, birth, residence and phone. */
 export function DetailsFields({ id, draft, onChange, errors, required, register, self }: DetailsFieldsProps) {
   const set = (key: keyof DetailsDraft) => (value: string) => onChange({ ...draft, [key]: value })
   const optional = !required
-  const italy = draft.country.trim().toUpperCase() === "IT"
   const code = normalizeCodiceFiscale(draft.codiceFiscale)
   const holders = holdersOf(code, register, self)
   const dateMismatch =
@@ -240,52 +213,43 @@ export function DetailsFields({ id, draft, onChange, errors, required, register,
         </FormField>
         {text("birthPlace", "Birth place", { optional })}
       </div>
-      {text("street", "Street and number", { optional })}
-      <div className="grid gap-4 min-[480px]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        {text("postalCode", "Postal code", { optional })}
-        {text("city", "City", { optional })}
-      </div>
-      <div className="grid gap-4 min-[480px]:grid-cols-2">
-        <FormField
-          label="Country"
-          htmlFor={`${id}-country`}
-          optional={optional}
-          hint="Two letters, e.g. IT."
-          error={errors.country}
-        >
-          <Input
-            id={`${id}-country`}
-            value={draft.country}
-            maxLength={2}
-            autoComplete="off"
-            aria-describedby={fieldHintId(`${id}-country`)}
-            onChange={(event) => {
-              const country = event.target.value.toUpperCase()
-              onChange({ ...draft, country, province: country === "IT" ? draft.province : "" })
-            }}
-            className={cn("h-9 font-mono uppercase", fieldControl)}
-          />
-        </FormField>
-        {italy ? (
-          <FormField
-            label="Province"
-            htmlFor={`${id}-province`}
-            optional={optional}
-            hint="Two letters, e.g. MI."
-            error={errors.province}
-          >
-            <Input
-              id={`${id}-province`}
-              value={draft.province}
-              maxLength={2}
-              autoComplete="off"
-              aria-describedby={fieldHintId(`${id}-province`)}
-              onChange={(event) => set("province")(event.target.value.toUpperCase())}
-              className={cn("h-9 font-mono uppercase", fieldControl)}
-            />
-          </FormField>
-        ) : null}
-      </div>
+      <FormField
+        label="Residence"
+        htmlFor={`${id}-residence`}
+        optional={optional}
+        hint="Street, number and comune on one line, e.g. Via Roma 1, Milano (MI)."
+        error={errors.residence}
+      >
+        <Input
+          id={`${id}-residence`}
+          value={draft.residence}
+          autoComplete="off"
+          aria-invalid={errors.residence ? true : undefined}
+          aria-required={required}
+          aria-describedby={fieldHintId(`${id}-residence`)}
+          onChange={(event) => set("residence")(event.target.value)}
+          className={cn("h-9", fieldControl)}
+        />
+      </FormField>
+      <FormField
+        label="Phone"
+        htmlFor={`${id}-phone`}
+        optional
+        hint="International format, e.g. +39 333 123 4567."
+        error={errors.phone}
+      >
+        <Input
+          id={`${id}-phone`}
+          type="tel"
+          inputMode="tel"
+          value={draft.phone}
+          autoComplete="off"
+          aria-invalid={errors.phone ? true : undefined}
+          aria-describedby={fieldHintId(`${id}-phone`)}
+          onChange={(event) => set("phone")(event.target.value)}
+          className={cn("h-9", fieldControl)}
+        />
+      </FormField>
     </>
   )
 }

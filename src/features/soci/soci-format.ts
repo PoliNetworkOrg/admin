@@ -1,6 +1,6 @@
 import type { StatusTone } from "@/components/primitives"
 
-import type { END_REASONS, Residence, SocioRow } from "./soci.contract"
+import type { END_REASONS, SocioRow } from "./soci.contract"
 
 type Tone = { label: string; tone: StatusTone }
 
@@ -42,28 +42,16 @@ export const MISMATCH = {
   still_in_soci: "Ended, but still in the Soci group",
 } satisfies Record<NonNullable<SocioRow["mismatch"]>, string>
 
-/** "Via Bonardi 9, 20133 Milano (MI), IT", or null when nothing is recorded. */
-export function formatResidence(residence: Residence) {
-  const place = [residence.postalCode, residence.city].filter(Boolean).join(" ")
-  const parts = [
-    residence.street,
-    place ? `${place}${residence.province ? ` (${residence.province})` : ""}` : null,
-    residence.country,
-  ]
-  const text = parts.filter(Boolean).join(", ")
-  return text === "" ? null : text
-}
-
 /** The bookkeeping fields still empty on a record registered from Microsoft 365. */
 export function missingDetails(socio: {
   codiceFiscale: string | null
   birthDate: string | null
   birthPlace: string | null
-  residence: Residence
+  residence: string | null
 }) {
   const missing: string[] = []
   if (!socio.codiceFiscale) missing.push("codice fiscale")
   if (!socio.birthDate || !socio.birthPlace) missing.push("birth data")
-  if (!socio.residence.street || !socio.residence.city || !socio.residence.country) missing.push("residence")
+  if (!socio.residence) missing.push("residence")
   return missing
 }

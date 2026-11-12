@@ -22,7 +22,6 @@ import {
   ACCOUNT_STATE,
   END_REASON,
   formatMemberNumber,
-  formatResidence,
   MISMATCH,
   missingDetails,
   socioName,
@@ -61,7 +60,8 @@ export function SocioPage({
     { key: "Codice fiscale", value: value(socio.codiceFiscale, true) },
     { key: "Birth date", value: socio.birthDate ? formatDay(socio.birthDate) : <Unset /> },
     { key: "Birth place", value: value(socio.birthPlace) },
-    { key: "Residence", value: value(formatResidence(socio.residence)) },
+    { key: "Residence", value: value(socio.residence) },
+    { key: "Phone", value: value(socio.phone) },
   ]
   const admission: KeyValueItem[] = [
     { key: "Member number", value: <span className="font-mono">{formatMemberNumber(socio.number)}</span> },

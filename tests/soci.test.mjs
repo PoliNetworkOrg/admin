@@ -17,7 +17,8 @@ const details = {
   codiceFiscale: "rssmra80a01h501u",
   birthDate: "1980-01-01",
   birthPlace: "Roma",
-  residence: { street: "Via Roma 1", postalCode: "20133", city: "Milano", province: "mi", country: "it" },
+  residence: " Via Roma 1, 20133 Milano (MI) ",
+  phone: "",
 }
 const admission = {
   account: { firstName: "Mario", lastName: "Rossi", mailbox: { kind: "standard" }, sendEmailTo: "mario@example.org" },
@@ -41,21 +42,14 @@ void test("the codice fiscale is checked like the backend: format, omocodia, che
   assert.equal(codiceFiscaleSchema.parse(" rssmra80a01 h501u "), "RSSMRA80A01H501U")
 })
 
-void test("admitting needs every detail but the alias, normalized as the backend stores it", () => {
+void test("admitting needs every detail but the alias and the phone, normalized as the backend stores it", () => {
   const parsed = admitInputSchema.parse(admission)
   assert.equal(parsed.details.codiceFiscale, "RSSMRA80A01H501U")
-  assert.deepEqual(parsed.details.residence, {
-    street: "Via Roma 1",
-    postalCode: "20133",
-    city: "Milano",
-    province: "MI",
-    country: "IT",
-  })
+  assert.equal(parsed.details.residence, "Via Roma 1, 20133 Milano (MI)")
   assert.equal(parsed.details.alias, null)
-  for (const missing of ["birthPlace", "codiceFiscale", "birthDate"])
+  assert.equal(parsed.details.phone, null)
+  for (const missing of ["birthPlace", "codiceFiscale", "birthDate", "residence"])
     assert.equal(admitInputSchema.safeParse({ ...admission, details: { ...details, [missing]: "" } }).success, false)
-  const noProvince = { ...details, residence: { ...details.residence, province: "" } }
-  assert.equal(admitInputSchema.safeParse({ ...admission, details: noProvince }).success, false)
   const wrongDate = { ...details, birthDate: "1980-01-02" }
   assert.equal(admitInputSchema.safeParse({ ...admission, details: wrongDate }).success, false)
 })
@@ -68,19 +62,36 @@ void test("registering and editing need only the legal name", () => {
     admittedOn: "2025-03-14",
   })
   assert.equal(registered.details.codiceFiscale, null)
-  assert.equal(registered.details.residence.street, null)
+  assert.equal(registered.details.residence, null)
+  assert.equal(registered.details.phone, null)
   const empty = {
     ...minimal,
     codiceFiscale: "",
     birthDate: "",
     birthPlace: "",
-    residence: { street: "", postalCode: "", city: "", province: "", country: "" },
+    residence: "",
+    phone: "",
   }
   assert.equal(updateInputSchema.safeParse({ number: 41, details: empty, admittedOn: "2025-10-13" }).success, true)
   assert.equal(
     updateInputSchema.safeParse({ number: 41, details: { lastName: "Gallo" }, admittedOn: "2025-10-13" }).success,
     false
   )
+})
+
+void test("the phone is optional, in international format, without spaces or separators", () => {
+  const withPhone = (phone) => admitInputSchema.safeParse({ ...admission, details: { ...details, phone } })
+  assert.equal(withPhone("+39 333 123 4567").data?.details.phone, "+393331234567")
+  assert.equal(withPhone("+44 (20) 7946-0958").data?.details.phone, "+442079460958")
+  for (const invalid of ["333 123 4567", "0039 333 123 4567", "+39 333", "+39 333 abc 4567"]) {
+    const parsed = withPhone(invalid)
+    assert.equal(parsed.success, false, invalid)
+    // `fieldErrors` in socio-form.tsx shows this path on the Phone field.
+    assert.deepEqual(
+      parsed.error.issues.map((issue) => issue.path.join(".")),
+      ["details.phone"]
+    )
+  }
 })
 
 void test("an account name the backend refuses is reported on the account's field, not the legal name", () => {

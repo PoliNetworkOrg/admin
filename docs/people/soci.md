@@ -34,7 +34,8 @@ Owner decisions, 9 November 2026:
 9. **Emails are automatic and always go to the PoliNetwork mailbox.** Every socio has one, since being a socio means
    one's PoliNetwork account is in the Soci group.
 10. **The register holds the bookkeeping data:** legal name, optional alias, codice fiscale, place and date of birth,
-    residence address, admission date and end date with its reason.
+    residence address (one line, as the paper Libro Soci writes it), optional phone, admission date and end date with
+    its reason.
 11. **Admitting a socio moves from Microsoft 365 › Members to People › Soci.** It keeps today's account workflow
     (account, licences, Soci group, welcome email) and collects the bookkeeping data in the same dialog. Changing a
     member number moves too. Microsoft 365 › Members becomes a read-only directory.
@@ -99,7 +100,8 @@ Active ──(Direttivo: resigned / expelled / deceased / other)► Ended ──
     them in emails).
   - `codice_fiscale` (format, check digit and omocodia validated; at most one active record per code), `birth_date`,
     `birth_place` (comune, or city and country).
-  - Residence: street and number, postal code, city, province (Italy only), country.
+  - `residence`: one line, e.g. `Via Roma 1, Milano (MI)`. `phone` (optional): international format, stored without
+    spaces, e.g. `+393331234567`.
   - `admitted_on`; `ended_on`, `end_reason`, `end_note`.
   - Account state: `active` | `pending_deletion` | `deleted`, with `account_deleted_on`.
   - Created and updated by and at.
@@ -178,7 +180,7 @@ Pages:
   activity. Actions: Edit, Change number, Mark as paid, End status (danger, reason and date), Restore.
 - **Admit socio** (lg dialog), in four parts:
   - Account: today's Microsoft 365 create form (name, address format, member number, welcome email address).
-  - Bookkeeping data: everything above, all required except the alias.
+  - Bookkeeping data: everything above, all required except the alias and the phone.
   - Admission date (default today), which records the first fee as paid.
   - A warning when the codice fiscale belongs to a former socio.
 - **Register existing socio**: the same data for an account already in Soci, with its current member number. Personal
@@ -219,8 +221,8 @@ These are created by hand in the production IdP, as the `people:*` ones were. On
 `people:self` to the managed Socio role. `azure:members:create` and `azure:members:write` are deleted once
 `soci.members.admit` and `setNumber` replace them.
 
-The codice fiscale, the birth data and the residence address are visible only with `soci:read`, or to the socio
-themselves.
+The codice fiscale, the birth data, the residence address and the phone are visible only with `soci:read`, or to the
+socio themselves.
 
 ## Starting the register
 

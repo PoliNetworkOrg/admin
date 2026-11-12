@@ -39,8 +39,6 @@ function account(id: string, name: string, employeeId: string | null, created: s
   }
 }
 
-const NO_RESIDENCE = { street: null, postalCode: null, city: null, province: null, country: null }
-
 function record(
   number: number,
   acc: Account,
@@ -60,7 +58,8 @@ function record(
     codiceFiscale: details.codiceFiscale ?? null,
     birthDate: details.birthDate ?? null,
     birthPlace: details.birthPlace ?? null,
-    residence: details.residence ?? NO_RESIDENCE,
+    residence: details.residence ?? null,
+    phone: details.phone ?? null,
     admittedOn,
     endedOn: end?.endedOn ?? null,
     endReason: end?.endReason ?? null,
@@ -75,7 +74,7 @@ function record(
   }
 }
 
-const milano = (street: string) => ({ street, postalCode: "20133", city: "Milano", province: "MI", country: "IT" })
+const milano = (street: string) => `${street}, 20133 Milano (MI)`
 
 /** Deterministic, so the same register comes back after a dev server restart. */
 function build(): State {
@@ -95,6 +94,7 @@ function build(): State {
       birthDate: "1995-09-01",
       birthPlace: "Milano",
       residence: milano("Via Bonardi 9"),
+      phone: "+393331234567",
     }),
     record(4, marco, "2019-11-02", {
       firstName: "Marco Antonio",
@@ -108,7 +108,8 @@ function build(): State {
       codiceFiscale: "CLMSRA99D50L219L",
       birthDate: "1999-04-10",
       birthPlace: "Torino",
-      residence: { street: "Rue de Rivoli 12", postalCode: "75001", city: "Paris", province: null, country: "FR" },
+      residence: "Rue de Rivoli 12, 75001 Paris, France",
+      phone: "+33612345678",
     }),
     // Ended, but still in Soci: a mismatch.
     record(
@@ -301,6 +302,7 @@ export function fakeSociApi(): SociApi {
         "birthDate",
         "birthPlace",
         "residence",
+        "phone",
         "admittedOn",
       ] as const
       const changed = fields.filter((key) => JSON.stringify(next[key]) !== JSON.stringify(r[key]))
