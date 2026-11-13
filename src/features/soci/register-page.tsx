@@ -1,4 +1,5 @@
-import { IdCard, Plus } from "lucide-react"
+import { useServerFn } from "@tanstack/react-start"
+import { IdCard, Pencil, Plus } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -6,20 +7,23 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  IconButton,
   InlineAlert,
+  Unset,
   SegmentedControl,
   type TableSort,
 } from "@/components/primitives"
-import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDay } from "@/features/people/people-format"
-import { useDialogState } from "@/features/people/people-hooks"
+import { errorMessage, useDialog, useDialogState } from "@/features/people/people-hooks"
 import { MonoChip, PersonCell, StateBadge } from "@/features/people/people-ui"
 import { pluralize } from "@/lib/format"
 
-import { END_REASON, formatMemberNumber, MISMATCH, socioName, socioStatus } from "./soci-format"
-import type { SociList, SocioRow, Unregistered } from "./soci.contract"
-import { AdmitSocioDialog, RegisterSocioDialog } from "./socio-dialogs"
+import { END_REASON, FEE_STATUS, formatMemberNumber, MISMATCH, socioName, socioStatus } from "./soci-format"
+import type { SociList, SocioRecord, SocioRow, Unregistered } from "./soci.contract"
+import { getSocio } from "./soci.functions"
+import { AdmitSocioDialog, EditSocioDialog, RegisterSocioDialog } from "./socio-dialogs"
 
 type Scope = "active" | "ended" | "all"
 
@@ -37,6 +41,7 @@ function matchesQuery(socio: SocioRow, query: string) {
     String(socio.number),
     formatMemberNumber(socio.number),
     socio.mailbox,
+    socio.codiceFiscale ?? "",
   ].some((value) => value.toLocaleLowerCase().includes(query))
 }
 
@@ -71,6 +76,11 @@ const columns: DataTableColumn<SocioRow>[] = [
           <MonoChip>{formatMemberNumber(socio.number)}</MonoChip>
           <StateBadge state={socioStatus(socio)} />
           {socio.mismatch ? <StateBadge state={{ label: "Mismatch", tone: "warning" }} /> : null}
+          {socio.fee ? (
+            <StateBadge
+              state={{ ...FEE_STATUS[socio.fee], label: `Fee ${FEE_STATUS[socio.fee].label.toLowerCase()}` }}
+            />
+          ) : null}
         </span>
       </>
     ),
@@ -78,7 +88,7 @@ const columns: DataTableColumn<SocioRow>[] = [
   {
     id: "mailbox",
     label: "Mailbox",
-    width: 264,
+    width: 232,
     priority: 3,
     mobile: "hidden",
     cell: (socio) => <span className="block truncate font-mono text-[13px]">{socio.mailbox}</span>,
@@ -91,6 +101,29 @@ const columns: DataTableColumn<SocioRow>[] = [
     priority: 2,
     mobile: "hidden",
     cell: (socio) => <span className="whitespace-nowrap">{formatDay(socio.admittedOn)}</span>,
+  },
+  {
+    id: "fee",
+    label: "This year's fee",
+    width: 120,
+    priority: 1,
+    mobile: "hidden",
+    cell: (socio) => (socio.fee ? <StateBadge state={FEE_STATUS[socio.fee]} /> : <Unset />),
+  },
+  {
+    id: "codiceFiscale",
+    label: "Codice fiscale",
+    width: 140,
+    priority: 4,
+    mobile: "hidden",
+    cell: (socio) =>
+      socio.codiceFiscale ? (
+        <span className="block truncate font-mono text-[11px] tracking-tight text-(--pn-fg-muted)">
+          {socio.codiceFiscale}
+        </span>
+      ) : (
+        <Unset />
+      ),
   },
   {
     id: "status",
@@ -123,6 +156,10 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
   const canWrite = useCan("soci:write")
   const admit = useDialogState()
   const registerDialog = useDialogState()
+  const edit = useDialog<SocioRecord>()
+  const loadSocio = useServerFn(getSocio)
+  /** The row whose record is loading for Edit. */
+  const [loadingEdit, setLoadingEdit] = useState<number | null>(null)
   const [scope, setScope] = useState<Scope>("active")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
@@ -141,6 +178,19 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
   const stillInSoci = members.filter((socio) => socio.mismatch === "still_in_soci")
   const list = (soci: SocioRow[]) =>
     soci.map((socio) => `${formatMemberNumber(socio.number)} ${socioName(socio)}`).join(", ")
+
+  // The row carries only part of the record: Edit loads the rest first.
+  async function editSocio(socio: SocioRow) {
+    setLoadingEdit(socio.number)
+    try {
+      edit.show(await loadSocio({ data: { number: socio.number } }))
+    } catch (caught) {
+      console.error(caught)
+      appToast.error(errorMessage(caught, `Couldn't load ${socioName(socio)}. Try again.`))
+    } finally {
+      setLoadingEdit(null)
+    }
+  }
 
   const admitButton = (variant: "default" | "outline") => (
     <Button size="sm" variant={variant} className={buttonMotion} onClick={admit.show}>
@@ -224,6 +274,21 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
             getRowId={(socio) => socio.number}
             rowHref={(socio) => `/dashboard/people/soci/${socio.number}`}
             rowLabel={(socio) => `${formatMemberNumber(socio.number)} ${socioName(socio)}`}
+            actions={
+              canWrite
+                ? (socio) => (
+                    <IconButton
+                      label="Edit"
+                      ariaLabel={`Edit ${socioName(socio)}`}
+                      icon={Pencil}
+                      pending={loadingEdit === socio.number}
+                      disabled={loadingEdit !== null}
+                      onClick={() => void editSocio(socio)}
+                    />
+                  )
+                : undefined
+            }
+            actionsWidth={64}
             sort={sort}
             onSort={(next) => {
               setSort(next)
@@ -241,7 +306,11 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
             }}
             empty={
               deferredQuery ? (
-                <EmptyState icon={IdCard} title="No soci match" text="Try another name, number or mailbox." />
+                <EmptyState
+                  icon={IdCard}
+                  title="No soci match"
+                  text="Try another name, number, mailbox or codice fiscale."
+                />
               ) : (
                 <EmptyState
                   icon={IdCard}
@@ -263,6 +332,15 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
           key={`admit-${admit.key}`}
           open={admit.open}
           onOpenChange={admit.onOpenChange}
+          register={members}
+        />
+      ) : null}
+      {canWrite && edit.target ? (
+        <EditSocioDialog
+          key={`edit-${edit.key}`}
+          open={edit.open}
+          onOpenChange={edit.onOpenChange}
+          socio={edit.target}
           register={members}
         />
       ) : null}

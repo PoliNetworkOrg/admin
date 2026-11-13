@@ -66,6 +66,8 @@ function record(
     endNote: end?.endNote ?? null,
     accountState: end?.accountState ?? "active",
     accountDeletedOn: end?.accountDeletedOn ?? null,
+    // Admission records the fee year as paid; an ended socio has no fee this year.
+    fee: end ? null : "paid",
     createdBy: AGENT,
     createdAt: at,
     updatedBy: AGENT,
@@ -144,6 +146,15 @@ function build(): State {
     // Registered from Microsoft 365, with personal data still to complete.
     record(41, matteo, "2025-10-13", {}),
   ]
+  // One of each fee status this year.
+  const fees = new Map<number, Stored["fee"]>([
+    [4, "uploaded"],
+    [7, "due"],
+    [23, "due"],
+    [34, "exempt"],
+    [41, null],
+  ])
+  for (const r of records) if (fees.has(r.number)) r.fee = fees.get(r.number) ?? null
   const accounts = [giulia, marco, sara, luca, elena, anna, matteo, chiara, federico]
   // Elena is missing (active record, not in Soci); Chiara and Federico have no record yet.
   const soci = new Set(
@@ -177,6 +188,7 @@ function row(s: State, r: Stored): SocioRow {
     accountState: r.accountState,
     inSoci,
     mismatch: !r.endedOn && !inSoci ? "not_in_soci" : r.endedOn && inSoci ? "still_in_soci" : null,
+    fee: r.fee,
   }
 }
 
@@ -284,6 +296,8 @@ export function fakeSociApi(): SociApi {
       const r = record(number, acc, input.admittedOn, input.details)
       r.createdAt = r.updatedAt = now()
       r.activity = [{ actor: AGENT, text: `Registered from Microsoft 365 with number ${number}`, at: now() }]
+      // No fee is recorded when registering: the fee year opens with the others.
+      r.fee = null
       s.records.push(r)
       s.held.set(number, acc.id)
       return { number }

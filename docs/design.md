@@ -272,7 +272,7 @@ because they animate height; `skeleton` by the primitives' skeletons.
 **Tables (`DataTable`).** 12px radius surface, sentence-case 12px headers (42px, sticky), 14px cells in 52px rows, a
 visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
 hover or focus. The "Actions" header is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
-`Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
+`Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`, which also opens the row on click unless `onRowClick` says otherwise; clicks on links, buttons and fields inside the row stay theirs; return `null` for rows
 that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
 readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
 a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`): they show what fits without cutting a chip to a stub, the rest behind "+n". Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no

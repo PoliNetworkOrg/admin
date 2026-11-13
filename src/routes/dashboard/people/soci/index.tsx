@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard/people/soci/")({
     <>
       <PageBar />
       <PageContent>
-        <TableSkeleton columns={5} label="Loading the register…" />
+        <TableSkeleton columns={7} label="Loading the register…" />
       </PageContent>
     </>
   ),

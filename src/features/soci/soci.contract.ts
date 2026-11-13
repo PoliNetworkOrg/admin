@@ -26,6 +26,8 @@ const mailboxSchema = z.discriminatedUnion("kind", [
 export const END_REASONS = ["lapsed", "resigned", "expelled", "deceased", "other"] as const
 /** The Microsoft 365 account behind the record. */
 export const ACCOUNT_STATES = ["active", "pending_deletion", "deleted"] as const
+/** A fee year's status: `uploaded` is a transfer receipt waiting for review. */
+export const FEE_STATUSES = ["due", "uploaded", "paid", "exempt"] as const
 
 export const memberNumberSchema = z.number().int().positive().max(999_999)
 
@@ -94,6 +96,8 @@ export const socioRowSchema = z.object({
    * whose account still is. `null` when they agree, or when Microsoft 365 couldn't be read.
    */
   mismatch: z.enum(["not_in_soci", "still_in_soci"]).nullable(),
+  /** This fee year's status; `null` when no fee has been opened for the socio. */
+  fee: z.enum(FEE_STATUSES).nullable(),
 })
 export type SocioRow = z.infer<typeof socioRowSchema>
 
