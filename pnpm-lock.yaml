@@ -32,8 +32,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@polinetwork/backend':
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^9.3.0
+        version: 9.3.0
       '@t3-oss/env-core':
         specifier: ^0.13.10
         version: 0.13.11(typescript@6.0.3)(zod@4.3.5)
@@ -1046,8 +1046,8 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@polinetwork/backend@4.0.0':
-    resolution: {integrity: sha512-hKvjzwMMm8qZJojEhIGOA9sHg29xlw2Tu/XH2Wlq9xdkyucEFHp5QNLzGWccjzjHd8fja4qF20OQJppaFrEVtA==}
+  '@polinetwork/backend@9.3.0':
+    resolution: {integrity: sha512-07NF/p0w/5JgIWbPDD8Gvv9lzFdrBN0h4IizcLfLK0DZDjeMBw1aSHiyyQ2QzOW732rmSj7E3l8jPBumJPmZqw==}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -5968,7 +5968,7 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@polinetwork/backend@4.0.0': {}
+  '@polinetwork/backend@9.3.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 
