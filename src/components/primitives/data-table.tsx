@@ -1,3 +1,4 @@
+import { useRouter } from "@tanstack/react-router"
 import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react"
 import { type KeyboardEvent, type MouseEvent, type ReactNode, useLayoutEffect, useRef, useState } from "react"
 
@@ -59,6 +60,7 @@ type DataTableProps<T> = {
   getRowId: (row: T) => string | number
   sort?: TableSort
   onSort?: (sort: TableSort) => void
+  /** Opens the row. Defaults to navigating to `rowHref`, so a `rowHref` alone makes the row clickable. */
   onRowClick?: (row: T) => void
   /** Name used in the row's "Open {name}" label. */
   rowLabel?: (row: T) => string
@@ -160,6 +162,21 @@ function isPlainClick(event: MouseEvent) {
 }
 
 /**
+ * A click that belongs to a control inside the row (a link, a button, a field) rather than to the row itself. The
+ * first cell's own link is the row's, so it opens the row.
+ */
+function isControlClick(event: MouseEvent<HTMLTableRowElement>) {
+  if (!(event.target instanceof Element)) return false
+  const control = event.target.closest("a, button, input, select, textarea, label, [role='button'], [role='menuitem']")
+  return control !== null && event.currentTarget.contains(control) && !control.hasAttribute("data-row-link")
+}
+
+/** Text the user just selected by dragging across the row: releasing the mouse shouldn't open it. */
+function isSelectingText() {
+  return (globalThis.getSelection?.()?.toString() ?? "") !== ""
+}
+
+/**
  * Whether the table fits its container. While it does, the container clips instead of scrolling: a scroll container
  * would hold the sticky header, which then never sticks to the page's scroll area. A table wider than its container
  * scrolls sideways instead, and its header scrolls away with it.
@@ -208,6 +225,7 @@ export function DataTable<T>({
   compactMobile = false,
 }: DataTableProps<T>) {
   const { tableRef, fits } = useTableFits()
+  const router = useRouter()
   const hasActions = actions !== undefined
   const cellCount = columns.length + (hasActions ? 1 : 0)
   const hideClasses = columnHideClasses(columns, hasActions ? actionsWidth : 0)
@@ -225,11 +243,17 @@ export function DataTable<T>({
     onSort({ column, direction })
   }
 
+  function open(row: T) {
+    if (onRowClick) return onRowClick(row)
+    const href = rowHref?.(row)
+    if (href != null) router.navigate({ href }).catch((error) => console.error(error))
+  }
+
   function openRow(event: KeyboardEvent<HTMLTableRowElement>, row: T) {
     if (event.target !== event.currentTarget) return
     if (event.key !== "Enter" && event.key !== " ") return
     event.preventDefault()
-    onRowClick?.(row)
+    open(row)
   }
 
   function renderFirstCell(href: string | null | undefined, content: ReactNode) {
@@ -238,6 +262,7 @@ export function DataTable<T>({
       <a
         href={href}
         tabIndex={-1}
+        data-row-link
         onClick={(event) => {
           if (isPlainClick(event)) event.preventDefault()
         }}
@@ -288,7 +313,7 @@ export function DataTable<T>({
       const id = getRowId(row)
       const extra = rowProps?.(row)
       const href = rowHref?.(row)
-      const interactive = onRowClick !== undefined && (rowHref === undefined || href != null)
+      const interactive = rowHref === undefined ? onRowClick !== undefined : href != null
       return (
         <TableRow
           key={id}
@@ -299,7 +324,7 @@ export function DataTable<T>({
           onClick={
             interactive
               ? (event) => {
-                  if (isPlainClick(event)) onRowClick(row)
+                  if (isPlainClick(event) && !isControlClick(event) && !isSelectingText()) open(row)
                 }
               : undefined
           }
