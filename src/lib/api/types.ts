@@ -33,3 +33,9 @@ export type EsignDriveListing = ApiOutput["esign"]["drive"]["list"]
 export type EsignDriveItem = EsignDriveListing["items"][number]
 export type EsignConfig = ApiOutput["esign"]["config"]
 export type EsignDrive = EsignConfig["drives"][number]
+
+export type AuditEventPage = ApiOutput["audit"]["list"]
+export type AuditEvent = AuditEventPage["events"][number]
+export type AuditArea = NonNullable<ApiInput["audit"]["list"]["area"]>
+export type AuditOutcome = NonNullable<ApiInput["audit"]["list"]["outcome"]>
+export type AuditJson = AuditEvent["input"]
