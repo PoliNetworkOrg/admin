@@ -1,6 +1,6 @@
 import type { StatusTone } from "@/components/primitives"
 
-import type { END_REASONS, SocioRow } from "./soci.contract"
+import type { END_REASONS, FEE_STATUSES, SocioRow } from "./soci.contract"
 
 type Tone = { label: string; tone: StatusTone }
 
@@ -36,6 +36,13 @@ export const ACCOUNT_STATE = {
   pending_deletion: { label: "Pending deletion", tone: "warning" },
   deleted: { label: "Deleted", tone: "neutral" },
 } satisfies Record<SocioRow["accountState"], Tone>
+
+export const FEE_STATUS = {
+  due: { label: "Due", tone: "warning" },
+  uploaded: { label: "To review", tone: "brand" },
+  paid: { label: "Paid", tone: "success" },
+  exempt: { label: "Exempt", tone: "neutral" },
+} satisfies Record<(typeof FEE_STATUSES)[number], Tone>
 
 export const MISMATCH = {
   not_in_soci: "Active, but not in the Soci group",

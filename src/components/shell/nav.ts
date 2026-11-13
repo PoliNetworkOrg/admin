@@ -232,7 +232,7 @@ const people: Service = {
       path: "/dashboard/people/soci",
       permission: "soci:read",
       group: "Soci",
-      searchPlaceholder: "Search by name, number or mailbox…",
+      searchPlaceholder: "Search by name, number, mailbox or CF…",
     },
     // Receipts is an unconnected mockup, to be replaced by Fees (Phase 2, #144).
     {
