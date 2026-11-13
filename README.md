@@ -77,6 +77,23 @@ rerun `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Until that u
 expected to report the missing Freshman contract. No declaration patches or type-error suppression directives are used.
 The running backend must also include the Freshman router and its migration before using this page.
 
+## Website documents
+
+Web › Documents manages the categories and documents shown at `/documents` on the website. Create a category,
+add a document, then upload a dated PDF version (up to 10 MB). Documents without versions stay in the dashboard
+until their first upload. Each document keeps its version history; the greatest date is current, with the most
+recent upload breaking ties. Deleting the current version restores the next one, and deleting the only version
+hides the document from the website. Only empty categories can be deleted.
+
+Categories and documents can be dragged into their public order. An outdated list is rejected without overwriting
+other edits. Reads require `admin:access`; every mutation and its controls require `web:content:write`.
+
+This page depends on [backend #132](https://github.com/PoliNetworkOrg/backend/pull/132), its documents migration,
+and a published `@polinetwork/backend` package exposing `web.documents`. Until that release, `^4.0.0` does not provide
+the required types. Verification against the local package succeeds; update the dependency and lockfile after
+publication and rerun the normal checks before merging. The production catalog starts empty; upload real documents
+from this dashboard.
+
 ## Production and cutover
 
 `pnpm build` writes `.output/`; `pnpm start` runs it. Main-branch CI publishes `ghcr.io/polinetworkorg/admin:latest`.

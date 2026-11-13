@@ -6,6 +6,7 @@ import {
   Cloud,
   Crown,
   FilePenLine,
+  FileText,
   Files,
   Flag,
   FolderKanban,
@@ -127,6 +128,7 @@ export type PageMatch =
   | { kind: "web-projects" }
   | { kind: "web-associations" }
   | { kind: "web-freshman" }
+  | { kind: "web-documents" }
   | { kind: "web-faqs" }
   | { kind: "web-labels" }
   | { kind: "web-categories" }
@@ -346,6 +348,7 @@ const web: Service = {
       searchPlaceholder: "Search associations…",
     },
     { id: "freshman", title: "Freshman", icon: BookOpen, path: "/dashboard/web/freshman" },
+    { id: "documents", title: "Documents", icon: FileText, path: "/dashboard/web/documents" },
     {
       id: "faqs",
       title: "FAQs",
@@ -538,6 +541,7 @@ export function matchPath(pathname: string): PageMatch {
       if (second === "associations") return { kind: "web-associations" }
       if (second === "freshman") return { kind: "web-freshman" }
       if (second === "guides") return { kind: "web-freshman" }
+      if (second === "documents") return { kind: "web-documents" }
       if (second === "faqs") return { kind: "web-faqs" }
       if (second === "group-labels") return { kind: "web-labels" }
       if (second === "groups-by-label") return { kind: "web-categories" }
@@ -601,6 +605,7 @@ export function serviceFor(match: PageMatch): Service {
     case "web-projects":
     case "web-associations":
     case "web-freshman":
+    case "web-documents":
     case "web-faqs":
     case "web-labels":
     case "web-categories":
@@ -670,6 +675,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(web, "associations")
     case "web-freshman":
       return section(web, "freshman")
+    case "web-documents":
+      return section(web, "documents")
     case "web-faqs":
       return section(web, "faqs")
     case "web-labels":
