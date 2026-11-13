@@ -1,0 +1,15 @@
+# Local development Redis for dashboard sessions. `docker compose up -d --wait` starts it.
+# The dashboard needs its own Redis, never the backend's, so this one listens on its own port (56380), on localhost
+# only. See CONTRIBUTING.md for the matching `.env`.
+name: polinetwork-admin
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:56380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
