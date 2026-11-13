@@ -84,17 +84,17 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
   const reorderDocumentsFn = useServerFn(reorderDocuments)
   const deleteVersionFn = useServerFn(deleteDocumentVersion)
 
-  // The order shown while a reorder is saving; cleared (back to the loader data) once it settles.
-  const [optimistic, setOptimistic] = useState<Order | null>(null)
-  const reorderRequest = useRef(0)
+  // The order shown for each scope while its reorder is saving; cleared (back to the loader data) once it settles.
+  const [optimistic, setOptimistic] = useState<ReadonlyMap<Order["scope"], number[]>>(new Map())
+  // The latest request per scope: a newer reorder of the same list supersedes it, one of another list doesn't.
+  const reorderRequest = useRef(new Map<Order["scope"], number>())
+  const reorderCount = useRef(0)
   const reorderQueue = useRef<Promise<unknown>>(Promise.resolve())
 
-  const categories = inOrder(loaded, optimistic?.scope === "categories" ? optimistic.ids : undefined)
+  const categories = inOrder(loaded, optimistic.get("categories"))
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const category = categories.find((item) => item.id === selectedId) ?? categories[0] ?? null
-  const documents = category
-    ? inOrder(category.documents, optimistic?.scope === category.id ? optimistic.ids : undefined)
-    : []
+  const documents = category ? inOrder(category.documents, optimistic.get(category.id)) : []
   const [openIds, setOpenIds] = useState<number[]>([])
   const documentFocus = useFocusAfterRemoval<HTMLDivElement>("[data-slot=accordion-item]")
 
@@ -142,9 +142,10 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
 
   /** Reorders run one at a time, in the order they were made; only the latest one clears or reverts the order shown. */
   function reorder(scope: Order["scope"], ids: number[]) {
-    const request = reorderRequest.current + 1
-    reorderRequest.current = request
-    flushSync(() => setOptimistic({ scope, ids }))
+    reorderCount.current += 1
+    const request = reorderCount.current
+    reorderRequest.current.set(scope, request)
+    flushSync(() => setOptimistic((current) => new Map(current).set(scope, ids)))
     const operation = reorderQueue.current.then(() =>
       scope === "categories"
         ? reorderCategoriesFn({ data: { ids } })
@@ -160,8 +161,8 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
       await operation
     } catch (error) {
       console.error(error)
-      if (reorderRequest.current !== request) return
-      setOptimistic(null)
+      if (reorderRequest.current.get(scope) !== request) return
+      clearOptimistic(scope)
       appToast.error(
         documentsErrorMessage(
           error,
@@ -172,9 +173,17 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
       void refresh(false)
       return
     }
-    if (reorderRequest.current !== request) return
+    if (reorderRequest.current.get(scope) !== request) return
     await refresh()
-    if (reorderRequest.current === request) setOptimistic(null)
+    if (reorderRequest.current.get(scope) === request) clearOptimistic(scope)
+  }
+
+  function clearOptimistic(scope: Order["scope"]) {
+    setOptimistic((current) => {
+      const next = new Map(current)
+      next.delete(scope)
+      return next
+    })
   }
 
   const addDocumentButton =
@@ -248,7 +257,10 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
                 group={`documents-${category.id}`}
                 canWrite={canWrite}
                 onUpload={() => openVersionDialog(item)}
-                onEdit={() => openDocumentDialog(item)}
+                onEdit={(trigger) => {
+                  documentFocus.capture(trigger)
+                  openDocumentDialog(item)
+                }}
                 onDelete={(trigger) => {
                   documentFocus.capture(trigger)
                   setDeletingDocument(item)
@@ -357,6 +369,7 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
               open={documentDialog.open}
               onOpenChange={(open) => setDocumentDialog((current) => ({ ...current, open }))}
               document={documentDialog.document}
+              finalFocus={documentDialog.document ? documentFocus.target : undefined}
               categoryId={category.id}
               categories={categories}
               onSaved={async (saved) => {
@@ -422,7 +435,9 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
         finalFocus={documentFocus.target}
         description={
           deletingDocument
-            ? `${deletingDocument.title} and ${deletingDocument.versions.length === 1 ? "its only version" : `all ${pluralize(deletingDocument.versions.length, "version")}`} are deleted with their PDFs, and its link on the website stops working. This cannot be undone.`
+            ? deletingDocument.versions.length === 0
+              ? `${deletingDocument.title} is deleted. It has no versions, so it isn't on the website. This cannot be undone.`
+              : `${deletingDocument.title} and ${deletingDocument.versions.length === 1 ? "its only version" : `all ${pluralize(deletingDocument.versions.length, "version")}`} are deleted with their PDFs, and its link on the website stops working. This cannot be undone.`
             : ""
         }
         confirmLabel="Delete document"
@@ -530,42 +545,71 @@ type CategoryButtonProps = {
   onSelect: () => void
 }
 
-function CategoryButton({ category, index, current, sortable, onSelect }: CategoryButtonProps) {
+type SortableRefs = {
+  itemRef: (element: Element | null) => void
+  handleRef: (element: Element | null) => void
+  lifted: boolean
+}
+
+/** Read-only users get a plain button: dnd-kit marks every registered item as a disabled drag source otherwise. */
+function CategoryButton(props: CategoryButtonProps) {
+  return props.sortable ? <SortableCategoryButton {...props} /> : <CategoryPill {...props} />
+}
+
+function SortableCategoryButton(props: CategoryButtonProps) {
   const reduceMotion = useReducedMotion()
-  // A pointer drags after 5px (a click still selects), touch after a 250ms press, the keyboard with Space/Enter.
-  const { ref, isDragging, isDropping } = useSortable({
-    id: category.id,
-    index,
+  // Only the grip drags (a pointer after 5px, touch after a 250ms press, the keyboard with Space/Enter), so the
+  // category button keeps selecting with Enter/Space.
+  const { ref, handleRef, isDragging, isDropping } = useSortable({
+    id: props.category.id,
+    index: props.index,
     group: CATEGORY_GROUP,
-    disabled: !sortable,
     transition: reduceMotion ? null : SORT_TRANSITION,
   })
+  return <CategoryPill {...props} sortableRefs={{ itemRef: ref, handleRef, lifted: isDragging || isDropping }} />
+}
+
+function CategoryPill({
+  category,
+  current,
+  onSelect,
+  sortableRefs,
+}: CategoryButtonProps & { sortableRefs?: SortableRefs }) {
   return (
-    <button
-      ref={ref}
-      type="button"
-      aria-current={current ? "true" : undefined}
-      aria-roledescription={sortable ? "sortable category" : undefined}
-      onClick={onSelect}
+    <div
+      ref={sortableRefs?.itemRef}
       className={cn(
-        "group/cat relative flex h-9 shrink-0 items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:w-full min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-(--pn-hover)",
-        current &&
-          "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-(--pn-line-strong) max-[1099px]:bg-(--pn-muted) max-[1099px]:text-(--pn-fg)",
-        sortable && "cursor-grab select-none active:cursor-grabbing",
-        (isDragging || isDropping) && "z-10 bg-(--pn-surface) shadow-(--pn-shadow-float)"
+        "group/cat relative flex shrink-0 rounded-full min-[1100px]:w-full min-[1100px]:rounded-[9px]",
+        sortableRefs?.lifted && "z-10 bg-(--pn-surface) shadow-(--pn-shadow-float)"
       )}
     >
-      {sortable ? (
-        <GripVertical
-          aria-hidden
-          className="-ml-1 size-4 shrink-0 text-(--pn-fg-subtle) group-hover/cat:text-(--pn-fg-muted) max-[1099px]:hidden"
-        />
+      {sortableRefs ? (
+        <button
+          ref={sortableRefs.handleRef}
+          type="button"
+          aria-label={`Reorder ${category.title}`}
+          className="absolute inset-y-0 left-0 z-1 flex w-8 cursor-grab items-center justify-center rounded-l-full text-(--pn-fg-subtle) outline-offset-[-2px] select-none group-hover/cat:text-(--pn-fg-muted) active:cursor-grabbing min-[1100px]:rounded-l-[9px]"
+        >
+          <GripVertical aria-hidden className="size-4" />
+        </button>
       ) : null}
-      <span className="min-w-0 truncate">{category.title}</span>
-      <span className="ml-auto font-mono text-xs font-normal text-(--pn-fg-muted) tabular-nums max-[1099px]:ml-1">
-        {formatNumber(category.documents.length)}
-      </span>
-    </button>
+      <button
+        type="button"
+        aria-current={current ? "true" : undefined}
+        onClick={onSelect}
+        className={cn(
+          "relative flex h-9 w-full items-center gap-2.5 rounded-full border border-(--pn-line) bg-(--pn-surface) px-3 text-[14px] font-medium whitespace-nowrap text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:text-(--pn-fg) min-[1100px]:h-11 min-[1100px]:rounded-[9px] min-[1100px]:border-0 min-[1100px]:bg-transparent min-[1100px]:hover:bg-(--pn-hover)",
+          current &&
+            "text-(--pn-fg) min-[1100px]:bg-(--pn-muted) min-[1100px]:shadow-[inset_0_0_0_1px_var(--pn-line-strong)] max-[1099px]:border-(--pn-line-strong) max-[1099px]:bg-(--pn-muted) max-[1099px]:text-(--pn-fg)",
+          sortableRefs && "pl-8"
+        )}
+      >
+        <span className="min-w-0 truncate">{category.title}</span>
+        <span className="ml-auto font-mono text-xs font-normal text-(--pn-fg-muted) tabular-nums max-[1099px]:ml-1">
+          {formatNumber(category.documents.length)}
+        </span>
+      </button>
+    </div>
   )
 }
 
@@ -575,31 +619,37 @@ type DocumentRowProps = {
   group: string
   canWrite: boolean
   onUpload: () => void
-  onEdit: () => void
+  onEdit: (trigger: HTMLElement) => void
   onDelete: (trigger: HTMLElement) => void
   onDeleteVersion: (version: DocumentVersion, trigger: HTMLElement) => void
 }
 
 /** One document: title, public slug and current version; opens to its description and version history. */
-function DocumentRow({
+function DocumentRow(props: DocumentRowProps) {
+  return props.canWrite ? <SortableDocumentRow {...props} /> : <DocumentRowView {...props} />
+}
+
+function SortableDocumentRow(props: DocumentRowProps) {
+  const reduceMotion = useReducedMotion()
+  // Only the grip drags, so the accordion trigger, the actions and the open panel keep their own keys and clicks.
+  const { ref, handleRef, isDragging, isDropping } = useSortable({
+    id: props.document.id,
+    index: props.index,
+    group: props.group,
+    transition: reduceMotion ? null : SORT_TRANSITION,
+  })
+  return <DocumentRowView {...props} sortableRefs={{ itemRef: ref, handleRef, lifted: isDragging || isDropping }} />
+}
+
+function DocumentRowView({
   document,
-  index,
-  group,
   canWrite,
   onUpload,
   onEdit,
   onDelete,
   onDeleteVersion,
-}: DocumentRowProps) {
-  const reduceMotion = useReducedMotion()
-  // The header is the handle, so the open panel's text and links never start a drag.
-  const { ref, handleRef, isDragging, isDropping } = useSortable({
-    id: document.id,
-    index,
-    group,
-    disabled: !canWrite,
-    transition: reduceMotion ? null : SORT_TRANSITION,
-  })
+  sortableRefs,
+}: DocumentRowProps & { sortableRefs?: SortableRefs }) {
   const current = document.versions[0]
 
   const columns: DataTableColumn<DocumentVersion>[] = [
@@ -645,23 +695,23 @@ function DocumentRow({
 
   return (
     <AccordionItem
-      ref={ref}
+      ref={sortableRefs?.itemRef}
       value={document.id}
-      aria-roledescription={canWrite ? "sortable document" : undefined}
       className={cn(
         "relative border-(--pn-line) bg-(--pn-surface) transition-[background-color] duration-120 pointer-fine:has-[>h3:hover]:bg-(--pn-hover)",
-        (isDragging || isDropping) && "z-10 shadow-(--pn-shadow-float)"
+        sortableRefs?.lifted && "z-10 shadow-(--pn-shadow-float)"
       )}
     >
-      <AccordionPrimitive.Header
-        ref={handleRef}
-        className={cn(
-          "flex min-h-14 items-center gap-3 pr-3 pl-5",
-          canWrite && "cursor-grab select-none active:cursor-grabbing"
-        )}
-      >
-        {canWrite ? (
-          <GripVertical aria-hidden className="-ml-3 size-4 shrink-0 text-(--pn-fg-subtle) max-shell:hidden" />
+      <AccordionPrimitive.Header className="flex min-h-14 items-center gap-3 pr-3 pl-5">
+        {sortableRefs ? (
+          <button
+            ref={sortableRefs.handleRef}
+            type="button"
+            aria-label={`Reorder ${document.title}`}
+            className="-my-2 -mr-2 -ml-4 flex size-8 shrink-0 cursor-grab items-center justify-center rounded-(--pn-r-2) text-(--pn-fg-subtle) select-none hover:text-(--pn-fg-muted) active:cursor-grabbing"
+          >
+            <GripVertical aria-hidden className="size-4" />
+          </button>
         ) : null}
         <AccordionPrimitive.Trigger className="group/trigger flex min-w-0 flex-1 items-center gap-3 self-stretch py-3 text-left outline-offset-[-2px]">
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -702,7 +752,12 @@ function DocumentRow({
               icon={Upload}
               onClick={onUpload}
             />
-            <IconButton label="Edit document" ariaLabel={`Edit ${document.title}`} icon={Pencil} onClick={onEdit} />
+            <IconButton
+              label="Edit document"
+              ariaLabel={`Edit ${document.title}`}
+              icon={Pencil}
+              onClick={(event) => onEdit(event.currentTarget)}
+            />
             <IconButton
               label="Delete document"
               ariaLabel={`Delete ${document.title}`}

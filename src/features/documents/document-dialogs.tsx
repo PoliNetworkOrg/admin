@@ -219,10 +219,20 @@ type DocumentDialogProps = {
   categories: DocumentCategory[]
   /** Reloads the route; runs before the dialog closes, with the saved document's id and category. */
   onSaved: (saved: { id: number; categoryId: number }) => Promise<void>
+  /** Where focus goes on close, e.g. when moving the document unmounted the button that opened the dialog. */
+  finalFocus?: () => HTMLElement | null
 }
 
 /** "Add document" / "Edit document": category, title, slug and description. Versions are uploaded separately. */
-export function DocumentDialog({ open, onOpenChange, document, categoryId, categories, onSaved }: DocumentDialogProps) {
+export function DocumentDialog({
+  open,
+  onOpenChange,
+  document,
+  categoryId,
+  categories,
+  onSaved,
+  finalFocus,
+}: DocumentDialogProps) {
   const createFn = useServerFn(createDocument)
   const updateFn = useServerFn(updateDocument)
   const prefix = useId()
@@ -281,6 +291,7 @@ export function DocumentDialog({ open, onOpenChange, document, categoryId, categ
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
+      finalFocus={finalFocus}
       title={document ? "Edit document" : "Add document"}
       description={
         document
@@ -377,7 +388,14 @@ export function DocumentVersionDialog({ open, onOpenChange, document, onUploaded
   async function submit() {
     const errors = validateVersion(version, date, file, existing)
     setShown(errors)
-    if (errors.version || errors.date || errors.file || !file) return
+    if (errors.version || errors.date || errors.file || !file) {
+      const first = errors.version ? versionId : errors.date ? dateId : fileId
+      const field = window.document.getElementById(first)
+      // The file input is hidden: focus the button that opens it
+      const target = field instanceof HTMLInputElement && field.type === "file" ? field.nextElementSibling : field
+      if (target instanceof HTMLElement) target.focus()
+      return
+    }
     const formData = new FormData()
     formData.set("documentId", String(document.id))
     formData.set("version", version.trim())
@@ -451,6 +469,7 @@ export function DocumentVersionDialog({ open, onOpenChange, document, onUploaded
           accept="application/pdf"
           label="Choose PDF"
           invalid={Boolean(shown.file)}
+          describedBy={fieldHintId(fileId)}
           onChange={(next) => {
             setFile(next)
             revalidate("file", { file: next })

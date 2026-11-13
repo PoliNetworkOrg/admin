@@ -16,6 +16,8 @@ type FileButtonProps = {
   label?: string
   invalid?: boolean
   id?: string
+  /** Overrides the description, e.g. a `FormField`'s hint and error (`fieldHintId(id)`). */
+  describedBy?: string
   className?: string
 }
 
@@ -83,6 +85,7 @@ export function FileButton({
   label = "Choose file",
   invalid = false,
   id,
+  describedBy,
   className,
 }: FileButtonProps) {
   const generatedId = useId()
@@ -97,7 +100,7 @@ export function FileButton({
           accept={accept}
           label={label}
           invalid={invalid}
-          describedBy={hint ? hintId : undefined}
+          describedBy={describedBy ?? (hint ? hintId : undefined)}
           onFiles={(files) => onChange(files[0] ?? null)}
         />
         {file && (
