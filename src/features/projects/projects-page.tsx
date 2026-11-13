@@ -71,7 +71,7 @@ function withCategoryOrder(projects: Project[], category: ProjectCategory, order
 function noop() {}
 
 /** Settles the drop with 200ms ease-out; reduced motion drops in place. */
-function DropSettle() {
+export function DropSettle() {
   const manager = useDragDropManager()
   const reduceMotion = useReducedMotion()
   useEffect(() => {
