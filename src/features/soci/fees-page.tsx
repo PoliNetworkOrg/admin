@@ -125,7 +125,9 @@ export function FeesPage({ fees, years }: { fees: FeesList; years: readonly numb
 
   const inStatus = fees.fees.filter((row) => row.fee.status === status)
   const filtered = inStatus.filter((row) => matchesQuery(row, deferredQuery))
-  const rows = filtered.slice((page - 1) * pageSize, page * pageSize)
+  // A confirmed or rejected receipt leaves the queue: stay on the last page that still has rows.
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)))
+  const rows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const late = pastDeadline(fees.year, todayIso())
   const yearOptions = (years.includes(fees.year) ? years : [fees.year, ...years]).map((year) => ({
     value: String(year),
@@ -216,7 +218,7 @@ export function FeesPage({ fees, years }: { fees: FeesList; years: readonly numb
           }
           actionsWidth={96}
           pagination={{
-            page,
+            page: currentPage,
             pageSize,
             total: filtered.length,
             onPage: setPage,

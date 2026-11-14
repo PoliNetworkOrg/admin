@@ -37,16 +37,18 @@ function fileProblem(file: File | null) {
 
 /**
  * Upload transfer receipt: the bank's receipt (PDF, PNG or JPEG), the transfer date and the amount. It replaces a
- * receipt still waiting for review; the Direttivo then confirms or rejects it.
+ * receipt still waiting for review; the Direttivo then confirms or rejects it. `replacing` is read when it opens, so
+ * the reload after the upload doesn't retitle it while it closes.
  */
 export function UploadReceiptDialog({
   open,
   onOpenChange,
   payment,
-  replacing,
+  replacing: replacingOnOpen,
 }: DialogProps & { payment: Me["payment"]; replacing: boolean }) {
   const upload = useServerFn(uploadMyReceipt)
   const refresh = useRefreshAfter()
+  const [replacing] = useState(replacingOnOpen)
   const [file, setFile] = useState<File | null>(null)
   const [transferDate, setTransferDate] = useState(todayIso())
   const [amount, setAmount] = useState(amountText(payment.amountCents))
@@ -77,8 +79,8 @@ export function UploadReceiptDialog({
       console.error(caught)
       throw new Error(errorMessage(caught, "Couldn't upload the receipt. Try again."), { cause: caught })
     }
-    onOpenChange(false)
     await refresh("Receipt uploaded. The Direttivo reviews it and you'll get an email.")
+    onOpenChange(false)
   }
 
   return (
@@ -157,13 +159,14 @@ const HINTS = {
 
 /**
  * Complete your details: the fields the register still lacks, which the association must keep. Only empty ones can be
- * filled in here; the Direttivo changes anything already recorded.
+ * filled in here; the Direttivo changes anything already recorded. The fields are read when it opens, so the reload
+ * after saving doesn't empty it while it closes.
  */
 export function CompleteDetailsDialog({ open, onOpenChange, me }: DialogProps & { me: Me }) {
   const complete = useServerFn(completeMyDetails)
   const refresh = useRefreshAfter()
   /** The empty fields, the phone included when it's empty, though it stays optional. */
-  const fields = SELF_FIELDS.filter((key) => me.details[key] === null)
+  const [fields] = useState(() => SELF_FIELDS.filter((key) => me.details[key] === null))
   const [draft, setDraft] = useState<Record<SelfField, string>>({
     codiceFiscale: "",
     birthDate: "",
@@ -175,6 +178,12 @@ export function CompleteDetailsDialog({ open, onOpenChange, me }: DialogProps & 
   const code = normalizeCodiceFiscale(draft.codiceFiscale || me.details.codiceFiscale || "")
   const birthDate = draft.birthDate || me.details.birthDate || ""
   const dateMismatch = birthDate !== "" && !codiceFiscaleProblem(code) && !matchesBirthDate(code, birthDate)
+  // Shown on the field being filled in: the birth date, or the codice fiscale when the birth date is already recorded.
+  const mismatchField: SelfField = fields.includes("birthDate") ? "birthDate" : "codiceFiscale"
+  const mismatchError =
+    mismatchField === "birthDate"
+      ? "The birth date doesn't match the codice fiscale."
+      : "The codice fiscale doesn't match your recorded birth date."
 
   function set(key: SelfField, value: string) {
     // A valid code fills in the birth date it encodes, when that is empty too.
@@ -197,15 +206,13 @@ export function CompleteDetailsDialog({ open, onOpenChange, me }: DialogProps & 
       console.error(caught)
       throw new Error(errorMessage(caught, "Couldn't save your details. Check them and try again."), { cause: caught })
     }
-    onOpenChange(false)
     await refresh("Details saved.")
+    onOpenChange(false)
   }
 
   const field = (key: SelfField) => {
     const id = `my-${key}`
-    const error =
-      errors[key] ??
-      (key === "birthDate" && dateMismatch ? "The birth date doesn't match the codice fiscale." : undefined)
+    const error = errors[key] ?? (key === mismatchField && dateMismatch ? mismatchError : undefined)
     return (
       <FormField
         key={key}

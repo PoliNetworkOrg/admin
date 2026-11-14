@@ -48,7 +48,8 @@ export function MySocioCards({ me }: { me: Me }) {
   const detailsDialog = useDialogState()
   const ended = me.endedOn !== null
   const current = me.fees.find((fee) => fee.year === me.payment.year) ?? null
-  const past = me.fees.filter((fee) => fee !== current)
+  // An ended socio has no current fee section: every fee, this year's too, is a past one.
+  const past = ended ? me.fees : me.fees.filter((fee) => fee !== current)
   const canUpload = !ended && (current?.status === "due" || current?.status === "uploaded")
   const missing = ended ? [] : me.missing
 
@@ -156,7 +157,7 @@ export function MySocioCards({ me }: { me: Me }) {
           replacing={current?.status === "uploaded"}
         />
       ) : null}
-      {missing.length ? (
+      {missing.length || detailsDialog.open ? (
         <CompleteDetailsDialog
           key={`details-${detailsDialog.key}`}
           open={detailsDialog.open}

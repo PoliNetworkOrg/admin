@@ -71,8 +71,8 @@ export function ReviewFeeDialog({ open, onOpenChange, socio, fee }: DialogProps 
         console.error(caught)
         throw new Error(errorMessage(caught, "Couldn't confirm the receipt. Try again."), { cause: caught })
       }
-      onOpenChange(false)
       await refresh(`${name}'s ${fee.label} fee is paid.`)
+      onOpenChange(false)
       return
     }
     setSubmitted(true)
@@ -83,8 +83,8 @@ export function ReviewFeeDialog({ open, onOpenChange, socio, fee }: DialogProps 
       console.error(caught)
       throw new Error(errorMessage(caught, "Couldn't reject the receipt. Try again."), { cause: caught })
     }
-    onOpenChange(false)
     await refresh(`Receipt rejected. ${name} gets the reason by email.`)
+    onOpenChange(false)
   }
 
   return (
@@ -213,22 +213,27 @@ type Method = (typeof METHODS)[number]["value"]
 
 /**
  * Mark as paid: a payment made outside the dashboard, with its date, method and an optional note. `years` are the fee
- * years it may record, newest first; with one, the dialog names it instead of asking.
+ * years it may record, newest first; with one, the dialog names it instead of asking. They are read when the dialog
+ * opens, so the reload after saving doesn't change it while it closes.
  */
 export function MarkPaidDialog({
   open,
   onOpenChange,
   socio,
-  years,
+  years: yearsOnOpen,
   fee,
+  fees,
 }: DialogProps & {
   socio: FeeSocio
   years: readonly number[]
   /** The fee being paid, when there is one: a receipt waiting for review gives the default payment date. */
   fee?: Fee | null
+  /** The socio's fees, to name the amount of the year chosen when `fee` isn't given. */
+  fees?: readonly Fee[]
 }) {
   const markPaid = useServerFn(markFeePaid)
   const refresh = useRefreshAfter()
+  const [years] = useState(yearsOnOpen)
   const [year, setYear] = useState<number | null>(years.length === 1 ? (years[0] ?? null) : null)
   const [paidOn, setPaidOn] = useState((fee?.status === "uploaded" ? fee.upload?.transferDate : null) ?? todayIso())
   const [method, setMethod] = useState<Method>("transfer")
@@ -236,6 +241,7 @@ export function MarkPaidDialog({
   const [submitted, setSubmitted] = useState(false)
   const name = socioName(socio)
   const today = todayIso()
+  const amountCents = (fee ?? fees?.find((candidate) => candidate.year === year))?.amountCents
   const yearError = submitted && year === null ? "Choose the fee year." : undefined
   const dateError = submitted
     ? !paidOn
@@ -255,8 +261,8 @@ export function MarkPaidDialog({
       console.error(caught)
       throw new Error(errorMessage(caught, "Couldn't mark the fee as paid. Try again."), { cause: caught })
     }
-    onOpenChange(false)
     await refresh(`${name}'s ${feeYearLabel(year)} fee is paid.`)
+    onOpenChange(false)
   }
 
   return (
@@ -321,7 +327,8 @@ export function MarkPaidDialog({
         />
       </FormField>
       <p className="text-[13px] text-(--pn-fg-muted)">
-        {name} gets an email that the fee is paid. Amount: {formatEuro(fee?.amountCents ?? 500)}.
+        {name} gets an email that the fee is paid.
+        {amountCents === undefined ? null : <> Amount: {formatEuro(amountCents)}.</>}
       </p>
     </FormDialog>
   )

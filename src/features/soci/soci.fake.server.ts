@@ -397,7 +397,9 @@ const SELF_LABELS = {
 export function fakeSociApi({ socio }: { socio: string }): SociApi {
   const mine = () => {
     const s = data()
-    return socio === "none" ? null : (s.records.find((r) => String(r.number) === socio) ?? null)
+    // By the account that held the number, so the socio stays the same after Change number.
+    const accountId = socio === "none" ? undefined : s.held.get(Number(socio))
+    return accountId === undefined ? null : (s.records.find((r) => r.entraObjectId === accountId) ?? null)
   }
   const requireMine = () => {
     const r = mine()
@@ -644,6 +646,8 @@ export function fakeSociApi({ socio }: { socio: string }): SociApi {
 
       async uploadReceipt(input) {
         const s = data()
+        // Read the file first: the checks and the write below then run without a gap a review could land in.
+        const base64 = Buffer.from(await input.file.arrayBuffer()).toString("base64")
         const r = requireMine()
         const year = feeYearOf(today())
         const label = feeYearLabel(year)
@@ -661,7 +665,7 @@ export function fakeSociApi({ socio }: { socio: string }): SociApi {
         s.files.set(fileId, {
           fileName,
           contentType,
-          base64: Buffer.from(await input.file.arrayBuffer()).toString("base64"),
+          base64,
         })
         Object.assign(fee, {
           status: "uploaded",

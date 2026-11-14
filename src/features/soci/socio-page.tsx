@@ -288,6 +288,7 @@ export function SocioPage({
           socio={socio}
           years={markPaid.target ? [markPaid.target.year] : payable}
           fee={markPaid.target}
+          fees={socio.fees}
         />
       ) : null}
       {canWrite && !deleted ? (
