@@ -109,7 +109,7 @@ export type PageMatch =
   | { kind: "people-person"; personId: string }
   | { kind: "people-soci" }
   | { kind: "people-socio"; number: number }
-  | { kind: "people-receipts" }
+  | { kind: "people-fees" }
   | { kind: "people-admins" }
   | { kind: "people-teams" }
   | { kind: "people-team"; teamId: string }
@@ -234,15 +234,14 @@ const people: Service = {
       group: "Soci",
       searchPlaceholder: "Search by name, number, mailbox or CF…",
     },
-    // Receipts is an unconnected mockup, to be replaced by Fees (Phase 2, #144).
     {
-      id: "receipts",
-      title: "Receipts",
+      id: "fees",
+      title: "Fees",
       icon: Receipt,
-      path: "/dashboard/people/receipts",
-      permission: "people:read",
+      path: "/dashboard/people/fees",
+      permission: "soci:read",
       group: "Soci",
-      searchPlaceholder: "Search by name or receipt number…",
+      searchPlaceholder: "Search by name, number or mailbox…",
     },
   ],
 }
@@ -502,7 +501,7 @@ export function matchPath(pathname: string): PageMatch {
     if (second === undefined) return { kind: "people-overview" }
     if (third === undefined) {
       if (second === "soci") return { kind: "people-soci" }
-      if (second === "receipts") return { kind: "people-receipts" }
+      if (second === "fees") return { kind: "people-fees" }
       if (second === "admins") return { kind: "people-admins" }
       if (second === "teams") return { kind: "people-teams" }
       if (second === "census") return { kind: "people-census" }
@@ -579,7 +578,7 @@ export function serviceFor(match: PageMatch): Service {
     case "people-person":
     case "people-soci":
     case "people-socio":
-    case "people-receipts":
+    case "people-fees":
     case "people-admins":
     case "people-teams":
     case "people-team":
@@ -637,8 +636,8 @@ export function sectionFor(match: PageMatch): Section | null {
     case "people-soci":
     case "people-socio":
       return section(people, "soci")
-    case "people-receipts":
-      return section(people, "receipts")
+    case "people-fees":
+      return section(people, "fees")
     case "people-admins":
       return section(people, "admins")
     case "people-teams":
@@ -720,10 +719,14 @@ export function documentTitle(match: PageMatch): string {
   return current ? `${current.title} - ${service.title} - PoliNetwork Admin` : `${service.title} - PoliNetwork Admin`
 }
 
-/** Counts that mark a service and one of its sections: open reports, documents waiting for the user's signature. */
+/**
+ * Counts that mark a service or one of its sections: open reports, documents waiting for the user's signature, and
+ * transfer receipts waiting for review in this fee year.
+ */
 export type PendingCounts = {
   reports: Promise<number | null>
   signatures: Promise<number | null>
+  fees: Promise<number | null>
 }
 
 const NO_COUNT: Promise<number | null> = Promise.resolve(null)
@@ -746,5 +749,6 @@ export function sectionPending(
 ): Promise<number | null> {
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
+  if (serviceId === "people" && sectionId === "fees") return pending.fees
   return NO_COUNT
 }

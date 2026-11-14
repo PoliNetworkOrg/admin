@@ -93,11 +93,11 @@ the Account page.
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
 Web, Reports); WhatsApp, Overview and Account have none. A service may group its sections (`group` on `Section`): the
 panel draws each group's title, 11px uppercase and subtle, above its first visible section, and the mobile pills only
-keep the order. People groups Volunteers (Overview, Admins, Teams, Census, Linking) and Soci (Register, and the Receipts
-mockup until Fees replaces it; Deletion pending). A 64px header with the service icon and title, then 38px items:
+keep the order. People groups Volunteers (Overview, Admins, Teams, Census, Linking) and Soci (Register, Fees; Deletion
+pending). A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
-and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
-small accent pill.
+and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open, the documents to sign next to Signatures › To sign and
+the receipts to review next to Soci › Fees, each as a small accent pill.
 
 From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
 content in place. Between 760px and 1439px, the content follows the panel as it opens or closes.
@@ -597,15 +597,20 @@ Rules that the templates above don't imply.
   use `FormDialog` with `tone="danger"`; plain confirmations stay `ConfirmDialog`.
 - **Soci › Register** (`docs/people/soci.md`): the Libro Soci, one record per admission. Status segments (Active /
   Ended / All) scope the table; Number leads on desktop, the name on mobile. Alerts above the table list the Soci
-  group's accounts without a record (with Register) and each kind of mismatch. Rows open the socio page
-  (`/dashboard/people/soci/$number`), a deep page with Edit and Change number.
-- **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
-  Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
-  icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
-  Sign with CIE uses the shared eSign flow; Download to sign and Upload signed stay in its signing-options menu.
-  Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`tone="danger"`, Back on
-  the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
-  roles. Amounts are `formatCents` ("€10.00") with tabular numbers.
+  group's accounts without a record (with Register) and each kind of mismatch, and a Fee filter menu narrows by this
+  year's fee. Rows open the socio page (`/dashboard/people/soci/$number`), a deep page with Edit, Change number and a
+  Fees card (one row per fee year, View receipt or Review, Mark as paid; the card's Mark as paid also opens a year
+  that has no fee yet).
+- **Soci › Fees** (`docs/people/soci.md`): a queue for one fee year (the Year menu, `?year=`), receipts to review first:
+  segments To review / Due / Paid / Exempt with totals, and the To review count in the panel. The row's first action is
+  Review for a receipt to review, an empty slot otherwise, then Mark as paid. Review is an `lg` `FormDialog` with the
+  receipt (eSign's `PdfViewer` in its compact mode, or the image), the declared transfer and the last rejection;
+  Reject switches it to a required reason with three one-click starts (`tone="danger"`, Back on the left), and after
+  31 December warns that the socio lapses. Amounts are `formatEuro` ("€5.00") with tabular numbers.
+- **Socio card** (My area): the membership, this year's fee (bank details with a copy button per value and Upload
+  transfer receipt while Due, the review state and Replace receipt once uploaded, the last rejection in a danger
+  alert), past fees, and My details with Complete your details while fields are missing. A socio without a People
+  record sees only the Socio card.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
 - **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
@@ -618,4 +623,4 @@ Rules that the templates above don't imply.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
 
-Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.
+Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.

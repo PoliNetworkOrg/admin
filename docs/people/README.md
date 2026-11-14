@@ -10,6 +10,10 @@ Everything an agent needs to build, or continue building, the People area of the
 > this you?", Ask to be added) and Telegram group tracking (group columns, join requests) are removed. The permissions
 > `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign` are gone; the mockups
 > open with `people:read`. Sections below that describe these features describe the mockup or the removed design.
+>
+> **Phase 2 (#144)** rebuilt Soci on the `soci.*` procedures ([`soci.md`](soci.md)): Soci › Register and Admit socio
+> (#155), then Soci › Fees and My area's Socio card (#156), which replaced the Receipts and fee-card mockups. Only the
+> census remains a mockup.
 
 | File                           | What it is                                                                               |
 | ------------------------------ | ---------------------------------------------------------------------------------------- |

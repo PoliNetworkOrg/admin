@@ -28,14 +28,17 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   permissions yet can accept one (`peopleInviteMiddleware`: signed in, the token is the proof); the old
   `/dashboard/account/me?peopleInvite=` links redirect there. `/dashboard` admits `people:self` without
   `admin:access`; Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and
-  only open their sections. Receipts, Census and My area's fee card are unconnected mockups (#138): static sample data
-  from `mockup-data.ts`, no server functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt
-  in Phase 2 (#144) and Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+  only open their sections. Census is an unconnected mockup (#138): static sample data from `mockup-data.ts`, no server
+  functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt in Phase 3 (#145). Handoff
+  notes, decisions and the plan: `docs/people/`.
 - **Soci** (`src/features/soci/`, People's Soci group): the Libro Soci, through `sociApi(context)`, which parses the
   backend's `soci.*` responses with `soci.contract.ts` (a copy of the backend's) and serves `soci.fake.server.ts` in agent
   mode. `soci:read` opens Register and the socio pages, `soci:write` admits (a new Microsoft 365 account in Soci, then the
   record), registers an account already in Soci, edits and changes member numbers, which moved here from Microsoft 365 ›
-  Members. Design: `docs/people/soci.md`.
+  Members. Soci › Fees reviews uploaded transfer receipts (Confirm, Reject) and marks fees as paid, also from the socio
+  page. My area's Socio card (`soci.me.*`, `people:self`, `soci-self.functions.ts`) shows the signed-in socio's fee, bank
+  details, Upload transfer receipt and Complete your details; a socio without a People record sees only that card.
+  `AGENT_SOCIO` picks the socio My area shows in agent mode. Design: `docs/people/soci.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
