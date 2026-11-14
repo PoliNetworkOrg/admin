@@ -7,6 +7,7 @@ import {
   type DataTableColumn,
   EmptyState,
   IconButton,
+  InlineAlert,
   type KeyValueItem,
   KeyValueList,
   PlatformGlyph,
@@ -14,9 +15,11 @@ import {
   SectionHeading,
   Unset,
 } from "@/components/primitives"
-import { PageBar, PageContent, useCan } from "@/components/shell"
+import { PageBar, PageContent } from "@/components/shell"
+import { MySocioCards } from "@/features/soci/my-socio-card"
+import { formatMemberNumber } from "@/features/soci/soci-format"
+import type { Me } from "@/features/soci/soci.contract"
 
-import { MyFeeCard } from "./my-fee-card"
 import {
   assignmentLabel,
   formatDay,
@@ -32,10 +35,46 @@ import type { MyArea } from "./people.contract"
 
 type Linked = Extract<MyArea, { state: "linked" }>
 
-/** Account › My area: what the signed-in person's record says. */
-export function MyAreaPage({ area }: { area: MyArea }) {
-  if (area.state === "none") return <NoRecordView />
-  return <LinkedView area={area} />
+/** The signed-in account's socio record; `null` when it isn't a socio's, `"error"` when it couldn't be read. */
+export type MySocio = Me | null | "error"
+
+/**
+ * Account › My area: what the signed-in person's People record says, and their Socio card when their Microsoft 365
+ * account is a socio's. A socio without a People record sees only the Socio card.
+ */
+export function MyAreaPage({ area, socio }: { area: MyArea; socio: MySocio }) {
+  if (area.state === "none") return socio === null ? <NoRecordView /> : <SocioOnlyView socio={socio} />
+  return <LinkedView area={area} socio={socio} />
+}
+
+function SocioSection({ socio }: { socio: Exclude<MySocio, null> }) {
+  if (socio === "error")
+    return (
+      <InlineAlert tone="danger">
+        Your socio record couldn't be loaded, so your fee and details aren't shown. Reload the page to try again.
+      </InlineAlert>
+    )
+  return <MySocioCards me={socio} />
+}
+
+function SocioOnlyView({ socio }: { socio: Exclude<MySocio, null> }) {
+  return (
+    <>
+      <PageBar
+        description={
+          socio === "error" ? undefined : (
+            <>
+              {socio.details.firstName} {socio.details.lastName} ·{" "}
+              <span className="font-mono">{formatMemberNumber(socio.number)}</span>
+            </>
+          )
+        }
+      />
+      <PageContent>
+        <SocioSection socio={socio} />
+      </PageContent>
+    </>
+  )
 }
 
 function NoRecordView() {
@@ -53,10 +92,8 @@ function NoRecordView() {
   )
 }
 
-function LinkedView({ area }: { area: Linked }) {
+function LinkedView({ area, socio }: { area: Linked; socio: MySocio }) {
   const { person, contacts, roster } = area
-  // The fee card is an unconnected mockup (Phase 2, #144), shown only to People readers.
-  const canRead = useCan("people:read")
   const roles = openAssignments(person)
   const name = personName(person)
 
@@ -131,7 +168,7 @@ function LinkedView({ area }: { area: Linked }) {
       <PageBar description={`${name} · ${person.id}`} />
       <PageContent>
         <div className="flex flex-col gap-6">
-          {canRead ? <MyFeeCard /> : null}
+          {socio === null ? null : <SocioSection socio={socio} />}
 
           <div className="grid items-start gap-4 min-[1100px]:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-4">

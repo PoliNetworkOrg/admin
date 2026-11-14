@@ -7,6 +7,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FilterMenu,
   IconButton,
   InlineAlert,
   Unset,
@@ -21,11 +22,15 @@ import { MonoChip, PersonCell, StateBadge } from "@/features/people/people-ui"
 import { pluralize } from "@/lib/format"
 
 import { END_REASON, FEE_STATUS, formatMemberNumber, MISMATCH, socioName, socioStatus } from "./soci-format"
-import type { SociList, SocioRecord, SocioRow, Unregistered } from "./soci.contract"
+import type { FEE_STATUSES, SociList, SocioRecord, SocioRow, Unregistered } from "./soci.contract"
 import { getSocio } from "./soci.functions"
 import { AdmitSocioDialog, EditSocioDialog, RegisterSocioDialog } from "./socio-dialogs"
 
 type Scope = "active" | "ended" | "all"
+/** This year's fee, or `none` when no fee has been opened for the socio. */
+type FeeFilter = (typeof FEE_STATUSES)[number] | "none"
+
+const FEE_FILTERS = ["due", "uploaded", "paid", "exempt", "none"] as const satisfies readonly FeeFilter[]
 
 const SCOPES = [
   { value: "active", label: "Active" },
@@ -161,6 +166,7 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
   /** The row whose record is loading for Edit. */
   const [loadingEdit, setLoadingEdit] = useState<number | null>(null)
   const [scope, setScope] = useState<Scope>("active")
+  const [fee, setFee] = useState<FeeFilter | null>(null)
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [sort, setSort] = useState(DEFAULT_SORT)
@@ -171,7 +177,9 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
   const active = members.filter((socio) => !socio.endedOn)
   const ended = members.filter((socio) => socio.endedOn)
   const inScope = scope === "all" ? members : scope === "active" ? active : ended
-  const filtered = inScope.filter((socio) => matchesQuery(socio, deferredQuery))
+  const feeOf = (socio: SocioRow): FeeFilter => socio.fee ?? "none"
+  const withFee = fee === null ? inScope : inScope.filter((socio) => feeOf(socio) === fee)
+  const filtered = withFee.filter((socio) => matchesQuery(socio, deferredQuery))
   const sorted = filtered.toSorted((a, b) => compare(a, b, sort))
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
   const notInSoci = members.filter((socio) => socio.mismatch === "not_in_soci")
@@ -220,6 +228,22 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
                 }}
               />
             }
+            filters={
+              <FilterMenu<FeeFilter>
+                label="Fee"
+                allLabel="Any fee"
+                options={FEE_FILTERS.map((value) => ({
+                  value,
+                  label: value === "none" ? "Not open" : FEE_STATUS[value].label,
+                  count: inScope.filter((socio) => feeOf(socio) === value).length,
+                }))}
+                value={fee}
+                onChange={(next) => {
+                  setFee(next)
+                  setPage(1)
+                }}
+              />
+            }
             search={{
               value: query,
               onChange: (value) => {
@@ -228,7 +252,7 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
               },
             }}
             count={
-              deferredQuery ? (
+              deferredQuery || fee !== null ? (
                 <Count value={filtered.length} total={inScope.length} noun="socio" plural="soci" />
               ) : undefined
             }
@@ -305,11 +329,22 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
               },
             }}
             empty={
-              deferredQuery ? (
+              deferredQuery || fee !== null ? (
                 <EmptyState
                   icon={IdCard}
                   title="No soci match"
-                  text="Try another name, number, mailbox or codice fiscale."
+                  text={
+                    deferredQuery
+                      ? "Try another name, number, mailbox or codice fiscale."
+                      : "Choose another fee status or scope."
+                  }
+                  action={
+                    fee !== null ? (
+                      <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setFee(null)}>
+                        Clear fee filter
+                      </Button>
+                    ) : undefined
+                  }
                 />
               ) : (
                 <EmptyState

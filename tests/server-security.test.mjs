@@ -227,6 +227,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-invite-landing.functions.ts",
     "src/features/soci/soci.functions.ts",
     "src/features/soci/soci-write.functions.ts",
+    "src/features/soci/soci-self.functions.ts",
   ]
 
   for (const file of adminFunctionFiles) {
@@ -277,6 +278,8 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleInviteMiddleware", ["src/features/people/people-invite-landing.functions.ts"]],
     ["sociWriteMiddleware", ["src/features/soci/soci-write.functions.ts"]],
+    // A socio's own fee and details: `people:self`, no `admin:access`.
+    ["peopleSelfMiddleware", ["src/features/soci/soci-self.functions.ts"]],
   ].map(([expectedMiddleware, files]) => ({ expectedMiddleware, files }))
 
   // "file#name" scopes an entry to one mutation, for files whose mutations need different permissions.
@@ -335,9 +338,9 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": ["people:write", "people:link"],
-    "src/features/people/my-area-page.tsx": "people:read",
     "src/features/soci/register-page.tsx": "soci:write",
     "src/features/soci/socio-page.tsx": "soci:write",
+    "src/features/soci/fees-page.tsx": "soci:write",
   }
   const directory = new URL("../src", import.meta.url).pathname
   const checked = new Set()
@@ -377,6 +380,8 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
+    "src/features/soci/fee-dialogs.tsx": ["confirmFee", "rejectFee", "markFeePaid"],
+    "src/features/soci/my-socio-dialogs.tsx": ["uploadMyReceipt", "completeMyDetails"],
     "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],
     "src/features/people/notes-dialog.tsx": ["setPersonNote"],
     "src/features/people/account-action-dialog.tsx": ["sendPersonInvite", "revokePersonInvite"],

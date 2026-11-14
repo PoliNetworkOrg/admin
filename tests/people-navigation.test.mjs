@@ -23,14 +23,13 @@ async function nav() {
 
 const roles = { capoScope: null, leads: [] }
 
-void test("the People mockups and the remaining pages open with people:read", async () => {
+void test("the People mockup and the remaining pages open with people:read", async () => {
   const { canOpenPage, matchPath, serviceFor } = await nav()
   for (const path of [
     "/dashboard/people",
     "/dashboard/people/admins",
     "/dashboard/people/linking",
-    // Unconnected mockups (Phase 2 and 3): gated by people:read, not by the deleted member and fee permissions.
-    "/dashboard/people/receipts",
+    // The census is an unconnected mockup (Phase 3): gated by people:read.
     "/dashboard/people/census",
     "/dashboard/people/census/mock-2026",
   ]) {
@@ -45,10 +44,14 @@ void test("the People mockups and the remaining pages open with people:read", as
 
 void test("People's Soci pages open with soci:read, under the Soci group", async () => {
   const { canOpenPage, isDeepPage, matchPath, sectionFor, serviceById, serviceFor } = await nav()
-  for (const path of ["/dashboard/people/soci", "/dashboard/people/soci/344"]) {
+  for (const [path, section] of [
+    ["/dashboard/people/soci", "soci"],
+    ["/dashboard/people/soci/344", "soci"],
+    ["/dashboard/people/fees", "fees"],
+  ]) {
     const match = matchPath(path)
     assert.equal(serviceFor(match).id, "people", path)
-    assert.equal(sectionFor(match).id, "soci", path)
+    assert.equal(sectionFor(match).id, section, path)
     assert.equal(canOpenPage(match, ["admin:access", "soci:read"], roles), true, path)
     assert.equal(canOpenPage(match, ["admin:access", "people:read"], roles), false, path)
     assert.equal(canOpenPage(match, ["soci:read"], roles), false, path)
@@ -59,6 +62,8 @@ void test("People's Soci pages open with soci:read, under the Soci group", async
   assert.equal(isDeepPage(matchPath("/dashboard/people/soci/344")), true)
   assert.equal(matchPath("/dashboard/people/soci/0344").kind, "not-found")
   assert.equal(matchPath("/dashboard/people/members").kind, "not-found")
+  // The Receipts mockup is gone: Soci › Fees replaced it.
+  assert.equal(matchPath("/dashboard/people/receipts").kind, "not-found")
   // Groups are contiguous: the panel draws each title once, above its first section.
   const groups = serviceById("people").sections.map((section) => section.group)
   assert.equal([...new Set(groups)].join(), "Volunteers,Soci")
@@ -87,11 +92,12 @@ void test("eSign keeps its routes, permission gates and counts", async () => {
     assert.equal(canOpenPage(match, ["admin:access", "esign:sign"], roles), true)
     assert.equal(canOpenPage(match, ["people:self"], roles), false)
   }
-  const counts = { reports: Promise.resolve(1), signatures: Promise.resolve(2) }
+  const counts = { reports: Promise.resolve(1), signatures: Promise.resolve(2), fees: Promise.resolve(3) }
   assert.equal(sectionPending("reports", "open", counts), counts.reports)
   assert.equal(sectionPending("esign", "inbox", counts), counts.signatures)
+  // Receipts to review: a count on Soci › Fees, like Reports › Open.
+  assert.equal(sectionPending("people", "fees", counts), counts.fees)
   // The Linking review queue is gone, and with it the People counts.
   assert.equal(await sectionPending("people", "linking", counts), null)
-  assert.equal(await sectionPending("people", "receipts", counts), null)
   assert.equal(isRailService(serviceById("account")), false)
 })
