@@ -85,6 +85,7 @@ export function PdfPane({
           <PdfViewer
             data={pdf}
             fill={false}
+            locale="it"
             toolbarStart={onDownload ? <IconButton label="Scarica PDF" icon={Download} onClick={onDownload} /> : null}
           />
         ) : (
