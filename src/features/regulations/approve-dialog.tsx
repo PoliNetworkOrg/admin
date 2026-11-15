@@ -110,6 +110,7 @@ export function ApproveDialog({
         ) : null}
         <FormField label="Data della votazione" htmlFor="approve-date" error={dateError}>
           <DateField
+            locale="it"
             id="approve-date"
             value={date}
             onChange={setDate}

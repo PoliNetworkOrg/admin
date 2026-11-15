@@ -145,6 +145,7 @@ export function DelegaDialog({
             error={expiryError}
           >
             <DateField
+              locale="it"
               id="delega-expiry"
               value={expiresOn}
               onChange={setExpiresOn}

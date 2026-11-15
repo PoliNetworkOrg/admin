@@ -456,6 +456,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/regulations/members-dialog.tsx": ["setDraftAssignment", "removeDraftAssignment"],
     "src/features/regulations/procedure-page.tsx": [
       "transitionDraft",
+      "withdrawApproval",
       "emanateDraft",
       "emanateRectification",
       "retryEmanation",

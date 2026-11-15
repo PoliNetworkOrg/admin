@@ -35,7 +35,7 @@ import {
   ROLE_LABELS,
 } from "./regulations-format"
 import { failureMessage, useRefreshAfter } from "./regulations-hooks"
-import { emanateDraft } from "./regulations-manage.functions"
+import { emanateDraft, withdrawApproval } from "./regulations-manage.functions"
 import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
 import { transitionDraft } from "./regulations-write.functions"
 import type { Assignment, Draft, Emanation, StateKey } from "./regulations.contract"
@@ -61,7 +61,16 @@ const TRANSITION_TEXT = {
   },
 } satisfies Partial<Record<StateKey, { title: string; description: string; done: string }>>
 
-function transitionText(to: StateKey) {
+/** Back from `approvata`: the recorded approval stops counting, so the confirmation says so. */
+const UNDO_APPROVAL_TEXT = {
+  title: "Annullare l'approvazione?",
+  description:
+    "La bozza torna modificabile e l'approvazione registrata non vale più: per emanarla servirà una nuova votazione, con una nuova delibera. Le differenze si generano di nuovo al prossimo invio in approvazione.",
+  done: "Approvazione annullata: la bozza è di nuovo modificabile.",
+}
+
+function transitionText(from: StateKey, to: StateKey) {
+  if (from === "approvata" && to === "bozza") return UNDO_APPROVAL_TEXT
   return to === "bozza" || to === "in_approvazione" ? TRANSITION_TEXT[to] : null
 }
 
@@ -162,6 +171,7 @@ export function ProcedurePage({
   const router = useRouter()
   const refresh = useRefreshAfter()
   const transition = useServerFn(transitionDraft)
+  const withdraw = useServerFn(withdrawApproval)
   const emanate = useServerFn(emanateDraft)
   const emanateRettifica = useServerFn(emanateRectification)
   const retry = useServerFn(retryEmanation)
@@ -218,12 +228,13 @@ export function ProcedurePage({
     const to = pendingTransition.to
     if (to !== "bozza" && to !== "in_approvazione") return
     try {
-      await transition({ data: { draftId: draft.id, to } })
+      if (draft.state === "approvata" && to === "bozza") await withdraw({ data: { draftId: draft.id } })
+      else await transition({ data: { draftId: draft.id, to } })
     } catch (caught) {
       console.error(caught)
       throw new Error(failureMessage(caught, "Non è stato possibile cambiare lo stato. Riprova."), { cause: caught })
     }
-    await refresh(TRANSITION_TEXT[to].done)
+    await refresh((transitionText(draft.state, to) ?? TRANSITION_TEXT[to]).done)
   }
 
   async function runEmanation() {
@@ -495,11 +506,15 @@ export function ProcedurePage({
       <ConfirmDialog
         open={transitionOpen}
         onOpenChange={setTransitionOpen}
-        title={pendingTransition ? (transitionText(pendingTransition.to)?.title ?? `${pendingTransition.label}?`) : ""}
-        description={pendingTransition ? (transitionText(pendingTransition.to)?.description ?? "") : ""}
+        title={
+          pendingTransition
+            ? (transitionText(draft.state, pendingTransition.to)?.title ?? `${pendingTransition.label}?`)
+            : ""
+        }
+        description={pendingTransition ? (transitionText(draft.state, pendingTransition.to)?.description ?? "") : ""}
         confirmLabel={pendingTransition?.label ?? ""}
         cancelLabel="Annulla"
-        tone="primary"
+        tone={draft.state === "approvata" && pendingTransition?.to === "bozza" ? "danger" : "primary"}
         icon={pendingTransition?.to === "bozza" ? Undo2 : Send}
         onConfirm={runTransition}
       />

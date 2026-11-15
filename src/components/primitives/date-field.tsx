@@ -1,5 +1,6 @@
 import { CalendarIcon } from "lucide-react"
 import { useRef, useState } from "react"
+import { it as italian } from "react-day-picker/locale"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,20 +13,46 @@ import { fieldControl } from "./form-field"
 import { buttonMotion, floatingMotion, raisedSurface } from "./motion"
 import { SelectField } from "./select-field"
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-].map((label, index) => ({ value: String(index), label }))
+const MONTHS = {
+  en: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  it: [
+    "Gennaio",
+    "Febbraio",
+    "Marzo",
+    "Aprile",
+    "Maggio",
+    "Giugno",
+    "Luglio",
+    "Agosto",
+    "Settembre",
+    "Ottobre",
+    "Novembre",
+    "Dicembre",
+  ],
+}
+
+const COPY = {
+  en: { choose: "Choose a date", month: "Month", year: "Year" },
+  it: { choose: "Scegli una data", month: "Mese", year: "Anno" },
+} as const
+
+/** "12/03/2026", as the Italian documents print dates. */
+function italianDay(date: Date) {
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`
+}
 
 /**
  * A calendar date: a custom picker at every viewport, with month and year selects over the grid. The value is ISO
@@ -41,7 +68,8 @@ export function DateField({
   disabled = false,
   pastYears = 10,
   futureYears = 1,
-  placeholder = "Choose a date",
+  placeholder,
+  locale = "en",
 }: {
   id: string
   value: string
@@ -52,7 +80,11 @@ export function DateField({
   pastYears?: number
   futureYears?: number
   placeholder?: string
+  /** Month and weekday names, the day format and the picker's own words in Italian (Regolamenti). */
+  locale?: "en" | "it"
 }) {
+  const copy = COPY[locale]
+  const months = MONTHS[locale].map((label, index) => ({ value: String(index), label }))
   const selected = parseDateOnly(value)
   const [open, setOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -89,7 +121,11 @@ export function DateField({
       >
         <CalendarIcon aria-hidden className="text-(--pn-fg-muted)" />
         <span className={cn("tabular-nums", !selected && "text-(--pn-fg-subtle)")}>
-          {selected ? formatDate(selected, "local") : placeholder}
+          {selected
+            ? locale === "it"
+              ? italianDay(selected)
+              : formatDate(selected, "local")
+            : (placeholder ?? copy.choose)}
         </span>
       </PopoverTrigger>
       <PopoverContent
@@ -98,22 +134,22 @@ export function DateField({
         initialFocus={() => popupRef.current?.querySelector<HTMLElement>('[data-day][tabindex="0"]') ?? true}
         className={cn(raisedSurface, floatingMotion, "w-[304px] max-w-[calc(100vw-32px)] gap-0 rounded-(--pn-r-4) p-2")}
       >
-        <PopoverTitle className="sr-only">Choose a date</PopoverTitle>
+        <PopoverTitle className="sr-only">{copy.choose}</PopoverTitle>
         <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2 px-1 pb-2">
           <div>
             <label className="sr-only" htmlFor={`${id}-month`}>
-              Month
+              {copy.month}
             </label>
             <SelectField
               id={`${id}-month`}
               value={String(month.getMonth())}
-              options={MONTHS}
+              options={months}
               onChange={(next) => setMonth(new Date(month.getFullYear(), Number(next), 1))}
             />
           </div>
           <div>
             <label className="sr-only" htmlFor={`${id}-year`}>
-              Year
+              {copy.year}
             </label>
             <SelectField
               id={`${id}-year`}
@@ -135,6 +171,7 @@ export function DateField({
           }}
           autoFocus
           weekStartsOn={1}
+          locale={locale === "it" ? italian : undefined}
           className="w-full bg-transparent p-0 [--cell-size:clamp(36px,calc((100vw_-_48px)/7),40px)]"
           classNames={{ month_caption: "sr-only", nav: "hidden", months: "w-full" }}
         />

@@ -13,6 +13,15 @@ export const approveDraft = createServerFn({ method: "POST" })
   .validator(transitionInputSchema.required({ delibera: true }).extend({ to: stateKeySchema.extract(["approvata"]) }))
   .handler(async ({ data, context }) => (await regulationsApi(context)).transition(data))
 
+/**
+ * Back from `approvata` to `bozza`: the recorded approval stops counting (the backend withdraws the delibera and frees
+ * the text). Refused once an emanation has started.
+ */
+export const withdrawApproval = createServerFn({ method: "POST" })
+  .middleware([regulationsManageMiddleware])
+  .validator(draftRefInputSchema)
+  .handler(async ({ data, context }) => (await regulationsApi(context)).transition({ ...data, to: "bozza" }))
+
 /** "Emana e notifica": PR, CI, merge, tag, release, then email and Telegram. */
 export const emanateDraft = createServerFn({ method: "POST" })
   .middleware([regulationsManageMiddleware])

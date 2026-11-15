@@ -61,6 +61,7 @@ const PROCEDURE: Procedure = {
     { from: "bozza", to: "in_approvazione", label: "Invia in approvazione", kinds: ["modifica"] },
     { from: "in_approvazione", to: "bozza", label: "Riporta in bozza", kinds: ["modifica"] },
     { from: "in_approvazione", to: "approvata", label: "Registra l'approvazione", kinds: ["modifica"] },
+    { from: "approvata", to: "bozza", label: "Riporta in bozza (annulla l'approvazione)", kinds: ["modifica"] },
     { from: "approvata", to: "emanata", label: "Emana e notifica", kinds: ["modifica"] },
     { from: "bozza", to: "emanata", label: "Emana rettifica", kinds: ["rettifica"] },
   ],
@@ -491,6 +492,18 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     }
     if (draft.kind === "modifica" && writer && draft.state === "in_approvazione")
       transitions.push({ to: "bozza", label: "Riporta in bozza", requires: [], blockedBy: null })
+    if (
+      draft.kind === "modifica" &&
+      can("regulations:manage") &&
+      draft.state === "approvata" &&
+      draft.emanation === null
+    )
+      transitions.push({
+        to: "bozza",
+        label: "Riporta in bozza (annulla l'approvazione)",
+        requires: [],
+        blockedBy: null,
+      })
     const approve = draft.kind === "modifica" && can("regulations:manage") && draft.state === "in_approvazione"
     if (approve)
       transitions.push({ to: "approvata", label: "Registra l'approvazione", requires: ["delibera"], blockedBy: null })
