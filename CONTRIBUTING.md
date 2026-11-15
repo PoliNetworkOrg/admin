@@ -6,7 +6,9 @@ dashboard does and lists every setting; [`docs/design.md`](docs/design.md) holds
 There are two ways to run it:
 
 - **Agent mode**: a fake administrator with every permission, with no sign-in, Redis or other services. Enough for UI
-  work, but the backend refuses its calls, so pages that read it show their error state (People serves sample data).
+  work, but it has no access token, so the backend refuses its calls (`Missing bearer token`) and pages that read it
+  show their error state (People serves sample data). With a token from the backend's stand-in for Auth, agent mode
+  also gets [real backend data](#agent-mode-with-backend-data).
 - **Signed in through PoliNetwork Auth**: real users, real permissions and real backend data. You also run
   [Auth](https://github.com/PoliNetworkOrg/auth) and the [backend](https://github.com/PoliNetworkOrg/backend) locally.
 
@@ -36,6 +38,24 @@ pnpm dev
 Open http://localhost:3001/dashboard. Agent mode only works with `pnpm dev`; production ignores it.
 `AGENT_PERMISSIONS` (comma-separated) limits the fake user's permissions, and `AGENT_PERSON` picks its People record:
 see the [README](README.md#development).
+
+### Agent mode with backend data
+
+To get the backend's data without running Auth:
+
+1. Run the backend locally with its stand-in for Auth, following
+   [Or use the stand-in for Auth](https://github.com/PoliNetworkOrg/backend/blob/main/CONTRIBUTING.md#or-use-the-stand-in-for-auth)
+   in the backend's guide.
+2. In the backend's folder, get a token for one of the stand-in's accounts: `bun run regulations:token dev-admin`.
+3. Put it in the dashboard's `.env`, keep `AGENT_MODE="true"` and restart `pnpm dev`:
+
+   ```sh
+   AGENT_BACKEND_TOKEN="<the token>"
+   ```
+
+The dashboard then sends the token to the backend and shows that account, with the permissions the backend reports
+for it, instead of the fake administrator. Only the pages those permissions allow are visible, and `dev-admin` holds
+only `admin:access`, `people:read` and `tg:users:read`. The token lasts 2 hours; after that, get a new one.
 
 ### Signed in through Auth
 
