@@ -242,7 +242,12 @@ export function BackButton({ label, link }: PageBarBack) {
 }
 
 export type CountPart = { value: number; total?: number; noun: string; plural?: string }
-export type CountProps = CountPart & { parts?: CountPart[]; className?: string }
+export type CountProps = CountPart & {
+  parts?: CountPart[]
+  className?: string
+  /** "12 di 680 bozze" on the Italian Regolamenti pages. */
+  locale?: "en" | "it"
+}
 
 const numberFormat = new Intl.NumberFormat("en-GB")
 const pluralRules = new Intl.PluralRules("en-GB")
@@ -255,17 +260,17 @@ function pluralize(noun: string, plural: string | undefined, count: number) {
   return `${noun}s`
 }
 
-function formatCountPart({ value, total, noun, plural }: CountPart) {
+function formatCountPart({ value, total, noun, plural }: CountPart, of: string) {
   if (total === undefined) return `${numberFormat.format(value)} ${pluralize(noun, plural, value)}`
-  return `${numberFormat.format(value)} of ${numberFormat.format(total)} ${pluralize(noun, plural, total)}`
+  return `${numberFormat.format(value)} ${of} ${numberFormat.format(total)} ${pluralize(noun, plural, total)}`
 }
 
 /**
  * "{n} {noun}" or "{n} of {total} {noun}", pluralized with Intl.PluralRules; `parts` append
  * ", {n} {noun}" segments. Pass the singular noun: `<Count value={42} noun="group" />`.
  */
-export function Count({ parts = [], className, ...first }: CountProps) {
-  const text = [first, ...parts].map(formatCountPart).join(", ")
+export function Count({ parts = [], className, locale = "en", ...first }: CountProps) {
+  const text = [first, ...parts].map((part) => formatCountPart(part, locale === "it" ? "di" : "of")).join(", ")
   return (
     <span
       aria-live="polite"
