@@ -72,5 +72,14 @@ void test("Documenti and Bozze need regulations:read, Deleghe regulations:rectif
     true
   )
   assert.equal(canOpenPage(matchPath("/dashboard/regulations"), ["regulations:read"], noRoles), false)
-  assert.equal(canOpenPage(matchPath("/dashboard/regulations"), ["admin:access"], noRoles), false)
+})
+
+void test("an admin without regulations permissions, assignments or deleghe sees no Regolamenti", async () => {
+  const { canOpenPage, matchPath, sectionVisible, services } = await nav()
+  const admin = ["admin:access", "tg:users:read", "people:read", "soci:read"]
+  for (const path of ["/dashboard/regulations", "/dashboard/regulations/drafts", "/dashboard/regulations/deleghe"])
+    assert.equal(canOpenPage(matchPath(path), admin, noRoles), false, path)
+  const regulations = services.find((service) => service.id === "regulations")
+  assert.equal(regulations.sections.filter((section) => sectionVisible(section, admin, noRoles)).length, 0)
+  assert.equal(canOpenPage(matchPath("/dashboard/regulations/drafts"), admin, { ...noRoles, regulations: true }), true)
 })
