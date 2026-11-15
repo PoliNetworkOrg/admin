@@ -157,6 +157,25 @@ export const peopleLinkMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
+/** People › Soci: the Libro Soci, its bookkeeping data and the Soci group's accounts without a record. */
+export const sociReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:read")
+    return next()
+  })
+
+/**
+ * People › Soci: admit a socio (a new Microsoft 365 account in Soci, then the record), register an account already in
+ * Soci, edit the bookkeeping data and change a member number.
+ */
+export const sociWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:write")
+    return next()
+  })
+
 /** Telegram grants: create and interrupt. */
 export const grantsWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
@@ -213,22 +232,6 @@ export const azureMembersReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** Microsoft 365: create a new member through the backend's fixed workflow. */
-export const azureMembersCreateMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:create")
-    return next()
-  })
-
-/** Microsoft 365: change the member number of an existing user, optionally emailing them. */
-export const azureMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:write")
-    return next()
-  })
-
 /** Microsoft 365: list the groups and their members. */
 export const azureGroupsReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
@@ -268,5 +271,45 @@ export const esignRequestsManageMiddleware = createMiddleware({ type: "function"
   .server(({ next, context }) => {
     requirePermission(context.permissions, "esign:sign")
     requirePermission(context.permissions, "esign:requests:manage")
+    return next()
+  })
+
+/**
+ * Regolamenti, one draft at a time: anyone the dashboard admits, since per-draft access (assignments, deleghe) is
+ * backend data the backend checks on every call. Assignees and delegates have no `admin:access`.
+ */
+export const regulationsAssigneeMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next }) => next())
+
+/** Regolamenti: documents, published versions and every draft. */
+export const regulationsReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:read")
+    return next()
+  })
+
+/** Regolamenti: create drafts, assign members, merge, send to approval and back. */
+export const regulationsWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:write")
+    return next()
+  })
+
+/** Regolamenti: record the approval, "Emana e notifica", regenerate the differences. */
+export const regulationsManageMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:manage")
+    return next()
+  })
+
+/** Regolamenti: the Segretario's deleghe to rectify. */
+export const regulationsRectifyMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:rectify")
     return next()
   })

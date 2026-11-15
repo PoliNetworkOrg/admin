@@ -11,17 +11,14 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
 - **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
   grants, Telegram groups, WhatsApp groups, labels, website content, reports, People (write, appoint, link, team), and
-  Microsoft 365 member creation and member-number changes.
+  Soci (`soci:write`: admit, register, edit, change number), and Regolamenti (`regulations:write`, `:manage`,
+  `:rectify`). Soci reads use `sociReadMiddleware` (`soci:read`).
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
-- **Microsoft 365**: read the member directory with `azure:members:read` and create with `azure:members:create` through
-  the backend's fixed new-member workflow, choosing a standard or custom address; a welcome email to a PoliNetwork
-  address asks for confirmation. Change a member's ID with `azure:members:write`, after a confirmation, optionally
-  emailing them; the backend refuses IDs already assigned and accepts this call only with a user token, so it fails in
-  `AGENT_MODE`. List groups and their members, read-only, with `azure:groups:read`. Group membership is never
-  edited from the dashboard: the backend's create workflow adds only the new user to Soci, from which the IdP derives
-  the Socio role, so adding or removing anyone in a group would grant or revoke IdP roles. Nothing else about users or
-  groups can be edited from the dashboard.
+- **Microsoft 365**: read the member directory with `azure:members:read`, and list groups and their members with
+  `azure:groups:read`, both read-only. Group membership is never edited from the dashboard: admitting a socio (People ›
+  Soci) adds only the new user to Soci, from which the IdP derives the Socio role, so adding or removing anyone in a group
+  would grant or revoke IdP roles. Nothing else about users or groups can be edited from Microsoft 365's pages.
 - **People** (`src/features/people/`): every page reads and writes through `peopleApi(context)`, which parses the
   backend's `people.*` responses with `people.contract.ts` (a copy of the backend's) and, in agent mode, uses the
   in-memory fake (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). A person's roles are assignments (Admin, Capo
@@ -32,9 +29,24 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   permissions yet can accept one (`peopleInviteMiddleware`: signed in, the token is the proof); the old
   `/dashboard/account/me?peopleInvite=` links redirect there. `/dashboard` admits `people:self` without
   `admin:access`; Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and
-  only open their sections. Member register, Receipts, Census and My area's fee card are unconnected mockups (#138):
-  static sample data from `mockup-data.ts`, no server functions, disabled actions and a `MockupBanner`, gated by
-  `people:read`, to be rebuilt in Phase 2 (#144) and Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+  only open their sections. Receipts, Census and My area's fee card are unconnected mockups (#138): static sample data
+  from `mockup-data.ts`, no server functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt
+  in Phase 2 (#144) and Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+- **Soci** (`src/features/soci/`, People's Soci group): the Libro Soci, through `sociApi(context)`, which parses the
+  backend's `soci.*` responses with `soci.contract.ts` (a copy of the backend's) and serves `soci.fake.server.ts` in agent
+  mode. `soci:read` opens Register and the socio pages, `soci:write` admits (a new Microsoft 365 account in Soci, then the
+  record), registers an account already in Soci, edits and changes member numbers, which moved here from Microsoft 365 ›
+  Members. Design: `docs/people/soci.md`.
+- **Regolamenti** (`src/features/regulations/`): the governance documents (v1: the RRI), through
+  `regulationsApi(context)`, which parses the backend's `regulations.*` responses with `regulations.contract.ts` (a copy
+  of the backend's) and, in agent mode, serves `regulations.fake.server.ts` with a local Hocuspocus and `xelatex`
+  (`AGENT_BACKEND_TOKEN` calls a local backend instead). `regulations:read` opens Documenti and every draft as a viewer,
+  `regulations:write` creates drafts, assigns members, merges and sends to approval, `regulations:manage` records the
+  approval, emanates and regenerates the differences, `regulations:rectify` rettifiche and Deleghe. Per-draft access
+  (viewer, commenter, editor) and deleghe are backend data: `regulations.me.get` admits an account without
+  `admin:access` to Regolamenti › Bozze only, draft-scoped server functions use `regulationsAssigneeMiddleware`, and
+  pages act on the draft's `can` from the backend. The editor connects to the collab service with a single-use ticket
+  from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
@@ -65,7 +77,7 @@ PORT=1xxxx AGENT_MODE=true pnpm dev
 `AGENT_MODE` (development only) signs in a fake administrator with every permission and disables the auth redirects between
 `/login` and `/dashboard`, so open `/dashboard/...` or `/login` directly. It has no access token, so the backend
 (`BACKEND_URL`, default `http://localhost:3000`) refuses its calls: pages that read the backend show their error state,
-and People serves its sample data. To see real backend data, sign in through the IdP with `AGENT_MODE=false`. When
+and People, Soci and Regolamenti serve their sample data. To see real backend data, sign in through the IdP with `AGENT_MODE=false`. When
 changing auth or those redirects, also verify the normal flow with `AGENT_MODE=false`.
 
 > [!IMPORTANT]

@@ -16,14 +16,15 @@ Everything an agent needs to build, or continue building, the People area of the
 | [`brief.md`](brief.md)         | The original brief, verbatim                                                             |
 | [`decisions.md`](decisions.md) | What was settled after the brief: owner decisions, navigation, per-page rules, roles     |
 | [`contract.md`](contract.md)   | The `people.*` backend contract the dashboard codes against                              |
-| [`fees.md`](fees.md)           | Fees and receipts as designed; now an unconnected mockup until Phase 2 (#144)            |
+| [`soci.md`](soci.md)           | Phase 2 (#144): the Soci register, fees, lapse and emails, as agreed on 9 November 2026  |
+| [`fees.md`](fees.md)           | The old fees and receipts design, superseded by `soci.md`; reference only                |
 | [`plan.md`](plan.md)           | Phases, checklist and progress log: **start here to know what is done and what is next** |
 | [`prototype/`](prototype/)     | The clickable prototype's source (structure and copy reference only)                     |
 
 ## Continuing the work
 
 1. Read `AGENTS.md` and `docs/design.md`, then `decisions.md`, `contract.md` and `plan.md` in that order.
-2. Check out branch `claude/eager-mayer-bsom7v` and read the open pull request and its latest commits.
+2. Read the roadmap (#146) and the open phase's issue; for Phase 2 read [`soci.md`](soci.md).
 3. Pick the first unchecked item in `plan.md`. Commit small and often; tick the box and add a progress-log line in the
    commit that finishes an item.
 4. Run `PORT=1xxxx AGENT_MODE=true pnpm dev` to see the pages with sample data; set `AGENT_PERMISSIONS` and

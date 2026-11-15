@@ -32,6 +32,8 @@ const IRREGULAR_PLURALS = new Map([
   ["edition", "editions"],
   ["membership", "memberships"],
   ["person", "people"],
+  ["socio", "soci"],
+  ["active socio", "active soci"],
   ["reply", "replies"],
   ["entry", "entries"],
 ])

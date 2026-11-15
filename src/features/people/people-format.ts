@@ -128,7 +128,12 @@ export function formatDay(value: string) {
  * than this): date inputs and the roles Add person starts with use it.
  */
 export function todayIso() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date())
+  return romeDay(new Date())
+}
+
+/** The Europe/Rome calendar day of an instant, as an ISO date: `2025-08-31T23:30Z` is `2025-09-01`. */
+export function romeDay(instant: Date | string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(instant))
 }
 
 export function isExpired(date: string) {

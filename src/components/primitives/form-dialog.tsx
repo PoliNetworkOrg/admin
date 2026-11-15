@@ -74,14 +74,36 @@ type FormDialogProps = {
    */
   tone?: "danger"
   icon?: LucideIcon
+  /** The dialog's own words (Cancel, the discard confirmation) in Italian, for the Italian Regolamenti pages. */
+  locale?: "en" | "it"
   children: ReactNode
 }
+
+const COPY = {
+  en: {
+    cancel: "Cancel",
+    close: "Close",
+    discardTitle: "Discard changes?",
+    discardText: (noun: string) => `Your edits to this ${noun} will be lost.`,
+    discard: "Discard",
+    keepEditing: "Keep editing",
+  },
+  it: {
+    cancel: "Annulla",
+    close: "Chiudi",
+    discardTitle: "Scartare le modifiche?",
+    discardText: (noun: string) => `Le modifiche a ${noun} andranno perse.`,
+    discard: "Scarta",
+    keepEditing: "Continua a modificare",
+  },
+} as const
 
 /** Form dialog: header, scrolling body, Cancel + primary footer, keyboard submit, dirty-close confirmation. */
 export function FormDialog({
   open,
   onOpenChange,
   size = "md",
+  locale = "en",
   title,
   description,
   noun,
@@ -171,7 +193,7 @@ export function FormDialog({
               <DialogTitle className={dialogTitleText}>{title}</DialogTitle>
               {description && <DialogDescription className={dialogDescriptionText}>{description}</DialogDescription>}
             </div>
-            <IconButton label="Close" icon={X} onClick={requestClose} className="absolute top-3 right-3" />
+            <IconButton label={COPY[locale].close} icon={X} onClick={requestClose} className="absolute top-3 right-3" />
           </header>
           <form
             noValidate
@@ -199,7 +221,7 @@ export function FormDialog({
               <div className={dialogFooter}>
                 {footerStart && <div className="mr-auto flex gap-2 max-shell:flex-none">{footerStart}</div>}
                 <Button type="button" variant="outline" onClick={requestClose} className={dialogFooterButton}>
-                  Cancel
+                  {COPY[locale].cancel}
                 </Button>
                 {submitLabel !== undefined && (
                   <LoadingButton
@@ -218,10 +240,10 @@ export function FormDialog({
           <ConfirmDialog
             open={confirmingDiscard}
             onOpenChange={setConfirmingDiscard}
-            title="Discard changes?"
-            description={`Your edits to this ${noun} will be lost.`}
-            confirmLabel="Discard"
-            cancelLabel="Keep editing"
+            title={COPY[locale].discardTitle}
+            description={COPY[locale].discardText(noun)}
+            confirmLabel={COPY[locale].discard}
+            cancelLabel={COPY[locale].keepEditing}
             onConfirm={async () => onOpenChange(false)}
           />
         </DialogPrimitive.Popup>

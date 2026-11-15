@@ -30,7 +30,6 @@ void test("the People mockups and the remaining pages open with people:read", as
     "/dashboard/people/admins",
     "/dashboard/people/linking",
     // Unconnected mockups (Phase 2 and 3): gated by people:read, not by the deleted member and fee permissions.
-    "/dashboard/people/members",
     "/dashboard/people/receipts",
     "/dashboard/people/census",
     "/dashboard/people/census/mock-2026",
@@ -42,6 +41,42 @@ void test("the People mockups and the remaining pages open with people:read", as
     assert.equal(canOpenPage(match, ["people:self"], roles), false, path)
   }
   assert.equal(canOpenPage(matchPath("/dashboard/account/me"), ["people:self"], roles), true)
+})
+
+void test("People's Soci pages open with soci:read, under the Soci group", async () => {
+  const { canOpenPage, isDeepPage, matchPath, sectionFor, serviceById, serviceFor } = await nav()
+  for (const path of ["/dashboard/people/soci", "/dashboard/people/soci/344"]) {
+    const match = matchPath(path)
+    assert.equal(serviceFor(match).id, "people", path)
+    assert.equal(sectionFor(match).id, "soci", path)
+    assert.equal(canOpenPage(match, ["admin:access", "soci:read"], roles), true, path)
+    assert.equal(canOpenPage(match, ["admin:access", "people:read"], roles), false, path)
+    assert.equal(canOpenPage(match, ["soci:read"], roles), false, path)
+  }
+  const socio = matchPath("/dashboard/people/soci/344")
+  assert.equal(socio.kind, "people-socio")
+  assert.equal(socio.number, 344)
+  assert.equal(isDeepPage(matchPath("/dashboard/people/soci/344")), true)
+  assert.equal(matchPath("/dashboard/people/soci/0344").kind, "not-found")
+  assert.equal(matchPath("/dashboard/people/members").kind, "not-found")
+  // Groups are contiguous: the panel draws each title once, above its first section.
+  const groups = serviceById("people").sections.map((section) => section.group)
+  assert.equal([...new Set(groups)].join(), "Volunteers,Soci")
+  assert.equal(groups.join(), groups.toSorted((a, b) => groups.indexOf(a) - groups.indexOf(b)).join())
+  assert.equal(
+    serviceById("people")
+      .sections.filter((section) => section.group === "Volunteers")
+      .map((section) => section.id)
+      .join(),
+    "overview,admins,teams,census,linking"
+  )
+})
+
+void test("Microsoft 365 › Members needs azure:members:read alone", async () => {
+  const { canOpenPage, matchPath } = await nav()
+  const members = matchPath("/dashboard/azure/members")
+  assert.equal(canOpenPage(members, ["admin:access", "azure:members:read"], roles), true)
+  assert.equal(canOpenPage(members, ["admin:access", "azure:members:create"], roles), false)
 })
 
 void test("eSign keeps its routes, permission gates and counts", async () => {

@@ -1,4 +1,5 @@
 import { getCookie, setResponseStatus } from "@tanstack/react-start/server"
+import { z } from "zod"
 
 import { env } from "@/env"
 import type { DashboardAccess } from "@/lib/auth"
@@ -41,10 +42,42 @@ export type RequestSession = {
   key: string
 }
 
-const agentSession: RequestSession = {
-  user: { sub: "agent-preview-user", name: "Preview Agent", email: "agent@polinetwork.org", picture: null },
-  accessToken: null,
-  key: "agent-preview-session",
+const agentUser: SessionUser = {
+  sub: "agent-preview-user",
+  name: "Preview Agent",
+  email: "agent@polinetwork.org",
+  picture: null,
+}
+
+const tokenClaims = z.object({ sub: z.string(), name: z.string().optional(), email: z.string().optional() })
+
+/** A JWT's payload, unverified: only to show who a development token belongs to. */
+function decodeJwtPayload(token: string) {
+  try {
+    return JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8"))
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
+
+/**
+ * Agent mode's session. With `AGENT_BACKEND_TOKEN` it carries that token and shows its subject (read, not verified:
+ * the backend verifies it), so two dev servers with two tokens are two people on one local backend.
+ */
+function agentSession(): RequestSession {
+  const token = env.AGENT_BACKEND_TOKEN ?? null
+  if (!token) return { user: agentUser, accessToken: null, key: "agent-preview-session" }
+  const payload = tokenClaims.safeParse(decodeJwtPayload(token))
+  const user = payload.success
+    ? {
+        sub: payload.data.sub,
+        name: payload.data.name ?? payload.data.sub,
+        email: payload.data.email ?? "",
+        picture: null,
+      }
+    : agentUser
+  return { user, accessToken: token, key: `agent-session-${user.sub}` }
 }
 
 export function isAgentMode() {
@@ -115,7 +148,7 @@ async function readStoredSession(key: string, now: number) {
  * or when the IdP is down and the access token has expired: the dashboard fails closed.
  */
 export async function readRequestSession(): Promise<RequestSession | null> {
-  if (isAgentMode()) return agentSession
+  if (isAgentMode()) return agentSession()
   const id = getCookie(authConfig().sessionCookie)
   if (!id) return null
   const key = await sessionKey(id)
@@ -166,7 +199,7 @@ function cacheAccess(key: string, access: DashboardAccess, now: number) {
  * recovers.
  */
 export async function loadAccess(session: RequestSession, backend: BackendClient): Promise<DashboardAccess> {
-  if (isAgentMode()) {
+  if (isAgentMode() && !session.accessToken) {
     return {
       status: "authorized",
       user: { ...session.user, telegramId: "1" },
@@ -179,11 +212,28 @@ export async function loadAccess(session: RequestSession, backend: BackendClient
 
   const result = await backend.me.access.query()
   const user = { ...session.user, telegramId: result.telegramId }
-  const access: DashboardAccess = canEnterDashboard(result.permissions)
+  const admitted =
+    canEnterDashboard(result.permissions) || (!result.stale && (await hasRegulationsAccess(session.accessToken)))
+  const access: DashboardAccess = admitted
     ? { status: "authorized", user, permissions: result.permissions }
     : { status: "forbidden", user, stale: result.stale }
   cacheAccess(session.key, access, now)
   return access
+}
+
+/**
+ * Whether someone without `admin:access` or `people:self` has a way into Regolamenti: a draft they're assigned to, or a
+ * delega to rectify (`regulations.me.get`, open to any signed-in account). A failure denies.
+ */
+async function hasRegulationsAccess(accessToken: string | null) {
+  try {
+    const { backendRegulationsApi } = await import("@/features/regulations/regulations.api.server")
+    const me = await backendRegulationsApi(accessToken).getMe()
+    return me.assignedDrafts + me.deleghe > 0
+  } catch (error) {
+    console.error(error)
+    return false
+  }
 }
 
 function redirectResponse(location: string, cookies: string[], status = 303) {

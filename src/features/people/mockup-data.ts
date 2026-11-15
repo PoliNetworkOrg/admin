@@ -1,30 +1,20 @@
 import type { StatusTone } from "@/components/primitives"
 
 /**
- * Static sample data for the People pages kept as unconnected UI mockups: the member register (Soci), fees, receipts
- * and the census. Nothing here comes from or goes to the backend, and none of it is part of the People contract
- * (`people.contract.ts`). Phase 2 (#144) rebuilds Soci, fees and receipts on Microsoft 365 members; Phase 3 (#145)
- * rebuilds the census.
+ * Static sample data for the People pages kept as unconnected UI mockups: fees, receipts and the census. Nothing here
+ * comes from or goes to the backend, and none of it is part of the People contract (`people.contract.ts`). Phase 2
+ * (#144) rebuilds fees on the Soci register; Phase 3 (#145) rebuilds the census.
  */
 
 type Tone = { label: string; tone: StatusTone }
 
-export const MOCK_MEMBER_STATUSES = ["active", "suspended", "expired", "former"] as const
 export const MOCK_FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
 export const MOCK_RECEIPT_STATUSES = ["toSign", "signed", "sent", "failed", "voided"] as const
 
-export type MockMemberStatus = (typeof MOCK_MEMBER_STATUSES)[number]
 export type MockFeeStatus = (typeof MOCK_FEE_STATUSES)[number]
 export type MockReceiptStatus = (typeof MOCK_RECEIPT_STATUSES)[number]
 export type MockSigner = "president" | "vicePresident"
 export type MockCensusAnswer = "continues" | "leaving"
-
-export const MOCK_MEMBER_STATUS = {
-  active: { label: "Active", tone: "success", description: "Full member for the current year." },
-  suspended: { label: "Suspended", tone: "danger", description: "Rights paused by the Direttivo; keeps the number." },
-  expired: { label: "Expired", tone: "warning", description: "Fee not renewed; becomes Former after a year." },
-  former: { label: "Former", tone: "neutral", description: "No longer a member. The number is never reused." },
-} satisfies Record<MockMemberStatus, Tone & { description: string }>
 
 export const MOCK_FEE_STATUS = {
   paid: { label: "Paid", tone: "success" },
@@ -62,35 +52,6 @@ export function formatCents(cents: number) {
 
 /** The fee year every mockup shows. */
 export const MOCK_FEE_YEAR = "2026/27"
-
-export type MockMember = {
-  id: string
-  name: string
-  number: string
-  status: MockMemberStatus
-  admittedOn: string
-  /** The current fee year's fee; `null` for former members. */
-  fee: MockFeeStatus | null
-  m365Email: string
-}
-
-export const MOCK_MEMBERS: readonly MockMember[] = [
-  member("0001", "Giulia Rossi", "active", "2019-10-14", "paid"),
-  member("0004", "Marco Bianchi", "active", "2019-11-02", "receipt"),
-  member("0007", "Sara Colombo", "active", "2020-10-05", "due"),
-  member("0012", "Luca Ferrari", "suspended", "2021-03-18", "unpaid"),
-  member("0015", "Chiara Esposito", "expired", "2021-10-11", "unpaid"),
-  member("0021", "Davide Romano", "active", "2022-10-03", "paid"),
-  member("0023", "Elena Ricci", "active", "2023-09-28", "due"),
-  member("0030", "Paolo Greco", "former", "2020-01-20", null),
-  member("0034", "Anna Bruno", "active", "2024-10-07", "paid"),
-  member("0041", "Matteo Gallo", "active", "2025-10-13", "receipt"),
-]
-
-function member(number: string, name: string, status: MockMemberStatus, admittedOn: string, fee: MockFeeStatus | null) {
-  const [first = "", last = ""] = name.toLocaleLowerCase().split(" ")
-  return { id: `mock-${number}`, name, number, status, admittedOn, fee, m365Email: `${first}.${last}@polinetwork.org` }
-}
 
 export type MockReceipt = {
   id: string

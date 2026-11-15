@@ -20,6 +20,9 @@ import {
   LayoutDashboard,
   Receipt,
   type LucideIcon,
+  Landmark,
+  Scale,
+  ScrollText,
   MessageCircle,
   MessagesSquare,
   MonitorDown,
@@ -51,6 +54,7 @@ export type ServiceId =
   | "m365"
   | "web"
   | "esign"
+  | "regulations"
   | "reports"
   | "account"
 
@@ -71,13 +75,26 @@ export type Section = {
   role?: PeopleRole
   /** Open with `people:self` alone (Account). Every other section also needs `admin:access`. */
   selfService?: boolean
+  /**
+   * The panel heading this section sits under (People: Volunteers, Soci). The panel draws it above the group's first
+   * visible section; the mobile pills only keep the order. Sections of a group are listed together.
+   */
+  group?: string
 }
 
-/** Roles that come from the person's record (`people.me.roles`), not from IdP permissions. */
-export type PeopleRole = "capo" | "lead"
+/**
+ * Roles that come from backend data, not from IdP permissions: the person's People record (`people.me.roles`), and
+ * Regolamenti drafts they're assigned to or deleghe to rectify (`regulations.me.get`).
+ */
+export type PeopleRole = "capo" | "lead" | "regulations"
 
 /** What the signed-in person's record grants them in the navigation. */
-export type PeopleRoles = { capoScope: string | null; leads: readonly string[] }
+export type PeopleRoles = {
+  capoScope: string | null
+  leads: readonly string[]
+  /** A draft assignment or a delega opens Regolamenti › Bozze, with or without `admin:access`. */
+  regulations?: boolean
+}
 
 export const NO_PEOPLE_ROLES: PeopleRoles = { capoScope: null, leads: [] }
 
@@ -102,7 +119,8 @@ export type PageMatch =
   | { kind: "account-me" }
   | { kind: "people-overview" }
   | { kind: "people-person"; personId: string }
-  | { kind: "people-members" }
+  | { kind: "people-soci" }
+  | { kind: "people-socio"; number: number }
   | { kind: "people-receipts" }
   | { kind: "people-admins" }
   | { kind: "people-teams" }
@@ -133,6 +151,14 @@ export type PageMatch =
   | { kind: "esign-sign" }
   | { kind: "esign-drives" }
   | { kind: "esign-setup" }
+  | { kind: "regulations-documents" }
+  | { kind: "regulations-document"; documentKey: string }
+  | { kind: "regulations-drafts" }
+  | { kind: "regulations-draft"; draftId: string }
+  | { kind: "regulations-procedure"; draftId: string }
+  | { kind: "regulations-diff"; draftId: string }
+  | { kind: "regulations-merge"; draftId: string }
+  | { kind: "regulations-deleghe" }
   | { kind: "reports-open" }
   | { kind: "reports-closed" }
   | { kind: "not-found" }
@@ -179,24 +205,8 @@ const people: Service = {
       icon: LayoutList,
       path: "/dashboard/people",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name, email or Telegram…",
-    },
-    // Member register, Receipts and Census are unconnected mockups (Phase 2, #144; Phase 3, #145).
-    {
-      id: "members",
-      title: "Member register",
-      icon: IdCard,
-      path: "/dashboard/people/members",
-      permission: "people:read",
-      searchPlaceholder: "Search by name, number or email…",
-    },
-    {
-      id: "receipts",
-      title: "Receipts",
-      icon: Receipt,
-      path: "/dashboard/people/receipts",
-      permission: "people:read",
-      searchPlaceholder: "Search by name or receipt number…",
     },
     {
       id: "admins",
@@ -204,6 +214,7 @@ const people: Service = {
       icon: UserCog,
       path: "/dashboard/people/admins",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name, course or username…",
     },
     {
@@ -213,14 +224,17 @@ const people: Service = {
       path: "/dashboard/people/teams",
       permission: "people:read",
       role: "lead",
+      group: "Volunteers",
       searchPlaceholder: "Search team members…",
     },
+    // Census is an unconnected mockup (Phase 3, #145).
     {
       id: "census",
       title: "Census",
       icon: ClipboardList,
       path: "/dashboard/people/census",
       permission: "people:read",
+      group: "Volunteers",
     },
     {
       id: "linking",
@@ -228,7 +242,27 @@ const people: Service = {
       icon: Link2,
       path: "/dashboard/people/linking",
       permission: "people:read",
+      group: "Volunteers",
       searchPlaceholder: "Search by name or email…",
+    },
+    {
+      id: "soci",
+      title: "Register",
+      icon: IdCard,
+      path: "/dashboard/people/soci",
+      permission: "soci:read",
+      group: "Soci",
+      searchPlaceholder: "Search by name, number, mailbox or CF…",
+    },
+    // Receipts is an unconnected mockup, to be replaced by Fees (Phase 2, #144).
+    {
+      id: "receipts",
+      title: "Receipts",
+      icon: Receipt,
+      path: "/dashboard/people/receipts",
+      permission: "people:read",
+      group: "Soci",
+      searchPlaceholder: "Search by name or receipt number…",
     },
   ],
 }
@@ -310,7 +344,7 @@ const m365: Service = {
       title: "Members",
       icon: UserRound,
       path: "/dashboard/azure/members",
-      anyPermission: ["azure:members:read", "azure:members:create"],
+      permission: "azure:members:read",
       searchPlaceholder: "Search name, email or ID…",
     },
   ],
@@ -390,6 +424,39 @@ const esign: Service = {
   ],
 }
 
+const regulations: Service = {
+  id: "regulations",
+  title: "Regolamenti",
+  short: "Regole",
+  icon: Scale,
+  path: "/dashboard/regulations",
+  sections: [
+    {
+      id: "documents",
+      title: "Documenti",
+      icon: Landmark,
+      path: "/dashboard/regulations",
+      permission: "regulations:read",
+    },
+    {
+      id: "drafts",
+      title: "Bozze",
+      icon: ScrollText,
+      path: "/dashboard/regulations/drafts",
+      permission: "regulations:read",
+      role: "regulations",
+      searchPlaceholder: "Cerca per titolo o autore…",
+    },
+    {
+      id: "deleghe",
+      title: "Deleghe",
+      icon: KeyRound,
+      path: "/dashboard/regulations/deleghe",
+      permission: "regulations:rectify",
+    },
+  ],
+}
+
 const reports: Service = {
   id: "reports",
   title: "Reports",
@@ -417,7 +484,18 @@ const reports: Service = {
 }
 
 /** Rail order: Overview, services with sections, then Account. */
-export const services: Service[] = [overview, people, telegram, whatsapp, m365, web, esign, reports, account]
+export const services: Service[] = [
+  overview,
+  people,
+  telegram,
+  whatsapp,
+  m365,
+  web,
+  esign,
+  regulations,
+  reports,
+  account,
+]
 
 /** The services that own a panel, in rail order. */
 export const panelServices: Service[] = services.filter((service) => service.sections.length > 0)
@@ -434,6 +512,7 @@ export function isRailService(service: Service) {
 export function sectionVisible(section: Section, permissions: readonly string[], roles: PeopleRoles) {
   if (hasPermission(permissions, "people:self") && section.role === "capo" && roles.capoScope !== null) return true
   if (hasPermission(permissions, "people:self") && section.role === "lead" && roles.leads.length > 0) return true
+  if (section.role === "regulations" && roles.regulations) return true
   if (section.role && !section.permission && !section.anyPermission) return false
   if (!section.selfService && !hasPermission(permissions, "admin:access")) return false
   return (
@@ -482,12 +561,19 @@ export function matchPath(pathname: string): PageMatch {
   if (head === "web" && second === "groups-by-label" && third !== undefined) {
     return { kind: "web-category", path: urlSegmentsToLabelPath([third, ...rest]) }
   }
+  if (head === "regulations" && second === "drafts" && third !== undefined && rest.length <= 1) {
+    const [page] = rest
+    if (page === undefined) return { kind: "regulations-draft", draftId: third }
+    if (page === "procedure") return { kind: "regulations-procedure", draftId: third }
+    if (page === "diff") return { kind: "regulations-diff", draftId: third }
+    if (page === "merge") return { kind: "regulations-merge", draftId: third }
+  }
   if (rest.length > 0) return { kind: "not-found" }
 
   if (head === "people") {
     if (second === undefined) return { kind: "people-overview" }
     if (third === undefined) {
-      if (second === "members") return { kind: "people-members" }
+      if (second === "soci") return { kind: "people-soci" }
       if (second === "receipts") return { kind: "people-receipts" }
       if (second === "admins") return { kind: "people-admins" }
       if (second === "teams") return { kind: "people-teams" }
@@ -496,6 +582,8 @@ export function matchPath(pathname: string): PageMatch {
       if (/^P-\d{4,}$/.test(second)) return { kind: "people-person", personId: second }
     }
     if (second === "teams" && third !== undefined) return { kind: "people-team", teamId: third }
+    if (second === "soci" && third !== undefined && /^[1-9]\d{0,5}$/.test(third))
+      return { kind: "people-socio", number: Number(third) }
     if (second === "census" && third !== undefined) return { kind: "people-campaign", campaignId: third }
   }
 
@@ -543,6 +631,13 @@ export function matchPath(pathname: string): PageMatch {
     }
   }
 
+  if (head === "regulations") {
+    if (second === undefined) return { kind: "regulations-documents" }
+    if (second === "drafts" && third === undefined) return { kind: "regulations-drafts" }
+    if (second === "deleghe" && third === undefined) return { kind: "regulations-deleghe" }
+    if (second === "documents" && third !== undefined) return { kind: "regulations-document", documentKey: third }
+  }
+
   if (head === "reports" && third === undefined) {
     if (second === "group-links") return { kind: "reports-open" }
     if (second === "resolved") return { kind: "reports-closed" }
@@ -561,7 +656,8 @@ export function serviceFor(match: PageMatch): Service {
       return account
     case "people-overview":
     case "people-person":
-    case "people-members":
+    case "people-soci":
+    case "people-socio":
     case "people-receipts":
     case "people-admins":
     case "people-teams":
@@ -598,6 +694,15 @@ export function serviceFor(match: PageMatch): Service {
     case "esign-drives":
     case "esign-setup":
       return esign
+    case "regulations-documents":
+    case "regulations-document":
+    case "regulations-drafts":
+    case "regulations-draft":
+    case "regulations-procedure":
+    case "regulations-diff":
+    case "regulations-merge":
+    case "regulations-deleghe":
+      return regulations
     case "reports-open":
     case "reports-closed":
       return reports
@@ -617,8 +722,9 @@ export function sectionFor(match: PageMatch): Section | null {
     case "people-overview":
     case "people-person":
       return section(people, "overview")
-    case "people-members":
-      return section(people, "members")
+    case "people-soci":
+    case "people-socio":
+      return section(people, "soci")
     case "people-receipts":
       return section(people, "receipts")
     case "people-admins":
@@ -671,6 +777,17 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(esign, "drives")
     case "esign-setup":
       return section(esign, "setup")
+    case "regulations-documents":
+    case "regulations-document":
+      return section(regulations, "documents")
+    case "regulations-drafts":
+    case "regulations-draft":
+    case "regulations-procedure":
+    case "regulations-diff":
+    case "regulations-merge":
+      return section(regulations, "drafts")
+    case "regulations-deleghe":
+      return section(regulations, "deleghe")
     case "reports-open":
       return section(reports, "open")
     case "reports-closed":
@@ -686,10 +803,16 @@ export function isDeepPage(match: PageMatch): boolean {
     match.kind === "web-tag" ||
     match.kind === "people-person" ||
     match.kind === "people-team" ||
+    match.kind === "people-socio" ||
     match.kind === "people-campaign" ||
     match.kind === "esign-request" ||
     match.kind === "esign-new" ||
-    match.kind === "esign-sign"
+    match.kind === "esign-sign" ||
+    match.kind === "regulations-document" ||
+    match.kind === "regulations-draft" ||
+    match.kind === "regulations-procedure" ||
+    match.kind === "regulations-diff" ||
+    match.kind === "regulations-merge"
   )
 }
 
