@@ -53,6 +53,15 @@ Procedures: `me.get`, `documents.list|get|sync`, `versions.list|pdf`, `drafts.li
 because the browser never reaches the backend. Refusals carry an Italian message shown as is; input validation and the
 policy's English denials get the page's own message (`failureMessage`).
 
+## Procedure
+
+The draft's `can.transitions` lists the steps the caller may take now; a step that is not possible yet comes with
+`blockedBy` and shows disabled with its reason (text that doesn't parse, another draft in approval, a base superseded by
+a newer version). "Registra l'approvazione" asks for the delibera. "Riporta in bozza (annulla l'approvazione)" takes an
+approved draft back (`regulations:manage`, through `withdrawApproval`): the delibera stops counting and a new approval is
+needed. "Emana e notifica" (or "Emana rettifica") runs on the backend and the page follows its steps; when it can't
+start, `can.emanateBlockedBy` says why.
+
 ## Collaboration
 
 The text of a draft lives in the collab service (Hocuspocus): document name = draft id, `ydoc.getMap("files")` maps
@@ -85,3 +94,9 @@ backend's local stack mints such tokens with its dev IdP shim for seeded account
 a commenter with no permissions). Run one dev server per account, on two ports, to see two people edit one draft.
 Signing in for real (`AGENT_MODE=false`) needs a development OIDC client on auth.polinetwork.org allowed the backend
 resource, and a backend able to read access snapshots: both are registrations and secrets only the owner can provide.
+
+## Known gaps
+
+- The editor lists and switches the source files but doesn't add, rename or remove them; new regolamenti go in an
+  existing file until it does.
+- A few words of shared primitives stay English: the `DataTable` "Actions" header and the pagination.
