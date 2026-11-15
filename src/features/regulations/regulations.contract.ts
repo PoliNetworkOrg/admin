@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 /**
- * The `regulations.*` backend contract (docs/regulations/contract.md), a verbatim copy of the backend's
- * `src/regulations/contract.ts` (PoliNetworkOrg/backend#117, 0249ba0). Agent mode answers from
+ * The `regulations.*` backend contract (docs/regulations/README.md), a verbatim copy of the backend's
+ * `src/regulations/contract.ts` (PoliNetworkOrg/backend#117, 6431767). Agent mode answers from
  * `regulations.fake.server.ts`; real responses are parsed with these schemas before they reach a page. Keep both
  * copies in step.
  *
