@@ -626,8 +626,6 @@ Rules that the templates above don't imply.
   The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
-
-Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.
 - **Regolamenti**: Documenti is a card per document; a document page lists its versions (the newest carries "In vigore",
   each has its PDF, release, differences and "Nuova bozza da qui") and its drafts. Bozze adds "Il tuo accesso" for people
   admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
@@ -635,4 +633,4 @@ Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.
   live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
   Deleghe is a list with a segmented Attive/Tutte filter.
 
-Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.
+Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.
