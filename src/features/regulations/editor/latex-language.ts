@@ -81,7 +81,7 @@ type Macro = {
 /** `text` with `|` marking where the cursor goes. */
 function template(text: string) {
   const cursor = text.indexOf("|")
-  return { text: text.replace("|", ""), cursor }
+  return { text: text.replaceAll("|", ""), cursor }
 }
 
 const MACROS: Macro[] = [
