@@ -1,7 +1,8 @@
-import { Hash, Pencil } from "lucide-react"
+import { BadgeCheck, FileSearch, FileText, Hash, Pencil, Receipt } from "lucide-react"
 
 import {
   buttonMotion,
+  IconButton,
   InlineAlert,
   KeyValueList,
   type KeyValueItem,
@@ -12,12 +13,14 @@ import {
 } from "@/components/primitives"
 import { PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { actorName, formatDay } from "@/features/people/people-format"
-import { useDialogState } from "@/features/people/people-hooks"
-import { PersonAvatar, Row, Rows, StateBadge } from "@/features/people/people-ui"
+import { actorName, formatDay, todayIso } from "@/features/people/people-format"
+import { useDialog, useDialogState } from "@/features/people/people-hooks"
+import { PersonAvatar, Row, RowIcon, Rows, StateBadge } from "@/features/people/people-ui"
 import type { PersonRow } from "@/features/people/people.contract"
 import { formatDateTime } from "@/lib/format"
 
+import { MarkPaidDialog, payableYears, ReceiptDialog, ReviewFeeDialog } from "./fee-dialogs"
+import { FeeBadge, feeSummary } from "./fee-ui"
 import {
   ACCOUNT_STATE,
   END_REASON,
@@ -27,7 +30,7 @@ import {
   socioName,
   socioStatus,
 } from "./soci-format"
-import type { SocioRecord, SocioRow } from "./soci.contract"
+import type { Fee, SocioRecord, SocioRow } from "./soci.contract"
 import { ChangeNumberDialog, EditSocioDialog } from "./socio-dialogs"
 
 const BACK = { label: "the register", link: { to: "/dashboard/people/soci" } } as const
@@ -35,7 +38,7 @@ const BACK = { label: "the register", link: { to: "/dashboard/people/soci" } } a
 const value = (text: string | null, mono = false) =>
   text ? <span className={mono ? "font-mono" : undefined}>{text}</span> : <Unset />
 
-/** One socio: the bookkeeping data, the Microsoft 365 account and the record's history. */
+/** One socio: the bookkeeping data, the Microsoft 365 account, the fees with their receipts and the record's history. */
 export function SocioPage({
   socio,
   register,
@@ -49,6 +52,11 @@ export function SocioPage({
   const canWrite = useCan("soci:write")
   const edit = useDialogState()
   const changeNumber = useDialogState()
+  const review = useDialog<Fee>()
+  const receipt = useDialog<Fee>()
+  /** `null`: Mark as paid from the card's header, for any payable year. */
+  const markPaid = useDialog<Fee | null>()
+  const payable = payableYears(socio, socio.fees, todayIso())
   const name = socioName(socio)
   const missing = missingDetails(socio)
   const deleted = socio.accountState === "deleted"
@@ -159,6 +167,67 @@ export function SocioPage({
             </SectionCard>
           </div>
 
+          <SectionCard
+            title="Fees"
+            count={socio.fees.length}
+            padding="flush"
+            action={
+              canWrite && payable.length ? (
+                <Button size="sm" variant="outline" className={buttonMotion} onClick={() => markPaid.show(null)}>
+                  <BadgeCheck data-icon="inline-start" />
+                  Mark as paid
+                </Button>
+              ) : undefined
+            }
+          >
+            {socio.fees.length === 0 ? (
+              <SectionEmpty title="No fees yet" />
+            ) : (
+              <Rows>
+                {socio.fees.map((fee) => (
+                  <Row
+                    key={fee.year}
+                    lead={<RowIcon icon={Receipt} />}
+                    title={
+                      <>
+                        <span className="font-mono">{fee.label}</span>
+                        <FeeBadge status={fee.status} />
+                      </>
+                    }
+                    meta={feeSummary(fee)}
+                    end={
+                      <>
+                        {fee.status === "uploaded" && canWrite ? (
+                          <IconButton
+                            label="Review"
+                            ariaLabel={`Review the ${fee.label} receipt`}
+                            icon={FileSearch}
+                            onClick={() => review.show(fee)}
+                          />
+                        ) : fee.upload ? (
+                          <IconButton
+                            label="View receipt"
+                            ariaLabel={`View the ${fee.label} receipt`}
+                            icon={FileText}
+                            onClick={() => receipt.show(fee)}
+                          />
+                        ) : null}
+                        {canWrite && payable.includes(fee.year) ? (
+                          <IconButton
+                            label="Mark as paid"
+                            ariaLabel={`Mark the ${fee.label} fee as paid`}
+                            icon={BadgeCheck}
+                            onClick={() => markPaid.show(fee)}
+                          />
+                        ) : null}
+                      </>
+                    }
+                  />
+                ))}
+              </Rows>
+            )}
+          </SectionCard>
+
           <SectionCard title="Activity" count={socio.activity.length} padding="flush">
             {socio.activity.length === 0 ? (
               <SectionEmpty title="No activity yet" />
@@ -191,6 +260,35 @@ export function SocioPage({
           onOpenChange={edit.onOpenChange}
           socio={socio}
           register={register}
+        />
+      ) : null}
+      {canWrite && review.target ? (
+        <ReviewFeeDialog
+          key={`review-${review.key}`}
+          open={review.open}
+          onOpenChange={review.onOpenChange}
+          socio={socio}
+          fee={review.target}
+        />
+      ) : null}
+      {receipt.target ? (
+        <ReceiptDialog
+          key={`receipt-${receipt.key}`}
+          open={receipt.open}
+          onOpenChange={receipt.onOpenChange}
+          socio={socio}
+          fee={receipt.target}
+        />
+      ) : null}
+      {canWrite ? (
+        <MarkPaidDialog
+          key={`paid-${markPaid.key}`}
+          open={markPaid.open}
+          onOpenChange={markPaid.onOpenChange}
+          socio={socio}
+          years={markPaid.target ? [markPaid.target.year] : payable}
+          fee={markPaid.target}
+          fees={socio.fees}
         />
       ) : null}
       {canWrite && !deleted ? (

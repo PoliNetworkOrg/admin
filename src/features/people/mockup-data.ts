@@ -1,40 +1,13 @@
 import type { StatusTone } from "@/components/primitives"
 
 /**
- * Static sample data for the People pages kept as unconnected UI mockups: fees, receipts and the census. Nothing here
- * comes from or goes to the backend, and none of it is part of the People contract (`people.contract.ts`). Phase 2
- * (#144) rebuilds fees on the Soci register; Phase 3 (#145) rebuilds the census.
+ * Static sample data for the People page kept as an unconnected UI mockup: the census. Nothing here comes from or goes
+ * to the backend, and none of it is part of the People contract (`people.contract.ts`). Phase 3 (#145) rebuilds it.
  */
 
 type Tone = { label: string; tone: StatusTone }
 
-export const MOCK_FEE_STATUSES = ["due", "receipt", "paid", "unpaid"] as const
-export const MOCK_RECEIPT_STATUSES = ["toSign", "signed", "sent", "failed", "voided"] as const
-
-export type MockFeeStatus = (typeof MOCK_FEE_STATUSES)[number]
-export type MockReceiptStatus = (typeof MOCK_RECEIPT_STATUSES)[number]
-export type MockSigner = "president" | "vicePresident"
 export type MockCensusAnswer = "continues" | "leaving"
-
-export const MOCK_FEE_STATUS = {
-  paid: { label: "Paid", tone: "success" },
-  receipt: { label: "Receipt uploaded", tone: "brand" },
-  due: { label: "Due", tone: "warning" },
-  unpaid: { label: "Unpaid", tone: "danger" },
-} satisfies Record<MockFeeStatus, Tone>
-
-export const MOCK_RECEIPT_STATUS = {
-  toSign: { label: "To sign", tone: "warning" },
-  signed: { label: "Signed", tone: "brand" },
-  sent: { label: "Sent", tone: "success" },
-  failed: { label: "Send failed", tone: "danger" },
-  voided: { label: "Voided", tone: "neutral" },
-} satisfies Record<MockReceiptStatus, Tone>
-
-export const MOCK_SIGNER_LABEL = { president: "President", vicePresident: "Vice-president" } satisfies Record<
-  MockSigner,
-  string
->
 
 export const MOCK_CENSUS_ANSWER = {
   continues: { label: "Continues", tone: "success" },
@@ -44,83 +17,6 @@ export const MOCK_CENSUS_ANSWER = {
 export const MOCK_NO_ANSWER = { label: "No answer", tone: "neutral" } satisfies Tone
 
 export const MOCK_CENSUS_SOURCE = { forms: "Imported from Forms", dashboard: "Dashboard" } as const
-
-/** "€10.00": the mock amounts are integer cents. */
-export function formatCents(cents: number) {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" }).format(cents / 100)
-}
-
-/** The fee year every mockup shows. */
-export const MOCK_FEE_YEAR = "2026/27"
-
-export type MockReceipt = {
-  id: string
-  /** The fee year's first calendar year and a sequence never reused. */
-  number: string
-  name: string
-  memberNumber: string
-  amountCents: number
-  issuedOn: string
-  status: MockReceiptStatus
-  signer: MockSigner
-  signedBy: string | null
-}
-
-export const MOCK_OFFICERS = { president: "Giulia Rossi", vicePresident: "Marco Bianchi" } satisfies Record<
-  MockSigner,
-  string
->
-
-export const MOCK_RECEIPTS: readonly MockReceipt[] = [
-  receipt("2026/001", "Anna Bruno", "0034", "2026-09-15", "sent", "president"),
-  receipt("2026/002", "Davide Romano", "0021", "2026-09-22", "sent", "president"),
-  receipt("2026/003", "Giulia Rossi", "0001", "2026-09-30", "sent", "vicePresident"),
-  receipt("2026/004", "Elena Ricci", "0023", "2026-10-06", "voided", "president"),
-  receipt("2026/005", "Sara Colombo", "0007", "2026-10-12", "failed", "president"),
-  receipt("2026/006", "Matteo Gallo", "0041", "2026-10-20", "signed", "president"),
-  receipt("2026/007", "Marco Bianchi", "0004", "2026-10-27", "toSign", "president"),
-]
-
-function receipt(
-  number: string,
-  name: string,
-  memberNumber: string,
-  issuedOn: string,
-  status: MockReceiptStatus,
-  signer: MockSigner
-): MockReceipt {
-  const signed = status === "signed" || status === "sent" || status === "failed"
-  return {
-    id: `mock-${number}`,
-    number,
-    name,
-    memberNumber,
-    amountCents: 1000,
-    issuedOn,
-    status,
-    signer,
-    signedBy: signed ? MOCK_OFFICERS[signer] : null,
-  }
-}
-
-export type MockMyFee = {
-  year: string
-  status: MockFeeStatus
-  amountCents: number
-  dueOn: string
-  instructions: { beneficiary: string; iban: string; reference: string }
-  receipts: { id: string; number: string; year: string; sentOn: string }[]
-}
-
-/** My area's fee card: a current member who still owes this year's fee, and last year's receipt. */
-export const MOCK_MY_FEE = {
-  year: MOCK_FEE_YEAR,
-  status: "due",
-  amountCents: 1000,
-  dueOn: "2026-12-31",
-  instructions: { beneficiary: "PoliNetwork APS", iban: "IT00 X000 0000 0000 0000 0000 000", reference: "Quota 0007" },
-  receipts: [{ id: "mock-2025/019", number: "2025/019", year: "2025/26", sentOn: "2025-10-21" }],
-} satisfies MockMyFee
 
 export type MockCampaign = {
   id: string

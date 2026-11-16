@@ -8,6 +8,7 @@ import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { getMyPeopleRoles } from "@/features/people/people.functions"
 import { getMyRegulations } from "@/features/regulations/regulations.functions"
+import { getFeesToReviewCount } from "@/features/soci/soci.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/dashboard")({
     }
     return { user: access.user, permissions: access.permissions, peopleRoles }
   },
-  // Not awaited: the panel count streams in. It is decoration, so a failed load hides it; the Reports page reports
+  // Not awaited: the panel counts stream in. It is decoration, so a failed load hides it; the Reports page reports
   // the error. `router.invalidate()` (e.g. after resolving a report) refreshes it. Reading reports needs the same
   // permission as managing them.
   loader: ({ context }) => ({
@@ -81,6 +82,17 @@ export const Route = createFileRoute("/dashboard")({
             }
           )
         : Promise.resolve(null),
+      // Transfer receipts waiting for review this fee year: a count on Soci › Fees, like Reports › Open.
+      fees:
+        hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "soci:read")
+          ? getFeesToReviewCount().then(
+              (count) => count,
+              (error) => {
+                console.error(error)
+                return null
+              }
+            )
+          : Promise.resolve(null),
     },
   }),
   staleTime: 60_000,
