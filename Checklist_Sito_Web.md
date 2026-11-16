@@ -1,7 +1,7 @@
 # Checklist lancio sito PoliNetwork
 
-**Aggiornamento:** 30 ottobre 2026.
-Fonte codice: [web main 0e04231](https://github.com/PoliNetworkOrg/web/tree/0e042311a3b21e442b14ebd2d3d769d84cc55762).
+**Aggiornamento:** 16 novembre 2026.
+Fonte codice: [web main 17f8c5b](https://github.com/PoliNetworkOrg/web/tree/17f8c5bb10dc9452d9dc6fee49af870c6408c7a3).
 [PRD admin](PRD_Admin_Dashboard_PoliNetwork.md), [roadmap](PRD_Classificazione_Feature.md).
 
 `[x]` codice integrato verificato; `[ ]` lavoro o verifica da completare. Non certifica il deploy né la qualità
@@ -21,34 +21,24 @@ MVP.md contiene il MVP interno admin: questa è l'unica checklist per il lancio 
       degli slot previsti e scelta FAQ, oltre alla gestione PDF Guida.
 - [x] Web #198 rende obbligatorio il token IdP di servizio per tutte le chiamate backend.
 
-## Raffinamento visuale aperto
+## Raffinamento visuale: integrato e residuo
 
-La serie **#199 → #213 è ancora aperta**, impilata: review e merge dal basso, rispettando le basi.
-Non segnare le correzioni come concluse perché esistono screenshot nelle PR.
+- [x] Lo stack #199–#216 è confluito nel branch Home e poi in main tramite
+      [#199](https://github.com/PoliNetworkOrg/web/pull/199) (130 file): Home, Storia, Su di noi, Struttura,
+      Team, Unisciti, Collabora, Contatti, Progetti, Gruppi, Matricole, Associazioni, FAQ, Guide, header/footer e 404.
+      #218/#219 sono state integrate sullo stesso branch prima di #199; #217 è chiusa senza merge.
+      Non assegnare una nuova sequenza di merge #200–#216 sulla base della vecchia checklist.
+- [x] [#221](https://github.com/PoliNetworkOrg/web/pull/221): posizione della navbar mobile.
+- [ ] [#222](https://github.com/PoliNetworkOrg/web/pull/222): ulteriori correzioni Su di noi/Storia/Unisciti e caroselli mobile.
+- [ ] [#223](https://github.com/PoliNetworkOrg/web/pull/223): audit sito, hydration/404, SEO, risorse mobile,
+      accessibilità, copy e immagini. È aperta: risultati e screenshot della PR non sono baseline main.
+- [ ] [#179](https://github.com/PoliNetworkOrg/web/pull/179): confrontare la spaziatura proposta con lo stack già integrato.
+- [ ] Verificare desktop/mobile, tastiera e movimento ridotto sul risultato finale.
+- [ ] #163 (easter egg), #145 (gioco CFU) e #197 (dipendenza Zod) sono aperte, non traguardi del lancio.
 
-| PR web                                                 | Area e prossimo controllo                                 |
-| ------------------------------------------------------ | --------------------------------------------------------- |
-| [#199](https://github.com/PoliNetworkOrg/web/pull/199) | Home: proporzioni, card, tipografia                       |
-| [#200](https://github.com/PoliNetworkOrg/web/pull/200) | Storia: gerarchia e timeline                              |
-| [#201](https://github.com/PoliNetworkOrg/web/pull/201) | Su di noi: decidere con designer v1/v2, la PR mantiene v1 |
-| [#202](https://github.com/PoliNetworkOrg/web/pull/202) | Struttura: organigramma condiviso con Storia              |
-| [#203](https://github.com/PoliNetworkOrg/web/pull/203) | Team: sezioni e specializzazioni                          |
-| [#204](https://github.com/PoliNetworkOrg/web/pull/204) | Unisciti: ritmo e sezioni                                 |
-| [#205](https://github.com/PoliNetworkOrg/web/pull/205) | Collabora e ritmo condiviso                               |
-| [#206](https://github.com/PoliNetworkOrg/web/pull/206) | Contatti: griglia e layout                                |
-| [#207](https://github.com/PoliNetworkOrg/web/pull/207) | Progetti: card, ricerca e fallback                        |
-| [#208](https://github.com/PoliNetworkOrg/web/pull/208) | Gruppi: risultati e link                                  |
-| [#209](https://github.com/PoliNetworkOrg/web/pull/209) | Matricole: layout e CardIcon responsive                   |
-| [#210](https://github.com/PoliNetworkOrg/web/pull/210) | Associazioni: fallback logo e accordion                   |
-| [#211](https://github.com/PoliNetworkOrg/web/pull/211) | FAQ: categoria iniziale non vuota e layout                |
-| [#212](https://github.com/PoliNetworkOrg/web/pull/212) | Guide: hub e rimozione placeholder lorem                  |
-| [#213](https://github.com/PoliNetworkOrg/web/pull/213) | Guida Matricola: pagina download                          |
-
-- [ ] Confrontare [web#179](https://github.com/PoliNetworkOrg/web/pull/179), ancora aperta, con il ritmo condiviso
-      della serie #199–#213. Risolvere sovrapposizione prima di integrare due sistemi di spaziatura.
-- [ ] Dopo lo stack, verificare desktop/mobile, navigazione tastiera e movimento ridotto, inclusi sfondo e accordion.
-      Nuove animazioni decorative non sono un gate autonomo di lancio.
-- [ ] #163 (easter egg) e #145 (gioco CFU), ancora aperte, sono extra e non dipendenze del lancio.
+#223 segnala inoltre attività esterne al codice: Email Obfuscation Cloudflare con hydration su alcune pagine,
+contenuti backend mancanti/di prova e decisioni sul copy inglese. Verificare nell'ambiente target e assegnare ai
+responsabili; questa revisione non modifica Cloudflare o dati di produzione.
 
 ## Contenuti e gestione admin
 
@@ -74,9 +64,11 @@ Non segnare le correzioni come concluse perché esistono screenshot nelle PR.
 
 ## Documenti e processi esterni
 
-- [ ] **Design Documenti:** statuto, regolamenti, regole utenti, privacy/cookie e bilanci; valutare donazioni/5x1000.
-      Riferimento precedente: Simone (designer), incarico da riconfermare.
-- [ ] Implementare Documenti dopo il design e collegare il footer alle versioni approvate.
+- [x] Backend#132: catalogo Documenti con categorie e storico versioni.
+- [ ] Integrare [admin#162](https://github.com/PoliNetworkOrg/admin/pull/162) e
+      [web#220](https://github.com/PoliNetworkOrg/web/pull/220): gestione CMS, catalogo pubblico e viewer PDF.
+- [ ] Popolare statuto, regolamenti, privacy/cookie, bilanci e collegare il footer alle versioni approvate.
+      Non confondere questo catalogo con l’editor collaborativo RRI già presente in admin. Donazioni/5x1000 da valutare.
 - [ ] Definire referenti, ownership e moderazione di richieste associazioni/progetti; non assegnare ownership
       trasferendo account personali. È backlog esterno del PRD, non gate del MVP People.
 - [ ] Valutare il Figma della dashboard utente (riferimento precedente Enrico) e il bisogno di login personale.

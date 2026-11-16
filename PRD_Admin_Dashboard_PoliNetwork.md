@@ -1,6 +1,6 @@
 # PRD — Admin Dashboard PoliNetwork
 
-**Versione:** 3.0 · **Aggiornamento:** 30 ottobre 2026 · **Stato:** proposta di prodotto aggiornata per revisione.
+**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026 · **Stato:** proposta di prodotto aggiornata per revisione.
 
 Documenti: [classificazione e prossime attività](PRD_Classificazione_Feature.md), [MVP](MVP.md),
 [People](Persone_Volontari_Soci.md), [permessi](RBAC_Ruoli_Permessi.md),
@@ -21,15 +21,19 @@ prevalgono sui vecchi documenti e sulle descrizioni delle PR #132/#136. Le fonti
 ### 0.1 Stato attuale
 
 - OIDC/BFF, permessi puntuali, shell, overview, Telegram, WhatsApp, etichette, report e CMS sono in main.
-- eSign è integrato: richieste, firma CIE locale, più firmatari, posizioni e documenti, OneDrive e consegna email.
-- People, soci, quote, ricevute e censimento sono entrati in main con #97/#100. Il backend espone `people.*`:
-  non è più corretto descriverli come sole UI in PR o chiedere di implementare da zero il vecchio contratto.
-  La roadmap #146 riporta però un'area vuota/non collegata a RBAC, con soli dati di test: serve il nuovo percorso sotto.
-- Microsoft 365 crea soci e cambia il numero associativo; i gruppi e i loro membri sono in sola lettura (#133).
-- Matricole è modificabile da admin (#124), e web legge il contenuto backend. Il lockfile admin risolve
-  `@polinetwork/backend` 4.0.0, che include `web.freshman`: la nota README su 1.4.0 è storica.
-- Il backend main rifiuta tutte le chiamate senza token (#97); web richiede il proprio token (#198).
-  Non pianificare un rollback con `LEGACY_ANONYMOUS=allow`.
+- eSign generico è integrato: CIE locale, più firmatari/documenti, OneDrive e consegna email.
+- Cleanup People #147, record/incarichi #148 e inviti/link #149 sono integrati; Auth#73 e backend#105/#106/#109
+  implementano binding e sincronizzazione. L'import CSV generale non è presente; admin#153 propone un seed una tantum.
+- Soci ha un dominio separato `soci.*`: registro/ammissione #158–#161, quote e area personale #163 in main.
+  Censimento resta mockup. Decadenza e cancellazione account sono ancora requisiti, non procedure disponibili.
+- Microsoft 365 è interamente in sola lettura. Ammissione e cambio numero sono passati a Soci;
+  backend#127 ha rimosso `azure.members.create` e `setAssocNumber`.
+- Regolamenti #150/#151 e backend#110–#117/#133/#134 sono integrati: editor collaborativo LaTeX,
+  PDF, diff, merge, iter di approvazione, emanazione e notifiche.
+- Matricole è modificabile da admin e letto da web. Documenti pubblici: backend#132 integrata,
+  admin#162 e web#220 aperte. Il lockfile admin risolve ancora `@polinetwork/backend` 4.0.0:
+  non equivale alla versione corrente del servizio backend.
+- Backend rifiuta chiamate anonime; web usa il proprio token. Nessun rollback `LEGACY_ANONYMOUS=allow`.
 
 ## 1. Persone, ruoli e gerarchie
 
@@ -51,9 +55,10 @@ per nome, email o Telegram. Sono previsti solo invito accettato e collegamento m
 
 Implementata: `me.access`, permessi esatti, middleware BFF e controllo indipendente nel backend.
 `/dashboard` ammette `admin:access` oppure `people:self`; quest'ultimo apre la vista limitata.
-In main gli incarichi People vengono dalla scheda; il loro collegamento ai ruoli Auth è lavoro di fase 1.
+Un’assegnazione o delega Regolamenti consente inoltre il solo accesso alle Bozze, verificato dal backend.
+In main gli incarichi delle schede collegate sono sincronizzati con Auth; quelli senza account restano pending.
 
-Requisito fase 1: binding predeterminati `admin`, `capo`, `team:<key>:member`, `team:<key>:lead`.
+Implementati in Auth#73: binding predeterminati `admin`, `capo`, `team:<key>:member`, `team:<key>:lead`.
 Auth controlla delega, autorizzazione corrente e divieto di autoassegnazione. Ruoli con permessi `idp:*`
 non sono associabili a People. Un Lead può gestire i membri del proprio team, senza promuovere Lead.
 Il Capo Admin consulta i propri admin; la loro gestione resta futura.
@@ -77,12 +82,12 @@ record di più domini resta futura; non ricostruire la palette per implementarla
 ### 2.4 Overview
 
 Conteggi, segnalazioni, grant e andamento della creazione utenti Telegram sono implementati secondo i permessi.
-Quest'ultimo non misura utenti attivi o audience. Indicatori People/quote richiedono i nuovi domini stabili.
+Quest'ultimo non misura utenti attivi o audience. Indicatori aggregati People/quote restano un incremento da definire sui domini attuali.
 
 ### 2.5 Consensi
 
-Esistono UI e contratto People della prima iterazione, ma non certificano un processo definitivo di informative,
-consensi versionati e retention. Il cleanup toglie i flussi collegati al censimento. Progettare il processo futuro
+La prima iterazione People non costituisce il contratto corrente né certifica un processo definitivo di informative,
+consensi versionati e retention. Il cleanup ha tolto i flussi collegati al censimento. Progettare il processo futuro
 con testi, prova di accettazione, revoca e destinatari prima di collegarlo a eSign. Una firma PDF generica non
 completa da sola il processo privacy.
 
@@ -97,57 +102,61 @@ Non ricostruire autenticazione o RBAC dentro admin.
 
 La firma CIE passa dall'app locale: il PIN resta nella sua pagina, mai nel BFF. Da telefono/tablet si consulta;
 la firma richiede computer e lettore. La dashboard non permette upload di un PDF firmato altrove nel flusso generico.
-Riusare viewer, compositore, firma multipla e gestione drive. Il ponte ricevute People oggi presente sarà rimosso
-nel cleanup; la sua eventuale reintroduzione è una decisione della fase Soci, non una dipendenza della fase 1.
+Riusare viewer, compositore, firma multipla e gestione drive. Il ponte ricevute People è stato rimosso; il design Soci del 9 novembre esclude ricevute associative e firma CIE.
 Prima di dichiarare il servizio operativo, raccogliere evidenza di configurazione Graph/drive, permessi,
 installazione dell'agent e firma con CIE reale sui sistemi supportati ([tracker](docs/esign/TRACKER.md)).
 
-## 3. People: cleanup e fase 1
+## 3. People: fase 1 integrata e import residuo
 
-Il programma corrente è [#146](https://github.com/PoliNetworkOrg/admin/issues/146).
-[Specifica dettagliata](Persone_Volontari_Soci.md).
+La roadmap [#146](https://github.com/PoliNetworkOrg/admin/issues/146) resta il riferimento di separazione dei domini.
+Cleanup #147, ruoli #148 e collegamenti #149 sono in main con Auth#73 e backend#105/#106/#109.
+[Specifica e stato dettagliati](Persone_Volontari_Soci.md).
 
-- **Cleanup #142:** admin#147 implementa #138: soci, quote, ricevute e censimento restano mockup espliciti,
-  senza backend e con azioni disabilitate. Vengono rimossi matching, gruppi Telegram e ponte ricevute/eSign.
-  Distribuire prima di backend#104; poi rimuovere i permessi obsoleti secondo auth#77.
-- **Fase 1 #143:** Auth#73 va rielaborata secondo auth#78 e nuovamente revisionata; segue configurazione auth#79.
-  Backend#101 costruisce record, incarichi e sincronizzazione; #102 inviti/link; #103 import CSV.
-  Admin#139/#140/#141 consumano quei contratti.
-- **Non mergiare #132/#136 o backend#99 come soluzione finale:** #146 li supera; recuperare solo le parti richieste
-  dalle nuove issue. Le revisioni People sono sospese finché le sottoissue non le riaprono.
+Le schede richiedono nome/cognome; incarichi `pending`, `sent`, `applied`, `refused` distinguono attesa e rifiuto.
+Invito e link manuale sono gli unici collegamenti; `/people/invite` è fuori dalla shell protetta.
+Non creare placeholder Auth o ripristinare matching, merge identità e tracciamento gruppi Telegram.
+Restano import CSV generale (#141/backend#103), seed una tantum in PR #153 e collaudo dei binding nell'ambiente target.
+Il seed non sostituisce il workflow CSV con preview e commit, e questa revisione non lo esegue.
 
-Accettazione: record creato con soli nome/cognome; incarichi non collegati in attesa; dopo il link Auth applica
-oppure rifiuta con motivo; la UI distingue attesa dal successo. Invito utilizzabile anche da un account
-senza permessi dashboard, su una pagina esterna alla shell protetta. Nessuna assegnazione a sé stessi.
+## 4. Governance e Regolamenti
 
-## 4. Governance e Direttivo
+Regolamenti è ora un'area implementata (admin#150/#151), inizialmente per la Raccolta dei Regolamenti Interni.
+Comprende bozze, assegnazioni viewer/commenter/editor, collaborazione CodeMirror/Yjs, PDF, commenti, storico,
+differenze, merge, approvazione, emanazione tramite GitHub App e notifiche Soci con copia a Direttivo/Probiviri.
+Auth#82 aggiunge Presidente e Segretario. Permessi e deleghe sono descritti nel documento RBAC.
 
-Nessuna nuova area separata impegnata in questo ciclo. Auth gestisce ruoli e permessi; lo stato associativo
-proviene da Entra. Storico degli organi e contenuti pubblici non vanno dedotti dai record People.
+Verificare worker LaTeX isolato, servizio collab, repository legal, GitHub App e destinatari prima del rilascio operativo.
+L'editor seleziona i file esistenti ma non li aggiunge/rinomina/elimina. Non estendere automaticamente il supporto
+allo statuto. Fonte implementativa: [Regolamenti](docs/regulations/README.md).
 
 ## 5. Admin e Capo Admin
 
-Le pagine esistono in main, ma hanno residui del vecchio modello Telegram. Il cleanup li rimuove;
-admin#139 le ricostruisce sui ruoli Auth e sulla relazione «Capo di riferimento».
-Il corso personale non determina automaticamente l'ambito di responsabilità. La vista del Capo deve escludere
-admin altrui anche chiamando direttamente il backend; approvare ingressi nei gruppi non è nella fase 1.
+Pagine ricostruite in #148 sui ruoli Auth e sulla relazione «Capo di riferimento»; nessuna dipendenza dai gruppi Telegram.
+Il Capo consulta solo i propri admin; gestione e approvazione ingressi restano fuori scope.
+Verificare lo scoping anche chiamando il backend direttamente.
 
-## 6. Soci, quote e ricevute
+## 6. Soci e quote
 
-[Fase 2 #144](https://github.com/PoliNetworkOrg/admin/issues/144): non iniziata, design necessario.
-Entra ID è fonte dei soci, object ID chiave del dominio quote e `employeeId` numero associativo.
-Nessuna condivisione con People o claim del record socio. L'ammissione resta nel workflow Azure esistente.
+Il [design approvato il 9 novembre](docs/people/soci.md) sostituisce le ipotesi precedenti della fase 2 #144.
+Entra è fonte dell'appartenenza corrente; object ID collega il registro e `employeeId` conserva il numero.
+`soci:read` / `soci:write` sono attivi. Registro, ammissione, registrazione soci Entra esistenti, modifica dati e numero
+sono integrati; Microsoft 365 non offre più scritture.
 
-Bonifico esterno, caricamento prova, revisione, ricevuta numerata, firma CIE e reminder sono bisogni da
-riesaminare usando #100 come riferimento storico. Definire annualità, importi, numerazione, firmatari,
-annullamento, destinatari e permessi prima di ricostruirli. `soci:*` è un namespace proposto, non un catalogo già attivo.
+Quote: 5 euro, annualità settembre–agosto, scadenza rinnovo 31 dicembre ed esenzione dell'annualità successiva
+per ammissioni giugno–agosto. Il socio carica la prova bonifico PDF/PNG/JPEG (10 MB); il Direttivo conferma,
+rifiuta con motivo o segna pagato manualmente. My area funziona anche senza scheda People, tramite `people:self`
+e object ID Entra nello snapshot Auth#86. Nessuna ricevuta associativa numerata o firma CIE in questa fase.
+
+Backend#129 e admin#163 implementano quote e self-service; backend#130 compleanni e template italiani.
+Decadenza automatica, cessazione/ripristino e coda cancellazione account restano da implementare: compaiono nel design,
+ma non nel router corrente. Non dichiarare attivo `SOCI_AUTO_LAPSE` sulla sola base della specifica.
 
 ## 7. Team
 
-UI team e vista Lead sono in main; sincronizzazione dei ruoli Auth e stati degli incarichi sono nella fase 1.
-Chiavi previste: `it`, `hr`, `design`, `intl`, `events`, da validare contro i binding Auth.
-Un team senza binding non è assegnabile. Il nome «Design & Marketing» è un riuso richiesto da #139.
-I tool specifici dei team non sono parte del primo rilascio.
+UI, vista Lead, binding e stati degli incarichi sono in main. Chiavi del contratto People:
+`it`, `hr`, `design` (Design & Marketing), `intl`, `events`. Un ruolo senza binding non è assegnabile.
+Il Lead gestisce i membri del proprio team, non promuove Lead. Il catalogo pubblico del sito non determina i binding.
+Tool specifici dei team restano backlog.
 
 ## 8. Censimento e onboarding
 
@@ -158,8 +167,9 @@ Candidature, colloqui HR, richieste ai gruppi e firma dei documenti restano proc
 
 ## 9. Email di compleanno
 
-Backlog, dopo il design Soci: richiede uno scopo per la raccolta della data, destinatari e regole di invio.
-Non è motivo per aggiungere dati di nascita alla fase 1 People.
+Backend#130 ha implementato job e template italiani per i soci attivi, indirizzati alla casella PoliNetwork.
+Verificare dati di nascita, pianificazione, outbox e recapito nell'ambiente target; non aggiungere date alla scheda
+People per questa funzione e non equipararla a una newsletter.
 
 ## 10. FAQ
 
@@ -171,10 +181,8 @@ future da validare anche sul contratto backend, non blocchi automatici del lanci
 
 - **Telegram/WhatsApp:** gruppi, visibilità, etichette e pubblicazione sono presenti. Telegram non crea gruppi
   dalla dashboard. Grant attivi/programmati esistono; storico completo e reminder restano backlog.
-- **Microsoft 365:** directory (`azure:members:read`), nuovo socio (`azure:members:create`), cambio numero
-  (`azure:members:write`, conferma e email opzionale). Il backend rifiuta numeri occupati e richiede un token utente
-  per il cambio. Gruppi (`azure:groups:read`) sempre in sola lettura: Soci determina ruoli IdP.
-  Modifiche generiche a utenti, licenze o membership non sono il prossimo incremento autorizzato.
+- **Microsoft 365:** directory (`azure:members:read`) e gruppi (`azure:groups:read`) in sola lettura.
+  Ammissione e cambio numero passano da Soci con `soci:write`; niente gestione libera di utenti/licenze/membership.
 - **Matricole:** risorse, hub Telegram, cinque FAQ e tab Guida; vecchio URL guide rediretto.
   Titoli/struttura restano fissi. Verificare il ciclo admin → backend → web con dati effettivi.
 - **Progetti/associazioni:** CRUD interno disponibile. Risorse per piattaforma: backend#72 ancora aperta,
@@ -214,7 +222,7 @@ La cancellazione dei dati di test pianificata dal cleanup è lavoro della PR bac
 Agent mode non prova autenticazione o accesso al backend reale: People usa il fake; gli altri domini possono
 ricevere `UNAUTHORIZED` dal backend main. Per integrazioni usare staging con token reali e fixture isolate.
 Verificare anche ruoli limitati, desktop/mobile e failure di Auth, non solo l'account con tutti i permessi.
-UI admin prevalentemente inglese; localizzazione IT/EN resta un requisito futuro distinto dai contenuti bilingui.
+UI admin prevalentemente inglese, Regolamenti in italiano; localizzazione generale IT/EN resta futura.
 
 ## 18. Fuori scope del ciclo
 
@@ -224,31 +232,34 @@ OAuth personale e permessi correnti, ancora da integrare e attivare; la firma ri
 
 ## 19. Decisioni residue e prossimo ordine
 
-1. Completare e distribuire il cleanup nell'ordine #142; verificare che i mockup non facciano chiamate.
-2. Stabilizzare binding/delega e provisioning Auth (#78/#79), poi tipi backend e pagine fase 1.
-3. Collaudare inviti senza permessi, link/unlink, revoche, attori e comandi idempotenti.
-4. Portare avanti audit (#76/#90/#123) e collaudo Matricole come filoni separati.
-5. Definire design Soci (#144) e censimento (#145), senza ripristinare il vecchio dominio unificato.
-6. Decidere retention, visibilità dei contatti, processo consensi, candidatura HR e localizzazione.
-7. Concordare scope partner/eventi, newsletter e casa solo dopo le priorità interne.
-
-Non riaprire come decisioni tecniche il metodo di login, il matching automatico o la fonte dei soci:
-sono già fissati rispettivamente dal BFF e dalla roadmap #146.
+1. Collaudare People integrato: binding/delega, inviti senza permessi, link/unlink, revoche e indisponibilità Auth.
+2. Revisionare il seed #153 separatamente dall'import CSV generale #141/backend#103; nessun import implicito.
+3. Completare il ciclo Soci (cessazione, ripristino, decadenza e cancellazione manuale account) sul design approvato;
+   verificare quote, email e identità Entra senza ripristinare le ricevute associative.
+4. Collaudare Regolamenti end-to-end con i suoi servizi e permessi; completare gestione file dell'editor.
+5. Completare Documenti pubblici (admin#162/web#220), audit e review MCP; collaudo eSign/Matricole separato.
+6. Progettare censimento #145, consensi, candidature HR e localizzazione. Lancio web nella checklist dedicata.
+7. Concordare partner/eventi, newsletter e casa dopo le priorità interne.
 
 ## 20. Fonti della revisione
 
-Snapshot consultato il **30 ottobre 2026**; stato delle PR distinto dal loro eventuale deploy.
+Snapshot consultato il **16 novembre 2026**: fetch dei main, lettura di codice/contratti e stato GitHub delle PR.
+Il merge non certifica il deploy. Non sono state eseguite migrazioni, import o verifiche di produzione.
 
-| Fonte                                                                                                                                                                                                                                                                         | Baseline / uso                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [admin main c4b5abf](https://github.com/PoliNetworkOrg/admin/tree/c4b5abfe8078d2fcecb958924d162278b7b26dd6)                                                                                                                                                                   | Codice, route, permessi, lockfile, test; #97/#100/#124/#130/#133/#134/#135 integrati |
-| [backend main 1c9f937](https://github.com/PoliNetworkOrg/backend/tree/1c9f937e77866a59d950dd28384c2f435016f494)                                                                                                                                                               | README autenticazione, policy e `src/people/router.ts`; chiamate anonime eliminate   |
-| [auth main 720e8bc](https://github.com/PoliNetworkOrg/auth/tree/720e8bcf36f696cc819e952bbe6365e6b9fd119a)                                                                                                                                                                     | README, schema RBAC; MCP Auth integrato, binding People ancora in PR                 |
-| [web main 0e04231](https://github.com/PoliNetworkOrg/web/tree/0e042311a3b21e442b14ebd2d3d769d84cc55762)                                                                                                                                                                       | README, client backend e pagina Matricole; token di servizio obbligatorio            |
-| [Roadmap People #146](https://github.com/PoliNetworkOrg/admin/issues/146)                                                                                                                                                                                                     | Decisioni del 29 ottobre e precedenza sui vecchi piani                               |
-| [Cleanup #142](https://github.com/PoliNetworkOrg/admin/issues/142), [fase 1 #143](https://github.com/PoliNetworkOrg/admin/issues/143), [Soci #144](https://github.com/PoliNetworkOrg/admin/issues/144), [censimento #145](https://github.com/PoliNetworkOrg/admin/issues/145) | Ordine, sottoissue e criteri di accettazione                                         |
+| Repository                                                                                         | Baseline fissata | Evidenze principali                                                           |
+| -------------------------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
+| [admin](https://github.com/PoliNetworkOrg/admin/tree/e98b2b7acc7ab77f7f8949bbfad9786f5e1ffb91)     | `e98b2b7`        | Route, permessi, contratti People/Soci/Regolamenti, lockfile e test           |
+| [backend](https://github.com/PoliNetworkOrg/backend/tree/275f519a81d2d00c873221d4d8fae69c88fee1d6) | `275f519`        | Router People/Soci, schema, job quote/compleanni, Documenti e Regolamenti     |
+| [auth](https://github.com/PoliNetworkOrg/auth/tree/9fe232e2bffab154b070f30532cb9e45f68b0ca9)       | `9fe232e`        | Binding People, Presidente/Segretario, object ID Entra e claim permessi array |
+| [web](https://github.com/PoliNetworkOrg/web/tree/17f8c5bb10dc9452d9dc6fee49af870c6408c7a3)         | `17f8c5b`        | Stack visuale confluito in #199, header #221, token backend e Matricole       |
 
-Consultate le PR aperte di admin, auth, backend e web; inventario operativo nella classificazione.
-I documenti `docs/people/*` descrivono la prima implementazione: usarli per leggere main, non per contraddire #146.
-I vecchi SHA di bot, polinet.cc, aule, slide e altri progetti non sono una verifica aggiornata di quei repository.
-Questa PR aggiorna documenti e incorpora main per verificarli sul codice attuale; non distribuisce servizi.
+Fonti di prodotto: [roadmap #146](https://github.com/PoliNetworkOrg/admin/issues/146),
+[contratto People](docs/people/contract.md), [design Soci](docs/people/soci.md),
+[Regolamenti](docs/regulations/README.md). Il design Soci include ancora operazioni future: confrontarlo con
+`src/features/soci/soci.contract.ts` e il router backend, non trattarlo come elenco di API già disponibili.
+
+Inventario PR nella [classificazione](PRD_Classificazione_Feature.md) e nella [checklist web](Checklist_Sito_Web.md).
+I documenti storici `docs/people/fees.md` non prevalgono sul design Soci del 9 novembre; alcune note README e
+contratto People sui mockup restano storiche. Solo Censimento è ancora mockup nella baseline admin.
+Bot, legal, polinet.cc, aule e altri repository non sono stati riesaminati: i riferimenti non attestano il loro deploy.
+Questa PR incorpora main e modifica soltanto gli otto documenti di pianificazione rispetto a quella baseline.
