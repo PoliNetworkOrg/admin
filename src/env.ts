@@ -19,6 +19,11 @@ export const env = createEnv({
      * fee isn't open yet.
      */
     AGENT_SOCIO: z.string().default("7"),
+    /**
+     * Development only: a bearer token agent mode sends to the backend instead of none, so pages read a real local
+     * backend (e.g. one minted by the backend's dev IdP shim). Permissions then come from the backend's `me.access`.
+     */
+    AGENT_BACKEND_TOKEN: z.string().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]),
     BACKEND_URL: z.url(),
   },

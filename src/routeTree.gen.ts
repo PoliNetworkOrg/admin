@@ -19,6 +19,7 @@ import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DashboardRegulationsIndexRouteImport } from './routes/dashboard/regulations/index'
 import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
@@ -33,6 +34,7 @@ import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/
 import { Route as DashboardTelegramCapoRouteImport } from './routes/dashboard/telegram/capo'
 import { Route as DashboardReportsResolvedRouteImport } from './routes/dashboard/reports/resolved'
 import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboard/reports/group-links'
+import { Route as DashboardRegulationsDelegheRouteImport } from './routes/dashboard/regulations/deleghe'
 import { Route as DashboardPeopleLinkingRouteImport } from './routes/dashboard/people/linking'
 import { Route as DashboardPeopleFeesRouteImport } from './routes/dashboard/people/fees'
 import { Route as DashboardPeopleAdminsRouteImport } from './routes/dashboard/people/admins'
@@ -47,6 +49,7 @@ import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azu
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
+import { Route as DashboardRegulationsDraftsIndexRouteImport } from './routes/dashboard/regulations/drafts/index'
 import { Route as DashboardPeopleTeamsIndexRouteImport } from './routes/dashboard/people/teams/index'
 import { Route as DashboardPeopleSociIndexRouteImport } from './routes/dashboard/people/soci/index'
 import { Route as DashboardPeopleCensusIndexRouteImport } from './routes/dashboard/people/census/index'
@@ -54,11 +57,16 @@ import { Route as DashboardEsignRequestsIndexRouteImport } from './routes/dashbo
 import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
 import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
+import { Route as DashboardRegulationsDocumentsDocumentKeyRouteImport } from './routes/dashboard/regulations/documents/$documentKey'
 import { Route as DashboardPeopleTeamsTeamIdRouteImport } from './routes/dashboard/people/teams/$teamId'
 import { Route as DashboardPeopleSociNumberRouteImport } from './routes/dashboard/people/soci/$number'
 import { Route as DashboardPeopleCensusCampaignIdRouteImport } from './routes/dashboard/people/census/$campaignId'
 import { Route as DashboardEsignRequestsRequestIdRouteImport } from './routes/dashboard/esign/requests/$requestId'
 import { Route as ApiEsignAgentSplatRouteImport } from './routes/api/esign/agent/$'
+import { Route as DashboardRegulationsDraftsDraftIdIndexRouteImport } from './routes/dashboard/regulations/drafts/$draftId/index'
+import { Route as DashboardRegulationsDraftsDraftIdProcedureRouteImport } from './routes/dashboard/regulations/drafts/$draftId/procedure'
+import { Route as DashboardRegulationsDraftsDraftIdMergeRouteImport } from './routes/dashboard/regulations/drafts/$draftId/merge'
+import { Route as DashboardRegulationsDraftsDraftIdDiffRouteImport } from './routes/dashboard/regulations/drafts/$draftId/diff'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -110,6 +118,12 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRegulationsIndexRoute =
+  DashboardRegulationsIndexRouteImport.update({
+    id: '/regulations/',
+    path: '/regulations/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardPeopleIndexRoute = DashboardPeopleIndexRouteImport.update({
   id: '/people/',
   path: '/people/',
@@ -181,6 +195,12 @@ const DashboardReportsGroupLinksRoute =
   DashboardReportsGroupLinksRouteImport.update({
     id: '/reports/group-links',
     path: '/reports/group-links',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardRegulationsDelegheRoute =
+  DashboardRegulationsDelegheRouteImport.update({
+    id: '/regulations/deleghe',
+    path: '/regulations/deleghe',
     getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardPeopleLinkingRoute = DashboardPeopleLinkingRouteImport.update({
@@ -255,6 +275,12 @@ const DashboardTelegramUsersIndexRoute =
     path: '/telegram/users/',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardRegulationsDraftsIndexRoute =
+  DashboardRegulationsDraftsIndexRouteImport.update({
+    id: '/regulations/drafts/',
+    path: '/regulations/drafts/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardPeopleTeamsIndexRoute =
   DashboardPeopleTeamsIndexRouteImport.update({
     id: '/people/teams/',
@@ -296,6 +322,12 @@ const DashboardTelegramUsersUserIdRoute =
     path: '/telegram/users/$userId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardRegulationsDocumentsDocumentKeyRoute =
+  DashboardRegulationsDocumentsDocumentKeyRouteImport.update({
+    id: '/regulations/documents/$documentKey',
+    path: '/regulations/documents/$documentKey',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardPeopleTeamsTeamIdRoute =
   DashboardPeopleTeamsTeamIdRouteImport.update({
     id: '/people/teams/$teamId',
@@ -325,6 +357,30 @@ const ApiEsignAgentSplatRoute = ApiEsignAgentSplatRouteImport.update({
   path: '/api/esign/agent/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRegulationsDraftsDraftIdIndexRoute =
+  DashboardRegulationsDraftsDraftIdIndexRouteImport.update({
+    id: '/regulations/drafts/$draftId/',
+    path: '/regulations/drafts/$draftId/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardRegulationsDraftsDraftIdProcedureRoute =
+  DashboardRegulationsDraftsDraftIdProcedureRouteImport.update({
+    id: '/regulations/drafts/$draftId/procedure',
+    path: '/regulations/drafts/$draftId/procedure',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardRegulationsDraftsDraftIdMergeRoute =
+  DashboardRegulationsDraftsDraftIdMergeRouteImport.update({
+    id: '/regulations/drafts/$draftId/merge',
+    path: '/regulations/drafts/$draftId/merge',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardRegulationsDraftsDraftIdDiffRoute =
+  DashboardRegulationsDraftsDraftIdDiffRouteImport.update({
+    id: '/regulations/drafts/$draftId/diff',
+    path: '/regulations/drafts/$draftId/diff',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -349,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -363,11 +420,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
+  '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/soci/$number': typeof DashboardPeopleSociNumberRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
+  '/dashboard/regulations/documents/$documentKey': typeof DashboardRegulationsDocumentsDocumentKeyRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
@@ -375,8 +434,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
   '/dashboard/people/soci/': typeof DashboardPeopleSociIndexRoute
   '/dashboard/people/teams/': typeof DashboardPeopleTeamsIndexRoute
+  '/dashboard/regulations/drafts/': typeof DashboardRegulationsDraftsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
+  '/dashboard/regulations/drafts/$draftId/diff': typeof DashboardRegulationsDraftsDraftIdDiffRoute
+  '/dashboard/regulations/drafts/$draftId/merge': typeof DashboardRegulationsDraftsDraftIdMergeRoute
+  '/dashboard/regulations/drafts/$draftId/procedure': typeof DashboardRegulationsDraftsDraftIdProcedureRoute
+  '/dashboard/regulations/drafts/$draftId/': typeof DashboardRegulationsDraftsDraftIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -400,6 +464,7 @@ export interface FileRoutesByTo {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -414,11 +479,13 @@ export interface FileRoutesByTo {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
+  '/dashboard/regulations': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/soci/$number': typeof DashboardPeopleSociNumberRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
+  '/dashboard/regulations/documents/$documentKey': typeof DashboardRegulationsDocumentsDocumentKeyRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
@@ -426,8 +493,13 @@ export interface FileRoutesByTo {
   '/dashboard/people/census': typeof DashboardPeopleCensusIndexRoute
   '/dashboard/people/soci': typeof DashboardPeopleSociIndexRoute
   '/dashboard/people/teams': typeof DashboardPeopleTeamsIndexRoute
+  '/dashboard/regulations/drafts': typeof DashboardRegulationsDraftsIndexRoute
   '/dashboard/telegram/users': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label': typeof DashboardWebGroupsByLabelIndexRoute
+  '/dashboard/regulations/drafts/$draftId/diff': typeof DashboardRegulationsDraftsDraftIdDiffRoute
+  '/dashboard/regulations/drafts/$draftId/merge': typeof DashboardRegulationsDraftsDraftIdMergeRoute
+  '/dashboard/regulations/drafts/$draftId/procedure': typeof DashboardRegulationsDraftsDraftIdProcedureRoute
+  '/dashboard/regulations/drafts/$draftId': typeof DashboardRegulationsDraftsDraftIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -453,6 +525,7 @@ export interface FileRoutesById {
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
+  '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
   '/dashboard/reports/group-links': typeof DashboardReportsGroupLinksRoute
   '/dashboard/reports/resolved': typeof DashboardReportsResolvedRoute
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
@@ -467,11 +540,13 @@ export interface FileRoutesById {
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
+  '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
   '/dashboard/people/soci/$number': typeof DashboardPeopleSociNumberRoute
   '/dashboard/people/teams/$teamId': typeof DashboardPeopleTeamsTeamIdRoute
+  '/dashboard/regulations/documents/$documentKey': typeof DashboardRegulationsDocumentsDocumentKeyRoute
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
@@ -479,8 +554,13 @@ export interface FileRoutesById {
   '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
   '/dashboard/people/soci/': typeof DashboardPeopleSociIndexRoute
   '/dashboard/people/teams/': typeof DashboardPeopleTeamsIndexRoute
+  '/dashboard/regulations/drafts/': typeof DashboardRegulationsDraftsIndexRoute
   '/dashboard/telegram/users/': typeof DashboardTelegramUsersIndexRoute
   '/dashboard/web/groups-by-label/': typeof DashboardWebGroupsByLabelIndexRoute
+  '/dashboard/regulations/drafts/$draftId/diff': typeof DashboardRegulationsDraftsDraftIdDiffRoute
+  '/dashboard/regulations/drafts/$draftId/merge': typeof DashboardRegulationsDraftsDraftIdMergeRoute
+  '/dashboard/regulations/drafts/$draftId/procedure': typeof DashboardRegulationsDraftsDraftIdProcedureRoute
+  '/dashboard/regulations/drafts/$draftId/': typeof DashboardRegulationsDraftsDraftIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -507,6 +587,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
+    | '/dashboard/regulations/deleghe'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -521,11 +602,13 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account/'
     | '/dashboard/people/'
+    | '/dashboard/regulations/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/soci/$number'
     | '/dashboard/people/teams/$teamId'
+    | '/dashboard/regulations/documents/$documentKey'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
@@ -533,8 +616,13 @@ export interface FileRouteTypes {
     | '/dashboard/people/census/'
     | '/dashboard/people/soci/'
     | '/dashboard/people/teams/'
+    | '/dashboard/regulations/drafts/'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
+    | '/dashboard/regulations/drafts/$draftId/diff'
+    | '/dashboard/regulations/drafts/$draftId/merge'
+    | '/dashboard/regulations/drafts/$draftId/procedure'
+    | '/dashboard/regulations/drafts/$draftId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -558,6 +646,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
+    | '/dashboard/regulations/deleghe'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -572,11 +661,13 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account'
     | '/dashboard/people'
+    | '/dashboard/regulations'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/soci/$number'
     | '/dashboard/people/teams/$teamId'
+    | '/dashboard/regulations/documents/$documentKey'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
@@ -584,8 +675,13 @@ export interface FileRouteTypes {
     | '/dashboard/people/census'
     | '/dashboard/people/soci'
     | '/dashboard/people/teams'
+    | '/dashboard/regulations/drafts'
     | '/dashboard/telegram/users'
     | '/dashboard/web/groups-by-label'
+    | '/dashboard/regulations/drafts/$draftId/diff'
+    | '/dashboard/regulations/drafts/$draftId/merge'
+    | '/dashboard/regulations/drafts/$draftId/procedure'
+    | '/dashboard/regulations/drafts/$draftId'
   id:
     | '__root__'
     | '/'
@@ -610,6 +706,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/admins'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
+    | '/dashboard/regulations/deleghe'
     | '/dashboard/reports/group-links'
     | '/dashboard/reports/resolved'
     | '/dashboard/telegram/capo'
@@ -624,11 +721,13 @@ export interface FileRouteTypes {
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account/'
     | '/dashboard/people/'
+    | '/dashboard/regulations/'
     | '/api/esign/agent/$'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
     | '/dashboard/people/soci/$number'
     | '/dashboard/people/teams/$teamId'
+    | '/dashboard/regulations/documents/$documentKey'
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
@@ -636,8 +735,13 @@ export interface FileRouteTypes {
     | '/dashboard/people/census/'
     | '/dashboard/people/soci/'
     | '/dashboard/people/teams/'
+    | '/dashboard/regulations/drafts/'
     | '/dashboard/telegram/users/'
     | '/dashboard/web/groups-by-label/'
+    | '/dashboard/regulations/drafts/$draftId/diff'
+    | '/dashboard/regulations/drafts/$draftId/merge'
+    | '/dashboard/regulations/drafts/$draftId/procedure'
+    | '/dashboard/regulations/drafts/$draftId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -723,6 +827,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/regulations/': {
+      id: '/dashboard/regulations/'
+      path: '/regulations'
+      fullPath: '/dashboard/regulations/'
+      preLoaderRoute: typeof DashboardRegulationsIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/people/': {
       id: '/dashboard/people/'
@@ -820,6 +931,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/group-links'
       fullPath: '/dashboard/reports/group-links'
       preLoaderRoute: typeof DashboardReportsGroupLinksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/regulations/deleghe': {
+      id: '/dashboard/regulations/deleghe'
+      path: '/regulations/deleghe'
+      fullPath: '/dashboard/regulations/deleghe'
+      preLoaderRoute: typeof DashboardRegulationsDelegheRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/people/linking': {
@@ -920,6 +1038,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/regulations/drafts/': {
+      id: '/dashboard/regulations/drafts/'
+      path: '/regulations/drafts'
+      fullPath: '/dashboard/regulations/drafts/'
+      preLoaderRoute: typeof DashboardRegulationsDraftsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/people/teams/': {
       id: '/dashboard/people/teams/'
       path: '/people/teams'
@@ -969,6 +1094,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTelegramUsersUserIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/regulations/documents/$documentKey': {
+      id: '/dashboard/regulations/documents/$documentKey'
+      path: '/regulations/documents/$documentKey'
+      fullPath: '/dashboard/regulations/documents/$documentKey'
+      preLoaderRoute: typeof DashboardRegulationsDocumentsDocumentKeyRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/people/teams/$teamId': {
       id: '/dashboard/people/teams/$teamId'
       path: '/people/teams/$teamId'
@@ -1003,6 +1135,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/esign/agent/$'
       preLoaderRoute: typeof ApiEsignAgentSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/regulations/drafts/$draftId/': {
+      id: '/dashboard/regulations/drafts/$draftId/'
+      path: '/regulations/drafts/$draftId'
+      fullPath: '/dashboard/regulations/drafts/$draftId/'
+      preLoaderRoute: typeof DashboardRegulationsDraftsDraftIdIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/regulations/drafts/$draftId/procedure': {
+      id: '/dashboard/regulations/drafts/$draftId/procedure'
+      path: '/regulations/drafts/$draftId/procedure'
+      fullPath: '/dashboard/regulations/drafts/$draftId/procedure'
+      preLoaderRoute: typeof DashboardRegulationsDraftsDraftIdProcedureRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/regulations/drafts/$draftId/merge': {
+      id: '/dashboard/regulations/drafts/$draftId/merge'
+      path: '/regulations/drafts/$draftId/merge'
+      fullPath: '/dashboard/regulations/drafts/$draftId/merge'
+      preLoaderRoute: typeof DashboardRegulationsDraftsDraftIdMergeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/regulations/drafts/$draftId/diff': {
+      id: '/dashboard/regulations/drafts/$draftId/diff'
+      path: '/regulations/drafts/$draftId/diff'
+      fullPath: '/dashboard/regulations/drafts/$draftId/diff'
+      preLoaderRoute: typeof DashboardRegulationsDraftsDraftIdDiffRouteImport
+      parentRoute: typeof DashboardRoute
     }
   }
 }
@@ -1050,6 +1210,7 @@ interface DashboardRouteChildren {
   DashboardPeopleAdminsRoute: typeof DashboardPeopleAdminsRoute
   DashboardPeopleFeesRoute: typeof DashboardPeopleFeesRoute
   DashboardPeopleLinkingRoute: typeof DashboardPeopleLinkingRoute
+  DashboardRegulationsDelegheRoute: typeof DashboardRegulationsDelegheRoute
   DashboardReportsGroupLinksRoute: typeof DashboardReportsGroupLinksRoute
   DashboardReportsResolvedRoute: typeof DashboardReportsResolvedRoute
   DashboardTelegramCapoRoute: typeof DashboardTelegramCapoRoute
@@ -1058,16 +1219,23 @@ interface DashboardRouteChildren {
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
   DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
   DashboardPeopleIndexRoute: typeof DashboardPeopleIndexRoute
+  DashboardRegulationsIndexRoute: typeof DashboardRegulationsIndexRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
   DashboardPeopleCensusCampaignIdRoute: typeof DashboardPeopleCensusCampaignIdRoute
   DashboardPeopleSociNumberRoute: typeof DashboardPeopleSociNumberRoute
   DashboardPeopleTeamsTeamIdRoute: typeof DashboardPeopleTeamsTeamIdRoute
+  DashboardRegulationsDocumentsDocumentKeyRoute: typeof DashboardRegulationsDocumentsDocumentKeyRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
   DashboardEsignRequestsIndexRoute: typeof DashboardEsignRequestsIndexRoute
   DashboardPeopleCensusIndexRoute: typeof DashboardPeopleCensusIndexRoute
   DashboardPeopleSociIndexRoute: typeof DashboardPeopleSociIndexRoute
   DashboardPeopleTeamsIndexRoute: typeof DashboardPeopleTeamsIndexRoute
+  DashboardRegulationsDraftsIndexRoute: typeof DashboardRegulationsDraftsIndexRoute
   DashboardTelegramUsersIndexRoute: typeof DashboardTelegramUsersIndexRoute
+  DashboardRegulationsDraftsDraftIdDiffRoute: typeof DashboardRegulationsDraftsDraftIdDiffRoute
+  DashboardRegulationsDraftsDraftIdMergeRoute: typeof DashboardRegulationsDraftsDraftIdMergeRoute
+  DashboardRegulationsDraftsDraftIdProcedureRoute: typeof DashboardRegulationsDraftsDraftIdProcedureRoute
+  DashboardRegulationsDraftsDraftIdIndexRoute: typeof DashboardRegulationsDraftsDraftIdIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -1085,6 +1253,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardPeopleAdminsRoute: DashboardPeopleAdminsRoute,
   DashboardPeopleFeesRoute: DashboardPeopleFeesRoute,
   DashboardPeopleLinkingRoute: DashboardPeopleLinkingRoute,
+  DashboardRegulationsDelegheRoute: DashboardRegulationsDelegheRoute,
   DashboardReportsGroupLinksRoute: DashboardReportsGroupLinksRoute,
   DashboardReportsResolvedRoute: DashboardReportsResolvedRoute,
   DashboardTelegramCapoRoute: DashboardTelegramCapoRoute,
@@ -1093,16 +1262,28 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
   DashboardAccountIndexRoute: DashboardAccountIndexRoute,
   DashboardPeopleIndexRoute: DashboardPeopleIndexRoute,
+  DashboardRegulationsIndexRoute: DashboardRegulationsIndexRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
   DashboardPeopleCensusCampaignIdRoute: DashboardPeopleCensusCampaignIdRoute,
   DashboardPeopleSociNumberRoute: DashboardPeopleSociNumberRoute,
   DashboardPeopleTeamsTeamIdRoute: DashboardPeopleTeamsTeamIdRoute,
+  DashboardRegulationsDocumentsDocumentKeyRoute:
+    DashboardRegulationsDocumentsDocumentKeyRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
   DashboardEsignRequestsIndexRoute: DashboardEsignRequestsIndexRoute,
   DashboardPeopleCensusIndexRoute: DashboardPeopleCensusIndexRoute,
   DashboardPeopleSociIndexRoute: DashboardPeopleSociIndexRoute,
   DashboardPeopleTeamsIndexRoute: DashboardPeopleTeamsIndexRoute,
+  DashboardRegulationsDraftsIndexRoute: DashboardRegulationsDraftsIndexRoute,
   DashboardTelegramUsersIndexRoute: DashboardTelegramUsersIndexRoute,
+  DashboardRegulationsDraftsDraftIdDiffRoute:
+    DashboardRegulationsDraftsDraftIdDiffRoute,
+  DashboardRegulationsDraftsDraftIdMergeRoute:
+    DashboardRegulationsDraftsDraftIdMergeRoute,
+  DashboardRegulationsDraftsDraftIdProcedureRoute:
+    DashboardRegulationsDraftsDraftIdProcedureRoute,
+  DashboardRegulationsDraftsDraftIdIndexRoute:
+    DashboardRegulationsDraftsDraftIdIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

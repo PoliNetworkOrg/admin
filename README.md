@@ -14,6 +14,14 @@ Permissions: `people:read` (which also opens the mockup), `people:write`, `peopl
 admits non-admins (soci included) to My area and, by the role on their record, Capo Admin or their team, and
 `soci:read` and `soci:write` for the register and fees. See `docs/people/README.md` and `docs/people/soci.md`.
 
+**Regolamenti** edits, approves, publishes and notifies the governance documents (v1: the Raccolta dei Regolamenti
+Interni): a collaborative LaTeX editor (CodeMirror and Yjs over the collab service) with a live PDF preview, comments,
+history, merges between drafts, the approval procedure with "Emana e notifica", the differences view and the
+Segretario's deleghe. It talks to the backend's `regulations.*` contract (`src/features/regulations/regulations.contract.ts`);
+agent mode serves a fake with a local collab server and `xelatex`. Permissions: `regulations:read`, `regulations:write`,
+`regulations:manage`, `regulations:rectify`; a draft assignment or a delega alone admits anyone to Bozze. See
+[`docs/regulations/README.md`](docs/regulations/README.md).
+
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
 **dedicated Redis**, separate from the shared backend Redis. Backend requests carry a user bearer token, and permissions
@@ -46,9 +54,15 @@ Set the following runtime variables (the build does not need secrets):
 | `AGENT_PERMISSIONS`       | Development only. Comma-separated permissions for the agent-mode user (default: all). `people:self` alone previews the restricted People view.                                                                                                                                                                            |
 | `AGENT_PERSON`            | Development only. The agent-mode user's People record (default `P-0007`, Direttivo). `P-0098` is a Capo Admin, `P-0034` the IT Team Lead, `P-0115` an IT member; `none` previews a sign-in without a record. Sending an invite prints its link in the dev server's console.                                               |
 | `AGENT_SOCIO`             | Development only. The member number of the socio My area shows (default `7`: Due after a rejected receipt); `4` has a receipt to review, `1` has paid, `23` is Due with details to complete, `34` is exempt, `41`'s fee isn't open yet; `none` is not a socio. With `AGENT_PERSON=none`, a socio without a People record. |
+| `AGENT_BACKEND_TOKEN`     | Development only. A bearer token agent mode sends to the backend (e.g. from the backend's dev IdP shim): permissions come from that backend's `me.access` and Regolamenti uses it instead of the fake. Two dev servers with two tokens are two people. |
+| `REGULATIONS_DEV_LEGAL_DIR` | Development only. A checkout of PoliNetworkOrg/legal: agent mode's Regolamenti fake serves the real RRI and compiles it with the real class. |
+| `REGULATIONS_DEV_COLLAB_PORT` | Development only. Port of agent mode's local collab server (default `PORT + 1`). |
 | `AGENT_MODE`              | Fake all-permission user in development only. It has no access token, so the backend refuses its calls; People serves sample data. Production ignores this mode.                                                                                                                                                          |
 | `PORT`                    | Local listening port (3001 by default); use a port ≥10000 for agent previews.                                                                                                                                                                                                                                             |
 | `TEST_REDIS_URL`          | Opt-in disposable Redis for integration tests. Tests create/delete only UUID session keys.                                                                                                                                                                                                                                |
+| `AGENT_MODE`                  | Fake all-permission user in development only. It has no access token, so the backend refuses its calls; People serves sample data. Production ignores this mode.                                                                                                            |
+| `PORT`                        | Local listening port (3001 by default); use a port ≥10000 for agent previews.                                                                                                                                                                                               |
+| `TEST_REDIS_URL`              | Opt-in disposable Redis for integration tests. Tests create/delete only UUID session keys.                                                                                                                                                                                  |
 
 Before review run `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Run real Redis tests with
 `TEST_REDIS_URL=redis://127.0.0.1:<test-port> pnpm test`. The OIDC integration test uses a local fake provider with
