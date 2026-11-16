@@ -1,0 +1,43 @@
+{
+  "since": "2026-11-15",
+  "people": [
+    {
+      "key": "chiara.bianchi@example.com",
+      "source": "Censimento admin 2026.xlsx › Ingegneria › row 4",
+      "firstName": "Chiara",
+      "lastName": "Bianchi",
+      "contactEmail": "chiara.bianchi@example.com",
+      "phone": "",
+      "telegramUsername": "chiara_b",
+      "admin": true,
+      "capoScope": "Ingegneria Informatica",
+      "teams": []
+    },
+    {
+      "key": "mario.rossi@example.com",
+      "source": "Censimento admin 2026.xlsx › Ingegneria › row 7",
+      "firstName": "Mario",
+      "lastName": "Rossi",
+      "contactEmail": "mario.rossi@example.com",
+      "phone": "+39 333 000 0000",
+      "telegramUsername": "",
+      "admin": true,
+      "adminSince": "2025-03-01",
+      "capoOfReference": "chiara.bianchi@example.com",
+      "teams": [{ "team": "it", "role": "member" }]
+    },
+    {
+      "key": "row:Design:12",
+      "source": "Censimento admin 2026.xlsx › Design › row 12",
+      "firstName": "Luca",
+      "lastName": "Verdi",
+      "contactEmail": "",
+      "phone": "",
+      "telegramUsername": "lucaverdi",
+      "existingId": "P-0042",
+      "admin": true,
+      "capoOfReference": "chiara.bianchi@example.com",
+      "invite": false
+    }
+  ]
+}
