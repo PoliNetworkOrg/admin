@@ -11,6 +11,7 @@ import {
   FilterMenu,
   IconButton,
   RowActions,
+  StatusBadge,
   type TableSort,
   Unset,
   useOpenGeneration,
@@ -23,66 +24,80 @@ import { type AccountAction, AccountActionDialog } from "./account-action-dialog
 import { LinkAccountDialog } from "./link-account-dialog"
 import {
   ACCOUNT_STATUS,
-  activeTeams,
-  CENSUS_ANSWER,
-  censusEntry,
-  currentYear,
+  currentAdmin,
+  currentAssignments,
+  currentCapo,
+  currentTeams,
   hasNoRoles,
-  isActiveAdmin,
-  isMember,
-  lastAnswer,
+  openRefusals,
   personName,
   roleLabels,
   teamName,
 } from "./people-format"
-import { ActionMenu, MonoChip, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
+import { ActionMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import {
   ACCOUNT_STATUSES,
   type AccountStatus,
-  CAMPUSES,
-  type Campus,
   type PersonRow,
   TEAM_IDS,
   type TeamId,
+  type TeamSummary,
 } from "./people.contract"
 import { PersonDialog } from "./person-dialog"
 
-type RoleFilter = "member" | "admin" | "team" | "none"
-type CensusFilter = "continues" | "leaving" | "none"
+type RoleFilter = "admin" | "capo" | "team" | "none"
+type ChangeFilter = "pending" | "sent" | "refused"
 type Filters = {
   role: RoleFilter | null
   team: TeamId | null
-  campus: Campus | null
   account: AccountStatus | null
-  census: CensusFilter | null
+  change: ChangeFilter | null
 }
 
-const NO_FILTERS: Filters = { role: null, team: null, campus: null, account: null, census: null }
+const NO_FILTERS: Filters = { role: null, team: null, account: null, change: null }
 
 const ROLE_TEST = {
-  member: isMember,
-  admin: isActiveAdmin,
-  team: (person) => activeTeams(person).length > 0,
+  admin: (person) => currentAdmin(person) !== null,
+  capo: (person) => currentCapo(person) !== null,
+  team: (person) => currentTeams(person).length > 0,
   none: hasNoRoles,
 } satisfies Record<RoleFilter, (person: PersonRow) => boolean>
 
+/** Roles waiting for a link, waiting for Auth, or refused by Auth (and not assigned again). */
+const CHANGE_TEST = {
+  pending: (person) => person.assignments.some((a) => a.endedOn === null && a.status === "pending"),
+  sent: (person) => person.assignments.some((a) => a.status === "sent"),
+  refused: (person) => openRefusals(person).length > 0,
+} satisfies Record<ChangeFilter, (person: PersonRow) => boolean>
+
+const CHANGE_LABEL = {
+  pending: "Pending until linked",
+  sent: "Waiting for Auth",
+  refused: "Refused by Auth",
+} satisfies Record<ChangeFilter, string>
+
 function matchesFilters(person: PersonRow, filters: Filters) {
   if (filters.role && !ROLE_TEST[filters.role](person)) return false
-  if (filters.team && !activeTeams(person).some((team) => team.team === filters.team)) return false
-  if (filters.campus && person.profile.campus !== filters.campus) return false
+  if (filters.team && !currentTeams(person).some((team) => team.team === filters.team)) return false
   if (filters.account && person.account.status !== filters.account) return false
-  if (filters.census) {
-    const entry = censusEntry(person, currentYear())
-    if (filters.census === "none" ? !entry || entry.answer !== null : entry?.answer !== filters.census) return false
-  }
+  if (filters.change && !CHANGE_TEST[filters.change](person)) return false
   return true
 }
 
 function matchesQuery(person: PersonRow, query: string) {
   if (query === "") return true
-  const { profile } = person
-  const haystack = `${personName(person)} ${profile.personalEmail ?? ""} ${profile.telegramUsername ?? ""} ${person.id} ${person.member?.number ?? ""}`
+  const haystack = `${personName(person)} ${person.contactEmail ?? ""} ${person.telegramUsername ?? ""} ${person.id}`
   return haystack.toLocaleLowerCase().includes(query.replace(/^@/, ""))
+}
+
+/** The most urgent thing about the record's roles: a refusal, then a change waiting for Auth, then a link. */
+function ChangesBadge({ person }: { person: PersonRow }) {
+  const refused = openRefusals(person).length
+  if (refused) return <StatusBadge tone="danger">{refused > 1 ? `${refused} refused` : "Refused by Auth"}</StatusBadge>
+  if (CHANGE_TEST.sent(person)) return <StatusBadge tone="brand">Waiting for Auth</StatusBadge>
+  const pending = person.assignments.filter((a) => a.endedOn === null && a.status === "pending").length
+  if (pending) return <StatusBadge tone="neutral">{`${pluralize(pending, "role")} pending`}</StatusBadge>
+  return null
 }
 
 const columns: DataTableColumn<PersonRow>[] = [
@@ -97,7 +112,7 @@ const columns: DataTableColumn<PersonRow>[] = [
       const roles = roleLabels(person)
       return (
         <>
-          <PersonCell name={personName(person)} secondary={person.profile.personalEmail} muted={hasNoRoles(person)} />
+          <PersonCell name={personName(person)} secondary={person.contactEmail} muted={hasNoRoles(person)} />
           {/* Mobile cards: one labelled summary line instead of unlabelled column values. */}
           <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
             {roles.length ? (
@@ -106,51 +121,25 @@ const columns: DataTableColumn<PersonRow>[] = [
               <span className="text-xs text-(--pn-fg-muted)">No roles</span>
             )}
             <StateBadge state={ACCOUNT_STATUS[person.account.status]} />
+            <ChangesBadge person={person} />
           </span>
         </>
       )
     },
   },
   {
-    id: "member",
-    label: "Member",
-    width: 96,
-    priority: 3,
-    mobile: "hidden",
-    cell: (person) =>
-      !isMember(person) ? <Unset /> : person.member ? <MonoChip>{person.member.number}</MonoChip> : "Yes",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    width: 104,
-    mobile: "hidden",
-    cell: (person) =>
-      person.admin ? (
-        <StateBadge
-          state={
-            person.admin.status === "active"
-              ? { label: "Active", tone: "success" }
-              : { label: "Former", tone: "neutral" }
-          }
-        />
-      ) : (
-        <Unset />
-      ),
-  },
-  {
-    id: "teams",
-    label: "Teams",
-    width: 184,
-    priority: 2,
+    id: "roles",
+    label: "Roles",
+    width: 232,
     mobile: "hidden",
     cell: (person) => {
-      const teams = activeTeams(person)
-      return teams.length ? (
+      const roles = roleLabels(person)
+      return roles.length ? (
         <ChipOverflow
-          items={teams.map((team) => team.team)}
-          itemLabel={teamName}
-          renderItem={(team) => <TruncatedChip key={team} label={teamName(team)} />}
+          items={roles}
+          max={2}
+          itemLabel={(role) => role}
+          renderItem={(role) => <TruncatedChip key={role} label={role} />}
         />
       ) : (
         <Unset />
@@ -158,12 +147,12 @@ const columns: DataTableColumn<PersonRow>[] = [
     },
   },
   {
-    id: "capo",
-    label: "Capo Admin",
-    width: 168,
-    priority: 4,
+    id: "changes",
+    label: "With Auth",
+    width: 176,
+    priority: 3,
     mobile: "hidden",
-    cell: (person) => (person.admin?.capoScope ? <Chip>{person.admin.capoScope}</Chip> : <Unset />),
+    cell: (person) => <ChangesBadge person={person} />,
   },
   {
     id: "account",
@@ -172,29 +161,14 @@ const columns: DataTableColumn<PersonRow>[] = [
     mobile: "hidden",
     cell: (person) => <StateBadge state={ACCOUNT_STATUS[person.account.status]} />,
   },
-  {
-    id: "census",
-    label: "Last census",
-    width: 176,
-    priority: 1,
-    mobile: "hidden",
-    cell: (person) => {
-      const entry = lastAnswer(person)
-      if (!entry?.answer) return <Unset />
-      return (
-        <span className="whitespace-nowrap">
-          <span className="font-mono text-[13px]">{entry.year}</span> · {CENSUS_ANSWER[entry.answer].label}
-        </span>
-      )
-    },
-  },
 ]
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** People › Overview: one row per person with their roles, account and last census answer. */
-export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
+/** People › Overview: one row per record, with its roles, where they stand with Auth, and its account. */
+export function PeopleOverviewPage({ people, teams }: { people: PersonRow[]; teams: TeamSummary[] }) {
   const canWrite = useCan("people:write")
+  const canLink = useCan("people:link")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
   const [filters, setFilters] = useState(NO_FILTERS)
@@ -231,13 +205,8 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
   }
 
   function openInvite(person: PersonRow) {
-    if (!person.profile.personalEmail) return
-    setAccountAction({
-      kind: "invite",
-      personId: person.id,
-      name: personName(person),
-      email: person.profile.personalEmail,
-    })
+    if (!person.contactEmail) return
+    setAccountAction({ kind: "invite", personId: person.id, name: personName(person), email: person.contactEmail })
     setAccountOpen(true)
   }
 
@@ -272,8 +241,8 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                   value={filters.role}
                   onChange={(value) => setFilter("role", value)}
                   options={[
-                    { value: "member", label: "Member", count: count(ROLE_TEST.member) },
                     { value: "admin", label: "Admin", count: count(ROLE_TEST.admin) },
+                    { value: "capo", label: "Capo Admin", count: count(ROLE_TEST.capo) },
                     { value: "team", label: "Team member", count: count(ROLE_TEST.team) },
                     { value: "none", label: "No roles", count: count(ROLE_TEST.none) },
                   ]}
@@ -284,13 +253,6 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                   value={filters.team}
                   onChange={(value) => setFilter("team", value)}
                   options={TEAM_IDS.map((team) => ({ value: team, label: teamName(team) }))}
-                />
-                <FilterMenu<Campus>
-                  label="Campus"
-                  allLabel="All campuses"
-                  value={filters.campus}
-                  onChange={(value) => setFilter("campus", value)}
-                  options={CAMPUSES.map((campus) => ({ value: campus, label: campus }))}
                 />
                 <FilterMenu<AccountStatus>
                   label="Account"
@@ -303,16 +265,16 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                     count: count((person) => person.account.status === status),
                   }))}
                 />
-                <FilterMenu<CensusFilter>
-                  label="Census"
-                  allLabel="Any census answer"
-                  value={filters.census}
-                  onChange={(value) => setFilter("census", value)}
-                  options={[
-                    { value: "continues", label: `Continues in ${currentYear()}` },
-                    { value: "leaving", label: `Leaving in ${currentYear()}` },
-                    { value: "none", label: `No ${currentYear()} answer` },
-                  ]}
+                <FilterMenu<ChangeFilter>
+                  label="With Auth"
+                  allLabel="Any state"
+                  value={filters.change}
+                  onChange={(value) => setFilter("change", value)}
+                  options={(["pending", "sent", "refused"] as const).map((change) => ({
+                    value: change,
+                    label: CHANGE_LABEL[change],
+                    count: count(CHANGE_TEST[change]),
+                  }))}
                 />
               </>
             }
@@ -339,10 +301,10 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
             setPage(1)
           }}
           actions={
-            canWrite
+            canWrite || canLink
               ? (person) => (
                   <RowActions>
-                    {person.account.status === "none" && person.profile.personalEmail ? (
+                    {canWrite && person.account.status === "none" && person.contactEmail ? (
                       <IconButton
                         label="Send invite"
                         ariaLabel={`Send invite to ${personName(person)}`}
@@ -356,15 +318,16 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
                       keepSlot
                       label={`More actions for ${personName(person)}`}
                       actions={[
-                        person.account.status !== "linked" && {
-                          label: "Link account",
-                          ariaLabel: `Link an account to ${personName(person)}`,
-                          icon: Link2,
-                          onClick: () => {
-                            setLinkTarget(person)
-                            setLinkOpen(true)
+                        canLink &&
+                          person.account.status !== "linked" && {
+                            label: "Link account",
+                            ariaLabel: `Link an account to ${personName(person)}`,
+                            icon: Link2,
+                            onClick: () => {
+                              setLinkTarget(person)
+                              setLinkOpen(true)
+                            },
                           },
-                        },
                       ]}
                     />
                   </RowActions>
@@ -398,7 +361,7 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
               <EmptyState
                 icon={UsersRound}
                 title="No people yet"
-                text="People appear here when you add them or import census answers."
+                text="People appear here when you add them, or when someone gets a People role in PoliNetwork Auth."
                 action={
                   canWrite ? (
                     <Button size="sm" variant="outline" className={buttonMotion} onClick={openAdd}>
@@ -414,17 +377,22 @@ export function PeopleOverviewPage({ people }: { people: PersonRow[] }) {
       </PageContent>
       {canWrite ? (
         <>
-          <PersonDialog key={addKey} open={addOpen} onOpenChange={setAddOpen} />
+          <PersonDialog key={addKey} open={addOpen} onOpenChange={setAddOpen} teams={teams} />
           <AccountActionDialog action={accountAction} open={accountOpen} onOpenChange={setAccountOpen} />
-          {linkTarget ? (
-            <LinkAccountDialog
-              key={`${linkTarget.id}-${linkKey}`}
-              open={linkOpen}
-              onOpenChange={setLinkOpen}
-              person={{ id: linkTarget.id, name: personName(linkTarget), firstName: linkTarget.profile.firstName }}
-            />
-          ) : null}
         </>
+      ) : null}
+      {canLink && linkTarget ? (
+        <LinkAccountDialog
+          key={`${linkTarget.id}-${linkKey}`}
+          open={linkOpen}
+          onOpenChange={setLinkOpen}
+          person={{
+            id: linkTarget.id,
+            name: personName(linkTarget),
+            firstName: linkTarget.firstName,
+            roles: currentAssignments(linkTarget).length,
+          }}
+        />
       ) : null}
     </>
   )

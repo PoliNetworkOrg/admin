@@ -1,375 +1,152 @@
-import { Link } from "@tanstack/react-router"
-import { useServerFn } from "@tanstack/react-start"
-import { CircleCheck, Mail, RefreshCw, X } from "lucide-react"
-import { type ReactNode, useDeferredValue, useState } from "react"
+import { Link2, Mail, RefreshCw, Unlink, UserRoundCheck, X } from "lucide-react"
+import { useDeferredValue, useState } from "react"
 
 import {
   buttonMotion,
+  ChipOverflow,
   DataTable,
   type DataTableColumn,
   EmptyState,
-  fieldControl,
-  fieldHintId,
-  FormDialog,
-  FormField,
   IconButton,
-  InlineAlert,
-  PlatformGlyph,
-  RadioCard,
-  RadioCardGroup,
   RowActions,
   SegmentedControl,
   StatusBadge,
+  Unset,
   useOpenGeneration,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
 
 import { type AccountAction, AccountActionDialog } from "./account-action-dialog"
-import { formatDay, isExpired } from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
-import { PersonCell } from "./people-ui"
-import { dismissLinkingReview, resolveLinkingReview } from "./people-write.functions"
-import type { Invite, Review } from "./people.contract"
+import { LinkAccountDialog, UnlinkAccountDialog } from "./link-account-dialog"
+import {
+  actorName,
+  assignmentLabel,
+  currentAssignments,
+  formatDay,
+  isExpired,
+  LINK_METHOD,
+  personName,
+  waitingForAuth,
+} from "./people-format"
+import { PersonCell, TruncatedChip } from "./people-ui"
+import type { Invite, PersonRow, RecentLink } from "./people.contract"
 
-type Scope = "review" | "invites"
-type ReviewKind = Review["kind"]
+type Tab = "unlinked" | "invites" | "recent"
+type Target = { id: string; name: string; firstName: string; roles: number }
 
-const ISSUE = {
-  "telegram-conflict": "Telegram account already linked to another record",
-  "ask-to-be-added": "Signed in without a record and asked to be added",
-  "two-records": "Two records match this sign-in",
-  "not-me": "Said “This isn't me” at first sign-in",
-  "name-only": "Matched by name only; email and Telegram differ",
-} satisfies Record<ReviewKind, string>
-
-type Resolution = { value: string; label: string; description: string }
-type ResolutionChoices = { title: string; description: string; options: Resolution[] }
-
-/** The ways to settle each kind of review; the backend applies the chosen `value`. */
-function resolutionsFor(review: Review): ResolutionChoices {
-  const record = review.record ? `${review.record.name} (${review.record.id})` : "the record"
-  const other = review.other ? `${review.other.name} (${review.other.id})` : "the other record"
-  switch (review.kind) {
-    case "telegram-conflict":
-      return {
-        title: "Resolve Telegram conflict",
-        description: `The sign-in matches ${record} by email, but its Telegram account is on ${other}.`,
-        options: [
-          {
-            value: "move-telegram",
-            label: `Link to ${review.record?.id ?? "the record"} and move the Telegram account`,
-            description: `Removes ${review.account.telegram ?? "the Telegram account"} from ${other}.`,
-          },
-          {
-            value: "link-other",
-            label: `Link to ${review.other?.id ?? "the other record"}`,
-            description: `The Telegram account stays where it is; ${review.record?.id ?? "the record"} stays unlinked.`,
-          },
-          {
-            value: "ask-details",
-            label: "Keep unlinked and ask for details",
-            description: `Sends ${review.account.name} a message asking which record is theirs.`,
-          },
-        ],
-      }
-    case "ask-to-be-added":
-      return {
-        title: "Resolve request to be added",
-        description: `${review.account.name} signed in, found no record and asked to be added. To link a record that already exists, open it and use Link account.`,
-        options: [
-          {
-            value: "add-new",
-            label: "Add as a new person",
-            description: "Creates a record from the sign-in and links it.",
-          },
-          { value: "decline", label: "Decline", description: "They keep seeing “You're not on the lists”." },
-        ],
-      }
-    case "two-records":
-      return {
-        title: "Resolve two matching records",
-        description: `Both records use ${review.account.email}.`,
-        options: [
-          { value: "link-first", label: `Link to ${review.record?.id ?? "the first record"}`, description: record },
-          { value: "link-second", label: `Link to ${review.other?.id ?? "the second record"}`, description: other },
-          {
-            value: "merge-first",
-            label: "Merge the two records first",
-            description: "HR merges them, then the sign-in links to the result.",
-          },
-        ],
-      }
-    default:
-      return {
-        title: review.kind === "not-me" ? "Resolve “This isn't me”" : "Resolve name-only match",
-        description:
-          review.kind === "not-me"
-            ? `At first sign-in, ${review.account.name} said ${record} isn't them.`
-            : `The sign-in matched ${record} by name only.`,
-        options: [
-          { value: "link-anyway", label: "Link anyway", description: "Only if you checked with them directly." },
-          {
-            value: "add-new",
-            label: "Add as a new person",
-            description: "Creates a separate record for this sign-in.",
-          },
-          { value: "decline", label: "Decline", description: "They keep seeing “You're not on the lists”." },
-        ],
-      }
-  }
-}
-
-function Side({ heading, rows }: { heading: string; rows: { label: string; value: ReactNode; mono?: boolean }[] }) {
+/** The roles a record would get once linked. */
+function RolesCell({ person }: { person: PersonRow | undefined }) {
+  const roles = person ? currentAssignments(person).map(assignmentLabel) : []
+  if (!roles.length) return <Unset />
   return (
-    <div className="rounded-(--pn-r-4) border border-(--pn-line) p-3">
-      <h3 className="mb-2 text-xs font-medium text-(--pn-fg-muted)">{heading}</h3>
-      <dl className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
-        {rows.map((row) => (
-          <div key={row.label} className="contents">
-            <dt className="text-(--pn-fg-muted)">{row.label}</dt>
-            <dd className={cn("[overflow-wrap:anywhere]", row.mono && "font-mono")}>{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+    <ChipOverflow
+      items={roles}
+      max={2}
+      itemLabel={(role) => role}
+      renderItem={(role) => <TruncatedChip key={role} label={role} />}
+    />
   )
 }
 
-function ResolveDialog({
-  open,
-  onOpenChange,
-  review,
+function matches(query: string, values: (string | null)[]) {
+  return !query || values.some((value) => (value ?? "").toLocaleLowerCase().includes(query))
+}
+
+/**
+ * People › Linking: the records without an account, the invites waiting to be accepted, and the links of the last 30
+ * days. A record is linked in two ways only: the person accepts an email invite with any account, or someone with
+ * `people:link` links one by hand. Nothing is matched automatically, so Recently linked is where a mistake, or a
+ * forwarded invite, is spotted and undone.
+ */
+export function LinkingPage({
+  people,
+  invites,
+  recent,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  review: Review
+  people: PersonRow[]
+  invites: Invite[]
+  recent: RecentLink[]
 }) {
-  const resolve = useServerFn(resolveLinkingReview)
-  const refresh = useRefreshAfter()
-  const { title, description, options } = resolutionsFor(review)
-  const [choice, setChoice] = useState<string | null>(null)
-  const [reason, setReason] = useState("")
-  const [submitted, setSubmitted] = useState(false)
-  const choiceError = submitted && !choice ? "Choose how to resolve it." : undefined
-  const reasonError = submitted && !reason.trim() ? "Enter a reason." : undefined
-
-  async function submit() {
-    setSubmitted(true)
-    if (!choice || !reason.trim()) return
-    try {
-      await resolve({ data: { reviewId: review.id, resolution: choice, reason: reason.trim() } })
-    } catch (caught) {
-      console.error(caught)
-      throw new Error(errorMessage(caught, "Couldn't resolve the review."), { cause: caught })
-    }
-    await refresh("Resolved.")
-    onOpenChange(false)
-  }
-
-  const recordSide = review.record ?? review.other
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      size="lg"
-      title={title}
-      description={description}
-      noun="resolution"
-      dirty={choice !== null || reason.trim() !== ""}
-      submitLabel="Resolve"
-      submitOnEnter={false}
-      onSubmit={submit}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-3 shell:grid-cols-2">
-          <Side
-            heading="Signed in as"
-            rows={[
-              { label: "Name", value: review.account.name },
-              { label: "Email", value: review.account.email, mono: true },
-              {
-                label: "Telegram",
-                value: review.account.telegram ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <PlatformGlyph platform="tg" className="size-3" />
-                    {review.account.telegram}
-                  </span>
-                ) : (
-                  "—"
-                ),
-                mono: true,
-              },
-              { label: "Signed in with", value: review.account.via },
-            ]}
-          />
-          <Side
-            heading={
-              review.kind === "two-records"
-                ? "Records with this email"
-                : review.kind === "telegram-conflict"
-                  ? "Telegram account is on"
-                  : "Suggested record"
-            }
-            rows={
-              recordSide
-                ? [
-                    ...(review.kind === "telegram-conflict" && review.other ? [review.other] : [recordSide]).map(
-                      (ref) => ({
-                        label: ref.id,
-                        value: (
-                          <Link
-                            to="/dashboard/people/$personId"
-                            params={{ personId: ref.id }}
-                            className="text-(--pn-accent) hover:underline"
-                          >
-                            {ref.name}
-                          </Link>
-                        ),
-                      })
-                    ),
-                    ...(review.kind === "two-records" && review.other
-                      ? [
-                          {
-                            label: review.other.id,
-                            value: (
-                              <Link
-                                to="/dashboard/people/$personId"
-                                params={{ personId: review.other.id }}
-                                className="text-(--pn-accent) hover:underline"
-                              >
-                                {review.other.name}
-                              </Link>
-                            ),
-                          },
-                        ]
-                      : []),
-                  ]
-                : [{ label: "Record", value: "None found" }]
-            }
-          />
-        </div>
-        {review.message ? (
-          <InlineAlert tone="info">
-            <span className="font-medium">Their message:</span> {review.message}
-          </InlineAlert>
-        ) : null}
-        <div className="flex flex-col gap-2">
-          <RadioCardGroup
-            label="Resolution"
-            value={choice}
-            onValueChange={setChoice}
-            invalid={!!choiceError}
-            describedBy={choiceError ? "resolve-choice-error" : undefined}
-          >
-            {options.map((option) => (
-              <RadioCard
-                key={option.value}
-                value={option.value}
-                label={option.label}
-                description={option.description}
-              />
-            ))}
-          </RadioCardGroup>
-          {choiceError ? (
-            <p id="resolve-choice-error" className="text-[13px] text-(--pn-danger-fg)">
-              {choiceError}
-            </p>
-          ) : null}
-        </div>
-        <FormField label="Reason" htmlFor="resolve-reason" hint="Saved in the record's activity." error={reasonError}>
-          <Textarea
-            id="resolve-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            maxLength={500}
-            aria-invalid={reasonError ? true : undefined}
-            aria-describedby={fieldHintId("resolve-reason")}
-            className={cn(fieldControl, "min-h-20")}
-          />
-        </FormField>
-      </div>
-    </FormDialog>
-  )
-}
-
-/** People › Linking: sign-ins the backend couldn't link on its own, and invites still waiting. */
-export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: Invite[] }) {
   const canWrite = useCan("people:write")
-  const dismiss = useServerFn(dismissLinkingReview)
-  const refresh = useRefreshAfter()
-  const [scope, setScope] = useState<Scope>("review")
+  const canLink = useCan("people:link")
+  const [tab, setTab] = useState<Tab>("unlinked")
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase())
-  const [resolving, setResolving] = useState<Review | null>(null)
-  const [resolveOpen, setResolveOpen] = useState(false)
-  const resolveKey = useOpenGeneration(resolveOpen)
   const [accountAction, setAccountAction] = useState<AccountAction | null>(null)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [linkTarget, setLinkTarget] = useState<Target | null>(null)
+  const [linkOpen, setLinkOpen] = useState(false)
+  const linkKey = useOpenGeneration(linkOpen)
+  const [unlinkTarget, setUnlinkTarget] = useState<Target | null>(null)
+  const [unlinkOpen, setUnlinkOpen] = useState(false)
+  const unlinkKey = useOpenGeneration(unlinkOpen)
 
-  const matches = (values: string[]) =>
-    !deferredQuery || values.some((value) => value.toLocaleLowerCase().includes(deferredQuery))
-  const reviewRows = reviews.filter((review) => matches([review.account.name, review.account.email]))
+  const byId = new Map(people.map((person) => [person.id, person]))
+  const target = (person: PersonRow): Target => ({
+    id: person.id,
+    name: personName(person),
+    firstName: person.firstName,
+    roles: currentAssignments(person).length,
+  })
+  const unlinked = people
+    .filter((person) => person.account.status === "none")
+    .filter((person) => matches(deferredQuery, [personName(person), person.contactEmail, person.id]))
+    .toSorted((a, b) => personName(a).localeCompare(personName(b)))
   const inviteRows = invites
-    .filter((invite) => matches([invite.name, invite.email]))
+    .filter((invite) => matches(deferredQuery, [invite.name, invite.email, invite.personId]))
     .toSorted((a, b) => a.expiresOn.localeCompare(b.expiresOn))
-
-  async function dismissReview(review: Review) {
-    try {
-      await dismiss({ data: { reviewId: review.id } })
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, "Couldn't dismiss it."))
-      return
-    }
-    await refresh("Review dismissed.")
+  const recentRows = recent.filter((link) =>
+    matches(deferredQuery, [link.person.name, link.email, link.sub, link.person.id])
+  )
+  const totals = {
+    unlinked: people.filter((person) => person.account.status === "none").length,
+    invites: invites.length,
+    recent: recent.length,
   }
+  const shown = { unlinked: unlinked.length, invites: inviteRows.length, recent: recentRows.length }
+  const nouns = {
+    unlinked: ["record", "records"],
+    invites: ["invite", "invites"],
+    recent: ["link", "links"],
+  } as const satisfies Record<Tab, readonly [string, string]>
 
-  function openInvite(kind: "resend" | "revoke", invite: Invite) {
-    setAccountAction({ kind, personId: invite.personId, name: invite.name, email: invite.email })
+  function openInvite(kind: AccountAction["kind"], personId: string, name: string, email: string) {
+    setAccountAction({ kind, personId, name, email })
     setAccountOpen(true)
   }
 
-  const reviewColumns: DataTableColumn<Review>[] = [
+  function openLink(person: PersonRow | undefined) {
+    if (!person) return
+    setLinkTarget(target(person))
+    setLinkOpen(true)
+  }
+
+  const linkButton = (person: PersonRow | undefined, name: string) =>
+    canLink && person ? (
+      <IconButton
+        label="Link account"
+        ariaLabel={`Link an account to ${name}`}
+        icon={Link2}
+        onClick={() => openLink(person)}
+      />
+    ) : null
+
+  const unlinkedColumns: DataTableColumn<PersonRow>[] = [
     {
-      id: "account",
-      label: "Signed in as",
+      id: "person",
+      label: "Person",
       fill: true,
       minWidth: 220,
       mobile: "main",
-      cell: (review) => <PersonCell name={review.account.name} secondary={review.account.email} secondaryMono />,
+      cell: (person) => <PersonCell name={personName(person)} secondary={person.contactEmail ?? "No contact email"} />,
     },
     {
-      id: "issue",
-      label: "Issue",
-      width: 300,
-      mobile: "text",
-      cell: (review) => <span className="block whitespace-normal">{ISSUE[review.kind]}</span>,
-    },
-    {
-      id: "record",
-      label: "Record",
-      width: 208,
-      priority: 3,
-      mobile: "meta",
-      cell: (review) =>
-        review.record ? (
-          <span className="block truncate">
-            {review.record.name} <span className="font-mono text-xs text-(--pn-fg-muted)">{review.record.id}</span>
-          </span>
-        ) : (
-          <span className="text-(--pn-fg-muted)">No record</span>
-        ),
-    },
-    {
-      id: "since",
-      label: "Since",
-      width: 120,
-      priority: 4,
-      mobile: "meta",
-      cell: (review) => <span className="whitespace-nowrap">{formatDay(review.since)}</span>,
+      id: "roles",
+      label: "Roles waiting",
+      width: 264,
+      mobile: "full",
+      cell: (person) => <RolesCell person={person} />,
     },
   ]
 
@@ -380,26 +157,32 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
       fill: true,
       minWidth: 200,
       mobile: "main",
-      cell: (invite) => <PersonCell name={invite.name} secondary={invite.personId} secondaryMono />,
+      cell: (invite) => <PersonCell name={invite.name} secondary={invite.email} />,
     },
     {
-      id: "email",
-      label: "Email",
-      width: 264,
-      mobile: "full",
-      cell: (invite) => <span className="block truncate font-mono text-[13px]">{invite.email}</span>,
+      id: "roles",
+      label: "Roles waiting",
+      width: 224,
+      priority: 4,
+      mobile: "hidden",
+      cell: (invite) => <RolesCell person={byId.get(invite.personId)} />,
     },
     {
       id: "sent",
-      label: "Sent on",
-      width: 120,
+      label: "Sent",
+      width: 184,
       priority: 3,
       mobile: "hidden",
-      cell: (invite) => <span className="whitespace-nowrap">{formatDay(invite.sentOn)}</span>,
+      cell: (invite) => (
+        <span className="flex min-w-0 flex-col">
+          <span className="whitespace-nowrap">{formatDay(invite.sentOn)}</span>
+          <span className="truncate text-xs text-(--pn-fg-muted)">by {actorName(invite.sentBy, people)}</span>
+        </span>
+      ),
     },
     {
       id: "expires",
-      label: "Expires on",
+      label: "Expires",
       width: 168,
       mobile: "meta",
       cell: (invite) =>
@@ -409,127 +192,116 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
           <span className="whitespace-nowrap">{formatDay(invite.expiresOn)}</span>
         ),
     },
+  ]
+
+  const recentColumns: DataTableColumn<RecentLink>[] = [
     {
-      id: "sentBy",
-      label: "Sent by",
-      width: 144,
-      priority: 4,
-      mobile: "hidden",
-      cell: (invite) => <span className="block truncate">{invite.sentBy}</span>,
+      id: "person",
+      label: "Person",
+      fill: true,
+      minWidth: 200,
+      mobile: "main",
+      cell: (link) => <PersonCell name={link.person.name} secondary={link.person.id} secondaryMono />,
+    },
+    {
+      id: "account",
+      label: "Account",
+      width: 248,
+      mobile: "full",
+      cell: (link) => (
+        <span className="block truncate font-mono text-[13px]" title={link.sub}>
+          {link.email ?? link.sub}
+        </span>
+      ),
+    },
+    {
+      id: "method",
+      label: "How",
+      width: 200,
+      priority: 3,
+      mobile: "meta",
+      cell: (link) => <span className="block truncate">{LINK_METHOD[link.method]}</span>,
+    },
+    {
+      id: "linked",
+      label: "Linked",
+      width: 184,
+      mobile: "meta",
+      cell: (link) => (
+        <span className="flex min-w-0 flex-col">
+          <span className="whitespace-nowrap">{formatDay(link.linkedOn)}</span>
+          <span className="truncate text-xs text-(--pn-fg-muted)">
+            {link.linkedBy ? `by ${actorName(link.linkedBy, people)}` : "by an unknown account"}
+          </span>
+        </span>
+      ),
     },
   ]
+
+  const emptyMatch = (
+    <EmptyState
+      icon={Link2}
+      title="Nothing matches"
+      text="Try another name, email or ID."
+      action={
+        <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setQuery("")}>
+          Clear search
+        </Button>
+      }
+    />
+  )
 
   return (
     <>
       <PageBar
-        description="Connect sign-ins to person records"
+        description="Link records to sign-in accounts: by an email invite, accepted with any account, or by hand."
         left={
           <Toolbar
-            search={{
-              value: query,
-              onChange: setQuery,
-              placeholder: scope === "review" ? "Search by name or email…" : "Search invites…",
-            }}
+            search={{ value: query, onChange: setQuery, placeholder: "Search by name, email or ID…" }}
             filters={
-              <SegmentedControl<Scope>
-                label="List"
+              <SegmentedControl<Tab>
+                label="Show"
                 items={[
-                  { value: "review", label: "Needs review", count: reviews.length },
-                  { value: "invites", label: "Pending invites", count: invites.length },
+                  { value: "unlinked", label: "Not linked", count: totals.unlinked },
+                  { value: "invites", label: "Invites", count: totals.invites },
+                  { value: "recent", label: "Recently linked", count: totals.recent },
                 ]}
-                value={scope}
-                onValueChange={setScope}
+                value={tab}
+                onValueChange={setTab}
               />
             }
             count={
               deferredQuery ? (
-                scope === "review" ? (
-                  <Count value={reviewRows.length} total={reviews.length} noun="item" plural="items" />
-                ) : (
-                  <Count value={inviteRows.length} total={invites.length} noun="invite" plural="invites" />
-                )
+                <Count value={shown[tab]} total={totals[tab]} noun={nouns[tab][0]} plural={nouns[tab][1]} />
               ) : undefined
             }
           />
         }
       />
       <PageContent>
-        {scope === "review" ? (
+        {tab === "unlinked" ? (
           <DataTable
-            label="Needs review"
-            columns={reviewColumns}
-            rows={reviewRows}
-            getRowId={(review) => review.id}
-            rowLabel={(review) => review.account.name}
+            label="Records without an account"
+            columns={unlinkedColumns}
+            rows={unlinked}
+            getRowId={(person) => person.id}
+            rowLabel={personName}
+            rowHref={(person) => `/dashboard/people/${person.id}`}
             actions={
-              canWrite
-                ? (review) => (
-                    <RowActions className="gap-2">
-                      <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => dismissReview(review)}>
-                        Dismiss
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={buttonMotion}
-                        onClick={() => {
-                          setResolving(review)
-                          setResolveOpen(true)
-                        }}
-                      >
-                        Resolve
-                      </Button>
-                    </RowActions>
-                  )
-                : undefined
-            }
-            actionsWidth={184}
-            empty={
-              deferredQuery ? (
-                <EmptyState
-                  icon={CircleCheck}
-                  title="Nothing matches"
-                  text="Try another name or email."
-                  action={
-                    <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setQuery("")}>
-                      Clear search
-                    </Button>
-                  }
-                />
-              ) : (
-                <EmptyState
-                  icon={CircleCheck}
-                  title="Nothing needs review"
-                  text="Conflicts and requests to be added appear here when someone signs in."
-                />
-              )
-            }
-          />
-        ) : (
-          <DataTable
-            label="Pending invites"
-            columns={inviteColumns}
-            rows={inviteRows}
-            getRowId={(invite) => invite.personId}
-            rowLabel={(invite) => invite.name}
-            rowHref={(invite) => `/dashboard/people/${invite.personId}`}
-            actions={
-              canWrite
-                ? (invite) => (
+              canWrite || canLink
+                ? (person) => (
                     <RowActions>
-                      <IconButton
-                        label="Resend invite"
-                        ariaLabel={`Resend invite to ${invite.name}`}
-                        icon={RefreshCw}
-                        onClick={() => openInvite("resend", invite)}
-                      />
-                      <IconButton
-                        label="Revoke invite"
-                        ariaLabel={`Revoke invite to ${invite.name}`}
-                        icon={X}
-                        tone="danger"
-                        onClick={() => openInvite("revoke", invite)}
-                      />
+                      {canWrite && person.contactEmail ? (
+                        <IconButton
+                          label="Send invite"
+                          ariaLabel={`Send invite to ${personName(person)}`}
+                          icon={Mail}
+                          onClick={() => openInvite("invite", person.id, personName(person), person.contactEmail ?? "")}
+                        />
+                      ) : (
+                        <span aria-hidden className="size-9 max-shell:hidden" />
+                      )}
+                      {linkButton(person, personName(person))}
                     </RowActions>
                   )
                 : undefined
@@ -537,37 +309,129 @@ export function LinkingPage({ reviews, invites }: { reviews: Review[]; invites: 
             actionsWidth={96}
             empty={
               deferredQuery ? (
+                emptyMatch
+              ) : (
                 <EmptyState
-                  icon={Mail}
-                  title="No invites match"
-                  text="Try another name or email."
-                  action={
-                    <Button size="sm" variant="ghost" className={buttonMotion} onClick={() => setQuery("")}>
-                      Clear search
-                    </Button>
-                  }
+                  icon={UserRoundCheck}
+                  title="Every record is linked or invited"
+                  text="Records without an account and without an open invite appear here."
                 />
+              )
+            }
+          />
+        ) : tab === "invites" ? (
+          <DataTable
+            label="Invites"
+            columns={inviteColumns}
+            rows={inviteRows}
+            getRowId={(invite) => invite.personId}
+            rowLabel={(invite) => invite.name}
+            rowHref={(invite) => `/dashboard/people/${invite.personId}`}
+            actions={
+              canWrite || canLink
+                ? (invite) => (
+                    <RowActions>
+                      {canWrite ? (
+                        <>
+                          <IconButton
+                            label="Resend invite"
+                            ariaLabel={`Resend invite to ${invite.name}`}
+                            icon={RefreshCw}
+                            onClick={() => openInvite("resend", invite.personId, invite.name, invite.email)}
+                          />
+                          <IconButton
+                            label="Revoke invite"
+                            ariaLabel={`Revoke invite to ${invite.name}`}
+                            icon={X}
+                            tone="danger"
+                            onClick={() => openInvite("revoke", invite.personId, invite.name, invite.email)}
+                          />
+                        </>
+                      ) : null}
+                      {linkButton(byId.get(invite.personId), invite.name)}
+                    </RowActions>
+                  )
+                : undefined
+            }
+            actionsWidth={136}
+            empty={
+              deferredQuery ? (
+                emptyMatch
               ) : (
                 <EmptyState
                   icon={Mail}
-                  title="No pending invites"
-                  text="Invites you send from a person's record appear here until they're accepted."
+                  title="No open invites"
+                  text="Invites appear here until they're accepted, revoked or replaced."
+                />
+              )
+            }
+          />
+        ) : (
+          <DataTable
+            label="Recently linked"
+            columns={recentColumns}
+            rows={recentRows}
+            getRowId={(link) => `${link.person.id}-${link.sub}`}
+            rowLabel={(link) => link.person.name}
+            rowHref={(link) => `/dashboard/people/${link.person.id}`}
+            actions={
+              canLink
+                ? (link) => {
+                    const person = byId.get(link.person.id)
+                    return (
+                      <RowActions>
+                        {person && !waitingForAuth(person) ? (
+                          <IconButton
+                            label="Unlink"
+                            ariaLabel={`Unlink the account of ${link.person.name}`}
+                            icon={Unlink}
+                            tone="danger"
+                            onClick={() => {
+                              setUnlinkTarget(target(person))
+                              setUnlinkOpen(true)
+                            }}
+                          />
+                        ) : (
+                          <span aria-hidden className="size-9" />
+                        )}
+                      </RowActions>
+                    )
+                  }
+                : undefined
+            }
+            actionsWidth={56}
+            empty={
+              deferredQuery ? (
+                emptyMatch
+              ) : (
+                <EmptyState
+                  icon={Link2}
+                  title="No links in the last 30 days"
+                  text="Accepted invites and accounts linked by hand appear here for 30 days."
                 />
               )
             }
           />
         )}
       </PageContent>
-      {canWrite && resolving ? (
-        <ResolveDialog
-          key={`resolve-${resolveKey}`}
-          open={resolveOpen}
-          onOpenChange={setResolveOpen}
-          review={resolving}
-        />
-      ) : null}
       {canWrite ? (
         <AccountActionDialog action={accountAction} open={accountOpen} onOpenChange={setAccountOpen} />
+      ) : null}
+      {canLink && linkTarget ? (
+        <LinkAccountDialog
+          key={`link-${linkTarget.id}-${linkKey}`}
+          open={linkOpen}
+          onOpenChange={setLinkOpen}
+          person={linkTarget}
+        />
+      ) : null}
+      {canLink && unlinkTarget ? (
+        <UnlinkAccountDialog
+          key={`unlink-${unlinkTarget.id}-${unlinkKey}`}
+          open={unlinkOpen}
+          onOpenChange={setUnlinkOpen}
+          person={unlinkTarget}
+        />
       ) : null}
     </>
   )

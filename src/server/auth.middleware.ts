@@ -39,6 +39,21 @@ export const authenticatedMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
+ * People › invite landing page: any signed-in account, even one without dashboard permissions, since someone new has
+ * no People role yet. The single-use invite token is the proof; the backend checks it. The permissions are whatever
+ * the account holds, for the views that need them once its roles arrive.
+ */
+export const peopleInviteMiddleware = createMiddleware({ type: "function" })
+  .middleware([authenticatedMiddleware])
+  .server(async ({ next, context }) => {
+    const { loadAccess } = await import("@/server/auth.server")
+    const access = await loadAccess(context.session, context.backend)
+    return next({
+      context: { user: access.user, permissions: access.status === "authorized" ? access.permissions : [] },
+    })
+  })
+
+/**
  * Any dashboard user: `admin:access`, or `people:self` alone for the restricted People view. Functions add their own
  * permission on top; the backend checks every procedure again.
  */
@@ -75,7 +90,7 @@ export const peopleSelfMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** People: every record, admins, teams, census and linking, with contacts and HR notes. */
+/** People: every record, admins, Capo Admins, teams and linking, with contacts and HR notes. */
 export const peopleReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
@@ -83,7 +98,7 @@ export const peopleReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** People: add and edit people, admin roles, team memberships, the census and account linking. */
+/** People: add and edit records, make and end admins, and set their Capo Admin of reference. */
 export const peopleWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
@@ -92,8 +107,8 @@ export const peopleWriteMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
- * People › Teams writes: `people:write`, or a Team Lead (`people:self`) on their own team, which only the backend
- * can tell from the record.
+ * People writes a Team Lead may make too: team memberships, and invites to their team's members. `people:write`, or a
+ * Team Lead (`people:self`) on their own team, which only the backend can tell.
  */
 export const peopleTeamWriteMiddleware = createMiddleware({ type: "function" })
   .middleware([dashboardUserMiddleware])
@@ -126,43 +141,38 @@ export const peopleTeamReadMiddleware = createMiddleware({ type: "function" })
     })
   })
 
-/** People › Member register: read. */
-export const peopleMembersReadMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:members:read")
-    return next()
-  })
-
-/** People › Member register: add members, change status and number, export. */
-export const peopleMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:members:write")
-    return next()
-  })
-
-/** People › fees: review transfer receipts, mark fees as paid, send reminders, retry and void receipts. */
-export const peopleFeesWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:fees:write")
-    return next()
-  })
-
-/** People › Receipts: download receipts to sign and upload them signed (the President and Vice-president). */
-export const peopleReceiptsSignMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "people:receipts:sign")
-    return next()
-  })
-
 /** People: appoint Capo Admins and Team Leads. */
 export const peopleAppointMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
   .server(({ next, context }) => {
     requirePermission(context.permissions, "people:appoint")
+    return next()
+  })
+
+/** People: search the IdP's accounts, and link or unlink one by hand. Linking hands the account the record's roles. */
+export const peopleLinkMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "people:link")
+    return next()
+  })
+
+/** People › Soci: the Libro Soci, its bookkeeping data and the Soci group's accounts without a record. */
+export const sociReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:read")
+    return next()
+  })
+
+/**
+ * People › Soci: admit a socio (a new Microsoft 365 account in Soci, then the record), register an account already in
+ * Soci, edit the bookkeeping data and change a member number.
+ */
+export const sociWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:write")
     return next()
   })
 
@@ -222,22 +232,6 @@ export const azureMembersReadMiddleware = createMiddleware({ type: "function" })
     return next()
   })
 
-/** Microsoft 365: create a new member through the backend's fixed workflow. */
-export const azureMembersCreateMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:create")
-    return next()
-  })
-
-/** Microsoft 365: change the member number of an existing user, optionally emailing them. */
-export const azureMembersWriteMiddleware = createMiddleware({ type: "function" })
-  .middleware([adminMiddleware])
-  .server(({ next, context }) => {
-    requirePermission(context.permissions, "azure:members:write")
-    return next()
-  })
-
 /** Microsoft 365: list the groups and their members. */
 export const azureGroupsReadMiddleware = createMiddleware({ type: "function" })
   .middleware([adminMiddleware])
@@ -277,5 +271,45 @@ export const esignRequestsManageMiddleware = createMiddleware({ type: "function"
   .server(({ next, context }) => {
     requirePermission(context.permissions, "esign:sign")
     requirePermission(context.permissions, "esign:requests:manage")
+    return next()
+  })
+
+/**
+ * Regolamenti, one draft at a time: anyone the dashboard admits, since per-draft access (assignments, deleghe) is
+ * backend data the backend checks on every call. Assignees and delegates have no `admin:access`.
+ */
+export const regulationsAssigneeMiddleware = createMiddleware({ type: "function" })
+  .middleware([dashboardUserMiddleware])
+  .server(({ next }) => next())
+
+/** Regolamenti: documents, published versions and every draft. */
+export const regulationsReadMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:read")
+    return next()
+  })
+
+/** Regolamenti: create drafts, assign members, merge, send to approval and back. */
+export const regulationsWriteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:write")
+    return next()
+  })
+
+/** Regolamenti: record the approval, "Emana e notifica", regenerate the differences. */
+export const regulationsManageMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:manage")
+    return next()
+  })
+
+/** Regolamenti: the Segretario's deleghe to rectify. */
+export const regulationsRectifyMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "regulations:rectify")
     return next()
   })

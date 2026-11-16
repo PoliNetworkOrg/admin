@@ -71,9 +71,20 @@ export function SectionItems({ service, match, pending, variant = "panel" }: Sec
   const current = sectionFor(match)
   const deep = isDeepPage(match)
   const pills = variant === "pills"
-  return service.sections.map((section: Section) => {
+  return service.sections.flatMap((section: Section, index) => {
     const active = current?.path === section.path
-    return (
+    // The panel names each group above its first section; the pills keep only the order.
+    const heading =
+      !pills && section.group && section.group !== service.sections[index - 1]?.group ? (
+        <span
+          key={`group-${section.group}`}
+          aria-hidden
+          className="px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.04em] text-(--pn-fg-subtle) uppercase first:pt-1"
+        >
+          {section.group}
+        </span>
+      ) : null
+    const link = (
       <Link
         key={section.id}
         to={section.path}
@@ -102,6 +113,7 @@ export function SectionItems({ service, match, pending, variant = "panel" }: Sec
         </Suspense>
       </Link>
     )
+    return heading ? [heading, link] : [link]
   })
 }
 

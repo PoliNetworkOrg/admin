@@ -91,10 +91,13 @@ else its first. Theme toggle and the account avatar (the same active fill and in
 the Account page.
 
 **Panel** (240px, 200px below 1100px). Rendered only for services with two or more sections (Telegram, Microsoft 365,
-Web, Reports); WhatsApp, Overview and Account have none. A 64px header with the service icon and title, then 38px items:
+Web, Reports); WhatsApp, Overview and Account have none. A service may group its sections (`group` on `Section`): the
+panel draws each group's title, 11px uppercase and subtle, above its first visible section, and the mobile pills only
+keep the order. People groups Volunteers (Overview, Admins, Teams, Census, Linking) and Soci (Register, Fees; Deletion
+pending). A 64px header with the service icon and title, then 38px items:
 the current one has a muted fill, an accent icon and a 3px accent bar; on deep pages the parent section keeps the fill
-and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open and the documents to sign next to Signatures › To sign, each as a
-small accent pill.
+and accent icon without the bar (`data-ancestor`). The only counts are the open reports next to Reports › Open, the documents to sign next to Signatures › To sign and
+the receipts to review next to Soci › Fees, each as a small accent pill.
 
 From 1440px, the panel has a reserved 240px slot even on pages without a panel, so opening a service keeps the
 content in place. Between 760px and 1439px, the content follows the panel as it opens or closes.
@@ -117,7 +120,7 @@ service title ("PoliNetwork Admin" on Overview), Search, the theme toggle and th
 as horizontally scrolling pills that scroll away with the page. The current pill stays in view after navigation,
 font loading and changes to the bar's width, including when it first appears below 760px. A 64px bottom nav lists the visible services (current one
 accent with a top bar, Reports with the open-reports dot). The device's bottom safe area adds space below the 64px
-bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. Section pills and bottom nav are the only navigation; there
+bar. Below 360px, WhatsApp uses "WA" so all labels remain readable. With seven services, WhatsApp uses "WA" below 440px and Telegram uses "TG" below 360px. With eight (Regolamenti, "Regole"), Telegram uses "TG" below 420px. Section pills and bottom nav are the only navigation; there
 is no sheet.
 
 **Command palette** (`⌘K`/`Ctrl+K`, the rail and top bar Search, the Overview search): sections, "Find “…” in
@@ -269,7 +272,7 @@ because they animate height; `skeleton` by the primitives' skeletons.
 **Tables (`DataTable`).** 12px radius surface, sentence-case 12px headers (42px, sticky), 14px cells in 52px rows, a
 visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
 hover or focus. The "Actions" header is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
-`Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`; return `null` for rows
+`Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`, which also opens the row on click unless `onRowClick` says otherwise; clicks on links, buttons and fields inside the row stay theirs; return `null` for rows
 that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
 readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
 a 32px initials avatar. Chip lists never wrap on desktop (`ChipOverflow`): they show what fits without cutting a chip to a stub, the rest behind "+n". Pagination: "Showing 1–20 of 680", rows per page and ‹ 1 2 3 … 34 › (no
@@ -405,6 +408,10 @@ Reduced motion: the global rule in `styles.css` zeroes CSS durations; `motion/re
 the theme reveal and the skeleton pulse switch off; the signed box is removed at once.
 
 ## 7. Copy
+
+Regolamenti is the one Italian part of the dashboard: its pages, dialogs, toasts and empty states follow these rules in
+Italian ("Crea bozza", "Bozza creata.", "Non è stato possibile creare la bozza."), dates as the documents print them
+("12/03/2026", `regulations-format.ts`), and pass `locale="it"` to the primitives that print their own words.
 
 - Sentence case everywhere. Verb first, object named: "Delete passkey", "Save labels".
 - No "please", "successfully", exclamation marks or "Are you sure". Contractions are fine in errors.
@@ -587,30 +594,43 @@ Rules that the templates above don't imply.
   request.".
 - **Account**: permissions are grouped by area (Dashboard, Telegram, WhatsApp, group labels, Microsoft 365, Web) with
   the service icon.
-- **People**: one record per person whether or not they have an account; Overview, Member register, Admins, Teams,
-  Census and Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
+- **People**: one record per person whether or not they have an account; Overview, Admins, Teams, Census and
+  Linking all open the same record (`/dashboard/people/$personId`). Account status always shows a badge,
   Not linked included. Mobile list cards replace unlabelled column values with one line of role chips or status
   badges in the name cell. Dialogs that need fields and are destructive (End admin role, End membership, I'm leaving)
   use `FormDialog` with `tone="danger"`; plain confirmations stay `ConfirmDialog`.
-- **Member register**: status segments scope the table; Number leads on desktop, the name on mobile. Add member from a
-  record opens the register's dialog via `?add=P-…`. Export confirms before downloading. Without `people:read`,
-  register/receipt rows have no full-record links; the register loads its own restricted projection.
-- **Fees and receipts** (`docs/people/fees.md`): the register's first row action follows the fee (Review receipt,
-  Send reminder, or an empty slot); its header keeps one outline action (Send reminders), with Export register as a boxed
-  icon. People › Receipts is a queue with the pipeline as segments and the officer's to-sign count in the panel.
-  Sign with CIE uses the shared eSign flow; Download to sign and Upload signed stay in its signing-options menu.
-  Review receipt is an `lg` `FormDialog` whose Reject switches it to a required reason (`tone="danger"`, Back on
-  the left). The fee status shows once per page: the record and My area say it in their fee card, not in Member or My
-  roles. Amounts are `formatCents` ("€10.00") with tabular numbers.
+- **Soci › Register** (`docs/people/soci.md`): the Libro Soci, one record per admission. Status segments (Active /
+  Ended / All) scope the table; Number leads on desktop, the name on mobile. Alerts above the table list the Soci
+  group's accounts without a record (with Register) and each kind of mismatch, and a Fee filter menu narrows by this
+  year's fee. Rows open the socio page (`/dashboard/people/soci/$number`), a deep page with Edit, Change number and a
+  Fees card (one row per fee year, View receipt or Review, Mark as paid; the card's Mark as paid also opens a year
+  that has no fee yet).
+- **Soci › Fees** (`docs/people/soci.md`): a queue for one fee year (the Year menu, `?year=`), receipts to review first:
+  segments To review / Due / Paid / Exempt with totals, and the To review count in the panel. The row's first action is
+  Review for a receipt to review, an empty slot otherwise, then Mark as paid. Review is an `lg` `FormDialog` with the
+  receipt (eSign's `PdfViewer` in its compact mode, or the image), the declared transfer and the last rejection;
+  Reject switches it to a required reason with three one-click starts (`tone="danger"`, Back on the left), and after
+  31 December warns that the socio lapses. Amounts are `formatEuro` ("€5.00") with tabular numbers.
+- **Socio card** (My area): the membership, this year's fee (bank details with a copy button per value and Upload
+  transfer receipt while Due, the review state and Replace receipt once uploaded, the last rejection in a danger
+  alert), past fees, and My details with Complete your details while fields are missing. A socio without a People
+  record sees only the Socio card.
 - **Admins**: Groups, Capo Admin of reference, Member and Census never hide; the rest follow the table width. The four
   quick filters scroll sideways on phones.
 - **Teams**: index cards then all members; a Team Lead without `people:read` sees only their team, as the section
   itself. Team-field columns come from `TEAMS` in `people.contract.ts`.
 - **Census**: answer segments become a filter menu on phones. The import wizard skips steps with nothing to settle and
   saves nothing before Confirm. Reminders report sent and skipped counts after sending.
-- **Linking**: Needs review is a queue (its count sits next to the section like Reports › Open); each review kind has
-  its own resolutions and a required reason.
+- **Linking**: segments Not linked, Invites and Recently linked (last 30 days), each with its total. Send invite
+  needs a contact email (an empty slot otherwise); Unlink is left out while a change for the record waits for Auth.
+  The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
+- **Regolamenti**: Documenti is a card per document; a document page lists its versions (the newest carries "In vigore",
+  each has its PDF, release, differences and "Nuova bozza da qui") and its drafts. Bozze adds "Il tuo accesso" for people
+  admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
+  procedure page is a record with the states as a stepper, disabled transitions showing why, and the emanation's steps
+  live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
+  Deleghe is a list with a segmented Attive/Tutte filter.
 
-Receipt previews use eSign’s `PdfViewer` in its compact mode. Receipt requests in Signatures show their receipt reference; their signature boxes are fixed.
+Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard/telegram/capo")({
     <>
       <PageBar />
       <PageContent>
-        <TableSkeleton columns={5} label="Loading your groups…" />
+        <TableSkeleton columns={5} label="Loading your admins…" />
       </PageContent>
     </>
   ),

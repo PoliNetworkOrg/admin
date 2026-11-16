@@ -15,7 +15,7 @@ export const getTeams = createServerFn({ method: "GET" })
   .middleware([peopleTeamReadMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).listTeams())
 
-/** Names and courses of the people who could join a team; Team Leads see no more than that. */
+/** Names of the people who could join a team; Team Leads see no more than that. */
 export const getTeamCandidates = createServerFn({ method: "GET" })
   .middleware([peopleTeamReadMiddleware])
   .validator(teamCandidatesInputSchema)

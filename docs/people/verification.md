@@ -1,5 +1,10 @@
 # People merge audit — 18 October 2026
 
+> [!NOTE]
+> Historical record. Since #138 the member register, fees, receipts and census are unconnected mockups, and record
+> matching, Telegram group tracking and the permissions `people:members:*`, `people:fees:write` and
+> `people:receipts:sign` are removed. The checks of those features below no longer apply.
+
 ## Base PR #97
 
 Used `PORT=10870/10871 AGENT_MODE=true pnpm dev`, with the permission lists and records in

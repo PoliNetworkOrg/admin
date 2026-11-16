@@ -135,6 +135,21 @@ src/routes/dashboard/account/  me.tsx (My area), index.tsx (Sign-in & security)
 - [x] Person record Fees and receipts card; My area Membership fee card and Upload transfer receipt
 - [ ] Backend: implement the procedures, the officers, automatic reminders, signature verification and email
 
+### Roadmap Phase 2: Soci ([`soci.md`](soci.md), #144)
+
+The design is agreed (9 November 2026). Each item is an issue under #144, in order; see `soci.md` for the details.
+
+- [ ] Auth: the Microsoft 365 object ID in the access snapshot; production config (`soci:*` for `direttivo`,
+      `people:self` for Socio)
+- [ ] Backend: register and admission (`soci_members`, `soci.members.*`, Graph remove/re-add/delete, `me.get`)
+- [ ] Admin: panel groups Volunteers / Soci; Soci › Register, socio page, Admit socio, Register existing socio;
+      Microsoft 365 › Members read-only; agent-mode fake for `soci.*`
+- [ ] Backend: fees, uploads, fee-year opening, reminders and fee emails
+- [ ] Admin: Soci › Fees (review, confirm, reject, mark as paid); My area Socio card (upload, complete details)
+- [ ] Backend: ending, automatic lapse (`SOCI_AUTO_LAPSE`), restore, account deletion; birthday emails
+- [ ] Admin: End status, Restore, Soci › Deletion pending; remove the mockups and `mockup-data.ts`
+- [ ] Production: register the existing soci, mark the 2026/27 payments, then switch on `SOCI_AUTO_LAPSE`
+
 ## Progress log
 
 Newest last. One line per commit or session: date, what was done, what is next.
@@ -198,3 +213,33 @@ Newest last. One line per commit or session: date, what was done, what is next.
   `people.receipts.prepareSignatures` contract and adapter, both signing permissions, and regression tests for
   officer restrictions, loader refresh and merged navigation. The People backend bridge remains pending, so agent
   mode reports that requirement instead of simulating CIE success.
+
+- 2026-10-29: cleanup (#138), deployed before PoliNetworkOrg/backend#100. Member register, Receipts and Census (and
+  My area's fee card) are unconnected mockups: static sample data from `mockup-data.ts`, no loaders or server
+  functions, disabled actions and a shared `MockupBanner` linking Phase 2 (#144) or Phase 3 (#145), gated by
+  `people:read`. Removed: the members, fees, receipts and census server functions, contract entries and agent-mode
+  data; the eSign receipt bridge (`peopleReceipt`); Telegram group columns and Capo Admin join requests; the Linking
+  review queue and My area's first-sign-in match, Ask to be added, census, correction and photo-consent revocation; the permissions
+  `people:members:read`, `people:members:write`, `people:fees:write` and `people:receipts:sign`. The schemas strip the
+  fields the current backend still sends until its own cleanup deploys.
+  The backend counterpart is PoliNetworkOrg/backend#104, which deploys after this.
+
+- 2026-10-31: Phase 1 pages (#139), on the API from PoliNetworkOrg/backend#105 and #106. The contract is a copy of
+  the backend's: records with a name and contacts, and assignments (Admin, Capo Admin, team member or Lead) whose
+  status says where each stands with PoliNetwork Auth (pending until linked, waiting for Auth, applied, refused with
+  Auth's reason). Overview filters by role, team, account and status; the person page lists each role with its status,
+  the past roles and the history, with actors named from linked records. Add person needs only a name, and can start
+  with roles. Admins shows admins with their Capo Admin of reference and the Capo Admins with their scope; the Capo
+  Admin area is read-only. Teams honour which roles Auth binds. New permission `people:link` for linking by hand and
+  unlinking (with a reason; Auth revokes the roles first). Course, year and campus are gone from records, so #132's
+  "—" handling has nothing left to apply to; the Design team is Design & Marketing. Agent-mode fixtures cover linked,
+  invited and unlinked records and every assignment status; fake Auth confirms changes after a few seconds and refuses
+  every change for P-0012.
+
+- 2026-10-31: Linking and the invite landing page (#140), on PoliNetworkOrg/backend#106 and #109. Linking has three
+  views: records without an account (send an invite, link by hand), open invites (resend, revoke, expiry) and links of
+  the last 30 days (account, method, date, who; Unlink with a reason, explaining that Auth revokes the roles first).
+  The link dialog confirms the account and how many roles go to Auth. `/people/invite` stands outside the dashboard
+  shell: sign in, "Link this account to <name>?", confirm, then the roles as they arrive (applied, waiting, refused with
+  Auth's reason), or "being applied" while the account can't read My area yet. The old My area invite link redirects
+  there, and My area no longer accepts invites.

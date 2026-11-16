@@ -2,25 +2,27 @@
 
 Permissions are additive and never imply one another. Administrative pages/actions below also need `admin:access`.
 Only My area, an active Capo Admin's scope and a Team Lead's own teams work with `people:self` alone. Record roles
-count only after account linking is confirmed. An officer title alone gives no extra permission. “Member” means socio;
-“team member” means a volunteer in a team. Fees/receipts apply in PR #100.
+count only once PoliNetwork Auth holds them (the record is linked and the role applied). “Team member” means a volunteer in a team. `people:members:read`,
+`people:members:write`, `people:fees:write` and `people:receipts:sign` were removed in #138.
 
-| Viewer / extra permissions                            | Pages                                                           | Actions                                                                                                                                |
-| ----------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Volunteer: `people:self`, P-0115                      | My area, Sign-in & security                                     | Own census, correction request, photo-consent revocation; own fee upload and signed receipts                                           |
-| Team Lead: `people:self`, P-0034                      | Above + own team(s) under People                                | Add team members, edit team fields, end ordinary team memberships; never appoint or end a Lead without `people:appoint` + admin access |
-| Capo Admin: `people:self`, P-0098                     | My area + Telegram › Capo Admin                                 | Approve/decline requests only for own groups; contact scoped admins                                                                    |
-| `people:read`                                         | People overview, person records, Admins, Teams, Census, Linking | Read contacts/notes/census; no editing, linking, imports or appointments; member details hidden                                        |
-| `people:members:read`                                 | Member register, Receipts (#100)                                | Read register, download receipts; full records require `people:read`                                                                   |
-| `people:members:read,people:members:write`            | Same                                                            | Admit members, change status/number, export; no fee review or signing                                                                  |
-| `people:members:read,people:fees:write`               | Register, Receipts (#100)                                       | Review transfer receipts, mark paid, remind, retry delivery, void one receipt                                                          |
-| `people:members:read,people:receipts:sign,esign:sign` | Receipts + Signatures (#100)                                    | Only the officer on the confirmed record signs assigned receipts, with the shared CIE popup or manual files                            |
-| President / Vice-president: P-0007 / P-0098           | As granted by permissions                                       | President signs ordinary receipts; Vice-president signs the President's receipt. No officer role: no signing action                    |
-| Master Admin: all explicit permissions, P-0007        | All permitted sections                                          | All People mutations; receipt signing still limited to own office                                                                      |
+| Viewer / extra permissions                     | Pages                                                   | Actions                                                                                                                                |
+| ---------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Volunteer: `people:self`, P-0021               | My area, Sign-in & security                             | Read own record and roles                                                                                                              |
+| Team Lead: `people:self`, P-0030               | Above + own team(s) under People                        | Add team members, edit team fields, end ordinary team memberships; never appoint or end a Lead without `people:appoint` + admin access |
+| Capo Admin: `people:self`, P-0003              | My area + Telegram › Capo Admin                         | Read-only list of the admins who have them as Capo Admin of reference                                                                  |
+| `people:read`                                  | People overview, person records, Admins, Teams, Linking | Read contacts and notes; no editing, linking or appointments                                                                           |
+| `people:link`                                  | Link account and Unlink on records and Overview         | Search the IdP's accounts, link one by hand, unlink (Auth revokes the roles first)                                                     |
+| `soci:read`                                    | Soci › Register, Fees, socio pages                      | Read the Libro Soci, its activity, fees and uploaded receipts, and the Soci group's accounts without a record                          |
+| `soci:write`                                   | Same                                                    | Admit socio, Register existing socio, Edit, Change number, Confirm or Reject a receipt, Mark as paid                                   |
+| Socio: `people:self`, a Soci account           | My area's Socio card                                    | Upload transfer receipt, Complete your details (empty fields only)                                                                     |
+| `people:read` (mockup)                         | Census                                                  | None: an unconnected mockup with sample data (#138), to be rebuilt in Phase 3 (#145)                                                   |
+| Master Admin: all explicit permissions, P-0007 | All permitted sections                                  | All People mutations                                                                                                                   |
 
-`people:write` enables profile, admin-role, team, census and linking mutations on readable pages;
-`people:appoint` enables Capo/Lead appointments and ending those roles. Without their read prerequisites, write
-permissions alone do not open a page. Buttons and row links follow these same rules; one available action is direct.
+`people:write` enables record, admin-role, team and invite mutations on readable pages;
+`people:appoint` enables Capo/Lead appointments and ending those roles; `people:link` enables linking by hand and
+unlinking. Nobody gives themselves a role, though anyone may give one up: P-0007 (agent mode's default `AGENT_PERSON`)
+can't add roles to their own record. Without their read prerequisites, write permissions alone do not open a page.
+Buttons and row links follow these same rules; one available action is direct.
 
 ## Verification
 

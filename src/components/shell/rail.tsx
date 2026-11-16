@@ -32,7 +32,7 @@ import {
 } from "./nav"
 import { ServiceGlyph } from "./service-glyph"
 import { themeToggleLabel, useTheme } from "./theme"
-import { useHasAdminAccess, useVisibleServices } from "./use-can"
+import { useHome, useVisibleServices } from "./use-can"
 
 const railItemClass =
   "relative grid size-10 shrink-0 place-items-center rounded-(--pn-r-3) text-(--pn-fg-muted) transition-[background-color,color] duration-120 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
@@ -162,14 +162,13 @@ export function ServiceDot({
 export function Rail({ match, serviceHref, onOpenPalette, user, pending, className }: RailProps) {
   const visibleServices = useVisibleServices()
   const panelServices = visibleServices.filter(isRailService)
-  const hasAdminAccess = useHasAdminAccess()
+  const home = useHome()
   const navRef = useRef<HTMLElement>(null)
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const { theme, toggleTheme } = useTheme()
   const modifierKey = useModifierKey()
 
   const activeId = serviceFor(match).id
-  const overview = serviceById("overview")
   const account = visibleServices.find((service) => service.id === "account") ?? serviceById("account")
 
   // Item order: logo (Overview), search, services…, theme, account.
@@ -232,10 +231,10 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
     >
       {/* The logo uses the same active fill and left indicator as every other rail item. */}
       <RailItem
-        label={hasAdminAccess ? overview.title : "My area"}
+        label={home.label}
         active={activeId === "overview"}
         focusable={tabStop === 0}
-        target={{ kind: "link", to: hasAdminAccess ? overview.path : "/dashboard/account/me" }}
+        target={{ kind: "link", to: home.path }}
         className="[&>img]:transition-transform [&>img]:duration-120 [&>img]:ease-(--pn-ease-out) hover:[&>img]:scale-106"
       >
         <img src={logoUrl} alt="" width={32} height={32} className="size-8 rounded-full" />

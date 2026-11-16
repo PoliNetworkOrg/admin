@@ -1,11 +1,9 @@
-import { useServerFn } from "@tanstack/react-start"
 import { Archive, Bell, ClipboardList, FileText, Upload } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 
 import {
   buttonMotion,
   ChipOverflow,
-  ConfirmDialog,
   DataTable,
   type DataTableColumn,
   EmptyState,
@@ -17,36 +15,28 @@ import {
   SegmentedControl,
   type TableSort,
   Unset,
-  useOpenGeneration,
 } from "@/components/primitives"
-import { appToast, Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell"
+import { Count, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatNumber, pluralize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-import { CensusAnswersDialog } from "./census-answers-dialog"
-import { ImportWizard } from "./import-wizard"
-import { closeCampaign, sendCensusReminders } from "./people-census.functions"
+import { MockupBanner } from "./mockup-banner"
 import {
-  activeTeams,
-  CENSUS_ANSWER,
-  CENSUS_SOURCE,
-  formatDay,
-  isActiveAdmin,
-  isMember,
-  NO_ANSWER,
-  personName,
-  REMINDER_SKIPPED,
-  roleLabels,
-} from "./people-format"
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+  MOCK_CAMPAIGNS,
+  MOCK_CENSUS_ANSWER,
+  MOCK_CENSUS_SOURCE,
+  MOCK_NO_ANSWER,
+  type MockCampaign,
+  type MockCampaignRow,
+} from "./mockup-data"
+import { formatDay } from "./people-format"
 import { PersonCell, StateBadge, TruncatedChip } from "./people-ui"
-import type { Campaign, CampaignDetail, CensusEntry, PersonRow } from "./people.contract"
 
 const percent = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0)
 
 /** Stacked meter: continuing (success) then leaving (warning) over the expected people. */
-function CensusMeter({ campaign, className }: { campaign: Campaign; className?: string }) {
+function CensusMeter({ campaign, className }: { campaign: MockCampaign; className?: string }) {
   const { expected, continuing, leaving, noAnswer } = campaign
   return (
     <span
@@ -60,7 +50,7 @@ function CensusMeter({ campaign, className }: { campaign: Campaign; className?: 
   )
 }
 
-function CampaignStatus({ campaign }: { campaign: Campaign }) {
+function CampaignStatus({ campaign }: { campaign: MockCampaign }) {
   return (
     <StateBadge
       state={campaign.status === "open" ? { label: "Open", tone: "brand" } : { label: "Closed", tone: "neutral" }}
@@ -68,7 +58,7 @@ function CampaignStatus({ campaign }: { campaign: Campaign }) {
   )
 }
 
-const campaignColumns: DataTableColumn<Campaign>[] = [
+const campaignColumns: DataTableColumn<MockCampaign>[] = [
   {
     id: "campaign",
     label: "Campaign",
@@ -152,34 +142,33 @@ const campaignColumns: DataTableColumn<Campaign>[] = [
   },
 ]
 
-/** People › Census: one row per yearly campaign. */
-export function CensusPage({ campaigns }: { campaigns: Campaign[] }) {
+/**
+ * People › Census: an unconnected mockup with one row per sample yearly campaign, kept to be reworked in Phase 3
+ * (#145). It reads nothing from the backend.
+ */
+export function CensusPage() {
+  const campaigns = MOCK_CAMPAIGNS
   const open = campaigns.find((campaign) => campaign.status === "open")
   return (
     <>
       <PageBar
-        description={
-          campaigns.length
-            ? `${pluralize(campaigns.length, "campaign")}${open ? ` · ${open.year} open until ${formatDay(open.closesOn)}` : ""}`
-            : "Yearly confirmation from volunteers and members"
-        }
+        description={`${pluralize(campaigns.length, "campaign")}${open ? ` · ${open.year} open until ${formatDay(open.closesOn)}` : ""}`}
       />
       <PageContent>
-        <DataTable
-          label="Census campaigns"
-          columns={campaignColumns}
-          rows={campaigns}
-          getRowId={(campaign) => campaign.id}
-          rowLabel={(campaign) => `${campaign.year} census`}
-          rowHref={(campaign) => `/dashboard/people/census/${encodeURIComponent(campaign.id)}`}
-          empty={
-            <EmptyState
-              icon={ClipboardList}
-              title="No campaigns yet"
-              text="Each September a campaign asks volunteers and members whether they're staying on."
-            />
-          }
-        />
+        <div className="flex flex-col gap-4">
+          <MockupBanner phase={3} />
+          <DataTable
+            label="Census campaigns (mockup)"
+            columns={campaignColumns}
+            rows={[...campaigns]}
+            getRowId={(campaign) => campaign.id}
+            rowLabel={(campaign) => `${campaign.year} census`}
+            rowHref={(campaign) => `/dashboard/people/census/${encodeURIComponent(campaign.id)}`}
+            empty={
+              <EmptyState icon={ClipboardList} title="No campaigns yet" text="The mockup has no sample campaigns." />
+            }
+          />
+        </div>
       </PageContent>
     </>
   )
@@ -187,38 +176,93 @@ export function CensusPage({ campaigns }: { campaigns: Campaign[] }) {
 
 type Segment = "all" | "answered" | "continuing" | "leaving" | "none"
 type RoleFilter = "member" | "admin" | "team"
-type CampaignRow = PersonRow & { entry: CensusEntry | undefined }
 
 const SEGMENT_TEST = {
   all: () => true,
-  answered: (row: CampaignRow) => !!row.entry?.answer,
-  continuing: (row: CampaignRow) => row.entry?.answer === "continues",
-  leaving: (row: CampaignRow) => row.entry?.answer === "leaving",
-  none: (row: CampaignRow) => !row.entry?.answer,
-} satisfies Record<Segment, (row: CampaignRow) => boolean>
+  answered: (row: MockCampaignRow) => row.answer !== null,
+  continuing: (row: MockCampaignRow) => row.answer === "continues",
+  leaving: (row: MockCampaignRow) => row.answer === "leaving",
+  none: (row: MockCampaignRow) => row.answer === null,
+} satisfies Record<Segment, (row: MockCampaignRow) => boolean>
 
 const ROLE_TEST = {
-  member: (row: CampaignRow) => isMember(row),
-  admin: (row: CampaignRow) => isActiveAdmin(row),
-  team: (row: CampaignRow) => activeTeams(row).length > 0,
-} satisfies Record<RoleFilter, (row: CampaignRow) => boolean>
+  member: (row: MockCampaignRow) => row.roles.includes("Member"),
+  admin: (row: MockCampaignRow) => row.roles.includes("Admin"),
+  team: (row: MockCampaignRow) => row.roles.some((role) => role !== "Member" && role !== "Admin"),
+} satisfies Record<RoleFilter, (row: MockCampaignRow) => boolean>
 
 const DEFAULT_SORT: TableSort = { column: "name", direction: "asc" }
 
-/** People › Census › {year}: who answered, what, and the actions of an open campaign. */
-export function CampaignPage({ detail }: { detail: CampaignDetail }) {
-  const { campaign } = detail
-  const canWrite = useCan("people:write")
-  const canRead = useCan("people:read")
+const columns: DataTableColumn<MockCampaignRow>[] = [
+  {
+    id: "name",
+    label: "Name",
+    sortable: true,
+    fill: true,
+    minWidth: 220,
+    mobile: "main",
+    cell: (row) => <PersonCell name={row.name} secondary={row.course} />,
+  },
+  {
+    id: "roles",
+    label: "Roles",
+    width: 200,
+    priority: 3,
+    mobile: "hidden",
+    cell: (row) =>
+      row.roles.length ? (
+        <ChipOverflow
+          items={row.roles}
+          itemLabel={(label) => label}
+          renderItem={(label) => <TruncatedChip key={label} label={label} />}
+        />
+      ) : (
+        <Unset />
+      ),
+  },
+  {
+    id: "answer",
+    label: "Answer",
+    width: 128,
+    mobile: "meta",
+    cell: (row) => <StateBadge state={row.answer ? MOCK_CENSUS_ANSWER[row.answer] : MOCK_NO_ANSWER} />,
+  },
+  {
+    id: "answeredOn",
+    label: "Answered on",
+    sortable: true,
+    width: 136,
+    priority: 4,
+    mobile: "meta",
+    cell: (row) =>
+      row.answeredOn ? <span className="whitespace-nowrap">{formatDay(row.answeredOn)}</span> : <Unset />,
+  },
+  {
+    id: "source",
+    label: "Source",
+    width: 168,
+    priority: 4,
+    mobile: "hidden",
+    cell: (row) => (row.source ? MOCK_CENSUS_SOURCE[row.source] : <Unset />),
+  },
+  {
+    id: "reminders",
+    label: "Reminders",
+    width: 112,
+    align: "end",
+    priority: 5,
+    mobile: "hidden",
+    cell: (row) => row.reminders,
+  },
+]
+
+/**
+ * People › Census › {year}: an unconnected mockup of who answered a sample campaign and what, kept to be reworked in
+ * Phase 3 (#145). Search, filters and sorting work on the sample rows; every action is disabled.
+ */
+export function CampaignPage({ detail }: { detail: { campaign: MockCampaign; people: readonly MockCampaignRow[] } }) {
+  const { campaign, people: all } = detail
   const isOpen = campaign.status === "open"
-  const canAct = canWrite && isOpen
-  const remind = useServerFn(sendCensusReminders)
-  const close = useServerFn(closeCampaign)
-  const refresh = useRefreshAfter()
-  const all: CampaignRow[] = detail.people.map((person) => ({
-    ...person,
-    entry: person.census.find((entry) => entry.year === campaign.year),
-  }))
 
   const [segment, setSegment] = useState<Segment>("all")
   const [role, setRole] = useState<RoleFilter | null>(null)
@@ -227,119 +271,24 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [confirm, setConfirm] = useState<"remind" | "close" | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const importKey = useOpenGeneration(importOpen)
-  const [answers, setAnswers] = useState<CampaignRow | null>(null)
-  const [answersOpen, setAnswersOpen] = useState(false)
 
   const inSegment = all.filter(SEGMENT_TEST[segment])
   const filtered = inSegment.filter(
     (row) =>
       (role === null || ROLE_TEST[role](row)) &&
-      (!deferredQuery ||
-        [personName(row), row.profile.personalEmail ?? ""].some((value) =>
-          value.toLocaleLowerCase().includes(deferredQuery)
-        ))
+      (!deferredQuery || row.name.toLocaleLowerCase().includes(deferredQuery))
   )
   const sign = sort.direction === "asc" ? 1 : -1
   const sorted = filtered.toSorted(
     (a, b) =>
       (sort.column === "answeredOn"
-        ? (a.entry?.answeredOn ?? "").localeCompare(b.entry?.answeredOn ?? "")
-        : personName(a).localeCompare(personName(b))) * sign
+        ? (a.answeredOn ?? "").localeCompare(b.answeredOn ?? "")
+        : a.name.localeCompare(b.name)) * sign
   )
   const rows = sorted.slice((page - 1) * pageSize, page * pageSize)
   const narrowed = deferredQuery !== "" || role !== null
   const unanswered = all.filter(SEGMENT_TEST.none).length
   const answered = campaign.continuing + campaign.leaving
-
-  function ask(kind: "remind" | "close") {
-    setConfirm(kind)
-    setConfirmOpen(true)
-  }
-
-  async function remindOne(row: CampaignRow) {
-    try {
-      const result = await remind({ data: { campaignId: campaign.id, personId: row.id } })
-      await (result.sent
-        ? refresh(`Reminder sent to ${personName(row)}.`)
-        : refresh(`No reminder sent to ${personName(row)}: ${REMINDER_SKIPPED}.`, "warning"))
-    } catch (caught) {
-      console.error(caught)
-      appToast.error(errorMessage(caught, "Couldn't send the reminder."))
-    }
-  }
-
-  const columns: DataTableColumn<CampaignRow>[] = [
-    {
-      id: "name",
-      label: "Name",
-      sortable: true,
-      fill: true,
-      minWidth: 220,
-      mobile: "main",
-      cell: (row) => <PersonCell name={personName(row)} secondary={row.profile.course} />,
-    },
-    {
-      id: "roles",
-      label: "Roles",
-      width: 200,
-      priority: 3,
-      mobile: "hidden",
-      cell: (row) => {
-        const labels = roleLabels(row)
-        return labels.length ? (
-          <ChipOverflow
-            items={labels}
-            itemLabel={(label) => label}
-            renderItem={(label) => <TruncatedChip key={label} label={label} />}
-          />
-        ) : (
-          <Unset />
-        )
-      },
-    },
-    {
-      id: "answer",
-      label: "Answer",
-      width: 128,
-      mobile: "meta",
-      cell: (row) => <StateBadge state={row.entry?.answer ? CENSUS_ANSWER[row.entry.answer] : NO_ANSWER} />,
-    },
-    {
-      id: "answeredOn",
-      label: "Answered on",
-      sortable: true,
-      width: 136,
-      priority: 4,
-      mobile: "meta",
-      cell: (row) =>
-        row.entry?.answeredOn ? (
-          <span className="whitespace-nowrap">{formatDay(row.entry.answeredOn)}</span>
-        ) : (
-          <Unset />
-        ),
-    },
-    {
-      id: "source",
-      label: "Source",
-      width: 168,
-      priority: 4,
-      mobile: "hidden",
-      cell: (row) => (row.entry?.source ? CENSUS_SOURCE[row.entry.source] : <Unset />),
-    },
-    {
-      id: "reminders",
-      label: "Reminders",
-      width: 112,
-      align: "end",
-      priority: 5,
-      mobile: "hidden",
-      cell: (row) => row.entry?.reminders ?? 0,
-    },
-  ]
 
   return (
     <>
@@ -347,26 +296,13 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
         back={{ label: "census", link: { to: "/dashboard/people/census" } }}
         context={`${campaign.year} census`}
         right={
-          canAct ? (
+          isOpen ? (
             <>
-              {/* Phones keep the full width for Import responses: Send reminders becomes an icon there. */}
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn(buttonMotion, "max-shell:hidden")}
-                onClick={() => ask("remind")}
-              >
+              <Button size="sm" variant="outline" className={cn(buttonMotion, "max-shell:hidden")} disabled>
                 <Bell data-icon="inline-start" />
                 Send reminders
               </Button>
-              <IconButton
-                label="Send reminders"
-                icon={Bell}
-                appearance="boxed"
-                className="size-10 flex-none shell:hidden"
-                onClick={() => ask("remind")}
-              />
-              <Button size="sm" className={buttonMotion} onClick={() => setImportOpen(true)}>
+              <Button size="sm" className={buttonMotion} disabled>
                 <Upload data-icon="inline-start" />
                 Import responses
               </Button>
@@ -375,7 +311,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
                 icon={Archive}
                 appearance="boxed"
                 className="size-10 max-shell:flex-none"
-                onClick={() => ask("close")}
+                disabled
               />
             </>
           ) : undefined
@@ -383,6 +319,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
       />
       <PageContent>
         <div className="flex flex-col gap-6">
+          <MockupBanner phase={3} />
           <RecordHeader
             title={`${campaign.year} census`}
             badge={<CampaignStatus campaign={campaign} />}
@@ -428,7 +365,7 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
                 setQuery(value)
                 setPage(1)
               },
-              placeholder: "Search by name or email…",
+              placeholder: "Search by name…",
             }}
             filters={
               <>
@@ -488,46 +425,33 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
             }
           />
           <DataTable
-            label={`${campaign.year} census answers`}
+            label={`${campaign.year} census answers (mockup)`}
             columns={columns}
             rows={rows}
             getRowId={(row) => row.id}
-            rowLabel={personName}
-            rowHref={(row) => `/dashboard/people/${row.id}`}
+            rowLabel={(row) => row.name}
             sort={sort}
             onSort={(next) => {
               setSort(next)
               setPage(1)
             }}
-            actions={
-              canAct || canRead
-                ? (row) => (
-                    <RowActions>
-                      {/* Answered rows open the answers; the others can be reminded while the campaign is open. */}
-                      {!row.entry?.answer && canAct ? (
-                        <IconButton
-                          label="Send reminder"
-                          ariaLabel={`Send reminder to ${personName(row)}`}
-                          icon={Bell}
-                          onClick={() => remindOne(row)}
-                        />
-                      ) : row.entry?.answer && canRead ? (
-                        <IconButton
-                          label="View answers"
-                          ariaLabel={`View the answers of ${personName(row)}`}
-                          icon={FileText}
-                          onClick={() => {
-                            setAnswers(row)
-                            setAnswersOpen(true)
-                          }}
-                        />
-                      ) : (
-                        <span aria-hidden className="size-9 shrink-0" />
-                      )}
-                    </RowActions>
-                  )
-                : undefined
-            }
+            actions={(row) => (
+              <RowActions>
+                {/* Answered rows open the answers; the others can be reminded while the campaign is open. */}
+                {row.answer ? (
+                  <IconButton
+                    label="View answers"
+                    ariaLabel={`View the answers of ${row.name}`}
+                    icon={FileText}
+                    disabled
+                  />
+                ) : isOpen ? (
+                  <IconButton label="Send reminder" ariaLabel={`Send reminder to ${row.name}`} icon={Bell} disabled />
+                ) : (
+                  <span aria-hidden className="size-9 shrink-0" />
+                )}
+              </RowActions>
+            )}
             actionsWidth={60}
             pagination={{
               page,
@@ -571,53 +495,6 @@ export function CampaignPage({ detail }: { detail: CampaignDetail }) {
           />
         </div>
       </PageContent>
-
-      {canAct && confirm === "remind" ? (
-        <ConfirmDialog
-          open={confirmOpen}
-          onOpenChange={setConfirmOpen}
-          tone="primary"
-          icon={Bell}
-          title="Send reminders?"
-          description={`${pluralize(unanswered, "person")} ${unanswered === 1 ? "hasn't" : "haven't"} answered. Each gets an email; people reminded in the last 3 days are skipped.`}
-          confirmLabel="Send reminders"
-          onConfirm={async () => {
-            const result = await remind({ data: { campaignId: campaign.id, personId: null } })
-            await refresh(
-              `${pluralize(result.sent, "reminder")} sent${result.skipped ? `, ${result.skipped} not sent` : ""}.`,
-              result.skipped ? "warning" : "success"
-            )
-          }}
-        />
-      ) : null}
-      {canAct && confirm === "close" ? (
-        <ConfirmDialog
-          open={confirmOpen}
-          onOpenChange={setConfirmOpen}
-          tone="primary"
-          icon={Archive}
-          title={`Close ${campaign.year} census?`}
-          description={`${pluralize(unanswered, "person")} without an answer keep their roles and are marked "No answer". Answers can't be added after closing.`}
-          confirmLabel="Close campaign"
-          onConfirm={async () => {
-            await close({ data: { campaignId: campaign.id } })
-            await refresh("Campaign closed.")
-          }}
-        />
-      ) : null}
-      {canAct ? (
-        <ImportWizard key={`import-${importKey}`} open={importOpen} onOpenChange={setImportOpen} campaign={campaign} />
-      ) : null}
-      {answers && canRead ? (
-        <CensusAnswersDialog
-          key={answers.id}
-          open={answersOpen}
-          onOpenChange={setAnswersOpen}
-          personId={answers.id}
-          name={personName(answers)}
-          year={campaign.year}
-        />
-      ) : null}
     </>
   )
 }

@@ -3,15 +3,19 @@ import { createFileRoute } from "@tanstack/react-router"
 import { TableSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { AdminsPage } from "@/features/people/admins-page"
-import { getPeople } from "@/features/people/people.functions"
+import { getAdminsAndCapos, getPeople } from "@/features/people/people.functions"
 
 export const Route = createFileRoute("/dashboard/people/admins")({
-  loader: () => getPeople(),
+  // Every record too: Make admin picks from them.
+  loader: async () => {
+    const [{ admins, capos }, people] = await Promise.all([getAdminsAndCapos(), getPeople()])
+    return { admins, capos, people }
+  },
   pendingComponent: () => (
     <>
       <PageBar />
       <PageContent>
-        <TableSkeleton columns={6} label="Loading admins…" />
+        <TableSkeleton columns={4} label="Loading admins…" />
       </PageContent>
     </>
   ),
@@ -19,5 +23,6 @@ export const Route = createFileRoute("/dashboard/people/admins")({
 })
 
 function AdminsRoute() {
-  return <AdminsPage people={Route.useLoaderData()} />
+  const { admins, capos, people } = Route.useLoaderData()
+  return <AdminsPage admins={admins} capos={capos} people={people} />
 }
