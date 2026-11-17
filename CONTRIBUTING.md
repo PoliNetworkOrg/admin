@@ -3,14 +3,16 @@
 This guide gets a development environment ready for the admin dashboard. The [README](README.md) explains what the
 dashboard does and lists every setting; [`docs/design.md`](docs/design.md) holds the UI rules.
 
-There are two ways to run it:
+There are three ways to run it, with no sign-in in the first two:
 
-- **Agent mode**: a fake administrator with every permission, with no sign-in, Redis or other services. Enough for UI
-  work, but it has no access token, so the backend refuses its calls (`Missing bearer token`) and pages that read it
-  show their error state (People serves sample data). With a token from the backend's stand-in for Auth, agent mode
-  also gets [real backend data](#agent-mode-with-backend-data).
-- **Signed in through PoliNetwork Auth**: real users, real permissions and real backend data. You also run
-  [Auth](https://github.com/PoliNetworkOrg/auth) and the [backend](https://github.com/PoliNetworkOrg/backend) locally.
+- **[Agent mode](#agent-mode)**: a fake administrator with every permission, and no Redis or other services. Enough
+  for UI work. It has no access token, so the backend refuses its calls (`Missing bearer token`) and pages that read it
+  show their error state; People, Soci and Regolamenti serve sample data.
+- **[Agent mode with backend data](#agent-mode-with-backend-data)**: agent mode plus a token from the backend's
+  stand-in for Auth. You also run the [backend](https://github.com/PoliNetworkOrg/backend) locally, but not Auth. The
+  pages show your local backend's data, with the permissions of the stand-in's account instead of every permission.
+- **[Signed in through PoliNetwork Auth](#signed-in-through-auth)**: real users, real permissions and real backend
+  data. You also run [Auth](https://github.com/PoliNetworkOrg/auth) and the backend locally.
 
 ## Prerequisites
 
