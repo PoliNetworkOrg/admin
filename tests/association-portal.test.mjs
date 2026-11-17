@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+import { eventLabel } from "../src/features/association-portal/portal-events.ts"
 import {
   applicantActions,
   isApplicantAction,
@@ -34,4 +35,11 @@ void test("logo uploads are PNG or JPEG of at most 1 MiB for a known association
   )
   assert.equal(logoFormSchema.safeParse(form(png, "nope")).success, false)
   assert.equal(logoFormSchema.safeParse(form(null)).success, false)
+})
+
+void test("history events are shown in Italian, unknown ones as recorded", () => {
+  assert.equal(eventLabel("Draft saved"), "Bozza salvata")
+  assert.equal(eventLabel("Request approved"), "Richiesta approvata")
+  assert.equal(eventLabel("Association suspended"), "Associazione sospesa")
+  assert.equal(eventLabel("Something new"), "Something new")
 })

@@ -14,6 +14,7 @@ import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatDateTime } from "@/lib/format"
 
+import { eventLabel } from "./portal-events"
 import { reviewPortalAssociation } from "./portal-review.functions"
 import {
   cleanProfile,
@@ -462,7 +463,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                 <h2 className="font-medium">Storico</h2>
                 {[...a.events].reverse().map((e) => (
                   <div key={e.id} className="border-t border-(--pn-line) pt-3 text-sm">
-                    <p>{e.action}</p>
+                    <p>{eventLabel(e.action)}</p>
                     <p className="text-(--pn-fg-muted)">
                       {e.actor} · {formatDateTime(new Date(e.at))}
                     </p>
