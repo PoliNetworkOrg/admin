@@ -14,6 +14,12 @@ export const env = createEnv({
     /** Development only: the agent-mode user's person record in the People sample data. */
     AGENT_PERSON: z.string().default("P-0007"),
     /**
+     * Development only: the member number of the socio the agent-mode user is in My area, or `none`. In the sample
+     * register 7 has a rejected receipt to upload again, 4 one waiting for review, 1 has paid, 34 is exempt and 41's
+     * fee isn't open yet.
+     */
+    AGENT_SOCIO: z.string().default("7"),
+    /**
      * Development only: a bearer token agent mode sends to the backend instead of none, so pages read a real local
      * backend (e.g. one minted by the backend's dev IdP shim). Permissions then come from the backend's `me.access`.
      */
