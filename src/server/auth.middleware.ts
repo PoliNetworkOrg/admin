@@ -54,7 +54,7 @@ export const peopleInviteMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
- * Any dashboard user: `admin:access`, or `people:self` alone for the restricted People view. Functions add their own
+ * Any authenticated account with fresh access data can enter the association portal. Functions add their own
  * permission on top; the backend checks every procedure again.
  */
 export const dashboardUserMiddleware = createMiddleware({ type: "function" })

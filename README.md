@@ -114,3 +114,7 @@ Logout deletes the server session, attempts refresh revocation, and redirects to
 requests require an `Origin` exactly equal to `APP_URL`'s configured origin. Sessions and identity responses are not
 cacheable. Production cookies are host-only, `Secure`, `HttpOnly`, `SameSite=Lax`; tokens and client keys never appear
 in browser storage or route loader output.
+
+## Associazioni
+
+Registro, accesso dei referenti e pubblicazione moderata: [flussi e rilascio](docs/associations/README.md).

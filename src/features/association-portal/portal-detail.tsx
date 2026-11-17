@@ -16,7 +16,7 @@ import {
   statusLabel,
   TextField,
 } from "./portal-ui"
-import { profileSchema, type Command, type Detail, type Profile, type Request } from "./portal.contract"
+import { commandSchema, profileSchema, type Command, type Detail, type Profile, type Request } from "./portal.contract"
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
 
 type Action = Command extends infer T ? (T extends Command ? Omit<T, "id" | "revision" | "commandId"> : never) : never
@@ -46,7 +46,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
   const [notes, setNotes] = useState(a.notes ?? "")
   const [busy, setBusy] = useState(false)
   async function run(action: Action) {
-    const command = { ...action, id: a.id, revision: a.revision, commandId: crypto.randomUUID() } as Command
+    const command = commandSchema.parse({ ...action, id: a.id, revision: a.revision, commandId: crypto.randomUUID() })
     if (["redirect", "review", "status", "unpublish", "note", "revoke"].includes(action.action))
       await review({ data: command })
     else await change({ data: command })
@@ -268,7 +268,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                         Invia per pubblicazione
                       </Button>
                     )}
-                    {q.kind === "registration" && q.by === user.sub && q.status === "draft" && (
+                    {q.kind === "registration" && q.by === user.sub && ["draft", "changes"].includes(q.status) && (
                       <Button disabled={busy} onClick={() => void immediate({ action: "submit", requestId: q.id })}>
                         Invia registrazione
                       </Button>

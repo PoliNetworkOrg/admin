@@ -13,8 +13,8 @@ import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard")({
-  // Signed in, then `admin:access` or `people:self` from `me.access` (RFC v3 §11.3), or a Regolamenti draft assignment
-  // or delega. The permissions, the roles from the person's People record and their way into Regolamenti go into the
+  // Every signed-in account with fresh access data can open Associazioni. The permissions, the roles from the
+  // person's People record and their way into Regolamenti go into the
   // route context for `useCan` and the navigation; pages the user can't open send them to their own area. The
   // backend enforces every call regardless.
   beforeLoad: async ({ location }) => {

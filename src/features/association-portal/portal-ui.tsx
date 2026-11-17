@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-import type { Profile } from "./portal.contract"
+import { linkSchema, type Profile } from "./portal.contract"
 import { uploadPortalLogo } from "./portal.functions"
 
 export const EMPTY_PROFILE: Profile = {
@@ -22,7 +22,7 @@ export const roleOptions = [
   { value: "responsible", label: "Responsabile" },
   { value: "collaborator", label: "Collaboratore" },
 ] as const
-export const statusLabel: Record<string, string> = {
+export const statusLabel = {
   pending: "Da registrare",
   active: "Attiva",
   suspended: "Sospesa",
@@ -200,7 +200,9 @@ export function ProfileFields({
                 onChange={(v) =>
                   onChange({
                     ...value,
-                    links: value.links.map((l, i) => (i === index ? { ...l, platform: v as typeof link.platform } : l)),
+                    links: value.links.map((l, i) =>
+                      i === index ? { ...l, platform: linkSchema.parse({ ...l, platform: v }).platform } : l
+                    ),
                   })
                 }
               />
