@@ -313,3 +313,8 @@ export const regulationsRectifyMiddleware = createMiddleware({ type: "function" 
     requirePermission(context.permissions, "regulations:rectify")
     return next()
   })
+
+/** Association applications are open to signed-in accounts; the backend enforces membership per record. */
+export const associationSelfMiddleware = createMiddleware({ type: "function" })
+  .middleware([authenticatedMiddleware])
+  .server(({ next }) => next())

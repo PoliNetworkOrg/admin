@@ -53,7 +53,7 @@ export const Route = createFileRoute("/dashboard")({
             ? "/dashboard"
             : regulations
               ? "/dashboard/regulations/drafts"
-              : "/unauthorized",
+              : "/dashboard/associations",
       })
     }
     return { user: access.user, permissions: access.permissions, peopleRoles }

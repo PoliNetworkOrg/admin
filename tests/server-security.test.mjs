@@ -200,6 +200,8 @@ test("WhatsApp group links require a real HTTPS invite code", () => {
 
 test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/association-portal/portal.functions.ts",
+    "src/features/association-portal/portal-review.functions.ts",
     "src/features/dashboard/overview.functions.ts",
     "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
@@ -257,6 +259,8 @@ test("dashboard mutations enforce their exact write scope", async () => {
   // Mutations that join two domains list every middleware they need.
   const combinedScopes = {}
   const entries = [
+    ["associationSelfMiddleware", ["src/features/association-portal/portal.functions.ts"]],
+    ["webContentWriteMiddleware", ["src/features/association-portal/portal-review.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
     ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
@@ -398,6 +402,10 @@ test("session middleware marks identity-dependent responses private", async () =
 test("event handlers integrate protected server-function redirects with the router", async () => {
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
+    "src/features/association-portal/portal-ui.tsx": ["uploadPortalLogo"],
+    "src/features/association-portal/portal-index.tsx": ["createPortalAssociation", "changePortalAssociation"],
+    "src/features/association-portal/portal-detail.tsx": ["changePortalAssociation", "reviewPortalAssociation"],
+    "src/routes/associations/invite.tsx": ["acceptPortalInvitation"],
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
