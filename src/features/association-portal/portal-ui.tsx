@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-import { LOGO_MAX_BYTES, linkSchema, type Profile } from "./portal.contract"
+import { LOGO_MAX_BYTES, type Profile } from "./portal.contract"
 import { uploadPortalLogo } from "./portal.functions"
 
 export const EMPTY_PROFILE: Profile = {
@@ -54,6 +54,9 @@ export const platformLabel = {
   twitch: "Twitch",
   other: "Altro",
 } satisfies Record<Profile["links"][number]["platform"], string>
+type Platform = Profile["links"][number]["platform"]
+// SAFETY: `platformLabel` satisfies Record<Platform, string>, so its keys are exactly the contract's platforms.
+const platforms = Object.keys(platformLabel) as Platform[]
 
 /** Drops link rows the user added but left empty, so they don't fail validation. */
 export function cleanProfile(profile: Profile): Profile {
@@ -245,13 +248,11 @@ export function ProfileFields({
               <SelectField
                 id={`${prefix}-${index}`}
                 value={link.platform}
-                options={Object.entries(platformLabel).map(([value, label]) => ({ value, label }))}
+                options={platforms.map((platform) => ({ value: platform, label: platformLabel[platform] }))}
                 onChange={(v) =>
                   onChange({
                     ...value,
-                    links: value.links.map((l, i) =>
-                      i === index ? { ...l, platform: linkSchema.parse({ ...l, platform: v }).platform } : l
-                    ),
+                    links: value.links.map((l, i) => (i === index ? { ...l, platform: v } : l)),
                   })
                 }
               />
