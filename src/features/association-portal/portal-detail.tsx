@@ -2,7 +2,14 @@ import { Link, useRouteContext, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { useState } from "react"
 
-import { FormDialog, FormField, RecordHeader, SegmentedControl, SelectField } from "@/components/primitives"
+import {
+  FormDialog,
+  FormField,
+  InlineAlert,
+  RecordHeader,
+  SegmentedControl,
+  SelectField,
+} from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatDateTime } from "@/lib/format"
@@ -221,6 +228,19 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                       {!q.accepted ? " · In attesa di accettazione" : " · Account confermato"}
                     </p>
                   )}
+                  {q.kind === "membership" && q.targetEmail && (
+                    <p className="text-sm text-(--pn-fg-muted)">
+                      Invito inviato a {q.email} · accettato dall’account {q.targetEmail}
+                    </p>
+                  )}
+                  {q.kind === "membership" &&
+                    q.targetEmail &&
+                    q.targetEmail.toLowerCase() !== q.email.toLowerCase() && (
+                      <InlineAlert tone="warning">
+                        L’invito è stato accettato da un account con un indirizzo diverso da quello invitato. Verifica
+                        l’identità prima di approvare.
+                      </InlineAlert>
+                    )}
                   {q.response && (
                     <div className="rounded-lg bg-(--pn-muted) p-3 text-sm">
                       <p className="font-medium">Risposta di PoliNetwork · {q.decidedBy}</p>
