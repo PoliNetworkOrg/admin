@@ -13,10 +13,11 @@ import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
 export const Route = createFileRoute("/dashboard")({
-  // Every signed-in account with fresh access data can open Associazioni. The permissions, the roles from the
-  // person's People record and their way into Regolamenti go into the
-  // route context for `useCan` and the navigation; pages the user can't open send them to their own area. The
-  // backend enforces every call regardless.
+  // Every signed-in account with a fresh `me.access` can open Associazioni; every other area needs its own
+  // permission (`admin:access`, `people:self`, `regulations:read` or a draft assignment or delega). The permissions,
+  // the roles from the person's People record and their way into Regolamenti go into the route context for `useCan`
+  // and the navigation; pages the user can't open send them to their own area. The backend enforces every call
+  // regardless.
   beforeLoad: async ({ location }) => {
     // Invites sent before the landing page moved out of the dashboard link here; the gate would turn away someone
     // whose roles aren't applied yet.

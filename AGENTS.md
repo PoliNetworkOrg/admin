@@ -52,7 +52,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
-- **Associazioni**: `docs/associations/README.md` descrive registro, referenti e revisione. La shell ammette ogni account autenticato con `me.access` fresco; `associationSelfMiddleware` non attribuisce permessi interni. Il backend controlla i collegamenti a ogni operazione.
+- **Associazioni** (`src/features/association-portal/`): register, representatives and review; see `docs/associations/README.md`. The shell admits every signed-in account with a fresh `me.access`, so any function using `dashboardUserMiddleware` must add its own permission check; `associationSelfMiddleware` grants none. Operator commands (`operatorActions` in `portal.contract.ts`) go through `reviewPortalAssociation` (`web:content:write`); `changePortalAssociation` accepts only `applicantActions`. The backend checks membership on every call. UI copy is Italian.
 
 ## Conventions
 

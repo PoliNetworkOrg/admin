@@ -3,7 +3,14 @@ import { createServerFn } from "@tanstack/react-start"
 import { associationSelfMiddleware } from "@/server/auth.middleware"
 
 import { portalApi } from "./portal.api.server"
-import { commandSchema, createSchema, inviteSchema, refSchema } from "./portal.contract"
+import {
+  commandSchema,
+  createSchema,
+  inviteSchema,
+  isApplicantAction,
+  logoFormSchema,
+  refSchema,
+} from "./portal.contract"
 
 // Every authenticated account can apply. The backend authorizes each record from current membership.
 export const getPortal = createServerFn()
@@ -28,8 +35,8 @@ export const changePortalAssociation = createServerFn({ method: "POST" })
   .middleware([associationSelfMiddleware])
   .validator(commandSchema)
   .handler(({ context, data }) => {
-    if (["redirect", "review", "status", "unpublish", "note", "revoke"].includes(data.action))
-      throw new Error("Use the authorized review action")
+    // An allow-list: any action added to the contract needs an explicit decision before applicants can send it.
+    if (!isApplicantAction(data.action)) throw new Error("Use the authorized review action")
     return portalApi(context).command(data)
   })
 export const acceptPortalInvitation = createServerFn({ method: "POST" })
@@ -39,5 +46,5 @@ export const acceptPortalInvitation = createServerFn({ method: "POST" })
 
 export const uploadPortalLogo = createServerFn({ method: "POST" })
   .middleware([associationSelfMiddleware])
-  .validator((data: FormData) => data)
+  .validator(logoFormSchema)
   .handler(({ context, data }) => portalApi(context).uploadLogo(data))

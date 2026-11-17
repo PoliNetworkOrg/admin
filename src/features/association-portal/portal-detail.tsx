@@ -5,10 +5,13 @@ import { useState } from "react"
 import { FormDialog, FormField, RecordHeader, SegmentedControl, SelectField } from "@/components/primitives"
 import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
+import { formatDate, formatDateTime } from "@/lib/format"
 
 import { reviewPortalAssociation } from "./portal-review.functions"
 import {
+  cleanProfile,
   panelClass,
+  parseForm,
   ProfileFields,
   ProfilePreview,
   ReasonDialog,
@@ -16,7 +19,14 @@ import {
   statusLabel,
   TextField,
 } from "./portal-ui"
-import { commandSchema, profileSchema, type Command, type Detail, type Profile, type Request } from "./portal.contract"
+import {
+  commandSchema,
+  isOperatorAction,
+  type Command,
+  type Detail,
+  type Profile,
+  type Request,
+} from "./portal.contract"
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
 
 type Action = Command extends infer T ? (T extends Command ? Omit<T, "id" | "revision" | "commandId"> : never) : never
@@ -37,6 +47,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
     description?: string
     danger?: boolean
     initial?: string
+    required?: boolean
     action: (reason: string) => Action
   } | null>(null)
   const [inviting, setInviting] = useState(false)
@@ -44,11 +55,21 @@ export function PortalDetail({ association: a }: { association: Detail }) {
   const [role, setRole] = useState<"responsible" | "collaborator">("collaborator")
   const [explanation, setExplanation] = useState("")
   const [notes, setNotes] = useState(a.notes ?? "")
+  const [syncedNotes, setSyncedNotes] = useState(a.notes ?? "")
+  // Another operator may have saved notes since this page loaded: follow the loader unless there are unsaved edits.
+  if ((a.notes ?? "") !== syncedNotes) {
+    if (notes === syncedNotes) setNotes(a.notes ?? "")
+    setSyncedNotes(a.notes ?? "")
+  }
   const [busy, setBusy] = useState(false)
   async function run(action: Action) {
-    const command = commandSchema.parse({ ...action, id: a.id, revision: a.revision, commandId: crypto.randomUUID() })
-    if (["redirect", "review", "status", "unpublish", "note", "revoke"].includes(action.action))
-      await review({ data: command })
+    const command = parseForm(commandSchema, {
+      ...action,
+      id: a.id,
+      revision: a.revision,
+      commandId: crypto.randomUUID(),
+    })
+    if (isOperatorAction(action.action)) await review({ data: command })
     else await change({ data: command })
     try {
       await router.invalidate({ sync: true })
@@ -190,7 +211,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                     <span className="text-sm">{statusLabel[q.status]}</span>
                   </div>
                   <p className="text-sm text-(--pn-fg-muted)">
-                    {q.byName} · {new Date(q.createdAt).toLocaleDateString("it-IT")}
+                    {q.byName} · {formatDate(new Date(q.createdAt))}
                   </p>
                   <p className="whitespace-pre-wrap text-sm">{q.explanation}</p>
                   {(q.kind === "membership" || q.kind === "access") && (
@@ -303,6 +324,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                               description:
                                 "Per inviarla di nuovo sarà necessaria una nuova richiesta. Gli inviti collegati non saranno più validi.",
                               danger: true,
+                              required: false,
                               action: () => ({ action: "withdraw", requestId: q.id }),
                             })
                           }
@@ -422,7 +444,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                   <div key={e.id} className="border-t border-(--pn-line) pt-3 text-sm">
                     <p>{e.action}</p>
                     <p className="text-(--pn-fg-muted)">
-                      {e.actor} · {new Date(e.at).toLocaleString("it-IT")}
+                      {e.actor} · {formatDateTime(new Date(e.at))}
                     </p>
                     {e.detail && <p>{e.detail}</p>}
                   </div>
@@ -433,7 +455,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                   <h2 className="font-medium">Note riservate a PoliNetwork</h2>
                   <TextField label="Note interne" value={notes} onChange={setNotes} multiline />
                   <Button
-                    disabled={busy || notes === a.notes}
+                    disabled={busy || notes === (a.notes ?? "")}
                     onClick={() => void immediate({ action: "note", note: notes })}
                   >
                     Salva note
@@ -542,7 +564,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
               await run({
                 action: "save",
                 requestId: edit.requestId,
-                profile: profileSchema.parse(edit.profile),
+                profile: cleanProfile(edit.profile),
                 explanation: edit.explanation,
               })
               setEdit(null)

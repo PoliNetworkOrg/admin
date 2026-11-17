@@ -1,12 +1,13 @@
 import { useServerFn } from "@tanstack/react-start"
 import { useId, useState } from "react"
+import type { z } from "zod"
 
-import { FormDialog, FormField, SelectField, fieldControl } from "@/components/primitives"
+import { FileButton, FormDialog, FormField, SelectField, fieldControl } from "@/components/primitives"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-import { linkSchema, type Profile } from "./portal.contract"
+import { LOGO_MAX_BYTES, linkSchema, type Profile } from "./portal.contract"
 import { uploadPortalLogo } from "./portal.functions"
 
 export const EMPTY_PROFILE: Profile = {
@@ -40,6 +41,67 @@ export const statusLabel = {
   responsible: "Responsabile",
   collaborator: "Collaboratore",
 }
+export const platformLabel = {
+  website: "Sito web",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  x: "X",
+  youtube: "YouTube",
+  telegram: "Telegram",
+  linkedin: "LinkedIn",
+  spotify: "Spotify",
+  twitch: "Twitch",
+  other: "Altro",
+} satisfies Record<Profile["links"][number]["platform"], string>
+
+/** Drops link rows the user added but left empty, so they don't fail validation. */
+export function cleanProfile(profile: Profile): Profile {
+  return { ...profile, links: profile.links.filter((link) => link.label.trim() || link.url.trim()) }
+}
+
+const fieldLabel = new Map([
+  ["name", "Nome ufficiale"],
+  ["acronym", "Acronimo"],
+  ["descriptionIt", "Descrizione italiana"],
+  ["descriptionEn", "Descrizione inglese"],
+  ["email", "Email"],
+  ["logo", "URL del logo"],
+  ["label", "Etichetta"],
+  ["url", "Indirizzo"],
+  ["platform", "Piattaforma"],
+  ["explanation", "Motivazione"],
+  ["reason", "Motivazione"],
+  ["note", "Note"],
+  ["token", "Invito"],
+])
+
+/** Parses user input and throws an Italian message naming the field, never the raw Zod issue list. */
+export function parseForm<T extends z.ZodType>(schema: T, value: z.input<T>): z.output<T> {
+  const result = schema.safeParse(value)
+  if (result.success) return result.data
+  const issue = result.error.issues[0]
+  const path = issue?.path ?? []
+  const linkAt = path.indexOf("links")
+  const linkIndex = linkAt >= 0 ? Number(path[linkAt + 1]) : Number.NaN
+  const key = String(path.at(-1) ?? "")
+  const label = fieldLabel.get(key)
+  const where = Number.isInteger(linkIndex)
+    ? `Collegamento ${linkIndex + 1}${label ? ` · ${label}` : ""}`
+    : (label ?? "Dati inseriti")
+  const problem =
+    issue?.code === "too_big"
+      ? "è troppo lungo"
+      : issue?.code === "too_small"
+        ? "è obbligatorio"
+        : key === "email"
+          ? "non è un indirizzo email valido"
+          : key === "url" || key === "logo"
+            ? "deve essere un indirizzo HTTP o HTTPS valido"
+            : "non è valido"
+  throw new Error(`${where} ${problem}.`)
+}
+
 export const panelClass = "rounded-xl border border-(--pn-line) bg-(--pn-surface) p-5 space-y-4"
 
 export function TextField({
@@ -140,19 +202,18 @@ export function ProfileFields({
           hint="PNG o JPEG, massimo 1 MB. Il caricamento non pubblica la scheda."
           error={uploadError}
         >
-          <Input
+          <FileButton
             id={`${prefix}-logo`}
-            type="file"
+            file={null}
             accept="image/png,image/jpeg"
-            disabled={uploading}
-            aria-describedby={`${prefix}-logo-description`}
-            onChange={async (event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
+            label={uploading ? "Caricamento…" : "Scegli un file"}
+            invalid={!!uploadError}
+            onChange={async (file) => {
+              if (!file || uploading) return
               setUploadError("")
               setUploading(true)
               try {
-                if (file.size > 1024 * 1024) throw new Error("Il logo non può superare 1 MB")
+                if (file.size > LOGO_MAX_BYTES) throw new Error("Il logo non può superare 1 MB")
                 const data = new FormData()
                 data.set("id", associationId)
                 data.set("file", file)
@@ -173,7 +234,7 @@ export function ProfileFields({
         value={value.logo ?? ""}
         type="url"
         onChange={(v) => set("logo", v || null)}
-        hint="Inserisci un indirizzo HTTPS del logo dell’associazione."
+        hint="Indirizzo HTTP o HTTPS del logo dell’associazione."
       />
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Sito, social e canali</h3>
@@ -184,19 +245,7 @@ export function ProfileFields({
               <SelectField
                 id={`${prefix}-${index}`}
                 value={link.platform}
-                options={[
-                  "website",
-                  "facebook",
-                  "instagram",
-                  "tiktok",
-                  "x",
-                  "youtube",
-                  "telegram",
-                  "linkedin",
-                  "spotify",
-                  "twitch",
-                  "other",
-                ].map((platform) => ({ value: platform, label: platform === "other" ? "Altro" : platform }))}
+                options={Object.entries(platformLabel).map(([value, label]) => ({ value, label }))}
                 onChange={(v) =>
                   onChange({
                     ...value,
@@ -279,6 +328,7 @@ export function ReasonDialog({
   label = "Conferma",
   danger = false,
   initial = "",
+  required = true,
   onClose,
   onSubmit,
 }: {
@@ -287,6 +337,8 @@ export function ReasonDialog({
   label?: string
   danger?: boolean
   initial?: string
+  /** False for confirmations that take no reason (the command ignores the text). */
+  required?: boolean
   onClose: () => void
   onSubmit: (reason: string) => Promise<void>
 }) {
@@ -304,13 +356,13 @@ export function ReasonDialog({
       dirty={reason !== initial}
       submitLabel={label}
       tone={danger ? "danger" : undefined}
-      canSubmit={!!reason.trim()}
+      canSubmit={!required || !!reason.trim()}
       onSubmit={async () => {
         await onSubmit(reason)
         onClose()
       }}
     >
-      <TextField label="Motivazione" value={reason} onChange={setReason} multiline maxLength={4000} />
+      {required && <TextField label="Motivazione" value={reason} onChange={setReason} multiline maxLength={4000} />}
     </FormDialog>
   )
 }

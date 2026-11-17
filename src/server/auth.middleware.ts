@@ -54,8 +54,9 @@ export const peopleInviteMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
- * Any authenticated account with fresh access data can enter the association portal. Functions add their own
- * permission on top; the backend checks every procedure again.
+ * Any account with a fresh `me.access` snapshot, with or without permissions (Associazioni is open to every signed-in
+ * account). It grants nothing: every function using it must add its own `requirePermission`, and the backend checks
+ * every procedure again.
  */
 export const dashboardUserMiddleware = createMiddleware({ type: "function" })
   .middleware([authenticatedMiddleware])

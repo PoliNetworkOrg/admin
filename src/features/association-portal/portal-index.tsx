@@ -8,8 +8,17 @@ import { EmptyState, FormDialog, SegmentedControl } from "@/components/primitive
 import { appToast, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
-import { EMPTY_PROFILE, panelClass, ProfileFields, ReasonDialog, statusLabel, TextField } from "./portal-ui"
-import { profileSchema, type dashboardSchema, type directorySchema } from "./portal.contract"
+import {
+  cleanProfile,
+  EMPTY_PROFILE,
+  panelClass,
+  parseForm,
+  ProfileFields,
+  ReasonDialog,
+  statusLabel,
+  TextField,
+} from "./portal-ui"
+import { createSchema, type dashboardSchema, type directorySchema } from "./portal.contract"
 import { createPortalAssociation, changePortalAssociation } from "./portal.functions"
 
 export function PortalIndex({
@@ -38,7 +47,10 @@ export function PortalIndex({
     }
   }
   async function save(submit: boolean) {
-    const result = await create({ data: { profile: profileSchema.parse(profile), explanation, submit, commandId } })
+    const data = parseForm(createSchema, { profile: cleanProfile(profile), explanation, submit, commandId })
+    const result = await create({ data })
+    // The command is spent: a further save would be a new one, never a replay of this idempotency key.
+    setCommandId(crypto.randomUUID())
     await reload()
     setCreating(false)
     await router.navigate({ to: "/dashboard/associations/$id", params: { id: result.id } })

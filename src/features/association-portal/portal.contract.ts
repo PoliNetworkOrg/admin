@@ -93,6 +93,25 @@ export const dashboardSchema = z.object({
 })
 export const directorySchema = z.array(z.object({ id: z.uuid(), name: z.string(), revision: z.number() }))
 export const refSchema = z.object({ id: z.uuid() })
+/** The logo upload: the association's id and a PNG or JPEG of at most 1 MiB. */
+export const LOGO_MAX_BYTES = 1024 * 1024
+export const logoFormSchema = z.instanceof(FormData).transform((form, ctx) => {
+  const id = z.uuid().safeParse(form.get("id"))
+  const file = form.get("file")
+  if (!id.success || !(file instanceof File)) {
+    ctx.addIssue({ code: "custom", message: "Richiesta di caricamento non valida" })
+    return z.NEVER
+  }
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    ctx.addIssue({ code: "custom", message: "Il logo deve essere un PNG o un JPEG" })
+    return z.NEVER
+  }
+  if (file.size > LOGO_MAX_BYTES) {
+    ctx.addIssue({ code: "custom", message: "Il logo non può superare 1 MB" })
+    return z.NEVER
+  }
+  return form
+})
 export const createSchema = z.object({
   profile: profileSchema,
   explanation: reason,
@@ -141,6 +160,25 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ ...base, action: z.literal("leave"), reason }),
   z.object({ ...base, action: z.literal("revoke"), sub: z.string().min(1).max(200), reason }),
 ])
+/** Commands only PoliNetwork operators may send (`web:content:write`); every other action is an applicant action. */
+export const operatorActions = ["redirect", "review", "status", "unpublish", "note", "revoke"] as const
+export const applicantActions = [
+  "save",
+  "submit",
+  "reply",
+  "withdraw",
+  "access",
+  "invite",
+  "membership",
+  "leave",
+] as const
+type Uncovered = Exclude<Command["action"], (typeof operatorActions)[number] | (typeof applicantActions)[number]>
+// Compile error if `commandSchema` gains an action that is in neither list.
+export const actionsCovered: [Uncovered] extends [never] ? true : never = true
+const operatorSet = new Set<string>(operatorActions)
+const applicantSet = new Set<string>(applicantActions)
+export const isOperatorAction = (action: string) => operatorSet.has(action)
+export const isApplicantAction = (action: string) => applicantSet.has(action)
 export const inviteSchema = z.object({ token: z.string().min(32).max(128) })
 export const invitationSchema = z.object({ associationName: z.string(), role: roleSchema, expiresAt: z.string() })
 export type Profile = z.infer<typeof profileSchema>

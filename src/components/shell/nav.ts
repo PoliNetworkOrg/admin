@@ -360,13 +360,6 @@ const web: Service = {
   path: "/dashboard/web/projects",
   sections: [
     { id: "projects", title: "Projects", icon: FolderKanban, path: "/dashboard/web/projects" },
-    {
-      id: "associations",
-      title: "Associations",
-      icon: Users,
-      path: "/dashboard/web/associations",
-      searchPlaceholder: "Search associations…",
-    },
     { id: "freshman", title: "Freshman", icon: BookOpen, path: "/dashboard/web/freshman" },
     {
       id: "faqs",
