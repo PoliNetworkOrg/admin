@@ -1,23 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { CardsSkeleton } from "@/components/primitives"
-import { PageBar, PageContent } from "@/components/shell"
-import { AssociationsPage } from "@/features/associations/associations-page"
-import { getAssociations } from "@/features/associations/associations.functions"
-
+import { createFileRoute, redirect } from "@tanstack/react-router"
 export const Route = createFileRoute("/dashboard/web/associations")({
-  loader: () => getAssociations(),
-  pendingComponent: () => (
-    <>
-      <PageBar width="wide" />
-      <PageContent width="wide">
-        <CardsSkeleton label="Loading associations…" />
-      </PageContent>
-    </>
-  ),
-  component: AssociationsRoute,
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard/associations" })
+  },
 })
-
-function AssociationsRoute() {
-  return <AssociationsPage loadedAssociations={Route.useLoaderData()} />
-}

@@ -101,3 +101,23 @@ void test("eSign keeps its routes, permission gates and counts", async () => {
   assert.equal(await sectionPending("people", "linking", counts), null)
   assert.equal(isRailService(serviceById("account")), false)
 })
+
+void test("association applicants can open their portal without gaining internal dashboard access", async () => {
+  const { canOpenPage, matchPath, serviceFor, sectionFor } = await nav()
+  for (const path of ["/dashboard/associations", "/dashboard/associations/00000000-0000-4000-8000-000000000001"]) {
+    const match = matchPath(path)
+    assert.equal(serviceFor(match).id, "associations")
+    assert.equal(sectionFor(match).id, "portal")
+    assert.equal(canOpenPage(match, [], roles), true)
+  }
+  for (const path of [
+    "/dashboard",
+    "/dashboard/people",
+    "/dashboard/telegram/users",
+    "/dashboard/azure/members",
+    "/dashboard/web/projects",
+    "/dashboard/regulations",
+  ]) {
+    assert.equal(canOpenPage(matchPath(path), [], roles), false, path)
+  }
+})

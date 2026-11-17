@@ -54,8 +54,9 @@ export const peopleInviteMiddleware = createMiddleware({ type: "function" })
   })
 
 /**
- * Any dashboard user: `admin:access`, or `people:self` alone for the restricted People view. Functions add their own
- * permission on top; the backend checks every procedure again.
+ * Any account with a fresh `me.access` snapshot, with or without permissions (Associazioni is open to every signed-in
+ * account). It grants nothing: every function using it must add its own `requirePermission`, and the backend checks
+ * every procedure again.
  */
 export const dashboardUserMiddleware = createMiddleware({ type: "function" })
   .middleware([authenticatedMiddleware])
@@ -313,3 +314,8 @@ export const regulationsRectifyMiddleware = createMiddleware({ type: "function" 
     requirePermission(context.permissions, "regulations:rectify")
     return next()
   })
+
+/** Association applications are open to signed-in accounts; the backend enforces membership per record. */
+export const associationSelfMiddleware = createMiddleware({ type: "function" })
+  .middleware([authenticatedMiddleware])
+  .server(({ next }) => next())
