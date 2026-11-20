@@ -1,8 +1,8 @@
 # Local preview of the Libro Soci import
 
-Status: preparation draft, 20 November 2026. The user selected local preparation and preview after publishing the
-Soci lifecycle. The source format has not been confirmed; do not treat this draft as an implementation-ready parser
-specification. This document follows the existing `soci.md` rules and does not authorize production access.
+Status: CSV confirmed by the user; first local-only preview slice implemented locally in the backend. This document follows the
+existing `soci.md` rules and does not authorize production access. Source-specific headers and interpretations are
+explicit operator configuration, not assumptions hardcoded into the reader.
 
 ## Outcome and boundaries
 
@@ -38,9 +38,26 @@ validation exceptions. A detailed report is an explicit local output with restri
 4. Show totals and diagnostic categories. Keep each unresolved row visible; never silently discard it.
 5. Optionally save the detailed local report. There is no apply flag or remote action in this first milestone.
 
-Recommended interchange, pending source confirmation: a UTF-8 CSV export if the source is a spreadsheet. Direct XLSX
-support would require selecting and checking a maintained parser; a PDF source would require a separate extraction
-step. Do not add a parser dependency or assume a source format before that decision.
+The source is UTF-8 CSV. Support explicitly configured comma or semicolon separators, UTF-8 BOM, CRLF/LF/CR,
+quoted fields, escaped quotes, embedded newlines and empty cells. Reject malformed quoting, duplicate headers and
+invalid UTF-8. Bound file size, row count, column count and cell length. Do not infer separators or date formats.
+
+The mapping JSON has `version: 1`, `delimiter`, `dateFormat` (`iso` or `italian`), `scope` (`active-only`, `history`,
+or `unknown`) and `columns`. The required mapped fields are `number`, `firstName`, `lastName`, and `admittedOn`.
+Optional fields follow the existing details/account/end fields. `history` requires mapped end date and reason columns;
+blank end fields then mean an active admission. `unknown` keeps membership unresolved rather than assuming active.
+Explicit end-reason value translations are optional. `feeEvidence` maps labeled source columns as unreviewed text;
+blank evidence remains unknown. Other columns must be explicitly listed in `ignoredColumns`, so data is not silently
+omitted because a mapping was incomplete. Each source column has one assignment. No actual book or personal records
+are needed to implement this interface. The backend README includes the executable command, synthetic examples,
+limits, exit codes and private-report handling.
+
+Reports always state preview-only mode and that account/register reconciliation has not been performed. Every valid
+candidate remains unresolved until later reconciliation/review. Duplicate rows and numbers are blocked, as are
+multiple explicitly active admissions with one tax code. Historical/unknown identities are flagged for review.
+The CLI prints only counts and coded row/field diagnostics. A detailed report is opt-in, created exclusively with
+mode 0600 outside Git worktrees; it cannot overwrite a file or follow an existing report symlink. No apply option,
+network client, DB singleton, configured Soci service or mailer is part of the executable dependency graph.
 
 ## Candidate data and diagnostics
 
@@ -78,14 +95,13 @@ connecting to production automatically.
 
 ## Ordered milestones
 
-1. **Confirm source shape and mapping.** Resolve format, relevant sheets, header names, date representation and payment
-   semantics. A header-only or synthetic example is enough; real personal records are not needed for design. Select
-   the smallest parser consistent with the source and the existing Bun toolchain. Completion: the adapter and mapping
-   contract can be specified without guesses.
-2. **Build the local-only normalization preview.** Implement a small CLI and pure parsing/normalization functions in
-   the backend repository, reusing existing validators. Add synthetic fixtures and the acceptance tests above. No
-   runtime import of the DB, Graph, mailer or configured Soci service. Completion: an operator can inspect and save a
-   report from a synthetic source without credentials or network access.
+1. **Source adapter and mapping contract: complete locally.** CSV is confirmed. Source headers, dates and scope are
+   explicit operator configuration; payment information is preserved as evidence without guessed meaning. Real
+   personal records are not needed for design.
+2. **Local normalization preview: implemented locally.** Backend `scripts/soci-import-preview.ts`, pure parsing and
+   normalization, existing validators and synthetic fixtures. No runtime import of the DB, Graph, mailer or configured
+   Soci service. Operators can inspect and save a private report without credentials or network access. No application
+   is supported; every normalized candidate remains unresolved.
 3. **Reconcile local snapshots.** Classify existing, new, conflicting and unresolved records against explicitly
    provided local snapshots, respecting historical numbers and re-admissions. Completion: no identity is selected
    from names alone, unresolved links remain blocked and no live reads/writes occur.
@@ -94,8 +110,8 @@ connecting to production automatically.
    account creation and activation require separate explicit authorization. This milestone is outside the selected
    local preparation/preview scope.
 
-## Open source facts
+## Source-specific configuration still needed for a real preview
 
-Awaiting the source format (spreadsheet, CSV or PDF). Then confirm the relevant sheet/header structure and whether
-the file contains current members only or historical admissions as well. The existing code cannot establish those
-facts; payment-column semantics and absent historical account IDs must not be guessed.
+CSV is confirmed. The operator must provide the real header mapping, date representation and source scope when
+running a real preview. Payment meanings, historical account links and any future database application remain
+unresolved review tasks; this preview preserves evidence and does not guess them.
