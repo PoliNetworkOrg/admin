@@ -1,6 +1,6 @@
 import type { StatusTone } from "@/components/primitives"
 
-import type { END_REASONS, FEE_STATUSES, SocioRow } from "./soci.contract"
+import type { END_REASONS, FEE_STATUSES, PAYMENT_METHODS, SocioRow } from "./soci.contract"
 
 type Tone = { label: string; tone: StatusTone }
 
@@ -43,6 +43,12 @@ export const FEE_STATUS = {
   paid: { label: "Paid", tone: "success" },
   exempt: { label: "Exempt", tone: "neutral" },
 } satisfies Record<(typeof FEE_STATUSES)[number], Tone>
+
+export const PAYMENT_METHOD = {
+  transfer: "Bank transfer",
+  admission: "Paid at admission",
+  other: "Other",
+} satisfies Record<(typeof PAYMENT_METHODS)[number], string>
 
 export const MISMATCH = {
   not_in_soci: "Active, but not in the Soci group",

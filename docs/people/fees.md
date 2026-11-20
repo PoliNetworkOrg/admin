@@ -1,10 +1,9 @@
 # People area: fees and receipts
 
 > [!IMPORTANT]
-> **This describes an unconnected mockup.** Since #138, People › Receipts and My area's fee card render static
-> sample data (the Member register mockup was replaced by Soci › Register in #155), make no backend call and disable every action. The procedures, permissions
-> (`people:fees:write`, `people:receipts:sign`) and the eSign receipt bridge below are removed. Soci, fees and receipts
-> will be rebuilt from scratch on Microsoft 365 members in Phase 2 (#144); this file stays as the design reference.
+> **This describes a removed design.** Since #138 People › Receipts and My area's fee card were unconnected mockups;
+> #156 replaced them with Soci › Fees and the Socio card. The procedures, permissions (`people:fees:write`,
+> `people:receipts:sign`) and the eSign receipt bridge below are removed; this file stays only as a reference.
 >
 > **Superseded by [`soci.md`](soci.md)** (9 November 2026): Phase 2 issues no receipts, uses the Regolamento's rules
 > (€5, renewals until 31 December) and the `soci:*` permissions.

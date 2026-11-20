@@ -51,7 +51,30 @@ type PdfViewerProps = {
    * its parent, which sizes it.
    */
   fill?: boolean
+  /** The viewer's own words (page counter, zoom, errors) in Italian, for the Italian Regolamenti pages. */
+  locale?: "en" | "it"
 }
+
+const COPY = {
+  en: {
+    page: (n: number) => `Page ${n}`,
+    pageOf: (n: number, total: number) => `Page ${n} of ${total}`,
+    loading: "Loading PDF…",
+    failed: "Couldn't display the PDF.",
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    fit: "Fit width",
+  },
+  it: {
+    page: (n: number) => `Pagina ${n}`,
+    pageOf: (n: number, total: number) => `Pagina ${n} di ${total}`,
+    loading: "Caricamento del PDF…",
+    failed: "Non è stato possibile mostrare il PDF.",
+    zoomOut: "Riduci",
+    zoomIn: "Ingrandisci",
+    fit: "Adatta alla larghezza",
+  },
+} as const
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 const PAGE_GAP = 16
@@ -89,7 +112,9 @@ export function PdfViewer({
   toolbarStart,
   onPainted,
   fill = true,
+  locale = "en",
 }: PdfViewerProps) {
+  const copy = COPY[locale]
   const scrollRef = useRef<HTMLDivElement>(null)
   const fillHeight = useFillHeight<HTMLDivElement>()
   const [containerWidth, setContainerWidth] = useState(0)
@@ -134,7 +159,7 @@ export function PdfViewer({
       })
       .catch((cause) => {
         console.error(cause)
-        if (!cancelled) setError("Couldn't display the PDF.")
+        if (!cancelled) setError(copy.failed)
       })
     return () => {
       cancelled = true
@@ -225,19 +250,24 @@ export function PdfViewer({
             aria-live="polite"
           >
             {status ||
-              (pages.length ? `Page ${Math.min(currentPage + 1, pages.length)} of ${pages.length}` : "Loading PDF…")}
+              (pages.length ? copy.pageOf(Math.min(currentPage + 1, pages.length), pages.length) : copy.loading)}
           </span>
           {statusAction && <div className="shrink-0">{statusAction}</div>}
           {!status && toolbarStart && <div className="flex shrink-0 items-center">{toolbarStart}</div>}
         </div>
         <div className={cn("flex shrink-0 items-center gap-0.5", status && "@max-md:hidden")}>
-          <IconButton label="Zoom out" icon={Minus} onClick={() => step(-1)} disabled={scale <= ZOOMS[0] + 0.01} />
+          <IconButton label={copy.zoomOut} icon={Minus} onClick={() => step(-1)} disabled={scale <= ZOOMS[0] + 0.01} />
           <span className="w-12 text-center text-[13px] text-(--pn-fg-muted) tabular-nums">
             {scale > 0 ? `${Math.round(scale * 100)}%` : ""}
           </span>
-          <IconButton label="Zoom in" icon={Plus} onClick={() => step(1)} disabled={scale >= ZOOMS.at(-1)! - 0.01} />
           <IconButton
-            label="Fit width"
+            label={copy.zoomIn}
+            icon={Plus}
+            onClick={() => step(1)}
+            disabled={scale >= ZOOMS.at(-1)! - 0.01}
+          />
+          <IconButton
+            label={copy.fit}
             icon={ScanLine}
             onClick={() => setZoom("fit")}
             tone={zoom === "fit" ? "info" : undefined}
@@ -272,6 +302,7 @@ export function PdfViewer({
                   onVisible={setCurrentPage}
                   onPainted={painted}
                   onClick={onPageClick}
+                  label={copy.page(index + 1)}
                 >
                   {overlay?.(index)}
                 </PdfPage>
@@ -328,10 +359,24 @@ type PdfPageProps = {
   onVisible: (index: number) => void
   onPainted: (index: number, doc: Doc) => void
   onClick?: (page: number, x: number, y: number) => void
+  /** The page canvas's accessible name ("Page 2"). */
+  label: string
   children?: ReactNode
 }
 
-function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onPainted, onClick, children }: PdfPageProps) {
+function PdfPage({
+  index,
+  size,
+  scale,
+  doc,
+  root,
+  cursor,
+  onVisible,
+  onPainted,
+  onClick,
+  label,
+  children,
+}: PdfPageProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [near, setNear] = useState(false)
@@ -437,7 +482,7 @@ function PdfPage({ index, size, scale, doc, root, cursor, onVisible, onPainted, 
     >
       <canvas
         ref={canvasRef}
-        aria-label={`Page ${index + 1}`}
+        aria-label={label}
         role="img"
         className={cn(
           "absolute inset-0 size-full transition-opacity duration-150",

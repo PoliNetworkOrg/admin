@@ -11,7 +11,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   `src/start.ts` validates the configured Origin on all state-changing requests. There is no Better Auth proxy.
 - **Server functions** attach `adminMiddleware` for reads, and their exact permission middleware for mutations:
   grants, Telegram groups, WhatsApp groups, labels, website content, reports, People (write, appoint, link, team), and
-  Soci (`soci:write`: admit, register, edit, change number). Soci reads use `sociReadMiddleware` (`soci:read`).
+  Soci (`soci:write`: admit, register, edit, change number), and Regolamenti (`regulations:write`, `:manage`,
+  `:rectify`). Soci reads use `sociReadMiddleware` (`soci:read`).
   The backend independently checks every procedure. `context.backend` forwards a bearer token, never cookies.
 - **Features** (`src/features/<area>/`): pages, dialogs, validation and `*.functions.ts` server functions.
 - **Microsoft 365**: read the member directory with `azure:members:read`, and list groups and their members with
@@ -28,14 +29,27 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   permissions yet can accept one (`peopleInviteMiddleware`: signed in, the token is the proof); the old
   `/dashboard/account/me?peopleInvite=` links redirect there. `/dashboard` admits `people:self` without
   `admin:access`; Capo Admin and Team Lead come from the person's own record (`peopleRoles` in the route context) and
-  only open their sections. Receipts, Census and My area's fee card are unconnected mockups (#138): static sample data
-  from `mockup-data.ts`, no server functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt
-  in Phase 2 (#144) and Phase 3 (#145). Handoff notes, decisions and the plan: `docs/people/`.
+  only open their sections. Census is an unconnected mockup (#138): static sample data from `mockup-data.ts`, no server
+  functions, disabled actions and a `MockupBanner`, gated by `people:read`, to be rebuilt in Phase 3 (#145). Handoff
+  notes, decisions and the plan: `docs/people/`.
 - **Soci** (`src/features/soci/`, People's Soci group): the Libro Soci, through `sociApi(context)`, which parses the
   backend's `soci.*` responses with `soci.contract.ts` (a copy of the backend's) and serves `soci.fake.server.ts` in agent
   mode. `soci:read` opens Register and the socio pages, `soci:write` admits (a new Microsoft 365 account in Soci, then the
   record), registers an account already in Soci, edits and changes member numbers, which moved here from Microsoft 365 ›
-  Members. Design: `docs/people/soci.md`.
+  Members. Soci › Fees reviews uploaded transfer receipts (Confirm, Reject) and marks fees as paid, also from the socio
+  page. My area's Socio card (`soci.me.*`, `people:self`, `soci-self.functions.ts`) shows the signed-in socio's fee, bank
+  details, Upload transfer receipt and Complete your details; a socio without a People record sees only that card.
+  `AGENT_SOCIO` picks the socio My area shows in agent mode. Design: `docs/people/soci.md`.
+- **Regolamenti** (`src/features/regulations/`): the governance documents (v1: the RRI), through
+  `regulationsApi(context)`, which parses the backend's `regulations.*` responses with `regulations.contract.ts` (a copy
+  of the backend's) and, in agent mode, serves `regulations.fake.server.ts` with a local Hocuspocus and `xelatex`
+  (`AGENT_BACKEND_TOKEN` calls a local backend instead). `regulations:read` opens Documenti and every draft as a viewer,
+  `regulations:write` creates drafts, assigns members, merges and sends to approval, `regulations:manage` records the
+  approval, emanates and regenerates the differences, `regulations:rectify` rettifiche and Deleghe. Per-draft access
+  (viewer, commenter, editor) and deleghe are backend data: `regulations.me.get` admits an account without
+  `admin:access` to Regolamenti › Bozze only, draft-scoped server functions use `regulationsAssigneeMiddleware`, and
+  pages act on the draft's `can` from the backend. The editor connects to the collab service with a single-use ticket
+  from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
@@ -66,7 +80,7 @@ PORT=1xxxx AGENT_MODE=true pnpm dev
 `AGENT_MODE` (development only) signs in a fake administrator with every permission and disables the auth redirects between
 `/login` and `/dashboard`, so open `/dashboard/...` or `/login` directly. It has no access token, so the backend
 (`BACKEND_URL`, default `http://localhost:3000`) refuses its calls: pages that read the backend show their error state,
-and People serves its sample data. To see real backend data, sign in through the IdP with `AGENT_MODE=false`. When
+and People, Soci and Regolamenti serve their sample data. To see real backend data, sign in through the IdP with `AGENT_MODE=false`. When
 changing auth or those redirects, also verify the normal flow with `AGENT_MODE=false`.
 
 > [!IMPORTANT]
