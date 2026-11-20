@@ -4,6 +4,8 @@ import { sociWriteMiddleware } from "@/server/auth.middleware"
 
 import { sociApi } from "./soci.api.server"
 import {
+  endInputSchema,
+  restoreInputSchema,
   admitInputSchema,
   markPaidInputSchema,
   registerInputSchema,
@@ -59,3 +61,13 @@ export const markFeePaid = createServerFn({ method: "POST" })
   .middleware([sociWriteMiddleware])
   .validator(markPaidInputSchema)
   .handler(async ({ data, context }) => (await sociApi(context)).fees.markPaid(data))
+
+export const endSocio = createServerFn({ method: "POST" })
+  .middleware([sociWriteMiddleware])
+  .validator(endInputSchema)
+  .handler(async ({ data, context }) => (await sociApi(context)).end(data))
+
+export const restoreSocio = createServerFn({ method: "POST" })
+  .middleware([sociWriteMiddleware])
+  .validator(restoreInputSchema)
+  .handler(async ({ data, context }) => (await sociApi(context)).restore(data))

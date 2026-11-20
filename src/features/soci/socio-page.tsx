@@ -1,4 +1,5 @@
 import { BadgeCheck, FileSearch, FileText, Hash, Pencil, Receipt } from "lucide-react"
+import { useState } from "react"
 
 import {
   buttonMotion,
@@ -21,6 +22,7 @@ import { formatDateTime } from "@/lib/format"
 
 import { MarkPaidDialog, payableYears, ReceiptDialog, ReviewFeeDialog } from "./fee-dialogs"
 import { FeeBadge, feeSummary } from "./fee-ui"
+import { MembershipStatusDialog } from "./lifecycle-dialogs"
 import {
   ACCOUNT_STATE,
   END_REASON,
@@ -51,6 +53,10 @@ export function SocioPage({
 }) {
   const canWrite = useCan("soci:write")
   const edit = useDialogState()
+  const membership = useDialogState()
+  const membershipVersion = `${socio.entraObjectId}:${socio.updatedAt}:${socio.endedOn}`
+  const [changedMembershipVersion, setChangedMembershipVersion] = useState<string | null>(null)
+  const awaitingMembershipRefresh = changedMembershipVersion === membershipVersion
   const changeNumber = useDialogState()
   const review = useDialog<Fee>()
   const receipt = useDialog<Fee>()
@@ -120,6 +126,17 @@ export function SocioPage({
                     <Pencil data-icon="inline-start" />
                     Edit
                   </Button>
+                  {!deleted ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={buttonMotion}
+                      onClick={membership.show}
+                      disabled={awaitingMembershipRefresh}
+                    >
+                      {socio.endedOn ? "Restore" : "End status"}
+                    </Button>
+                  ) : null}
                   {deleted ? null : (
                     <Button size="sm" variant="outline" className={buttonMotion} onClick={changeNumber.show}>
                       <Hash data-icon="inline-start" />
@@ -131,6 +148,11 @@ export function SocioPage({
             }
           />
 
+          {awaitingMembershipRefresh ? (
+            <InlineAlert tone="warning">
+              Membership changed successfully. Reload the page to see its current status.
+            </InlineAlert>
+          ) : null}
           {socio.mismatch || numberDiffers || (missing.length && !socio.endedOn) ? (
             <div className="flex flex-col gap-2">
               {socio.mismatch ? (
@@ -289,6 +311,15 @@ export function SocioPage({
           years={markPaid.target ? [markPaid.target.year] : payable}
           fee={markPaid.target}
           fees={socio.fees}
+        />
+      ) : null}
+      {canWrite && !deleted ? (
+        <MembershipStatusDialog
+          key={`membership-${membership.key}`}
+          onChanged={() => setChangedMembershipVersion(membershipVersion)}
+          open={membership.open}
+          onOpenChange={membership.onOpenChange}
+          socio={socio}
         />
       ) : null}
       {canWrite && !deleted ? (

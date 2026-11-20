@@ -13,15 +13,16 @@ export const getSociRegister = createServerFn({ method: "GET" })
   .middleware([sociReadMiddleware])
   .handler(async ({ context }) => {
     const api = await sociApi(context)
-    const [register, unregistered] = await Promise.all([
+    const [register, unregistered, lapse] = await Promise.all([
       api.list(),
       // The register still opens when Microsoft 365 can't be read; the alert then says so.
       api.unregistered().catch((error) => {
         console.error(error)
         return null
       }),
+      api.lapsePreview(),
     ])
-    return { register, unregistered }
+    return { register, unregistered, lapse }
   })
 
 export const getSocio = createServerFn({ method: "GET" })
@@ -58,3 +59,11 @@ export const getFeeFile = createServerFn({ method: "GET" })
 export const getFeesToReviewCount = createServerFn({ method: "GET" })
   .middleware([sociReadMiddleware])
   .handler(async ({ context }) => (await (await sociApi(context)).fees.list({ status: "uploaded" })).totals.uploaded)
+
+export const getPendingDeletion = createServerFn({ method: "GET" })
+  .middleware([sociReadMiddleware])
+  .handler(async ({ context }) => (await sociApi(context)).pendingDeletion())
+
+export const getPendingDeletionCount = createServerFn({ method: "GET" })
+  .middleware([sociReadMiddleware])
+  .handler(async ({ context }) => (await (await sociApi(context)).pendingDeletion()).length)

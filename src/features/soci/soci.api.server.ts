@@ -5,6 +5,13 @@ import { env } from "@/env"
 import { createUntypedBackendClient } from "@/server/backend.server"
 
 import {
+  type EndInput,
+  type RestoreInput,
+  type DeleteAccountInput,
+  type LapsePreview,
+  lapsePreviewSchema,
+  socioRowSchema,
+  type SocioRow,
   type AdmitInput,
   type AdmitResult,
   admitResultSchema,
@@ -46,6 +53,11 @@ export type SociApi = {
   register: (input: RegisterInput) => Promise<NumberInput>
   update: (input: UpdateInput) => Promise<void>
   setNumber: (input: SetNumberInput) => Promise<SetNumberResult>
+  end: (input: EndInput) => Promise<void>
+  restore: (input: RestoreInput) => Promise<void>
+  lapsePreview: () => Promise<LapsePreview>
+  pendingDeletion: () => Promise<SocioRow[]>
+  deleteAccount: (input: DeleteAccountInput) => Promise<void>
   fees: {
     list: (input: FeesListInput) => Promise<FeesList>
     file: (input: { fileId: string }) => Promise<FeeFile>
@@ -83,6 +95,11 @@ function backendSociApi(accessToken: string | null): SociApi {
     register: (input) => mutate("members.register", input, numberInputSchema),
     update: (input) => run("members.update", input),
     setNumber: (input) => mutate("members.setNumber", input, setNumberResultSchema),
+    end: (input) => run("members.end", input),
+    restore: (input) => run("members.restore", input),
+    lapsePreview: () => query("lapse.preview", undefined, lapsePreviewSchema),
+    pendingDeletion: () => query("accounts.pendingDeletion", undefined, socioRowSchema.array()),
+    deleteAccount: (input) => run("accounts.delete", input),
     fees: {
       list: (input) => query("fees.list", input, feesListSchema),
       file: (input) => query("fees.file", input, fileSchema),

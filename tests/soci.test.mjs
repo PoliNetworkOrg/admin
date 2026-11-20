@@ -5,6 +5,9 @@ import { birthDateFor, birthDateOf } from "../src/features/soci/codice-fiscale-b
 import { checkCharacter, codiceFiscaleProblem, matchesBirthDate } from "../src/features/soci/codice-fiscale.ts"
 import { isMemberNumber } from "../src/features/soci/member-number.ts"
 import {
+  endInputSchema,
+  restoreInputSchema,
+  deleteAccountInputSchema,
   admitInputSchema,
   codiceFiscaleSchema,
   registerInputSchema,
@@ -132,4 +135,17 @@ void test("an email the contract refuses is reported on the welcome email field"
     parsed.error.issues.map((issue) => issue.path.join(".")),
     ["account.sendEmailTo"]
   )
+})
+
+void test("manual lifecycle inputs reserve lapse for the job and require a correction reason and one account ID", () => {
+  const input = { number: 344, endedOn: "2026-11-20", endReason: "resigned" }
+  assert.equal(endInputSchema.parse(input).endNote, null)
+  assert.equal(endInputSchema.parse({ ...input, endNote: "  " }).endNote, null)
+  assert.throws(() => endInputSchema.parse({ ...input, endReason: "lapsed" }))
+  assert.throws(() => endInputSchema.parse({ ...input, endedOn: "2026-02-30" }))
+  assert.throws(() => restoreInputSchema.parse({ number: 344, reason: "  " }))
+  assert.equal(restoreInputSchema.parse({ number: 344, reason: " Errore " }).reason, "Errore")
+  assert.throws(() => deleteAccountInputSchema.parse({ entraObjectId: "" }))
+  assert.throws(() => deleteAccountInputSchema.parse({ entraObjectId: ["one", "two"] }))
+  assert.equal(deleteAccountInputSchema.parse({ entraObjectId: "one" }).entraObjectId, "one")
 })

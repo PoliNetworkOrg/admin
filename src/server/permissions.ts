@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   "people:link",
   "soci:read",
   "soci:write",
+  "soci:delete",
   "esign:sign",
   "esign:requests:manage",
   "esign:drives:manage",

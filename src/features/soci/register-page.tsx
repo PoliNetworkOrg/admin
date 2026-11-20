@@ -21,7 +21,9 @@ import { errorMessage, useDialog, useDialogState } from "@/features/people/peopl
 import { MonoChip, PersonCell, StateBadge } from "@/features/people/people-ui"
 import { pluralize } from "@/lib/format"
 
+import { LapseWarning } from "./lapse-warning"
 import { END_REASON, FEE_STATUS, formatMemberNumber, MISMATCH, socioName, socioStatus } from "./soci-format"
+import type { LapsePreview } from "./soci.contract"
 import type { FEE_STATUSES, SociList, SocioRecord, SocioRow, Unregistered } from "./soci.contract"
 import { getSocio } from "./soci.functions"
 import { AdmitSocioDialog, EditSocioDialog, RegisterSocioDialog } from "./socio-dialogs"
@@ -157,7 +159,15 @@ const DEFAULT_SORT: TableSort = { column: "number", direction: "asc" }
  * Soci › Register: the Libro Soci, one record per admission. Alerts above the table list the Soci group's accounts
  * without a record (with Register) and the records that disagree with Soci membership.
  */
-export function RegisterPage({ register, unregistered }: { register: SociList; unregistered: Unregistered[] | null }) {
+export function RegisterPage({
+  register,
+  unregistered,
+  lapse,
+}: {
+  register: SociList
+  unregistered: Unregistered[] | null
+  lapse: LapsePreview
+}) {
   const canWrite = useCan("soci:write")
   const admit = useDialogState()
   const registerDialog = useDialogState()
@@ -260,6 +270,7 @@ export function RegisterPage({ register, unregistered }: { register: SociList; u
         }
       />
       <PageContent>
+        <LapseWarning preview={lapse} />
         <div className="flex flex-col gap-4">
           {unregistered === null || !register.directoryAvailable ? (
             <InlineAlert tone="neutral">

@@ -313,3 +313,11 @@ export const regulationsRectifyMiddleware = createMiddleware({ type: "function" 
     requirePermission(context.permissions, "regulations:rectify")
     return next()
   })
+
+/** Permanent Microsoft 365 account deletion has its own permission. */
+export const sociDeleteMiddleware = createMiddleware({ type: "function" })
+  .middleware([adminMiddleware])
+  .server(({ next, context }) => {
+    requirePermission(context.permissions, "soci:delete")
+    return next()
+  })
