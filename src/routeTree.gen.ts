@@ -28,6 +28,7 @@ import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/g
 import { Route as DashboardWebGroupLabelsRouteImport } from './routes/dashboard/web/group-labels'
 import { Route as DashboardWebFreshmanRouteImport } from './routes/dashboard/web/freshman'
 import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faqs'
+import { Route as DashboardWebDocumentsRouteImport } from './routes/dashboard/web/documents'
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
@@ -162,6 +163,11 @@ const DashboardWebFreshmanRoute = DashboardWebFreshmanRouteImport.update({
 const DashboardWebFaqsRoute = DashboardWebFaqsRouteImport.update({
   id: '/faqs',
   path: '/faqs',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
+const DashboardWebDocumentsRoute = DashboardWebDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => DashboardWebRoute,
 } as any)
 const DashboardWebAssociationsRoute =
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
@@ -532,6 +540,7 @@ export interface FileRoutesById {
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
@@ -594,6 +603,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
@@ -653,6 +663,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
@@ -889,6 +901,13 @@ declare module '@tanstack/react-router' {
       path: '/faqs'
       fullPath: '/dashboard/web/faqs'
       preLoaderRoute: typeof DashboardWebFaqsRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/documents': {
+      id: '/dashboard/web/documents'
+      path: '/documents'
+      fullPath: '/dashboard/web/documents'
+      preLoaderRoute: typeof DashboardWebDocumentsRouteImport
       parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/web/associations': {
@@ -1169,6 +1188,7 @@ declare module '@tanstack/react-router' {
 
 interface DashboardWebRouteChildren {
   DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
+  DashboardWebDocumentsRoute: typeof DashboardWebDocumentsRoute
   DashboardWebFaqsRoute: typeof DashboardWebFaqsRoute
   DashboardWebFreshmanRoute: typeof DashboardWebFreshmanRoute
   DashboardWebGroupLabelsRoute: typeof DashboardWebGroupLabelsRoute
@@ -1181,6 +1201,7 @@ interface DashboardWebRouteChildren {
 
 const DashboardWebRouteChildren: DashboardWebRouteChildren = {
   DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
+  DashboardWebDocumentsRoute: DashboardWebDocumentsRoute,
   DashboardWebFaqsRoute: DashboardWebFaqsRoute,
   DashboardWebFreshmanRoute: DashboardWebFreshmanRoute,
   DashboardWebGroupLabelsRoute: DashboardWebGroupLabelsRoute,
