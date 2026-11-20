@@ -376,3 +376,37 @@ export const completeDetailsInputSchema = z
   })
   .refine((d) => SELF_FIELDS.some((key) => d[key] !== null), "Fill in at least one field.")
 export type CompleteDetailsInput = z.output<typeof completeDetailsInputSchema>
+
+export const lapsePreviewSchema = z.object({
+  enabled: z.boolean(),
+  /** Today, or 1 January during December's advance warning. */
+  evaluatedOn: z.string(),
+  members: z.array(
+    z.object({
+      number: memberNumberSchema,
+      firstName: z.string(),
+      lastName: z.string(),
+      alias: z.string().nullable(),
+      mailbox: z.string(),
+      year: z.number(),
+      endedOn: z.string(),
+    })
+  ),
+})
+export type LapsePreview = z.infer<typeof lapsePreviewSchema>
+
+export const deleteAccountInputSchema = z.object({ entraObjectId: z.string().min(1).max(128) })
+export type DeleteAccountInput = z.output<typeof deleteAccountInputSchema>
+
+/** Ends membership immediately; `endedOn` is the date recorded in the Libro Soci. */
+export const endInputSchema = z.object({
+  number: memberNumberSchema,
+  endedOn: dateSchema,
+  endReason: z.enum(["resigned", "expelled", "deceased", "other"]),
+  endNote: optional(z.string().trim().max(500)),
+})
+export type EndInput = z.output<typeof endInputSchema>
+
+/** Corrects a mistaken end while the Microsoft 365 account still exists. */
+export const restoreInputSchema = z.object({ number: memberNumberSchema, reason: text(500) })
+export type RestoreInput = z.output<typeof restoreInputSchema>

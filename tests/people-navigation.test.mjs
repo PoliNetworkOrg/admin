@@ -48,6 +48,7 @@ void test("People's Soci pages open with soci:read, under the Soci group", async
     ["/dashboard/people/soci", "soci"],
     ["/dashboard/people/soci/344", "soci"],
     ["/dashboard/people/fees", "fees"],
+    ["/dashboard/people/deletion", "deletion"],
   ]) {
     const match = matchPath(path)
     assert.equal(serviceFor(match).id, "people", path)
@@ -100,4 +101,21 @@ void test("eSign keeps its routes, permission gates and counts", async () => {
   // The Linking review queue is gone, and with it the People counts.
   assert.equal(await sectionPending("people", "linking", counts), null)
   assert.equal(isRailService(serviceById("account")), false)
+})
+
+void test("Soci deletion pending has a read gate and an independent pending count", async () => {
+  const { canOpenPage, matchPath, sectionPending, sectionFor } = await nav()
+  const match = matchPath("/dashboard/people/deletion")
+  assert.equal(sectionFor(match).id, "deletion")
+  assert.equal(canOpenPage(match, ["admin:access", "soci:delete"], roles), false)
+  assert.equal(canOpenPage(match, ["admin:access", "soci:read"], roles), true)
+  assert.equal(
+    await sectionPending("people", "deletion", {
+      reports: Promise.resolve(0),
+      signatures: Promise.resolve(0),
+      fees: Promise.resolve(3),
+      deletion: Promise.resolve(2),
+    }),
+    2
+  )
 })

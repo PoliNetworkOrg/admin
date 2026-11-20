@@ -158,7 +158,8 @@ production configuration or existing-member registration is complete. The existi
 
 The first implementation slice is manual ending and restore in the backend, implemented on 19 November 2026 and
 submitted for review in [backend #151](https://github.com/PoliNetworkOrg/backend/pull/151) on 20 November. The remaining
-slices below are pending. Production activation is a separate operation.
+slices below are also implemented for review in backend #151 and admin #169 as of 20 November. Production
+activation is a separate operation.
 
 1. **Manual lifecycle API — backend #124.** Add `soci.members.end` and `restore` to the existing contract, service and
    router. Reuse `endedOn`, `endReason`, `endNote`, `accountState`, the activity history, the current member-write
@@ -182,17 +183,26 @@ slices below are pending. Production activation is a separate operation.
    and enqueue one Italian lapse email in the existing outbox, using the approved email design. Verify the disabled
    switch, deadline boundaries, pending review, rejection after the deadline, repeated runs, mail deduplication and
    Graph failure followed by retry. Do not infer non-payment from a missing register entry or missing fee row.
+   **Implemented locally:** the job evaluates the most recent renewal deadline; preview evaluates 1 January during
+   December. Receipts, payments and lifecycle writes share the existing lock. Status, history and the Italian lapse
+   email commit in one transaction. The configuration remains false by default; no production activation.
 3. **Deletion API — backend #124, after ending.** Add `soci.accounts.pendingDeletion` under `soci:read` and
    `accounts.delete` under `soci:delete`. Accept one pending account per call; refuse active accounts. Keep the register,
    historical numbers, mailbox snapshot and deletion date. Directory deletion is idempotent: retrying after Graph
    succeeded but persistence failed must be able to finish the bookkeeping. No bulk deletion. Verify permissions,
    wrong-state refusals, an already missing directory user and persistence retries.
+   **Implemented locally:** the list reads the register, deletion accepts one pending object ID, and retrying after
+   directory success can finish a failed database update. The account snapshot, fees and number history remain.
 4. **Dashboard — admin #157, against the completed backend contract.** Update the copied contract, API/server
    functions, permission checks and agent-mode fixtures. Add End status / Restore to the socio page, Deletion pending
    with a count and per-account deletion confirmation naming the mailbox, and the lapse preview in Register when
    automatic lapse is enabled. Use the existing form/confirmation primitives and preserve the current layout.
    Test unauthorized roles, loading/error/empty states, mutation success followed by a failed reload, and sample
    pending/deleted accounts. Run the repository checks and inspect mobile/desktop, light/dark.
+   **Implemented locally:** End status and Restore on the socio record; Deletion pending with a sidebar count,
+   search and a per-account confirmation naming its mailbox; December lapse preview; scoped server functions and
+   agent fixtures. Confirmed changes remain non-repeatable if reload fails. Browser checks cover desktop/light
+   mutations, required reasons, keyboard focus after deletion, failed reloads and mobile/dark read-only access.
 
 Backend verification uses the existing Vitest service, router, in-memory directory and PostgreSQL fixture patterns;
 run typecheck, Biome, tests and build with the Bun lockfile. Admin verification uses its existing pnpm commands.
@@ -311,3 +321,17 @@ Newest last. One line per commit or session: date, what was done, what is next.
   Secret Santa failure recorded above does not reproduce on the current `main`, which already includes its fix.
   No production accounts, data or configuration were changed. The next implementation slice remains lapse preview
   and the automatic lapse job, disabled by default.
+
+- 2026-11-20: implemented the remaining lifecycle slices locally in the isolated backend/admin worktrees. Backend:
+  guarded lapse preview/job, atomic Italian lapse mail, serialized receipt/payment/lifecycle writes, and single-account
+  pending deletion. Dashboard: lifecycle dialogs, pending-deletion page and count, permission gates, lapse preview and
+  matching agent fixtures. Backend full suite: 461 passed, 3 skipped, including disposable PostgreSQL 18. Browser
+  checks passed for end/restore/delete, correction validation, focus recovery, confirmed mutations with failed reloads,
+  and mobile/dark read-only permissions and layout. No real mail, account changes or production activation;
+  `SOCI_AUTO_LAPSE` remains false by default.
+
+- 2026-11-20: prepared the complete lifecycle implementation for publication in backend #151 and admin #169. Backend
+  verification: 461 passed, 3 skipped, typecheck, Biome and build. Dashboard verification: 209 passed, 4 skipped, check,
+  typecheck, build and browser flows. The next rollout step requires review of both PRs and a production-readiness
+  check of the register/payments before any activation. Merge, deployment, production reads and account mutations
+  remain separate operations.

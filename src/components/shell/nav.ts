@@ -122,6 +122,7 @@ export type PageMatch =
   | { kind: "people-soci" }
   | { kind: "people-socio"; number: number }
   | { kind: "people-fees" }
+  | { kind: "people-deletion" }
   | { kind: "people-admins" }
   | { kind: "people-teams" }
   | { kind: "people-team"; teamId: string }
@@ -259,6 +260,15 @@ const people: Service = {
       title: "Fees",
       icon: Receipt,
       path: "/dashboard/people/fees",
+      permission: "soci:read",
+      group: "Soci",
+      searchPlaceholder: "Search by name, number or mailbox…",
+    },
+    {
+      id: "deletion",
+      title: "Deletion pending",
+      icon: UserRound,
+      path: "/dashboard/people/deletion",
       permission: "soci:read",
       group: "Soci",
       searchPlaceholder: "Search by name, number or mailbox…",
@@ -573,6 +583,7 @@ export function matchPath(pathname: string): PageMatch {
     if (second === undefined) return { kind: "people-overview" }
     if (third === undefined) {
       if (second === "soci") return { kind: "people-soci" }
+      if (second === "deletion") return { kind: "people-deletion" }
       if (second === "fees") return { kind: "people-fees" }
       if (second === "admins") return { kind: "people-admins" }
       if (second === "teams") return { kind: "people-teams" }
@@ -658,6 +669,7 @@ export function serviceFor(match: PageMatch): Service {
     case "people-soci":
     case "people-socio":
     case "people-fees":
+    case "people-deletion":
     case "people-admins":
     case "people-teams":
     case "people-team":
@@ -726,6 +738,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(people, "soci")
     case "people-fees":
       return section(people, "fees")
+    case "people-deletion":
+      return section(people, "deletion")
     case "people-admins":
       return section(people, "admins")
     case "people-teams":
@@ -831,6 +845,7 @@ export type PendingCounts = {
   reports: Promise<number | null>
   signatures: Promise<number | null>
   fees: Promise<number | null>
+  deletion: Promise<number | null>
 }
 
 const NO_COUNT: Promise<number | null> = Promise.resolve(null)
@@ -853,6 +868,7 @@ export function sectionPending(
 ): Promise<number | null> {
   if (serviceId === "reports" && sectionId === "open") return pending.reports
   if (serviceId === "esign" && sectionId === "inbox") return pending.signatures
+  if (serviceId === "people" && sectionId === "deletion") return pending.deletion
   if (serviceId === "people" && sectionId === "fees") return pending.fees
   return NO_COUNT
 }

@@ -131,7 +131,7 @@ export function ReviewFeeDialog({ open, onOpenChange, socio, fee }: DialogProps 
         rejecting && late ? (
           <InlineAlert tone="warning">
             The renewal deadline, {formatDay(renewalDeadline(fee.year))}, has passed: once rejected, the fee is Due
-            again and {name} lapses at the next daily run unless it's paid.
+            again. If automatic lapse is enabled, {name} lapses at the next daily run unless it's paid.
           </InlineAlert>
         ) : undefined
       }

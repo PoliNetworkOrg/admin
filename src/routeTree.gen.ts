@@ -37,6 +37,7 @@ import { Route as DashboardReportsGroupLinksRouteImport } from './routes/dashboa
 import { Route as DashboardRegulationsDelegheRouteImport } from './routes/dashboard/regulations/deleghe'
 import { Route as DashboardPeopleLinkingRouteImport } from './routes/dashboard/people/linking'
 import { Route as DashboardPeopleFeesRouteImport } from './routes/dashboard/people/fees'
+import { Route as DashboardPeopleDeletionRouteImport } from './routes/dashboard/people/deletion'
 import { Route as DashboardPeopleAdminsRouteImport } from './routes/dashboard/people/admins'
 import { Route as DashboardPeoplePersonIdRouteImport } from './routes/dashboard/people/$personId'
 import { Route as DashboardEsignSignRouteImport } from './routes/dashboard/esign/sign'
@@ -211,6 +212,11 @@ const DashboardPeopleLinkingRoute = DashboardPeopleLinkingRouteImport.update({
 const DashboardPeopleFeesRoute = DashboardPeopleFeesRouteImport.update({
   id: '/people/fees',
   path: '/people/fees',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPeopleDeletionRoute = DashboardPeopleDeletionRouteImport.update({
+  id: '/people/deletion',
+  path: '/people/deletion',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardPeopleAdminsRoute = DashboardPeopleAdminsRouteImport.update({
@@ -403,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/deletion': typeof DashboardPeopleDeletionRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
@@ -462,6 +469,7 @@ export interface FileRoutesByTo {
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/deletion': typeof DashboardPeopleDeletionRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
@@ -523,6 +531,7 @@ export interface FileRoutesById {
   '/dashboard/esign/sign': typeof DashboardEsignSignRoute
   '/dashboard/people/$personId': typeof DashboardPeoplePersonIdRoute
   '/dashboard/people/admins': typeof DashboardPeopleAdminsRoute
+  '/dashboard/people/deletion': typeof DashboardPeopleDeletionRoute
   '/dashboard/people/fees': typeof DashboardPeopleFeesRoute
   '/dashboard/people/linking': typeof DashboardPeopleLinkingRoute
   '/dashboard/regulations/deleghe': typeof DashboardRegulationsDelegheRoute
@@ -585,6 +594,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/sign'
     | '/dashboard/people/$personId'
     | '/dashboard/people/admins'
+    | '/dashboard/people/deletion'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
     | '/dashboard/regulations/deleghe'
@@ -644,6 +654,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/sign'
     | '/dashboard/people/$personId'
     | '/dashboard/people/admins'
+    | '/dashboard/people/deletion'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
     | '/dashboard/regulations/deleghe'
@@ -704,6 +715,7 @@ export interface FileRouteTypes {
     | '/dashboard/esign/sign'
     | '/dashboard/people/$personId'
     | '/dashboard/people/admins'
+    | '/dashboard/people/deletion'
     | '/dashboard/people/fees'
     | '/dashboard/people/linking'
     | '/dashboard/regulations/deleghe'
@@ -952,6 +964,13 @@ declare module '@tanstack/react-router' {
       path: '/people/fees'
       fullPath: '/dashboard/people/fees'
       preLoaderRoute: typeof DashboardPeopleFeesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/people/deletion': {
+      id: '/dashboard/people/deletion'
+      path: '/people/deletion'
+      fullPath: '/dashboard/people/deletion'
+      preLoaderRoute: typeof DashboardPeopleDeletionRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/people/admins': {
@@ -1208,6 +1227,7 @@ interface DashboardRouteChildren {
   DashboardEsignSignRoute: typeof DashboardEsignSignRoute
   DashboardPeoplePersonIdRoute: typeof DashboardPeoplePersonIdRoute
   DashboardPeopleAdminsRoute: typeof DashboardPeopleAdminsRoute
+  DashboardPeopleDeletionRoute: typeof DashboardPeopleDeletionRoute
   DashboardPeopleFeesRoute: typeof DashboardPeopleFeesRoute
   DashboardPeopleLinkingRoute: typeof DashboardPeopleLinkingRoute
   DashboardRegulationsDelegheRoute: typeof DashboardRegulationsDelegheRoute
@@ -1251,6 +1271,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardEsignSignRoute: DashboardEsignSignRoute,
   DashboardPeoplePersonIdRoute: DashboardPeoplePersonIdRoute,
   DashboardPeopleAdminsRoute: DashboardPeopleAdminsRoute,
+  DashboardPeopleDeletionRoute: DashboardPeopleDeletionRoute,
   DashboardPeopleFeesRoute: DashboardPeopleFeesRoute,
   DashboardPeopleLinkingRoute: DashboardPeopleLinkingRoute,
   DashboardRegulationsDelegheRoute: DashboardRegulationsDelegheRoute,

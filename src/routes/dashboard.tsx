@@ -8,7 +8,7 @@ import { EsignSigningHost } from "@/features/esign/signing-host"
 import { getPendingGroupLinkReports } from "@/features/group-link-reports/reports.functions"
 import { getMyPeopleRoles } from "@/features/people/people.functions"
 import { getMyRegulations } from "@/features/regulations/regulations.functions"
-import { getFeesToReviewCount } from "@/features/soci/soci.functions"
+import { getFeesToReviewCount, getPendingDeletionCount } from "@/features/soci/soci.functions"
 import { signInRedirect } from "@/lib/sign-in"
 import { hasPermission } from "@/server/permissions"
 
@@ -82,6 +82,13 @@ export const Route = createFileRoute("/dashboard")({
             }
           )
         : Promise.resolve(null),
+      deletion:
+        hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "soci:read")
+          ? getPendingDeletionCount().catch((error) => {
+              console.error(error)
+              return null
+            })
+          : Promise.resolve(null),
       // Transfer receipts waiting for review this fee year: a count on Soci › Fees, like Reports › Open.
       fees:
         hasPermission(context.permissions, "admin:access") && hasPermission(context.permissions, "soci:read")
