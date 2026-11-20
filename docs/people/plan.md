@@ -243,3 +243,10 @@ Newest last. One line per commit or session: date, what was done, what is next.
   shell: sign in, "Link this account to <name>?", confirm, then the roles as they arrive (applied, waiting, refused with
   Auth's reason), or "being applied" while the account can't read My area yet. The old My area invite link redirects
   there, and My area no longer accepts invites.
+
+### Next: local Libro Soci import preview
+
+The user selected local preparation and preview on 20 November 2026. See [`soci-import.md`](soci-import.md) for the
+preparation draft, acceptance checks and ordered milestones. The source format remains to be confirmed. The preview
+must not reuse admission/registration mutations, which create a paid fee and may write to Microsoft 365. No
+production access, application or automatic-lapse activation is included.
