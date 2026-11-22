@@ -38,17 +38,6 @@ export function failureMessage(cause: unknown, fallback: string) {
   return /[àèéìòù]|\b(il|la|di|non|per|una?|è)\b/i.test(message) ? message : fallback
 }
 
-/** A PDF from a server function (base64) as a download. */
-export function downloadPdf(file: { fileName: string; contentType: string; base64: string }) {
-  const bytes = Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0))
-  const url = URL.createObjectURL(new Blob([bytes], { type: file.contentType }))
-  const link = document.createElement("a")
-  link.href = url
-  link.download = file.fileName
-  link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
 /**
  * Loads data while mounted, again whenever `load` changes (memoize it with its inputs), and not at all while it is
  * `null`. A late answer from an earlier `load` is ignored; with `keepPrevious` the last answer stays meanwhile.

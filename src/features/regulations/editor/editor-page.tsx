@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 
 import { parseDocument, type StructureNode } from "../latex-structure"
 import { MembersDialog } from "../members-dialog"
+import { downloadPdf, PdfDialog, usePdfDialog } from "../pdf-dialog"
 import { DraftKindMark, DraftStateBadge } from "../regulations-ui"
 import type {
   Assignment,
@@ -336,15 +337,8 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
   const stateLabel = draft.procedure.states.find((state) => state.key === draft.state)?.label
   const frozen = !draft.procedure.states.find((state) => state.key === draft.state)?.editable
 
-  function downloadPdf() {
-    if (!pdf) return
-    const url = URL.createObjectURL(new Blob([pdf.bytes.slice()], { type: "application/pdf" }))
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `${draft.title}.pdf`
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
+  const pdfFile = pdf ? { fileName: `${draft.title}.pdf`, bytes: pdf.bytes } : null
+  const viewer = usePdfDialog()
 
   return (
     <>
@@ -569,7 +563,17 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                 <PdfPane
                   status={compile}
                   pdf={pdf?.bytes ?? null}
-                  onDownload={pdf ? downloadPdf : null}
+                  onDownload={pdfFile ? () => downloadPdf(pdfFile) : null}
+                  onExpand={
+                    pdfFile
+                      ? () =>
+                          viewer.show({
+                            title: draft.title,
+                            description: "L'ultima compilazione riuscita della bozza.",
+                            load: async () => pdfFile,
+                          })
+                      : null
+                  }
                   className="h-full"
                 />
               )}
@@ -580,6 +584,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
       {draft.can.assign ? (
         <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} draft={draft} members={members} />
       ) : null}
+      <PdfDialog {...viewer.props} />
     </>
   )
 }

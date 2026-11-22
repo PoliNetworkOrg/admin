@@ -64,6 +64,7 @@ const COPY = {
     zoomOut: "Zoom out",
     zoomIn: "Zoom in",
     fit: "Fit width",
+    pages: "PDF pages",
   },
   it: {
     page: (n: number) => `Pagina ${n}`,
@@ -73,6 +74,7 @@ const COPY = {
     zoomOut: "Riduci",
     zoomIn: "Ingrandisci",
     fit: "Adatta alla larghezza",
+    pages: "Pagine del PDF",
   },
 } as const
 
@@ -276,7 +278,11 @@ export function PdfViewer({
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken)"
+        // A tab stop, so the keyboard scrolls the pages (arrows, Page Up/Down, Space) once it is focused.
+        tabIndex={0}
+        role="region"
+        aria-label={copy.pages}
+        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken) focus-visible:outline-offset-[-2px]"
         data-pdf-scroll
         onScroll={(event) => {
           reading.current = middleOf(event.currentTarget)

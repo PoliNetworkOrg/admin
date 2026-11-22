@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ExternalLink, FileDiff, FileDown, FilePlus2, GitBranch, ScrollText } from "lucide-react"
+import { Download, ExternalLink, FileDiff, FilePlus2, FileText, GitBranch, ScrollText } from "lucide-react"
 import { useState } from "react"
 
 import {
@@ -8,6 +8,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  Hint,
   IconButton,
   RecordHeader,
   useOpenGeneration,
@@ -19,8 +20,9 @@ import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { NewDraftDialog, type NewDraftTarget } from "./new-draft-dialog"
+import { downloadPdf, PdfDialog, usePdfDialog } from "./pdf-dialog"
 import { baseLabel, formatDay, versionOrigin } from "./regulations-format"
-import { downloadPdf, failureMessage } from "./regulations-hooks"
+import { failureMessage } from "./regulations-hooks"
 import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
 import type { DocumentInfo, DraftSummary, VersionSummary } from "./regulations.contract"
 import { getVersionPdf } from "./regulations.functions"
@@ -49,6 +51,16 @@ export function DocumentPage({
   const generation = useOpenGeneration(dialog.open)
   const openDialog = (target: NewDraftTarget) => setDialog({ open: true, target })
   const latest = versions[0] ?? null
+  const viewer = usePdfDialog()
+
+  function view(version: VersionSummary) {
+    viewer.show({
+      title: `${document.title} · ${version.label}`,
+      description: `${version.id === latest?.id ? "In vigore · " : ""}${versionOrigin(version)}`,
+      load: () => pdf({ data: { versionId: version.id } }),
+      failure: "Non è stato possibile aprire il PDF.",
+    })
+  }
 
   async function download(version: VersionSummary) {
     setDownloading(version.id)
@@ -66,28 +78,31 @@ export function DocumentPage({
     {
       id: "version",
       label: "Versione",
-      width: 180,
-      mobile: "main",
-      cell: (version) => (
-        <span className="flex items-center gap-2">
-          <span className="font-mono text-[13px]">{version.label}</span>
-          {version.id === latest?.id && <StatusBadge tone="brand">In vigore</StatusBadge>}
-        </span>
-      ),
-    },
-    {
-      id: "origin",
-      label: "Origine",
       fill: true,
       minWidth: 240,
-      mobile: "full",
-      cell: (version) => <span className="block truncate">{versionOrigin(version)}</span>,
+      mobile: "main",
+      // The label and "In vigore" on one line, where the origin's 12px line under them can't push into them; a long
+      // label truncates and the badge never shrinks.
+      cell: (version) => (
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="flex min-w-0 items-center gap-2">
+            <Hint label={version.label} overflowOnly>
+              <span className="min-w-0 truncate font-mono text-[13px]">{version.label}</span>
+            </Hint>
+            {version.id === latest?.id && <StatusBadge tone="brand">In vigore</StatusBadge>}
+          </span>
+          <Hint label={versionOrigin(version)} overflowOnly>
+            <span className="truncate text-xs leading-4 font-normal text-(--pn-fg-muted)">
+              {versionOrigin(version)}
+            </span>
+          </Hint>
+        </span>
+      ),
     },
     {
       id: "published",
       label: "Pubblicata",
       width: 120,
-      priority: 2,
       mobile: "meta",
       cell: (version) => <span className="whitespace-nowrap tabular-nums">{formatDay(version.publishedAt)}</span>,
     },
@@ -102,7 +117,9 @@ export function DocumentPage({
       mobile: "main",
       cell: (draft) => (
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium">{draft.title}</span>
+          <Hint label={draft.title} overflowOnly>
+            <span className="truncate font-medium">{draft.title}</span>
+          </Hint>
           <DraftKindMark kind={draft.kind} />
         </span>
       ),
@@ -110,7 +127,8 @@ export function DocumentPage({
     {
       id: "state",
       label: "Stato",
-      width: 150,
+      // "In approvazione" is the widest badge.
+      width: 170,
       mobile: "meta",
       cell: (draft) => <DraftStateBadge state={draft.state} />,
     },
@@ -187,28 +205,33 @@ export function DocumentPage({
               columns={versionColumns}
               rows={versions}
               getRowId={(version) => version.id}
-              actionsWidth={176}
+              actionsWidth={216}
               actions={(version) => (
+                // Every row keeps the same five slots, so the icons line up whatever a version lacks.
                 <RowActions>
-                  {version.pdfAvailable && (
-                    <IconButton
-                      label="Scarica PDF"
-                      ariaLabel={`Scarica il PDF della versione ${version.label}`}
-                      icon={FileDown}
-                      pending={downloading === version.id}
-                      onClick={() => void download(version)}
-                    />
+                  {version.pdfAvailable ? (
+                    <>
+                      <IconButton
+                        label="Apri il PDF"
+                        ariaLabel={`Apri il PDF della versione ${version.label}`}
+                        icon={FileText}
+                        onClick={() => view(version)}
+                      />
+                      <IconButton
+                        label="Scarica il PDF"
+                        ariaLabel={`Scarica il PDF della versione ${version.label}`}
+                        icon={Download}
+                        pending={downloading === version.id}
+                        onClick={() => void download(version)}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <EmptySlot />
+                      <EmptySlot />
+                    </>
                   )}
-                  {version.releaseUrl && (
-                    <IconButton
-                      label="Apri la release"
-                      ariaLabel={`Apri la release ${version.label}`}
-                      icon={ExternalLink}
-                      nativeButton={false}
-                      render={<a href={version.releaseUrl} target="_blank" rel="noreferrer" />}
-                    />
-                  )}
-                  {version.draftId && (
+                  {version.draftId ? (
                     <IconButton
                       label="Differenze"
                       ariaLabel={`Differenze della versione ${version.label}`}
@@ -218,6 +241,19 @@ export function DocumentPage({
                         <Link to="/dashboard/regulations/drafts/$draftId/diff" params={{ draftId: version.draftId }} />
                       }
                     />
+                  ) : (
+                    <EmptySlot />
+                  )}
+                  {version.releaseUrl ? (
+                    <IconButton
+                      label="Apri la release su GitHub"
+                      ariaLabel={`Apri la release ${version.label} su GitHub`}
+                      icon={ExternalLink}
+                      nativeButton={false}
+                      render={<a href={version.releaseUrl} target="_blank" rel="noreferrer" />}
+                    />
+                  ) : (
+                    <EmptySlot />
                   )}
                   {canWrite && (
                     <IconButton
@@ -265,6 +301,7 @@ export function DocumentPage({
           </section>
         </div>
       </PageContent>
+      <PdfDialog {...viewer.props} />
       <NewDraftDialog
         key={generation}
         open={dialog.open}
@@ -273,4 +310,9 @@ export function DocumentPage({
       />
     </>
   )
+}
+
+/** Keeps a missing action's place on desktop; stacked cards drop it. */
+function EmptySlot() {
+  return <span aria-hidden className="size-9 shrink-0 max-shell:hidden" />
 }

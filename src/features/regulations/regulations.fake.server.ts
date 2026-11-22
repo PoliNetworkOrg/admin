@@ -142,11 +142,12 @@ function buildStore(): Store {
   const old: StoredVersion = {
     id: "v-2025-09-30",
     documentKey: DOCUMENT_KEY,
-    tag: "rri-v1.4",
-    label: "v1.4",
+    // The first import from the repository, labelled as the backend labels it: no tag and no release.
+    tag: null,
+    label: "import d08cb57",
     delibera: null,
     publishedAt: "2025-09-30T10:00:00.000Z",
-    releaseUrl: "https://github.com/PoliNetworkOrg/legal/releases/tag/rri-v1.4",
+    releaseUrl: null,
     pdfAvailable: true,
     draftId: null,
     files: previousFiles(),
@@ -1059,8 +1060,15 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       if (!capabilities(draft, role).regenerateDiff) refuse("Il diff non può più essere rigenerato.")
       draft.diff = { generation: (draft.diff?.generation ?? 0) + 1, requestedAt: Date.now(), by: me }
     },
-    async diffPdf() {
-      return refuse("Il PDF delle differenze lo genera il backend: non è disponibile in modalità agente.")
+    async diffPdf({ draftId }) {
+      // The backend typesets the differences; here the draft's own text stands in, so the viewer has a real PDF.
+      const { draft } = visible(draftId)
+      const pdf = await (await collab()).compileOnce(`diff-${draft.id}`, ENTRY_FILE, draft.files)
+      return {
+        fileName: `${draft.title} - differenze.pdf`,
+        contentType: "application/pdf",
+        base64: pdf.toString("base64"),
+      }
     },
     async getEmanation({ draftId }) {
       const { draft } = visible(draftId)

@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, Download } from "lucide-react"
+import { CircleAlert, CircleCheck, Download, Maximize2 } from "lucide-react"
 import { useState } from "react"
 
 import { IconButton, Spinner } from "@/components/primitives"
@@ -16,11 +16,14 @@ export function PdfPane({
   status,
   pdf,
   onDownload,
+  onExpand,
   className,
 }: {
   status: CompileStatus | null
   pdf: Uint8Array | null
   onDownload: (() => void) | null
+  /** Opens the PDF in the full-height viewer, to read it wider than the pane. */
+  onExpand?: (() => void) | null
   className?: string
 }) {
   const [logOpen, setLogOpen] = useState(false)
@@ -86,7 +89,12 @@ export function PdfPane({
             data={pdf}
             fill={false}
             locale="it"
-            toolbarStart={onDownload ? <IconButton label="Scarica PDF" icon={Download} onClick={onDownload} /> : null}
+            toolbarStart={
+              <>
+                {onExpand ? <IconButton label="Apri a tutta altezza" icon={Maximize2} onClick={onExpand} /> : null}
+                {onDownload ? <IconButton label="Scarica PDF" icon={Download} onClick={onDownload} /> : null}
+              </>
+            }
           />
         ) : (
           <div className="grid h-full min-h-[320px] place-items-center rounded-(--pn-r-5) border border-(--pn-line) bg-(--pn-sunken) p-6 text-center text-[13px] text-(--pn-fg-muted)">
