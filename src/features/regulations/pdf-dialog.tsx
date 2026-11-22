@@ -83,15 +83,19 @@ export function PdfDialog({
     if (!document) return
     let current = true
     setResult({ document, file: null, error: null })
-    document.load().then(
-      (file) => {
-        if (current) setResult({ document, file: toBytes(file), error: null })
-      },
-      (caught) => {
-        console.error(caught)
-        if (current) setResult({ document, file: null, error: caught ?? new Error("load failed") })
-      }
-    )
+    // Decoding is part of loading: a malformed file lands in the error state, not in an endless spinner.
+    document
+      .load()
+      .then(toBytes)
+      .then(
+        (file) => {
+          if (current) setResult({ document, file, error: null })
+        },
+        (caught) => {
+          console.error(caught)
+          if (current) setResult({ document, file: null, error: caught ?? new Error("load failed") })
+        }
+      )
     return () => {
       current = false
     }
@@ -151,6 +155,7 @@ export function PdfDialog({
                 key={file.fileName}
                 data={file.bytes}
                 fill={false}
+                className="min-h-0"
                 locale="it"
                 toolbarStart={
                   <IconButton

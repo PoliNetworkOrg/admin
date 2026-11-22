@@ -87,6 +87,7 @@ async function start(hooks: DevCollabHooks): Promise<DevCollab> {
   const compiles = new Map<string, CompileState>()
   // In flight or done, so concurrent requests for one text share a compile instead of racing in one workdir.
   const once = new Map<string, Promise<Buffer>>()
+  const queue = new Map<string, Promise<void>>()
   /** Each draft's Yjs state, kept across unloads. */
   const states = new Map<string, Uint8Array>()
 
@@ -236,10 +237,21 @@ async function start(hooks: DevCollabHooks): Promise<DevCollab> {
       const hash = hashFiles(files)
       const cached = once.get(hash)
       if (cached) return cached
-      const compiled = xelatex(key, entry, files).then(({ pdf, errors }) => {
-        if (!pdf) throw new Error(errors[0]?.message ?? "xelatex non ha prodotto il PDF")
-        return pdf
-      })
+      // One workdir per key: a different text under the same key waits for the compile before it.
+      const previous = queue.get(key) ?? Promise.resolve()
+      const compiled = previous
+        .then(() => xelatex(key, entry, files))
+        .then(({ pdf, errors }) => {
+          if (!pdf) throw new Error(errors[0]?.message ?? "xelatex non ha prodotto il PDF")
+          return pdf
+        })
+      queue.set(
+        key,
+        compiled.then(
+          () => undefined,
+          () => undefined
+        )
+      )
       once.set(hash, compiled)
       compiled.catch((error) => {
         console.error(error)
