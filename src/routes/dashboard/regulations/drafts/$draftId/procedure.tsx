@@ -3,17 +3,28 @@ import { createFileRoute } from "@tanstack/react-router"
 import { RecordSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { ProcedurePage } from "@/features/regulations/procedure-page"
-import { getDraftWithMembers, getEmanation } from "@/features/regulations/regulations.functions"
+import {
+  getDraftWithMembers,
+  getEmanation,
+  getRegulationDocumentInfo,
+} from "@/features/regulations/regulations.functions"
+import { hasPermission } from "@/server/permissions"
 
 const BACK = { label: "bozze", link: { to: "/dashboard/regulations/drafts" } } as const
 
 export const Route = createFileRoute("/dashboard/regulations/drafts/$draftId/procedure")({
-  loader: async ({ params }) => {
+  loader: async ({ params, context }) => {
     const data = { draftId: params.draftId }
     const { draft, members } = await getDraftWithMembers({ data })
-    // Only an emanation that started has a status to show.
-    const emanation = draft.emanationStatus === "none" ? null : await getEmanation({ data })
-    return { draft, members, emanation }
+    // Only an emanation that started has a status to show. The document says what publishing a `documento` does;
+    // people admitted only by an assignment can't read documents, and can't publish either.
+    const [emanation, document] = await Promise.all([
+      draft.emanationStatus === "none" ? null : getEmanation({ data }),
+      draft.procedure.key === "documento" && hasPermission(context.permissions, "regulations:read")
+        ? getRegulationDocumentInfo({ data: { documentKey: draft.documentKey } })
+        : null,
+    ])
+    return { draft, members, emanation, document }
   },
   pendingComponent: () => (
     <>
@@ -27,6 +38,6 @@ export const Route = createFileRoute("/dashboard/regulations/drafts/$draftId/pro
 })
 
 function ProcedureRoute() {
-  const { draft, members, emanation } = Route.useLoaderData()
-  return <ProcedurePage draft={draft} members={members} emanation={emanation} />
+  const { draft, members, emanation, document } = Route.useLoaderData()
+  return <ProcedurePage draft={draft} members={members} emanation={emanation} document={document} />
 }

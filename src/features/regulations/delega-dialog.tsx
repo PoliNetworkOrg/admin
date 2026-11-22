@@ -37,13 +37,15 @@ export function DelegaDialog({
   onOpenChange: (open: boolean) => void
   documents: DocumentInfo[]
 }) {
+  // Rettifiche exist only for documents with the RRI's procedure.
+  const rectifiable = documents.filter((document) => document.procedureKey === "rri")
   const search = useServerFn(searchRegulationUsers)
   const create = useServerFn(createDelega)
   const refresh = useRefreshAfter()
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query.trim())
   const [userId, setUserId] = useState<string | null>(null)
-  const [documentKey, setDocumentKey] = useState<string>(documents.length === 1 ? documents[0].key : ALL)
+  const [documentKey, setDocumentKey] = useState<string>(rectifiable.length === 1 ? rectifiable[0].key : ALL)
   const [expiresOn, setExpiresOn] = useState("")
   const [note, setNote] = useState("")
   const [submitted, setSubmitted] = useState(false)
@@ -134,7 +136,7 @@ export function DelegaDialog({
               onChange={setDocumentKey}
               options={[
                 { value: ALL, label: "Tutti i documenti" },
-                ...documents.map((document) => ({ value: document.key, label: document.title })),
+                ...rectifiable.map((document) => ({ value: document.key, label: document.title })),
               ]}
             />
           </FormField>

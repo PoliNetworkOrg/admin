@@ -39,6 +39,8 @@
   margin: 2px 1px;
   padding: 0;
   overflow: hidden;
+  /* Sized by the viewport only: a thumb measured for taller content must not hold the area open once it shrinks. */
+  contain: size;
   cursor: pointer;
   touch-action: none;
   user-select: none;

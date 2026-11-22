@@ -473,7 +473,7 @@ Rules that the templates above don't imply.
 - **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their
   group counts and "+ n more".
 - **Labels**: three kinds (categories, attributes, publications), each a `SectionHeading` with a one-line description:
-  the only section descriptions in the app, because users confuse the kinds.
+  with Regolamenti › Documenti, the only section descriptions in the app, because users confuse the kinds.
 - **Categories and tag pages**: a node lists only groups tagged with exactly that path. Category titles are 28px on
   mobile; sub-category cards show a dot and the count below the name. The Groups heading has the direct count, with
   full-width search below it on mobile. Publishing a tag acts on every
@@ -626,17 +626,27 @@ Rules that the templates above don't imply.
   The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
-- **Regolamenti**: Documenti is a card per document; a document page lists its versions and its drafts. A version row
+- **Regolamenti**: Documenti has a section per kind (Regolamenti, Documenti generali, Privati, Sola consultazione),
+  each a `SectionHeading` with a one-line description, as on Labels and for the same reason: the kinds are easy to
+  confuse. A document is a card that opens it: a 36px tile with the kind's icon (a lock for private ones, a book for
+  sola consultazione), the title and one 12px line (version in force, open drafts) whose parts wrap whole. A
+  repository document still being created is a card that doesn't open: "In creazione" (brand) or "Non creato"
+  (danger), its pull request as an icon button and, when it failed, the error and "Crea di nuovo" (under the text on
+  phones). The document page shows the kind as a `Chip` ("Privato", "Sola consultazione") next to the title and one
+  sentence on its rules; sola consultazione puts "Apri il PDF" and "Scarica il PDF" in the page header and has no
+  drafts, an uploaded PDF has "Carica nuova versione" and no drafts. A document page lists its versions and its
+  drafts. A version row
   is the label with "In vigore" on the newest (the label truncates, the badge never shrinks) over its origin as the
   12px line, then Pubblicata and five action slots, empty where a version lacks one so the icons align: Apri il PDF,
-  Scarica il PDF, Differenze, the GitHub release and "Nuova bozza da qui". PDFs open in `PdfDialog`
+  Scarica il PDF, Differenze (RRI only), the GitHub release (repository documents) and "Nuova bozza da qui" (documents
+  that take drafts); the set of slots is the document's, so every row has the same. PDFs open in `PdfDialog`
   (`pdf-dialog.tsx`): a dialog as tall as the window (a full-height sheet on phones) around eSign's pdf.js
   `PdfViewer`, with the page counter, zoom and Download in its toolbar; the pages take the focus, so the keyboard
   scrolls them, and Esc closes it. The differences page opens its PDF there, and the editor's preview has "Apri a tutta
   altezza". Bozze adds "Il tuo accesso" for people
   admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
   procedure page is a record with the states as a stepper, disabled transitions showing why, and the emanation's steps
-  live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
+  live (a documento's card is "Pubblicazione", without the notices, and a private one's is a single sentence); the differences page is read-only (category summary, then old and new side by side for changed articles only).
   Deleghe is a list with a segmented Attive/Tutte filter.
 
 Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.

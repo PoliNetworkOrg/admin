@@ -40,15 +40,19 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   page. My area's Socio card (`soci.me.*`, `people:self`, `soci-self.functions.ts`) shows the signed-in socio's fee, bank
   details, Upload transfer receipt and Complete your details; a socio without a People record sees only that card.
   `AGENT_SOCIO` picks the socio My area shows in agent mode. Design: `docs/people/soci.md`.
-- **Regolamenti** (`src/features/regulations/`): the governance documents (v1: the RRI), through
-  `regulationsApi(context)`, which parses the backend's `regulations.*` responses with `regulations.contract.ts` (a copy
-  of the backend's) and, in agent mode, serves `regulations.fake.server.ts` with a local Hocuspocus and `xelatex`
-  (`AGENT_BACKEND_TOKEN` calls a local backend instead). `regulations:read` opens Documenti and every draft as a viewer,
-  `regulations:write` creates drafts, assigns members, merges and sends to approval, `regulations:manage` records the
-  approval, emanates and regenerates the differences, `regulations:rectify` rettifiche and Deleghe. Per-draft access
-  (viewer, commenter, editor) and deleghe are backend data: `regulations.me.get` admits an account without
-  `admin:access` to Regolamenti › Bozze only, draft-scoped server functions use `regulationsAssigneeMiddleware`, and
-  pages act on the draft's `can` from the backend. The editor connects to the collab service with a single-use ticket
+- **Regolamenti** (`src/features/regulations/`): every PoliNetwork document, through `regulationsApi(context)`, which
+  parses the backend's `regulations.*` responses with `regulations.contract.ts` (a copy of the backend's) and, in agent
+  mode, serves `regulations.fake.server.ts` with a local Hocuspocus and `xelatex` (`AGENT_BACKEND_TOKEN` calls a local
+  backend instead). Documenti groups documents by `kind`: regolamenti (the RRI's procedure `rri`), documenti generali
+  and private ones from a template (procedure `documento`: bozza → pubblicata, "Pubblica"), uploaded PDFs (private,
+  read-only, a new version is a new upload) and sola consultazione (Statuto, Elettorale: only the PDF, no drafts).
+  `regulations:read` opens Documenti and every draft as a viewer, `regulations:write` creates drafts, assigns members,
+  merges and sends to approval, `regulations:manage` records the approval, emanates or publishes, regenerates the
+  differences, creates documents (repository: a pull request, "In creazione" until it merges; or private) and uploads
+  PDFs, `regulations:rectify` rettifiche and Deleghe. Per-draft access (viewer, commenter, editor) and deleghe are
+  backend data: `regulations.me.get` admits an account without `admin:access` to Regolamenti › Bozze only, draft-scoped
+  server functions use `regulationsAssigneeMiddleware`, and pages act on the document's `editable` and the draft's `can`
+  from the backend. Every PDF opens in `PdfDialog`. The editor connects to the collab service with a single-use ticket
   from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 

@@ -17,6 +17,7 @@ import {
   compileStatusSchema,
   type compilePdfInputSchema,
   type createCommentInputSchema,
+  type CreateDocumentInput,
   type createDelegaInputSchema,
   type createDraftInputSchema,
   type createSnapshotInputSchema,
@@ -49,6 +50,10 @@ import {
   type snapshotRefInputSchema,
   snapshotSchema,
   snapshotWithFilesSchema,
+  type SyncResult,
+  syncResultSchema,
+  type TemplateInfo,
+  templateSchema,
   type transitionInputSchema,
   type UserMatch,
   userMatchSchema,
@@ -72,9 +77,15 @@ export type RegulationsApi = {
   getMe: () => Promise<Me>
   listDocuments: () => Promise<DocumentInfo[]>
   getDocument: (input: DocumentRef) => Promise<DocumentInfo>
-  syncDocuments: () => Promise<void>
+  syncDocuments: () => Promise<SyncResult>
+  listTemplates: () => Promise<TemplateInfo[]>
+  createDocument: (input: CreateDocumentInput) => Promise<DocumentInfo>
+  /** A private, read-only document from a PDF. */
+  uploadDocument: (input: { key: string; title: string; file: File }) => Promise<DocumentInfo>
   listVersions: (input: DocumentRef) => Promise<VersionSummary[]>
   versionPdf: (input: { versionId: string }) => Promise<BinaryFile>
+  /** A new version of an uploaded document. */
+  uploadVersion: (input: { documentKey: string; file: File }) => Promise<VersionSummary>
   listDrafts: (input: In<typeof listDraftsInputSchema>) => Promise<DraftSummary[]>
   getDraft: (input: DraftRef) => Promise<Draft>
   draftFiles: (input: DraftRef) => Promise<DraftFiles>
@@ -130,9 +141,25 @@ export function backendRegulationsApi(accessToken: string | null): RegulationsAp
     getMe: () => query("me.get", undefined, meSchema),
     listDocuments: () => query("documents.list", undefined, documentSchema.array()),
     getDocument: (input) => query("documents.get", input, documentSchema),
-    syncDocuments: () => mutate("documents.sync", undefined),
+    syncDocuments: async () => syncResultSchema.parse(await client.mutation("regulations.documents.sync", undefined)),
+    listTemplates: () => query("templates.list", undefined, templateSchema.array()),
+    createDocument: async (input) => documentSchema.parse(await client.mutation("regulations.documents.create", input)),
+    // A FormData body travels on its own request (`httpLink`), as the backend's upload inputs parse it.
+    uploadDocument: async (input) => {
+      const form = new FormData()
+      form.set("key", input.key)
+      form.set("title", input.title)
+      form.set("file", input.file)
+      return documentSchema.parse(await client.mutation("regulations.documents.upload", form))
+    },
     listVersions: (input) => query("versions.list", input, versionSummarySchema.array()),
     versionPdf: (input) => query("versions.pdf", input, binaryFileSchema),
+    uploadVersion: async (input) => {
+      const form = new FormData()
+      form.set("documentKey", input.documentKey)
+      form.set("file", input.file)
+      return versionSummarySchema.parse(await client.mutation("regulations.versions.upload", form))
+    },
     listDrafts: (input) => query("drafts.list", input, draftSummarySchema.array()),
     getDraft: (input) => query("drafts.get", input, draftSchema),
     draftFiles: (input) => query("drafts.files", input, draftFilesSchema),
