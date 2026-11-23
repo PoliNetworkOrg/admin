@@ -199,3 +199,14 @@ test("the MCP endpoint reads no cookie and is the only other Origin-check exempt
     assert.doesNotMatch(source, /getCookie|readRequestSession|get\("cookie"\)/i, `${file} must not read cookies`)
   }
 })
+
+void test("the MCP endpoint resolves the caller before it reads the request body", async () => {
+  const source = await readFile(new URL("src/mcp/http.server.ts", root), "utf8")
+  const handler = source.slice(source.indexOf("export async function handleMcpRequest"))
+  const resolved = handler.indexOf("await resolveCaller(")
+  const read = handler.indexOf("await readLimited(request)")
+  assert.ok(
+    resolved !== -1 && read !== -1 && resolved < read,
+    "handleMcpRequest must resolve the caller before reading the body: an unauthenticated request must not make the server buffer and parse up to MCP_MAX_MESSAGE_BYTES"
+  )
+})

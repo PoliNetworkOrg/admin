@@ -426,10 +426,12 @@ export type McpResponseBody = JsonRpcResponse | JsonRpcResponse[]
 
 /**
  * MCP messages from one HTTP request (Streamable HTTP, stateless, JSON responses only). Notifications and the
- * client's responses need no answer; every request runs as the caller.
+ * client's responses need no answer; every request runs as `caller`, whom the HTTP handler resolved from
+ * `credentials` before reading the body.
  */
 export async function handleMcpMessages(
   body: JsonValue,
+  caller: McpCaller,
   credentials: McpCredentials
 ): Promise<{ status: number; body: McpResponseBody | null }> {
   const batch = Array.isArray(body)
@@ -445,7 +447,6 @@ export async function handleMcpMessages(
     }
   }
   if (requests.length === 0) return { status: 202, body: null }
-  const caller = await resolveCaller(credentials)
   const responses = await Promise.all(requests.map((request) => dispatch(request, caller, credentials)))
   return { status: 200, body: batch ? responses : responses[0] }
 }

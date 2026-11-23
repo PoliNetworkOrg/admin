@@ -3,7 +3,7 @@ import { z } from "zod"
 import { resolveAppOrigin } from "@/server/auth-config"
 import { isAgentMode } from "@/server/auth.server"
 
-import { McpCallerError } from "./caller.server"
+import { McpCallerError, resolveCaller } from "./caller.server"
 import { MCP_ID_TOKEN_HEADER, MCP_MAX_MESSAGE_BYTES } from "./protocol"
 import { handleMcpMessages, type McpResponseBody } from "./server.server"
 
@@ -54,7 +54,8 @@ const BEARER = /^Bearer ([A-Za-z0-9._~+/-]+=*)$/
 /**
  * `POST /api/mcp`: the admin MCP over Streamable HTTP, called by the `polinetwork-admin-mcp` bridge with the user's
  * own access token. It never reads cookies, so it is exempt from the Origin check that protects cookie sessions; a
- * browser Origin other than the dashboard's is still refused (DNS rebinding).
+ * browser Origin other than the dashboard's is still refused (DNS rebinding). The caller is resolved before the body
+ * is read.
  */
 export async function handleMcpRequest(request: Request) {
   if (request.method !== "POST") return rpcError(405, "Use POST.", { allow: "POST" })
@@ -69,17 +70,20 @@ export async function handleMcpRequest(request: Request) {
   const authorization = request.headers.get("authorization")
   const accessToken = authorization ? (BEARER.exec(authorization)?.[1] ?? "") : null
   if (accessToken === "") return rpcError(401, "Malformed Authorization header.")
-  const body = await readLimited(request)
-  if (body === null) return rpcError(413, "The request is too large or too slow.")
-  let parsed: z.core.util.JSONType
+  const credentials = { accessToken, idToken: request.headers.get(MCP_ID_TOKEN_HEADER) }
   try {
-    parsed = z.json().parse(JSON.parse(body))
-  } catch (error) {
-    console.error(error)
-    return json(400, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error." } })
-  }
-  try {
-    const result = await handleMcpMessages(parsed, { accessToken, idToken: request.headers.get(MCP_ID_TOKEN_HEADER) })
+    // Before the body: only a signed-in caller makes the server buffer and parse up to MCP_MAX_MESSAGE_BYTES.
+    const caller = await resolveCaller(credentials)
+    const body = await readLimited(request)
+    if (body === null) return rpcError(413, "The request is too large or too slow.")
+    let parsed: z.core.util.JSONType
+    try {
+      parsed = z.json().parse(JSON.parse(body))
+    } catch (error) {
+      console.error(error)
+      return json(400, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error." } })
+    }
+    const result = await handleMcpMessages(parsed, caller, credentials)
     return json(result.status, result.body)
   } catch (error) {
     if (error instanceof McpCallerError) {
