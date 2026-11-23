@@ -14,7 +14,6 @@ import {
   SegmentedControl,
   Spinner,
 } from "@/components/primitives"
-import { appToast } from "@/components/shell"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -120,8 +119,8 @@ export function NewDocumentDialog({
           cause: caught,
         })
       }
+      await refresh("Documento caricato.")
       onOpenChange(false)
-      appToast.success("Documento caricato.")
       await navigate({ to: "/dashboard/regulations/documents/$documentKey", params: { documentKey: key } })
       return
     }
@@ -138,8 +137,8 @@ export function NewDocumentDialog({
       onOpenChange(false)
       return
     }
+    await refresh("Documento creato.")
     onOpenChange(false)
-    appToast.success("Documento creato.")
     await navigate({ to: "/dashboard/regulations/documents/$documentKey", params: { documentKey: key } })
   }
 
@@ -239,8 +238,8 @@ export function NewDocumentDialog({
             <RadioCardGroup label="Dove" value={storage} onValueChange={setStorage}>
               <RadioCard
                 value="repo"
-                label="Repository documents"
-                description="Pubblico nel repository, creato tramite pull request: compare qui appena viene unita."
+                label="Repository GitHub"
+                description="Nel repository documents, con storico e release; creato tramite pull request, compare qui appena viene unita."
               />
               <RadioCard
                 value="private"

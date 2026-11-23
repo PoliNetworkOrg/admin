@@ -157,6 +157,7 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
       />
       <PageContent>
         <DataTable
+          locale="it"
           label="Bozze"
           columns={columns}
           rows={rows}

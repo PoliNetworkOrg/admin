@@ -8,8 +8,8 @@ are its "Addendum 2026-11-22"). The documents live in PoliNetworkOrg/documents (
 
 The UI is in Italian, the only part of the dashboard that is: the documents, the procedure and the people who use it
 are. Code, comments and commits stay in English. Shared primitives that print their own words (`FormDialog`, `Count`,
-`DateField`) take an Italian variant (`locale="it"`, `placeholder`); a few shared table words ("Actions", pagination)
-stay English.
+`DateField`, `DataTable`, `FileButton`) take an Italian variant (`locale="it"`, `placeholder`); the shared pagination
+stays English.
 
 ## Pages
 
@@ -136,4 +136,5 @@ creation (its fake GitHub merges a pull request after a few seconds), uploads, t
 
 - The editor lists and switches the source files but doesn't add, rename or remove them; new regolamenti go in an
   existing file until it does.
-- A few words of shared primitives stay English: the `DataTable` "Actions" header and the pagination.
+- The pagination of shared tables stays English (no Regolamenti table pages yet); `DataTable` takes `locale="it"` for
+  its own words ("Azioni", "Apri …").

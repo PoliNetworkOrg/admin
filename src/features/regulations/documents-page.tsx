@@ -37,7 +37,7 @@ import { DOCUMENT_KINDS, type DocumentInfo, type DocumentKind, type SyncResult }
 /** One line under each section's title: the kinds are easy to confuse. */
 const KIND_DESCRIPTIONS = {
   regolamento: "La Raccolta dei Regolamenti Interni e gli altri documenti scritti in articoli e commi.",
-  generale: "Pubblici nel repository documents: si modificano in bozza e si pubblicano con una release.",
+  generale: "Nel repository documents: si modificano in bozza e si pubblicano con una release.",
   privato: "Solo nella dashboard, mai su GitHub: documenti scritti da un modello e PDF caricati.",
   consultazione: "Si leggono qui e si modificano solo nel repository documents.",
 } satisfies Record<DocumentKind, string>

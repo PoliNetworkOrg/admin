@@ -300,6 +300,7 @@ export function DocumentPage({
               count={versions.length}
             />
             <DataTable
+              locale="it"
               label={uploaded ? "Versioni caricate" : "Versioni pubblicate"}
               columns={versionColumns}
               rows={versions}
@@ -389,6 +390,7 @@ export function DocumentPage({
             <section className="flex flex-col gap-3" aria-labelledby="drafts-heading">
               <SectionHeading id="drafts-heading" title="Bozze" count={drafts.length} />
               <DataTable
+                locale="it"
                 label="Bozze"
                 columns={draftColumns}
                 rows={drafts}
