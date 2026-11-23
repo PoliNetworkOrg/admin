@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { TRPCClientError } from "@trpc/client"
-import { createRemoteJWKSet, customFetch, decodeJwt, jwtVerify } from "jose"
+import { createRemoteJWKSet, customFetch, decodeJwt, errors, jwtVerify } from "jose"
 import { z } from "zod"
 
 import type { DashboardAccess } from "@/lib/auth"
@@ -67,6 +67,8 @@ function tokenExpiry(token: string) {
 }
 
 let keySet: ReturnType<typeof createRemoteJWKSet> | null = null
+/** jose's codes for a JWKS it could not fetch in time or read, as opposed to a token it refused. */
+const KEYS_UNAVAILABLE = new Set(["ERR_JWKS_TIMEOUT", "ERR_JOSE_GENERIC"])
 
 const profileClaims = z.object({ sub: z.string().min(1), name: z.string().optional(), email: z.string().optional() })
 
@@ -75,24 +77,28 @@ async function verifiedProfile(idToken: string, sub: string) {
   const clientId = process.env.ADMIN_MCP_CLIENT_ID
   if (!clientId) throw new McpCallerError(503, "The admin MCP is not configured on this server.")
   const config = authConfig()
-  const { issuer, jwksUri } = await idpKeys(config)
-  const fetchFromIdp = idpFetch(config)
-  keySet ??= createRemoteJWKSet(new URL(jwksUri), {
-    [customFetch]: (url, options) =>
-      fetchFromIdp(url, { ...options, headers: Object.fromEntries(new Headers(options.headers)), body: undefined }),
-  })
   try {
+    const { issuer, jwksUri } = await idpKeys(config)
+    const fetchFromIdp = idpFetch(config)
+    keySet ??= createRemoteJWKSet(new URL(jwksUri), {
+      [customFetch]: (url, options) =>
+        fetchFromIdp(url, { ...options, headers: Object.fromEntries(new Headers(options.headers)), body: undefined }),
+    })
     const { payload } = await jwtVerify(idToken, keySet, {
       issuer,
       audience: clientId,
       clockTolerance: ID_TOKEN_MAX_AGE_S,
     })
     const claims = profileClaims.parse(payload)
-    if (claims.sub !== sub) throw new Error("The ID token names another account.")
+    if (claims.sub !== sub) throw new errors.JWTClaimValidationFailed("The ID token names another account.", payload)
     return { sub, name: claims.name || sub, email: claims.email ?? "", picture: null }
   } catch (error) {
     console.error(error)
-    throw new McpCallerError(401, "Sign in again: run `polinetwork-admin-mcp login`.")
+    // Only a verdict on the token asks for a new login: unreachable keys say nothing about it.
+    const refused =
+      error instanceof z.ZodError || (error instanceof errors.JOSEError && !KEYS_UNAVAILABLE.has(error.code))
+    if (refused) throw new McpCallerError(401, "Sign in again: run `polinetwork-admin-mcp login`.")
+    throw new McpCallerError(503, "PoliNetwork Auth is temporarily unavailable. Try again shortly.")
   }
 }
 
