@@ -55,6 +55,10 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   from the backend. A secret draft (`secret`) is seen only by its creator and the members they add, permissions
   notwithstanding, and its procedure stays closed until the creator makes it visible (`drafts.reveal`, for good). Every PDF opens in `PdfDialog`. The editor connects to the collab service with a single-use ticket
   from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
+- **MCP** (`src/mcp/`, `docs/mcp.md`): `POST /api/mcp` serves the dashboard's server functions to AI agents as the
+  caller (bearer access token plus the MCP client's ID token), each operation in `src/mcp/operations/<area>.ts` behind
+  its own middleware. `src/mcp/client/` is the downloadable stdio bridge (`pnpm mcp:build`): Node only, nothing from
+  the admin's server code; Account › Sign-in & security links it.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 
 ## Conventions
@@ -71,6 +75,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
 - **Errors**: every `catch` block and `.catch(handler)` logs `console.error(error)` (test). Route errors and not-found
   states come from the router defaults (`RouteError`, `RouteNotFound`), so routes declare no `errorComponent`, and
   `notFoundComponent` only for a specific state (Telegram user detail).
+- **MCP operations**: every new server function in a `*.functions.ts` file gets an operation in
+  `src/mcp/operations/<area>.ts` naming its middleware, or an `MCP_EXCLUDED` entry with the reason (test).
 - **New dashboard page**: add its section to `src/components/shell/nav.ts` (`PageMatch` and `matchPath`); the
   `/dashboard` route derives `document.title` from it, so pages set no title.
 
