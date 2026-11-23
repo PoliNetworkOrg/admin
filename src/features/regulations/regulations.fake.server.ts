@@ -65,6 +65,8 @@ const DOCUMENT_KEY = "rri"
 /** How long a repository document created here waits for its (imaginary) pull request to merge. */
 const CREATION_MS = 20_000
 const AGENT_ID = "agent-preview-user"
+const SECRET_BLOCK = "La bozza è segreta: rendila visibile prima di avviare la procedura."
+const CREATOR_STAYS = "Chi ha creato la bozza segreta ne resta editor."
 const STEP_MS = 2500
 const DIFF_DELAY_MS = 2500
 const AUTO_SNAPSHOT_MS = 5 * 60_000
@@ -236,6 +238,7 @@ function buildStore(): Store {
     kind: "modifica",
     state: "bozza",
     base: versionBase,
+    secret: false,
     createdBy: direttivo,
     createdAt: daysAgo(9),
     updatedAt: daysAgo(1),
@@ -316,7 +319,29 @@ function buildStore(): Store {
     diff: { generation: 1, requestedAt: Date.parse("2026-03-10T10:00:00.000Z"), by: null },
     emanation: { startedAt: Date.parse("2026-03-13T09:10:00.000Z"), startedBy: segretario, delegaId: null },
   })
-  for (const stored of [fondamentale, condotta, emanated])
+  // Secret: the agent's, shared with one Socio, and the Presidente's, which nobody else sees.
+  const riservata = draft({
+    id: "quote-riservata",
+    title: "Quote associative: proposta riservata",
+    secret: true,
+    createdBy: agent,
+    createdAt: daysAgo(3),
+    updatedAt: daysAgo(2),
+    stateChangedAt: daysAgo(3),
+    files: edit(PUBLISHED_FILES, "regolamenti/fondamentale.tex", (text) =>
+      text.replace("entro \\textbf{trenta giorni}", "entro \\textbf{sessanta giorni}")
+    ),
+    assignments: [assign(agent, "editor", agent), assign(user("u-socio-1"), "commenter", agent)],
+  })
+  const presidenza = draft({
+    id: "presidenza-segreta",
+    title: "Riorganizzazione della Presidenza",
+    secret: true,
+    createdBy: presidente,
+    files: PUBLISHED_FILES,
+    assignments: [assign(presidente, "editor", presidente)],
+  })
+  for (const stored of [fondamentale, condotta, emanated, riservata, presidenza])
     stored.snapshots.push({
       id: newId(),
       draftId: stored.id,
@@ -367,7 +392,7 @@ function buildStore(): Store {
       ...others.documents,
     ],
     versions: [latest, old, ...others.versions],
-    drafts: [fondamentale, condotta, emanated, ...others.drafts],
+    drafts: [fondamentale, condotta, riservata, presidenza, emanated, ...others.drafts],
     deleghe: [
       {
         id: newId(),
@@ -915,7 +940,14 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     ) ?? null
   const mayRectify = (documentKey: string) => can("regulations:rectify") || delegaFor(documentKey) !== null
 
+  const isCreator = (draft: StoredDraft) => draft.createdBy.id === me.id
+
   function roleOf(draft: StoredDraft): DraftRole | null {
+    // A secret draft: its creator and the members they added, whatever their permissions.
+    if (draft.secret)
+      return isCreator(draft)
+        ? "editor"
+        : (draft.assignments.find((assignment) => assignment.user.id === me.id)?.role ?? null)
     if (can("regulations:write")) return "editor"
     const assigned = draft.assignments.find((assignment) => assignment.user.id === me.id)?.role
     if (assigned) return assigned
@@ -942,7 +974,26 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     )
   }
 
+  /** As the backend: a secret draft's procedure stays closed, and only its creator manages it. */
   function capabilities(draft: StoredDraft, role: DraftRole): Capabilities {
+    const open = procedureCapabilities(draft, role)
+    if (!draft.secret) return { ...open, reveal: false }
+    return {
+      ...open,
+      assign: isCreator(draft) && !isFinal(draft.state),
+      merge: open.merge && role === "editor",
+      transitions: open.transitions.map((transition) => ({ ...transition, blockedBy: SECRET_BLOCK })),
+      approve: false,
+      emanate: false,
+      emanateBlockedBy: open.emanate || open.emanateBlockedBy ? SECRET_BLOCK : null,
+      regenerateDiff: false,
+      delete: isCreator(draft) && draft.state === "bozza" && draft.emanation === null,
+      rename: role === "editor" && !isFinal(draft.state),
+      reveal: isCreator(draft),
+    }
+  }
+
+  function procedureCapabilities(draft: StoredDraft, role: DraftRole): Omit<Capabilities, "reveal"> {
     const procedure = procedureOf(draft.documentKey)
     const editable = procedure.states.find((state) => state.key === draft.state)?.editable ?? false
     const emanating = draft.emanation !== null && !isFinal(draft.state)
@@ -1030,6 +1081,13 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     }
   }
 
+  /** Its members may not be this draft's. */
+  function secretBase(base: DraftBase): DraftBase {
+    if (base.kind !== "draft") return base
+    const parent = store().drafts.find((candidate) => candidate.id === base.id)
+    return parent?.secret ? { ...base, title: "Bozza segreta" } : base
+  }
+
   function summary(draft: StoredDraft, role: DraftRole): DraftSummary {
     return {
       id: draft.id,
@@ -1037,8 +1095,9 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       title: draft.title,
       kind: draft.kind,
       state: draft.state,
-      base: draft.base,
+      base: secretBase(draft.base),
       myRole: role,
+      secret: draft.secret,
       createdBy: draft.createdBy,
       createdAt: draft.createdAt,
       updatedAt: draft.updatedAt,
@@ -1405,7 +1464,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       const { draft } = visible(draftId)
       return { files: draft.files, structure: draftStructure(draft), sources: sourcesOf(draft.documentKey) }
     },
-    async createDraft({ documentKey, title, from, kind = "modifica" }) {
+    async createDraft({ documentKey, title, from, kind = "modifica", secret = false }) {
       const document = documentOf(documentKey)
       const blocked = notEditableReason(document)
       if (blocked) refuse(blocked)
@@ -1415,7 +1474,9 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       const source =
         from.kind === "version"
           ? store().versions.find((version) => version.id === from.id && version.documentKey === documentKey)
-          : store().drafts.find((draft) => draft.id === from.id && !draft.deleted && draft.documentKey === documentKey)
+          : store().drafts.find(
+              (draft) => draft.id === from.id && !draft.deleted && draft.documentKey === documentKey && roleOf(draft)
+            )
       if (!source) return refuse("La base scelta non esiste.")
       const [latest] = versionsOf(documentKey)
       if (kind === "rettifica" && from.id !== latest?.id) refuse("Una rettifica parte dall'ultima versione emanata.")
@@ -1430,6 +1491,8 @@ function api(viewer: RegulationsViewer): RegulationsApi {
           from.kind === "version"
             ? { kind: "version", id: from.id, label: "label" in source ? source.label : from.id }
             : { kind: "draft", id: from.id, title: "title" in source ? source.title : from.id },
+        // A draft from a secret draft would show its text: it is secret too.
+        secret: secret || ("secret" in source && source.secret),
         createdBy: me,
         createdAt: now(),
         updatedAt: now(),
@@ -1438,7 +1501,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
         entry: document.entry,
         files: source.files,
         baseFiles: source.files,
-        assignments: [],
+        assignments: [{ user: me, role: "editor", assignedBy: me, assignedAt: now() }],
         comments: [],
         seedComments: [],
         snapshots: [],
@@ -1467,6 +1530,13 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).rename) refuse("Non puoi rinominare questa bozza.")
       draft.title = title
+    },
+    async revealDraft({ draftId }) {
+      const { draft } = visible(draftId)
+      if (!draft.secret) refuse("La bozza è già visibile.")
+      if (!isCreator(draft)) refuse("Solo chi ha creato la bozza segreta la rende visibile.")
+      draft.secret = false
+      draft.updatedAt = now()
     },
     async deleteDraft({ draftId }) {
       const { draft, role } = visible(draftId)
@@ -1504,6 +1574,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     async setAssignment({ draftId, userId, role: assigned }) {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).assign) refuse("Non puoi assegnare questa bozza.")
+      if (draft.secret && userId === draft.createdBy.id) refuse(CREATOR_STAYS)
       const target = [...FAKE_USERS, { id: AGENT_ID, name: "Preview Agent", email: "agent@polinetwork.org" }].find(
         (candidate) => candidate.id === userId
       )
@@ -1515,6 +1586,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     async removeAssignment({ draftId, userId }) {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).assign) refuse("Non puoi assegnare questa bozza.")
+      if (draft.secret && userId === draft.createdBy.id) refuse(CREATOR_STAYS)
       draft.assignments = draft.assignments.filter((assignment) => assignment.user.id !== userId)
     },
     async searchUsers({ q }) {
@@ -1778,7 +1850,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       procedure: document.procedureKey ? PROCEDURES[document.procedureKey] : null,
       editable: notEditableReason(document) === null,
       latestVersion: latest ? versionSummary(latest) : null,
-      openDrafts: drafts.filter((draft) => !isFinal(draft.state)).length,
+      openDrafts: drafts.filter((draft) => !draft.secret && !isFinal(draft.state)).length,
       inApproval: current ? { id: current.id, title: current.title } : null,
     }
   }

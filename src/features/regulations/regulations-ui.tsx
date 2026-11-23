@@ -1,3 +1,5 @@
+import { EyeOff } from "lucide-react"
+
 import { StatusBadge } from "@/components/primitives"
 
 import { KIND_LABELS, STATE_LABELS, STATE_TONES } from "./regulations-format"
@@ -14,6 +16,17 @@ export function DraftKindMark({ kind }: { kind: DraftKind }) {
   return (
     <span className="inline-flex h-[22px] items-center rounded-(--pn-r-full) border border-(--pn-line) px-2 text-xs font-medium text-(--pn-fg-muted)">
       {KIND_LABELS[kind]}
+    </span>
+  )
+}
+
+/** "Segreta" next to a title: only its creator and their members see the draft. */
+export function DraftSecretMark({ secret }: { secret: boolean }) {
+  if (!secret) return null
+  return (
+    <span className="inline-flex h-[22px] items-center gap-1 rounded-(--pn-r-full) border border-(--pn-line) px-2 text-xs font-medium text-(--pn-fg-muted)">
+      <EyeOff aria-hidden className="size-3" />
+      Segreta
     </span>
   )
 }
