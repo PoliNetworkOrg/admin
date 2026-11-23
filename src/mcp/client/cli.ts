@@ -117,11 +117,17 @@ async function main() {
     return
   }
   if (command === "logout") {
-    const { revoked } = await auth.logout()
+    const outcome = await auth.logout()
+    if (outcome.status === "revoked") {
+      say("Signed out: the session is no longer valid and the local credentials are removed.")
+      return
+    }
+    const why =
+      outcome.status === "refused"
+        ? `PoliNetwork Auth refused to revoke the session (${outcome.reason})`
+        : "PoliNetwork Auth could not be reached to revoke the session"
     say(
-      revoked
-        ? "Signed out: the session is revoked and the local credentials are removed."
-        : "The local credentials are removed, but PoliNetwork Auth could not be reached to revoke the session: revoke this application's access in your PoliNetwork Auth account."
+      `The local credentials are removed, but ${why}. No copy is left on this computer; the session stays valid at PoliNetwork Auth until it expires, at most 30 days after its last renewal.`
     )
     return
   }

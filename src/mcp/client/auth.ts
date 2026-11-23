@@ -84,6 +84,11 @@ async function discover(oidc: typeof Oidc, config: McpConfig) {
   })
 }
 
+export type LogoutOutcome = { status: "revoked" } | { status: "refused"; reason: string } | { status: "unreachable" }
+
+/** Revocation errors meaning the refresh token was no longer valid, so nothing is left to revoke. */
+const STALE_TOKEN_ERRORS = new Set(["invalid_request", "invalid_grant"])
+
 export type AuthStatus =
   | { signedIn: false; file: string; reason: string }
   | {
@@ -367,19 +372,24 @@ export class AdminMcpAuth {
   }
 
   /** Revokes the refresh token and removes the local credentials, even when Auth cannot be reached. */
-  async logout() {
+  async logout(): Promise<LogoutOutcome> {
     const unlock = await this.lock()
+    const oidc = await loadOidc()
     try {
       const stored = await this.read()
-      const oidc = await loadOidc()
       await oidc.tokenRevocation(await discover(oidc, stored.config), stored.refreshToken, {
         token_type_hint: "refresh_token",
       })
-      return { revoked: true }
+      return { status: "revoked" }
     } catch (error) {
-      if (error instanceof SignInRequired) return { revoked: true }
+      if (error instanceof SignInRequired) return { status: "revoked" }
       console.error(error)
-      return { revoked: false }
+      if (error instanceof oidc.ResponseBodyError) {
+        // Auth answers 400 for a refresh token that was already rotated, revoked or never existed: no session is left.
+        if (STALE_TOKEN_ERRORS.has(error.error)) return { status: "revoked" }
+        return { status: "refused", reason: error.error_description || error.error }
+      }
+      return { status: "unreachable" }
     } finally {
       await rm(this.file, { force: true })
       await unlock()
