@@ -15,9 +15,11 @@ export const getPeople = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).listPeople())
 
+export const getPersonInput = z.object({ id: personIdSchema })
+
 export const getPerson = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
-  .validator(z.object({ id: personIdSchema }))
+  .validator(getPersonInput)
   .handler(async ({ data, context }) => (await peopleApi(context)).getPerson(data.id))
 
 /** People › Admins: current admins with their Capo Admin of reference, and the Capo Admins with their admins. */
