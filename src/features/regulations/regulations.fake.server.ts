@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto"
 import { diffWords } from "diff"
 import * as Y from "yjs"
 
+import { allowedPath } from "./editor/draft-files"
 import { type FileNode, parseDocument, plainTitle } from "./latex-structure"
 import type { RegulationsApi, RegulationsViewer } from "./regulations.api.server"
 import type {
@@ -814,6 +815,45 @@ function insertUpload(document: StoredDocument, pdf: Buffer): StoredVersion {
 
 // Structure, as the backend's parser reports it.
 
+/**
+ * A document's source globs, as documents.json would give them: the entry and `<dir>/*.tex` for each folder of its
+ * latest version (`*.tex` when every file is at the top).
+ */
+function sourcesOf(documentKey: string): string[] {
+  const latest = versionsOf(documentKey)[0]
+  if (!latest) return []
+  const dirs = new Set(
+    Object.keys(latest.files)
+      .filter((path) => path.includes("/"))
+      .map((path) => path.slice(0, path.lastIndexOf("/")))
+  )
+  return dirs.size ? [latest.entry, ...[...dirs].sort().map((dir) => `${dir}/*.tex`)] : ["*.tex"]
+}
+
+/** The text of a draft as the backend checks it: the parser's problems and files outside the document's sources. */
+function draftStructure(draft: { files: Files; entry: string; documentKey: string }): Structure {
+  const structure = structureOf(draft.files, draft.entry)
+  const sources = sourcesOf(draft.documentKey)
+  const stray = sources.length
+    ? Object.keys(draft.files)
+        .filter((path) => !allowedPath(path, sources))
+        .sort()
+    : []
+  if (!stray.length) return structure
+  const allowed = sources.map((glob) => `«${glob}»`).join(", ")
+  const issues: ValidationIssue[] = stray.map((file) => ({
+    file,
+    line: 1,
+    column: 1,
+    offset: 0,
+    endOffset: 0,
+    severity: "error",
+    code: "stray_file",
+    message: `Il file «${file}» non è tra i sorgenti del documento (${allowed}): rinominalo o eliminalo.`,
+  }))
+  return { ...structure, parses: false, issues: [...issues, ...structure.issues] }
+}
+
 function structureOf(files: Files, entry = ENTRY_FILE): Structure {
   const root: StructureNode = {
     id: "documento",
@@ -906,7 +946,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     const procedure = procedureOf(draft.documentKey)
     const editable = procedure.states.find((state) => state.key === draft.state)?.editable ?? false
     const emanating = draft.emanation !== null && !isFinal(draft.state)
-    const parses = structureOf(draft.files, draft.entry).parses
+    const parses = draftStructure(draft).parses
     const writer = can("regulations:write")
     if (procedure.key === "documento") {
       // bozza → pubblicata in one step, "Pubblica", by Presidente or Segretario; nothing to approve or notify.
@@ -1003,7 +1043,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       createdAt: draft.createdAt,
       updatedAt: draft.updatedAt,
       stateChangedAt: draft.stateChangedAt,
-      parses: structureOf(draft.files, draft.entry).parses,
+      parses: draftStructure(draft).parses,
     }
   }
 
@@ -1363,7 +1403,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     },
     async draftFiles({ draftId }) {
       const { draft } = visible(draftId)
-      return { files: draft.files, structure: structureOf(draft.files, draft.entry) }
+      return { files: draft.files, structure: draftStructure(draft), sources: sourcesOf(draft.documentKey) }
     },
     async createDraft({ documentKey, title, from, kind = "modifica" }) {
       const document = documentOf(documentKey)

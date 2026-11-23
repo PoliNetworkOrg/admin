@@ -96,6 +96,14 @@ function, so no IdP token reaches the browser), asked again on every reconnect. 
 for a source hash) and `state` (the draft froze or reopened: the editor drops its provider and Y.Doc and connects again
 with a new ticket). The server inserts missing node ids about 1.5 s after typing stops.
 
+**Files.** Editors add a file ("Nuovo file") or remove one ("Elimina il file", never the main file) in the Y.Doc
+itself, so every member sees it at once and the history keeps it. A new file goes only in a folder of the document's
+`sources` globs (`drafts.files` returns them: the RRI's `regolamenti/*.tex`); its name follows the title until edited,
+a regolamento starts with `\regolamento{Titolo}`, and "Includilo in RRI.tex" adds `\input` after the main file's last
+one, in its style (`\newpage`, `./`, `.tex`). Removing a file also removes the lines that include it. The backend
+reports a file outside the globs as a problem (`stray_file`) and refuses to send to approval, rectify or publish with
+one. Logic: `editor/draft-files.ts`.
+
 ## Agent mode
 
 `regulations.fake.server.ts` answers every procedure with the backend's rules over an in-memory store (seeded by
@@ -134,7 +142,6 @@ creation (its fake GitHub merges a pull request after a few seconds), uploads, t
 
 ## Known gaps
 
-- The editor lists and switches the source files but doesn't add, rename or remove them; new regolamenti go in an
-  existing file until it does.
+- The editor adds and removes source files but doesn't rename them: a rename is a new file and the old one removed.
 - The pagination of shared tables stays English (no Regolamenti table pages yet); `DataTable` takes `locale="it"` for
   its own words ("Azioni", "Apri …").
