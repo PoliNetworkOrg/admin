@@ -10,6 +10,7 @@ import {
   FILE_NAME,
   inputInsertion,
   inputLinesOf,
+  isPlainPath,
 } from "@/features/regulations/editor/draft-files"
 import { createComment, issueCollabTicket } from "@/features/regulations/regulations-editor.functions"
 import { type CollabTicket, draftIdSchema } from "@/features/regulations/regulations.contract"
@@ -324,6 +325,8 @@ async function plan(draftId: string, initial: Map<string, string>, changes: read
         const bare = change.path.slice(change.path.lastIndexOf("/") + 1).replace(/\.tex$/, "")
         if (!change.path.endsWith(".tex") || !FILE_NAME.test(bare))
           fail(`${change.path}: a new file is a .tex file named with letters, digits, - and _.`)
+        if (!isPlainPath(change.path))
+          fail(`${change.path}: a new file's path is its folders and name, without ., .. or backslashes.`)
         sources ??= (await getDraftFiles({ data: { draftId } })).sources
         if (!allowedPath(change.path, sources))
           fail(`${change.path} is outside the document's source folders (${sources.join(", ")}).`)

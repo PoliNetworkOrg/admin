@@ -37,6 +37,13 @@ test("new files go only in the folders of the document's globs", () => {
   assert.equal(allowedPath("alumni.tex", RRI_SOURCES), false)
   assert.equal(allowedPath("regolamenti/sub/alumni.tex", RRI_SOURCES), false)
   assert.equal(allowedPath("anything/at/all.tex", []), true)
+  // Never out of the document's folder, whatever the globs allow.
+  for (const path of ["../evil.tex", "a/../../evil.tex", "/etc/evil.tex", "a//evil.tex", "./evil.tex", "a\\evil.tex"]) {
+    assert.equal(allowedPath(path, []), false, path)
+    assert.equal(allowedPath(path, ["**/*.tex"]), false, path)
+  }
+  assert.equal(allowedPath("regolamenti/../RRI.tex", ["RRI.tex", "regolamenti/**"]), false)
+  assert.equal(allowedPath("a\nb.tex", []), false)
 })
 
 test("file names come from the title, like the RRI's", () => {
