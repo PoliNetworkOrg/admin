@@ -26,36 +26,67 @@ import type { Draft } from "./regulations.contract"
 const TITLE_MAX = 120
 
 /**
- * A draft's own actions, as a "More actions" menu for the page header: rename it and, while it's a bozza, delete it.
+ * A draft's own actions for the page header: rename it and, while it's a bozza, delete it. `menu` groups them in a
+ * "More actions" menu; `inline` shows each as an icon button with its tooltip (the editor's header).
  * Renders nothing when the viewer may do neither.
  */
-export function DraftActions({ draft }: { draft: Pick<Draft, "id" | "title" | "can"> }) {
+export function DraftActions({
+  draft,
+  layout = "menu",
+}: {
+  draft: Pick<Draft, "id" | "title" | "can">
+  layout?: "menu" | "inline"
+}) {
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const renameKey = useOpenGeneration(renameOpen)
   if (!draft.can.rename && !draft.can.delete) return null
   return (
     <>
-      <Menu>
-        <MenuTrigger
-          render={<IconButton label="Altre azioni" icon={Ellipsis} appearance="boxed" className="size-10" />}
-        />
-        <MenuContent>
+      {layout === "inline" ? (
+        <>
           {draft.can.rename ? (
-            <MenuItem onClick={() => setRenameOpen(true)}>
-              <Pencil />
-              Rinomina
-            </MenuItem>
+            <IconButton
+              label="Rinomina"
+              icon={Pencil}
+              appearance="boxed"
+              className="size-10"
+              onClick={() => setRenameOpen(true)}
+            />
           ) : null}
-          {draft.can.rename && draft.can.delete ? <MenuSeparator /> : null}
           {draft.can.delete ? (
-            <MenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Elimina bozza
-            </MenuItem>
+            <IconButton
+              label="Elimina bozza"
+              icon={Trash2}
+              tone="danger"
+              appearance="boxed"
+              className="size-10"
+              onClick={() => setDeleteOpen(true)}
+            />
           ) : null}
-        </MenuContent>
-      </Menu>
+        </>
+      ) : (
+        <Menu>
+          <MenuTrigger
+            render={<IconButton label="Altre azioni" icon={Ellipsis} appearance="boxed" className="size-10" />}
+          />
+          <MenuContent>
+            {draft.can.rename ? (
+              <MenuItem onClick={() => setRenameOpen(true)}>
+                <Pencil />
+                Rinomina
+              </MenuItem>
+            ) : null}
+            {draft.can.rename && draft.can.delete ? <MenuSeparator /> : null}
+            {draft.can.delete ? (
+              <MenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 />
+                Elimina bozza
+              </MenuItem>
+            ) : null}
+          </MenuContent>
+        </Menu>
+      )}
       {draft.can.rename ? (
         <RenameDraftDialog key={renameKey} open={renameOpen} onOpenChange={setRenameOpen} draft={draft} />
       ) : null}
