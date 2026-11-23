@@ -277,9 +277,15 @@ function failure(operation: Operation, error: unknown) {
   if (code === "UNAUTHORIZED" || code === "FORBIDDEN") return text(`${DENIED} (${message})`, true)
   if (code) return text(`${code}: ${message}`, true)
   if (message === "UNAUTHORIZED") return text(DENIED, true)
-  // The backend did not answer with an error of its own: a write may have gone through.
+  // The connection to the backend failed or timed out without an answer: a write may have gone through. Validation
+  // and the backend's own refusals end here too, but those changed nothing.
+  const lostConnection =
+    (error instanceof TRPCClientError && code === null) ||
+    (error instanceof Error && ["TypeError", "AbortError", "TimeoutError"].includes(error.name))
   const uncertain =
-    operation.kind === "read" ? "" : " The change may have been applied anyway: read the record before trying again."
+    operation.kind !== "read" && lostConnection
+      ? " The change may have been applied anyway: read the record before trying again."
+      : ""
   return text(`${message}${uncertain}`, true)
 }
 
