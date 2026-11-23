@@ -335,12 +335,3 @@ Newest last. One line per commit or session: date, what was done, what is next.
   typecheck, build and browser flows. The next rollout step requires review of both PRs and a production-readiness
   check of the register/payments before any activation. Merge, deployment, production reads and account mutations
   remain separate operations.
-
-### Next: local Libro Soci import preview
-
-The user selected local preparation and preview on 20 November 2026. See [`soci-import.md`](soci-import.md) for the
-preparation, acceptance checks and ordered milestones. The source format is CSV. The backend now has a local-only
-normalization CLI with explicit mappings, synthetic examples and private reports. Local snapshot reconciliation is
-the next implementation slice. The preview
-must not reuse admission/registration mutations, which create a paid fee and may write to Microsoft 365. No
-production access, application or automatic-lapse activation is included.
