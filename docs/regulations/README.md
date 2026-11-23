@@ -73,7 +73,9 @@ with a new ticket). The server inserts missing node ids about 1.5 s after typing
 ## Agent mode
 
 `regulations.fake.server.ts` answers every procedure with the backend's rules over an in-memory store (seeded by
-`regulations.fixtures.server.ts`: three drafts, two versions, a delega, a comment). It runs a real Hocuspocus server and
+`regulations.fixtures.server.ts`: three drafts, two versions, the older one an untagged import labelled as the backend
+labels it, `import d08cb57`, a delega, a comment). Version PDFs are compiled from their sources; the differences PDF,
+which the backend typesets, is stood in for by the draft's own compiled text, so the PDF viewer always has a real file. It runs a real Hocuspocus server and
 compiles with the machine's `xelatex` (`regulations.dev-collab.server.ts`), on `PORT + 1` (override with
 `REGULATIONS_DEV_COLLAB_PORT`), only in development builds.
 

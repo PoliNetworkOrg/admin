@@ -626,8 +626,14 @@ Rules that the templates above don't imply.
   The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
-- **Regolamenti**: Documenti is a card per document; a document page lists its versions (the newest carries "In vigore",
-  each has its PDF, release, differences and "Nuova bozza da qui") and its drafts. Bozze adds "Il tuo accesso" for people
+- **Regolamenti**: Documenti is a card per document; a document page lists its versions and its drafts. A version row
+  is the label with "In vigore" on the newest (the label truncates, the badge never shrinks) over its origin as the
+  12px line, then Pubblicata and five action slots, empty where a version lacks one so the icons align: Apri il PDF,
+  Scarica il PDF, Differenze, the GitHub release and "Nuova bozza da qui". PDFs open in `PdfDialog`
+  (`pdf-dialog.tsx`): a dialog as tall as the window (a full-height sheet on phones) around eSign's pdf.js
+  `PdfViewer`, with the page counter, zoom and Download in its toolbar; the pages take the focus, so the keyboard
+  scrolls them, and Esc closes it. The differences page opens its PDF there, and the editor's preview has "Apri a tutta
+  altezza". Bozze adds "Il tuo accesso" for people
   admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
   procedure page is a record with the states as a stepper, disabled transitions showing why, and the emanation's steps
   live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
