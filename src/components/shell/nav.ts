@@ -12,6 +12,7 @@ import {
   FolderKanban,
   FolderTree,
   Globe,
+  HeartHandshake,
   IdCard,
   HardDrive,
   Inbox,
@@ -142,6 +143,7 @@ export type PageMatch =
   | { kind: "web-freshman" }
   | { kind: "web-documents" }
   | { kind: "web-faqs" }
+  | { kind: "web-acknowledgements" }
   | { kind: "web-labels" }
   | { kind: "web-categories" }
   | { kind: "web-category"; path: string }
@@ -374,6 +376,12 @@ const web: Service = {
       icon: CircleQuestionMark,
       path: "/dashboard/web/faqs",
       searchPlaceholder: "Search questions…",
+    },
+    {
+      id: "acknowledgements",
+      title: "Riconoscimenti",
+      icon: HeartHandshake,
+      path: "/dashboard/web/acknowledgements",
     },
     {
       id: "labels",
@@ -614,6 +622,7 @@ export function matchPath(pathname: string): PageMatch {
       if (second === "guides") return { kind: "web-freshman" }
       if (second === "documents") return { kind: "web-documents" }
       if (second === "faqs") return { kind: "web-faqs" }
+      if (second === "acknowledgements") return { kind: "web-acknowledgements" }
       if (second === "group-labels") return { kind: "web-labels" }
       if (second === "groups-by-label") return { kind: "web-categories" }
     }
@@ -685,6 +694,7 @@ export function serviceFor(match: PageMatch): Service {
     case "web-freshman":
     case "web-documents":
     case "web-faqs":
+    case "web-acknowledgements":
     case "web-labels":
     case "web-categories":
     case "web-category":
@@ -766,6 +776,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(web, "documents")
     case "web-faqs":
       return section(web, "faqs")
+    case "web-acknowledgements":
+      return section(web, "acknowledgements")
     case "web-labels":
     case "web-tag":
       return section(web, "labels")

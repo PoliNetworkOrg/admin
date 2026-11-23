@@ -30,6 +30,7 @@ import { Route as DashboardWebFreshmanRouteImport } from './routes/dashboard/web
 import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faqs'
 import { Route as DashboardWebDocumentsRouteImport } from './routes/dashboard/web/documents'
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
+import { Route as DashboardWebAcknowledgementsRouteImport } from './routes/dashboard/web/acknowledgements'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardTelegramCapoRouteImport } from './routes/dashboard/telegram/capo'
@@ -174,6 +175,12 @@ const DashboardWebAssociationsRoute =
   DashboardWebAssociationsRouteImport.update({
     id: '/associations',
     path: '/associations',
+    getParentRoute: () => DashboardWebRoute,
+  } as any)
+const DashboardWebAcknowledgementsRoute =
+  DashboardWebAcknowledgementsRouteImport.update({
+    id: '/acknowledgements',
+    path: '/acknowledgements',
     getParentRoute: () => DashboardWebRoute,
   } as any)
 const DashboardTelegramGroupsRoute = DashboardTelegramGroupsRouteImport.update({
@@ -417,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
@@ -539,6 +548,7 @@ export interface FileRoutesById {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
   '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
     | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
@@ -662,6 +673,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
     | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
@@ -723,6 +735,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
     | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
@@ -915,6 +928,13 @@ declare module '@tanstack/react-router' {
       path: '/associations'
       fullPath: '/dashboard/web/associations'
       preLoaderRoute: typeof DashboardWebAssociationsRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/acknowledgements': {
+      id: '/dashboard/web/acknowledgements'
+      path: '/acknowledgements'
+      fullPath: '/dashboard/web/acknowledgements'
+      preLoaderRoute: typeof DashboardWebAcknowledgementsRouteImport
       parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/telegram/groups': {
@@ -1187,6 +1207,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardWebRouteChildren {
+  DashboardWebAcknowledgementsRoute: typeof DashboardWebAcknowledgementsRoute
   DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
   DashboardWebDocumentsRoute: typeof DashboardWebDocumentsRoute
   DashboardWebFaqsRoute: typeof DashboardWebFaqsRoute
@@ -1200,6 +1221,7 @@ interface DashboardWebRouteChildren {
 }
 
 const DashboardWebRouteChildren: DashboardWebRouteChildren = {
+  DashboardWebAcknowledgementsRoute: DashboardWebAcknowledgementsRoute,
   DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
   DashboardWebDocumentsRoute: DashboardWebDocumentsRoute,
   DashboardWebFaqsRoute: DashboardWebFaqsRoute,
