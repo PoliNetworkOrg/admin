@@ -271,7 +271,6 @@ const DENIED =
 /** Errors the agent can act on, without stack traces or backend internals. */
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 function failure(operation: Operation, error: unknown) {
-  console.error(error)
   if (isRedirect(error)) return text(DENIED, true)
   const code = error instanceof TRPCClientError ? (trpcCodeSchema.safeParse(error.data).data?.code ?? null) : null
   const message = error instanceof Error ? error.message : "The operation failed."
@@ -315,6 +314,7 @@ async function runOperation(caller: McpCaller, kind: OperationKind, args: Record
   try {
     return text(serialize(await runAsMcpRequest(caller, () => operation.run(data))))
   } catch (error) {
+    console.error(error)
     return failure(operation, error)
   }
 }
