@@ -15,9 +15,16 @@ import {
 
 /** Regolamenti writes of the Direttivo (`regulations:write`). */
 
+/** A Direttivo draft is always a `modifica`. */
+export const createDraftInput = createDraftInputSchema.extend({ kind: draftKindSchema.extract(["modifica"]) })
+/** The steps without a delibera. */
+export const transitionDraftInput = draftRefInputSchema.extend({
+  to: stateKeySchema.extract(["bozza", "in_approvazione"]),
+})
+
 export const createDraft = createServerFn({ method: "POST" })
   .middleware([regulationsWriteMiddleware])
-  .validator(createDraftInputSchema.extend({ kind: draftKindSchema.extract(["modifica"]) }))
+  .validator(createDraftInput)
   .handler(async ({ data, context }) => (await regulationsApi(context)).createDraft(data))
 
 /** Adds a member or changes their role. */
@@ -39,5 +46,5 @@ export const applyMerge = createServerFn({ method: "POST" })
 /** State changes without a delibera: "Invia in approvazione" and "Riporta in bozza". */
 export const transitionDraft = createServerFn({ method: "POST" })
   .middleware([regulationsWriteMiddleware])
-  .validator(draftRefInputSchema.extend({ to: stateKeySchema.extract(["bozza", "in_approvazione"]) }))
+  .validator(transitionDraftInput)
   .handler(async ({ data, context }) => (await regulationsApi(context)).transition(data))

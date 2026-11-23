@@ -35,4 +35,6 @@ export const MCP_EXCLUDED = {
   "src/features/auth/auth.functions.ts#getDashboardAccess":
     "Browser session plumbing; whoami describes the MCP caller.",
   "src/features/auth/auth.functions.ts#getIdpAccountUrl": "A link for the browser's account menu.",
+  "src/features/regulations/regulations-editor.functions.ts#issueCollabTicket":
+    "A single-use websocket ticket for the browser's editor; regulations.drafts.readSource, editSource and comments.createOnText ask for one and use it.",
 } satisfies Record<string, string>

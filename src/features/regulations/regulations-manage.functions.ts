@@ -16,10 +16,15 @@ import {
 
 /** Regolamenti steps of the Presidente and the Segretario (`regulations:manage`). */
 
+/** The approval: the target state `approvata` and its delibera. */
+export const approveDraftInput = transitionInputSchema
+  .required({ delibera: true })
+  .extend({ to: stateKeySchema.extract(["approvata"]) })
+
 /** Records the outcome: the body, the day of the vote and, optionally, the verbale. */
 export const approveDraft = createServerFn({ method: "POST" })
   .middleware([regulationsManageMiddleware])
-  .validator(transitionInputSchema.required({ delibera: true }).extend({ to: stateKeySchema.extract(["approvata"]) }))
+  .validator(approveDraftInput)
   .handler(async ({ data, context }) => (await regulationsApi(context)).transition(data))
 
 /**
