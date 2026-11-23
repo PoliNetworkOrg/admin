@@ -50,13 +50,14 @@ function inOrder<T extends { id: number }>(items: T[], ids: number[] | undefined
 }
 
 /** The list after a finished drag, or null when nothing moved. */
-function droppedOrder<T>(event: DragEndEvent, items: T[]) {
+function droppedOrder<T extends { id: number }>(event: DragEndEvent, items: T[]) {
   const { source } = event.operation
   if (event.canceled || !source || !isSortable(source)) return null
-  const { initialIndex, index } = source
-  if (initialIndex === index) return null
+  const { id, index } = source
+  const currentIndex = items.findIndex((item) => item.id === id)
+  if (currentIndex === -1 || currentIndex === index) return null
   const ordered = [...items]
-  const [moved] = ordered.splice(initialIndex, 1)
+  const [moved] = ordered.splice(currentIndex, 1)
   if (moved === undefined) return null
   ordered.splice(index, 0, moved)
   return ordered
@@ -145,7 +146,10 @@ export function DocumentsPage({ categories: loaded }: { categories: DocumentCate
     reorderCount.current += 1
     const request = reorderCount.current
     reorderRequest.current.set(scope, request)
-    flushSync(() => setOptimistic((current) => new Map(current).set(scope, ids)))
+    flushSync(() => {
+      if (scope === "categories" && category && category.id !== selectedId) setSelectedId(category.id)
+      setOptimistic((current) => new Map(current).set(scope, ids))
+    })
     const operation = reorderQueue.current.then(() =>
       scope === "categories"
         ? reorderCategoriesFn({ data: { ids } })
