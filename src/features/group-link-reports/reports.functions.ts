@@ -11,12 +11,14 @@ export const getResolvedGroupLinkReports = createServerFn()
   .middleware([adminMiddleware])
   .handler(({ context }) => context.backend.web.reports.list.query({ statuses: ["resolved", "dismissed"] }))
 
+export const groupLinkReportIdsInput = z.object({ ids: z.array(z.number().int()).min(1) })
+
 export const resolveGroupLinkReport = createServerFn({ method: "POST" })
   .middleware([reportsManageMiddleware])
-  .validator(z.object({ ids: z.array(z.number().int()).min(1) }))
+  .validator(groupLinkReportIdsInput)
   .handler(({ data, context }) => context.backend.web.reports.resolve.mutate(data))
 
 export const dismissGroupLinkReport = createServerFn({ method: "POST" })
   .middleware([reportsManageMiddleware])
-  .validator(z.object({ ids: z.array(z.number().int()).min(1) }))
+  .validator(groupLinkReportIdsInput)
   .handler(({ data, context }) => context.backend.web.reports.dismiss.mutate(data))
