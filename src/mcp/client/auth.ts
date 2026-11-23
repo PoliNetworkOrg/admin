@@ -185,10 +185,19 @@ export class AdminMcpAuth {
     if (process.platform !== "win32" && (stat.mode & 0o077) !== 0) {
       throw new SignInRequired(`${this.file} must be readable only by you (mode 0600). ${LOGIN_HINT}`)
     }
-    const parsed = storedSchema.safeParse(JSON.parse(await readFile(this.file, "utf8")))
-    if (!parsed.success || parsed.data.origin !== this.origin) {
-      throw new SignInRequired(`The credentials for ${this.origin} are invalid. ${LOGIN_HINT}`)
+    const invalid = `The credentials for ${this.origin} are invalid. ${LOGIN_HINT}`
+    let content: z.core.util.JSONType
+    try {
+      content = z.json().parse(JSON.parse(await readFile(this.file, "utf8")))
+    } catch (error) {
+      // Never log the parser's message: Node can quote a piece of the file, which holds the tokens.
+      console.error(
+        new Error(error instanceof Error ? `Unreadable credential file (${error.name})` : "Unreadable file")
+      )
+      throw new SignInRequired(invalid)
     }
+    const parsed = storedSchema.safeParse(content)
+    if (!parsed.success || parsed.data.origin !== this.origin) throw new SignInRequired(invalid)
     return parsed.data
   }
 

@@ -105,6 +105,15 @@ void test("asks for login when there are no credentials, or when they are unsafe
   await store(path, { ...session(), origin: "https://other.example.org" })
   await assert.rejects(auth.credentials(), SignInRequired)
 
+  // A damaged file asks for login too, and nothing of it (it holds tokens) reaches stderr.
+  await writeFile(auth.file, `${JSON.stringify(session()).slice(0, -20)}`, { mode: 0o600 })
+  const logged = []
+  t.mock.method(console, "error", (...args) => logged.push(args.map(String).join(" ")))
+  await assert.rejects(auth.credentials(), (error) => error instanceof SignInRequired && /invalid/.test(error.message))
+  t.mock.restoreAll()
+  assert.equal(logged.length, 1)
+  assert.doesNotMatch(logged[0], /refresh|access|"/)
+
   if (posix) {
     await store(path, session(), 0o644)
     await assert.rejects(auth.credentials(), /mode 0600/)
