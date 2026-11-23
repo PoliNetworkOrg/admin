@@ -21,7 +21,8 @@ polinetwork-admin-mcp login
   your MCP client.
 - `polinetwork-admin-mcp logout`: revokes the session and removes the local credentials.
 - `--admin-url <origin>` (or `POLINETWORK_ADMIN_URL`) points every command at another deployment, with separate
-  credentials; pass it to `login` and to `serve` alike. The default is `https://admin.polinetwork.org`.
+  credentials; pass it to `login` and to `serve` alike. The default is `https://admin.polinetwork.org`. Use it only
+  for a deployment you trust: that origin chooses where you sign in and receives your access token with every message.
 
 Credentials stay in `~/.polinetwork/admin-mcp/` (directory 0700, files 0600, never through a link). Protect it like any
 other saved login. If a refresh was interrupted (a crash, a lost answer), the bridge asks you to run `login` again rather
