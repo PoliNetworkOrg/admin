@@ -222,7 +222,8 @@ function tools(caller: McpCaller) {
       },
       annotations: {
         readOnlyHint: kind === "read",
-        destructiveHint: kind === "destructive",
+        // Per the MCP spec a write that overwrites records is destructive too; only reads are not.
+        destructiveHint: kind !== "read",
         idempotentHint: kind === "read",
         openWorldHint: true,
       },

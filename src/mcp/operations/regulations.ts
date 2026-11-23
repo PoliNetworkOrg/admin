@@ -347,17 +347,19 @@ export const regulationsOperations: Operation[] = [
     description:
       "Create a document from a template (templates.list): repo opens a GitHub pull request (In creazione until merged); private is kept in the backend.",
   }),
-  write("regulations.documents.upload", uploadRegulationDocument, {
+  destructive("regulations.documents.upload", uploadRegulationDocument, {
     guard: "regulationsManageMiddleware",
     input: uploadDocumentFieldsSchema,
     files: [{ field: "file", required: true, description: PDF_FILE }],
-    description: "Carica un PDF: a new private, read-only document whose first version is the uploaded PDF.",
+    description:
+      "Carica un PDF: a new private, read-only document whose first version is the uploaded PDF. It can't be deleted afterwards.",
   }),
-  write("regulations.versions.upload", uploadRegulationVersion, {
+  destructive("regulations.versions.upload", uploadRegulationVersion, {
     guard: "regulationsManageMiddleware",
     input: uploadVersionFieldsSchema,
     files: [{ field: "file", required: true, description: PDF_FILE }],
-    description: "Carica nuova versione: a new version of an uploaded-PDF document.",
+    description:
+      "Carica nuova versione: a new version of an uploaded-PDF document. Versions can't be deleted afterwards.",
   }),
 
   // Segretario (regulations:rectify)

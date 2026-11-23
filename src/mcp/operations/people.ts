@@ -214,7 +214,7 @@ export const peopleOperations = [
     description:
       "Check an invite token (from the /people/invite?token= link the person received): whose record it is for, or why it no longer works.",
   }),
-  write("people.myInvite.accept", acceptPeopleInvite, {
+  destructive("people.myInvite.accept", acceptPeopleInvite, {
     guard: "peopleInviteMiddleware",
     input: inviteTokenInputSchema,
     description:
