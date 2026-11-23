@@ -16,7 +16,7 @@ function subscribe(listener: () => void) {
 }
 
 /**
- * The import from the repository takes minutes and runs in the background: it outlives the Documenti page, so
+ * The import reads the whole repository and runs in the background: it outlives the Documenti page, so
  * leaving and coming back still shows it running, and then what it left out.
  */
 export function useDocumentsSync() {
