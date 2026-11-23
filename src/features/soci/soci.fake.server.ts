@@ -305,7 +305,12 @@ function build(): State {
     }),
   })
   feeHistory(s, records.luca, feeYearOf("2025-12-31"))
-  feeHistory(s, records.elena, current, { [current]: () => openFee(current, "due") })
+  const lastRenewalYear = Number(day.slice(0, 4)) - 1
+  feeHistory(s, records.elena, current, {
+    [current]: () => openFee(current, "due"),
+    // An overdue renewal gives the lapse preview a sample before December as well.
+    [lastRenewalYear]: () => openFee(lastRenewalYear, "due"),
+  })
   // Lapsed: the 2024/25 fee was never paid.
   feeHistory(s, records.paolo, 2024, { 2024: () => openFee(2024, "due") })
   feeHistory(s, records.anna, current, { [current]: () => openFee(current, "exempt") })
@@ -523,6 +528,78 @@ export function fakeSociApi({ socio }: { socio: string }): SociApi {
       if (!changed.length) return
       Object.assign(r, next, { updatedBy: AGENT, updatedAt: now() })
       log(r, `Edited ${changed.join(", ")}`)
+    },
+
+    async end(input) {
+      const s = data()
+      const r = find(s, input.number)
+      if (r.endedOn || r.accountState === "deleted") throw new Error("The socio is not active.")
+      s.soci.delete(r.entraObjectId)
+      Object.assign(r, {
+        endedOn: input.endedOn,
+        endReason: input.endReason,
+        endNote: input.endNote,
+        accountState: "pending_deletion",
+        updatedBy: AGENT,
+        updatedAt: now(),
+      })
+      log(r, `Membership ended on ${input.endedOn} (${input.endReason})${input.endNote ? `: ${input.endNote}` : ""}`)
+    },
+    async restore(input) {
+      const s = data()
+      const r = find(s, input.number)
+      if (!r.endedOn || r.accountState === "deleted" || !s.accounts.some((a) => a.id === r.entraObjectId))
+        throw new Error("This membership cannot be restored.")
+      requireUniqueCode(s, r.codiceFiscale, r)
+      s.soci.add(r.entraObjectId)
+      Object.assign(r, {
+        endedOn: null,
+        endReason: null,
+        endNote: null,
+        accountState: "active",
+        updatedBy: AGENT,
+        updatedAt: now(),
+      })
+      log(r, `Membership restored: ${input.reason}`)
+    },
+    async pendingDeletion() {
+      const s = data()
+      return s.records.filter((r) => r.endedOn && r.accountState === "pending_deletion").map((r) => row(s, r))
+    },
+    async deleteAccount(input) {
+      const s = data()
+      const r = s.records.find((r) => r.entraObjectId === input.entraObjectId)
+      if (!r || !r.endedOn || r.accountState !== "pending_deletion")
+        throw new Error("Only a pending account can be deleted.")
+      s.accounts = s.accounts.filter((a) => a.id !== r.entraObjectId)
+      s.soci.delete(r.entraObjectId)
+      Object.assign(r, { accountState: "deleted", accountDeletedOn: today(), updatedBy: AGENT, updatedAt: now() })
+      log(r, `Microsoft 365 account ${r.mailbox} deleted`)
+    },
+    async lapsePreview() {
+      const s = data()
+      const day = today()
+      const evaluatedOn = day.slice(5, 7) === "12" ? `${Number(day.slice(0, 4)) + 1}-01-01` : day
+      return {
+        enabled: true,
+        evaluatedOn,
+        members: s.records.flatMap((r) => {
+          const fee = r.fees.find((f) => f.year === Number(evaluatedOn.slice(0, 4)) - 1 && f.status === "due")
+          return !r.endedOn && r.accountState === "active" && fee && r.admittedOn <= renewalDeadline(fee.year)
+            ? [
+                {
+                  number: r.number,
+                  firstName: r.firstName,
+                  lastName: r.lastName,
+                  alias: r.alias,
+                  mailbox: r.mailbox,
+                  year: fee.year,
+                  endedOn: renewalDeadline(fee.year),
+                },
+              ]
+            : []
+        }),
+      }
     },
 
     async setNumber(input) {

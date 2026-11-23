@@ -227,6 +227,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
     "src/features/people/people-invite-landing.functions.ts",
     "src/features/soci/soci.functions.ts",
     "src/features/soci/soci-write.functions.ts",
+    "src/features/soci/soci-delete.functions.ts",
     "src/features/soci/soci-self.functions.ts",
     "src/features/regulations/regulations.functions.ts",
     "src/features/regulations/regulations-draft.functions.ts",
@@ -245,7 +246,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
       assert.ok(
         serverFunction.middleware.includes("adminMiddleware") ||
           serverFunction.middleware.some((name) =>
-            /(?:Read|Write|Manage|Create|Self|Appoint|Link|Invite|Sign|Assignee|Rectify)Middleware$/.test(name)
+            /(?:Read|Write|Delete|Manage|Create|Self|Appoint|Link|Invite|Sign|Assignee|Rectify)Middleware$/.test(name)
           ),
         `${file}:${serverFunction.name} must authorize access`
       )
@@ -283,6 +284,7 @@ test("dashboard mutations enforce their exact write scope", async () => {
     ],
     ["peopleLinkMiddleware", ["src/features/people/people-link.functions.ts"]],
     ["peopleInviteMiddleware", ["src/features/people/people-invite-landing.functions.ts"]],
+    ["sociDeleteMiddleware", ["src/features/soci/soci-delete.functions.ts"]],
     ["sociWriteMiddleware", ["src/features/soci/soci-write.functions.ts"]],
     // A socio's own fee and details: `people:self`, no `admin:access`.
     ["peopleSelfMiddleware", ["src/features/soci/soci-self.functions.ts"]],
@@ -355,6 +357,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": ["people:write", "people:link"],
+    "src/features/soci/deletion-page.tsx": "soci:delete",
     "src/features/soci/register-page.tsx": "soci:write",
     "src/features/soci/socio-page.tsx": "soci:write",
     "src/features/soci/fees-page.tsx": "soci:write",
@@ -401,6 +404,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
     "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
+    "src/features/soci/lifecycle-dialogs.tsx": ["endSocio", "restoreSocio", "deleteSocioAccount"],
     "src/features/soci/fee-dialogs.tsx": ["confirmFee", "rejectFee", "markFeePaid"],
     "src/features/soci/my-socio-dialogs.tsx": ["uploadMyReceipt", "completeMyDetails"],
     "src/features/people/person-dialog.tsx": ["createPerson", "updatePerson"],

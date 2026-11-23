@@ -19,6 +19,6 @@ export const Route = createFileRoute("/dashboard/people/soci/")({
 })
 
 function RegisterRoute() {
-  const { register, unregistered } = Route.useLoaderData()
-  return <RegisterPage register={register} unregistered={unregistered} />
+  const { register, unregistered, lapse } = Route.useLoaderData()
+  return <RegisterPage register={register} unregistered={unregistered} lapse={lapse} />
 }

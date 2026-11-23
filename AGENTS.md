@@ -39,6 +39,9 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   Members. Soci › Fees reviews uploaded transfer receipts (Confirm, Reject) and marks fees as paid, also from the socio
   page. My area's Socio card (`soci.me.*`, `people:self`, `soci-self.functions.ts`) shows the signed-in socio's fee, bank
   details, Upload transfer receipt and Complete your details; a socio without a People record sees only that card.
+  End status and Restore require `soci:write`. Deletion pending and its count require `soci:read`; permanent account
+  deletion uses `sociDeleteMiddleware` and `soci:delete`, one mailbox per confirmation. Confirmed changes cannot be
+  repeated when only the following reload failed. Register shows the backend lapse preview when enabled.
   `AGENT_SOCIO` picks the socio My area shows in agent mode. Design: `docs/people/soci.md`.
 - **Regolamenti** (`src/features/regulations/`): every PoliNetwork document, through `regulationsApi(context)`, which
   parses the backend's `regulations.*` responses with `regulations.contract.ts` (a copy of the backend's) and, in agent
