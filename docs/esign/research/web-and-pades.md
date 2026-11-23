@@ -438,9 +438,10 @@ These mechanisms have different input contracts. Actual CIE middleware mechanism
 The CMS core below is a small adaptation of the executed probe. The CMS and PDF sketch blocks were also extracted together, executed in Bun, and used to produce a second two-signature PDF that pyHanko validated. It uses the library's certificate structures, keeps the signed attribute order explicit, and inserts an external signature without invoking a private-key signing API. This is not a complete HTTP service. Durable storage, permission checks, document revision locking, native job confirmation, input limits and certificate trust policy belong around it.
 
 ```ts
+import { createHash, constants, verify, X509Certificate } from "node:crypto"
+
 import * as asn1 from "asn1js"
 import * as pkijs from "pkijs"
-import { createHash, constants, verify, X509Certificate } from "node:crypto"
 
 const SHA256 = "2.16.840.1.101.3.4.2.1"
 const DATA = "1.2.840.113549.1.7.1"

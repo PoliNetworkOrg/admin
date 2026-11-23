@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url"
+
 import tailwindcss from "@tailwindcss/vite"
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import viteReact from "@vitejs/plugin-react"
@@ -6,16 +8,31 @@ import { defineConfig, lazyPlugins } from "vite-plus"
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [".output/**", ".tanstack/**", "src/routeTree.gen.ts", "docs/people/prototype/**"],
+    ignorePatterns: [
+      ".output/**",
+      ".tanstack/**",
+      "src/routeTree.gen.ts",
+      "docs/people/prototype/**",
+      "tools/oxlint/anti-slop/**",
+    ],
     printWidth: 120,
     semi: false,
     sortImports: true,
     trailingComma: "es5",
   },
   lint: {
-    ignorePatterns: [".output/**", ".tanstack/**", "src/routeTree.gen.ts", "docs/people/prototype/**"],
+    ignorePatterns: [
+      ".output/**",
+      ".tanstack/**",
+      "src/routeTree.gen.ts",
+      "docs/people/prototype/**",
+      "tools/oxlint/anti-slop/**",
+    ],
     jsPlugins: [
-      { name: "anti-slop", specifier: "@zap-studio/oxlint/anti-slop" },
+      {
+        name: "anti-slop",
+        specifier: fileURLToPath(new URL("./tools/oxlint/anti-slop/index.ts", import.meta.url)),
+      },
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
     ],
     rules: {

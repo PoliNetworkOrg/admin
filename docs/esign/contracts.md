@@ -165,7 +165,7 @@ browse OneDrive). Requests are visible to their signers and creator.
   `{sub, name, until}` while a signer has a signature open, `until` being when it expires at the latest; else null.
 - `esign.requests.cancel({id})`, `esign.requests.decline({id, reason})`, `esign.requests.retryDelivery({id})`.
 - `esign.drive.access()` (`esign:drives:manage`) → `{drives: [{id, label, request: {roles, permissions}, sign: {roles,
-permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permissions: [{key, name}]}}`;
+  permissions}, updatedBySub, updatedAt}], catalog: {roles: [{key, name}], permissions: [{key, name}]}}`;
   `esign.drive.setAccess({driveId, request, sign})`. A rule names roles and permissions, any of which grants it; an
   empty rule keeps the default (request: `esign:requests:manage`; sign: everyone who signs). `request` covers browsing
   the drive, using it in a request and seeing its requests; `sign` covers being chosen as signer and signing. Requests
