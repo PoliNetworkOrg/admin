@@ -42,7 +42,7 @@ const SORT_TRANSITION = { duration: 160, easing: "cubic-bezier(0.45, 0, 0.2, 1)"
 const CATEGORY_GROUP = "document-categories"
 
 /** `items` in the order of `ids`; items missing from `ids` (just created) keep their place at the end. */
-function inOrder<T extends { id: number }>(items: T[], ids: number[] | undefined) {
+export function inOrder<T extends { id: number }>(items: T[], ids: number[] | undefined) {
   if (!ids) return items
   const byId = new Map(items.map((item) => [item.id, item]))
   const ordered = ids.flatMap((id) => byId.get(id) ?? [])
@@ -50,7 +50,7 @@ function inOrder<T extends { id: number }>(items: T[], ids: number[] | undefined
 }
 
 /** The list after a finished drag, or null when nothing moved. */
-function droppedOrder<T extends { id: number }>(event: DragEndEvent, items: T[]) {
+export function droppedOrder<T extends { id: number }>(event: DragEndEvent, items: T[]) {
   const { source } = event.operation
   if (event.canceled || !source || !isSortable(source)) return null
   const { id, index } = source
