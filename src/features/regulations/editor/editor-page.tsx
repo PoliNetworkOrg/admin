@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button"
 import { useFillHeight } from "@/features/esign/use-fill-height"
 import { cn } from "@/lib/utils"
 
+import { DraftActions } from "../draft-actions"
 import { parseDocument, type StructureNode } from "../latex-structure"
 import { MembersDialog } from "../members-dialog"
 import { downloadPdf, PdfDialog, usePdfDialog } from "../pdf-dialog"
@@ -412,6 +413,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                 Condividi
               </Button>
             ) : null}
+            <DraftActions draft={draft} layout="inline" />
             <Button
               variant="outline"
               className={buttonMotion}
