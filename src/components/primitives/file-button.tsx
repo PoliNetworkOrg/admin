@@ -16,6 +16,8 @@ type FileButtonProps = {
   label?: string
   invalid?: boolean
   id?: string
+  /** Overrides the description, e.g. a `FormField`'s hint and error (`fieldHintId(id)`). */
+  describedBy?: string
   className?: string
   /** The remove button's words in Italian, for the Italian Regolamenti pages. */
   locale?: "en" | "it"
@@ -85,6 +87,7 @@ export function FileButton({
   label = "Choose file",
   invalid = false,
   id,
+  describedBy,
   className,
   locale = "en",
 }: FileButtonProps) {
@@ -101,7 +104,7 @@ export function FileButton({
           accept={accept}
           label={label}
           invalid={invalid}
-          describedBy={hint ? hintId : undefined}
+          describedBy={describedBy ?? (hint ? hintId : undefined)}
           onFiles={(files) => onChange(files[0] ?? null)}
         />
         {file && (
