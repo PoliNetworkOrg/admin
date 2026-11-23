@@ -11,7 +11,9 @@ export const getEsignDriveAccess = createServerFn()
   .middleware([esignDrivesManageMiddleware])
   .handler(({ context }) => context.backend.esign.drive.access.query())
 
+export const setEsignDriveAccessInput = z.object({ driveId: z.string().min(1), request: rule, sign: rule })
+
 export const setEsignDriveAccess = createServerFn({ method: "POST" })
   .middleware([esignDrivesManageMiddleware])
-  .validator(z.object({ driveId: z.string().min(1), request: rule, sign: rule }))
+  .validator(setEsignDriveAccessInput)
   .handler(({ data, context }) => context.backend.esign.drive.setAccess.mutate(data))
