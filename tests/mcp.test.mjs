@@ -105,6 +105,7 @@ function operations(sourceFile) {
       found.push({
         file: sourceFile.fileName,
         kind: node.expression.text,
+        definition: definition.getText(sourceFile),
         name: ts.isStringLiteral(name) ? name.text : null,
         serverFunction: ts.isIdentifier(fn) ? (imported.get(fn.text) ?? null) : null,
         guard: guard && ts.isStringLiteral(guard.initializer) ? guard.initializer.text : null,
@@ -208,5 +209,19 @@ void test("the MCP endpoint resolves the caller before it reads the request body
   assert.ok(
     resolved !== -1 && read !== -1 && resolved < read,
     "handleMcpRequest must resolve the caller before reading the body: an unauthenticated request must not make the server buffer and parse up to MCP_MAX_MESSAGE_BYTES"
+  )
+})
+
+void test("an MCP operation that says it can't be taken back is destructive", async () => {
+  const { registered } = await registry()
+  const irreversible =
+    /can't be (?:undone|reopened|resumed|taken back|made secret again)|not undoable|irreversible|only the Direttivo can change/i
+  const wrong = registered.filter(
+    (operation) => irreversible.test(operation.definition) && operation.kind !== "destructive"
+  )
+  assert.deepEqual(
+    wrong.map((operation) => operation.name),
+    [],
+    "Register these with destructive(): their own description says the change can't be taken back, so the agent must ask first"
   )
 })

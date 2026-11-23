@@ -6,7 +6,7 @@ import {
   resolveGroupLinkReport,
 } from "@/features/group-link-reports/reports.functions"
 
-import { destructive, read, write } from "../operation"
+import { destructive, read } from "../operation"
 
 export const reportsOperations = [
   read("reports.links.listOpen", getPendingGroupLinkReports, {
@@ -18,7 +18,7 @@ export const reportsOperations = [
     guard: "adminMiddleware",
     description: "Resolved and dismissed group link reports.",
   }),
-  write("reports.links.resolve", resolveGroupLinkReport, {
+  destructive("reports.links.resolve", resolveGroupLinkReport, {
     guard: "reportsManageMiddleware",
     input: groupLinkReportIdsInput,
     description:

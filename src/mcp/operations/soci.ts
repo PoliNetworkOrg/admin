@@ -121,7 +121,7 @@ export const sociOperations = [
     description:
       "Upload the caller's transfer receipt for this fee year with the transfer date and amount in cents, replacing one still waiting for review.",
   }),
-  write("soci.me.completeDetails", completeMyDetails, {
+  destructive("soci.me.completeDetails", completeMyDetails, {
     guard: "peopleSelfMiddleware",
     input: completeDetailsInputSchema,
     description:
