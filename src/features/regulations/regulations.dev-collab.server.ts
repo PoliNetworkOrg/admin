@@ -9,7 +9,7 @@ import { Server } from "@hocuspocus/server"
 import * as Y from "yjs"
 
 import type { CompileStatus, Files } from "./regulations.contract"
-import { FAKE_CLASS, FAKE_FONTS_DIR } from "./regulations.fixtures.server"
+import { FAKE_CLASS, FAKE_FONTS_DIR, FAKE_GENERALE_CLASS } from "./regulations.fixtures.server"
 
 /**
  * Agent mode's stand-ins for the collab service and the compile worker, inside the dev server: a Hocuspocus server
@@ -273,13 +273,25 @@ async function xelatex(draftId: string, entry: string, files: Files) {
     await writeFile(join(workdir, path), text)
   }
   await writeFile(join(workdir, "polinetwork-regolamento.cls"), FAKE_CLASS)
-  // The real class loads its fonts from `fonts/` next to the main file.
+  await writeFile(join(workdir, "polinetwork.cls"), FAKE_GENERALE_CLASS)
+  // The real class finds its fonts in `fonts/` next to the main file.
   if (FAKE_FONTS_DIR && !existsSync(join(workdir, "fonts"))) await symlink(FAKE_FONTS_DIR, join(workdir, "fonts"))
   const log = await new Promise<string>((resolve, reject) => {
     const child = spawn(
       "xelatex",
       ["-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error", "-file-line-error", entry],
-      { cwd: workdir, timeout: COMPILE_TIMEOUT_MS, env: { ...process.env, openin_any: "p", openout_any: "p" } }
+      {
+        cwd: workdir,
+        timeout: COMPILE_TIMEOUT_MS,
+        // The documents repository's classes load fonts by file name, from the fonts linked next to the entry.
+        env: {
+          ...process.env,
+          openin_any: "p",
+          openout_any: "p",
+          TTFONTS: ".:./fonts//:",
+          OPENTYPEFONTS: ".:./fonts//:",
+        },
+      }
     )
     let output = ""
     child.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()))

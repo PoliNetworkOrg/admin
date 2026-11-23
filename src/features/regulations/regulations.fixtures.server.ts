@@ -6,7 +6,7 @@ import type { Files, UserMatch } from "./regulations.contract"
 /**
  * Agent mode's sample Regolamenti: an invented Raccolta in the grammar of PoliNetworkOrg/legal (`docs/grammar.md`),
  * the accounts the fake IdP knows, and a stand-in for the `polinetwork-regolamento` class so the dev compiler draws a
- * PDF without the legal repository. With `REGULATIONS_DEV_LEGAL_DIR` pointing at a local checkout of legal, the fake
+ * PDF without the legal repository. With `REGULATIONS_DEV_LEGAL_DIR` pointing at a local checkout of the documents repository (or legal), the fake
  * serves the real RRI sources and compiles them with the real class and fonts instead (they stay on this machine).
  */
 
@@ -152,14 +152,19 @@ function legalCheckout(): LegalCheckout | null {
   const root = process.env.REGULATIONS_DEV_LEGAL_DIR
   if (!root) return null
   const dir = join(root, "rri/latex")
-  const classPath = join(root, "shared/polinetwork-regolamento.cls")
-  if (!existsSync(join(dir, "RRI.tex")) || !existsSync(classPath)) return null
+  // The documents repository keeps the class in `shared/regolamento/`; the old legal layout in `shared/`.
+  const classPath = [
+    join(root, "shared/regolamento/polinetwork-regolamento.cls"),
+    join(root, "shared/polinetwork-regolamento.cls"),
+  ].find((path) => existsSync(path))
+  if (!existsSync(join(dir, "RRI.tex")) || !classPath) return null
+  const fontsDir = [join(root, "shared/regolamento/fonts"), join(dir, "fonts")].find((path) => existsSync(path))
   const files: Files = { "RRI.tex": readFileSync(join(dir, "RRI.tex"), "utf8") }
   for (const name of readdirSync(join(dir, "regolamenti"))
     .filter((file) => file.endsWith(".tex"))
     .sort())
     files[`regolamenti/${name}`] = readFileSync(join(dir, "regolamenti", name), "utf8")
-  return { files, classSource: readFileSync(classPath, "utf8"), fontsDir: join(dir, "fonts") }
+  return { files, classSource: readFileSync(classPath, "utf8"), fontsDir: fontsDir ?? join(dir, "fonts") }
 }
 
 const checkout = legalCheckout()
@@ -177,3 +182,218 @@ export const FAKE_FONTS_DIR = checkout?.fontsDir ?? null
 
 /** Whether the fake serves the invented sample (its scripted drafts and comments only make sense on it). */
 export const USING_SAMPLE = checkout === null
+
+// The other documents of the sample: every kind the dashboard lists besides the RRI.
+
+/** A minimal stand-in for the `polinetwork` class of the generale template: its title macros, plain article layout. */
+export const FAKE_GENERALE_CLASS = String.raw`\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{polinetwork}[2026/11/23 agent-mode stand-in]
+\DeclareOption*{}
+\ProcessOptions\relax
+\LoadClass[a4paper,11pt]{article}
+\RequirePackage{fontspec}
+\RequirePackage[italian]{babel}
+\RequirePackage[hidelinks]{hyperref}
+\RequirePackage[margin=2.4cm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\makeatletter
+\def\pn@title{}\def\pn@subtitle{}\def\pn@date{\today}\def\pn@version{}\def\pn@subject{}\def\pn@recipient{}
+\newcommand\pnTitle[1]{\def\pn@title{#1}}
+\newcommand\pnSubtitle[1]{\def\pn@subtitle{#1}}
+\newcommand\pnDate[1]{\def\pn@date{#1}}
+\newcommand\pnVersion[1]{\def\pn@version{#1}}
+\newcommand\pnSubject[1]{\def\pn@subject{#1}}
+\newcommand\pnRecipient[1]{\def\pn@recipient{#1}}
+\newcommand\pnMakeHeader{{\small PoliNetwork APS}\par\vspace{4pt}{\LARGE\bfseries\pn@title\par}\ifx\pn@subtitle\@empty\else\vspace{2pt}{\large\pn@subtitle\par}\fi\vspace{6pt}\hrule\vspace{12pt}}
+\newcommand\pnMakeMetadata{\begin{tabular}{@{}ll@{}}Data & \pn@date\\\ifx\pn@version\@empty\else Versione & \pn@version\\\fi\end{tabular}\par\vspace{8pt}}
+\makeatother
+`
+
+/** `documents.json`'s skeletons as the backend fills them (`{{TITLE}}`, `{{KEY}}`, `{{DATE}}`): entry `main.tex`. */
+export function skeletonFiles(template: string, title: string, key: string, date: string) {
+  const escaped = title.replace(/[\\{}$&%#_~^]/g, (char) => (char === "\\" ? "\\textbackslash{}" : `\\${char}`))
+  const id = () => Math.random().toString(36).slice(2, 8).padEnd(6, "0")
+  const main =
+    template === "regolamento"
+      ? String.raw`% ${escaped} (${key}): a new document from the "regolamento" template.
+\documentclass{polinetwork-regolamento}
+
+\intestazione{PoliNetwork - ${escaped}}
+
+\begin{document}
+
+\regolamento[id=${id()}]{${escaped}}
+
+\articolo[id=${id()}]{Oggetto}
+\begin{commi}
+  \comma[id=${id()}] Testo del primo comma.
+\end{commi}
+
+\end{document}
+`
+      : String.raw`% ${escaped} (${key}): a new document from the "generale" template, created on ${date}.
+\documentclass[letter]{polinetwork}
+
+\pnTitle{${escaped}}
+
+\begin{document}
+
+\pnMakeHeader
+
+\section{Prima sezione}
+
+Scrivi qui il testo del documento.
+
+\begin{itemize}
+  \item Primo punto
+  \item Secondo punto
+\end{itemize}
+
+\end{document}
+`
+  const files: Files = { "main.tex": main }
+  return { entry: "main.tex", files }
+}
+
+export const GENERALE_SAMPLE = {
+  /** The Guida della Matricola of one academic year, entry `guida-della-matricola.tex`. */
+  guida: (year: string): Files => ({
+    "guida-della-matricola.tex": String.raw`\documentclass{polinetwork}
+
+\pnTitle{Guida della Matricola}
+\pnSubtitle{Anno accademico ${year}}
+
+\begin{document}
+
+\pnMakeHeader
+
+\section{Benvenuto al Politecnico}
+
+Questa guida raccoglie quello che serve nelle prime settimane: dove trovare gli orari, come iscriversi agli esami e quali gruppi Telegram seguire per il proprio corso di studi.
+
+\section{I gruppi di PoliNetwork}
+
+Ogni corso ha il suo gruppo, gestito da studenti volontari. Li trovi tutti su \url{https://polinetwork.org}.
+
+\begin{itemize}
+  \item Gruppi dei corsi di laurea e dei singoli insegnamenti;
+  \item gruppi delle residenze e delle associazioni;
+  \item il gruppo generale degli studenti${year === "2025/26" ? "" : ", con gli annunci della settimana"}.
+\end{itemize}
+
+\section{Servizi online}
+
+I servizi online del Politecnico richiedono il codice persona. Conservalo: serve anche per accedere al Wi-Fi.
+
+\end{document}
+`,
+  }),
+  /** A private document's published text (generale template, entry `main.tex`). */
+  lineeGuida: (): Files => ({
+    "main.tex": String.raw`% Linee guida interne del Direttivo (linee-guida-direttivo): a new document from the "generale" template.
+\documentclass[letter]{polinetwork}
+
+\pnTitle{Linee guida interne del Direttivo}
+
+\begin{document}
+
+\pnMakeHeader
+
+\section{Riunioni}
+
+Il Direttivo si riunisce almeno una volta al mese. L'ordine del giorno è inviato ai componenti tre giorni prima.
+
+\section{Riservatezza}
+
+I dati personali dei Soci discussi nelle riunioni non escono dal Direttivo e non si inoltrano nei gruppi.
+
+\end{document}
+`,
+  }),
+}
+
+/** Statuto and Regolamento Elettorale: self-contained documents of the repository, read-only in the dashboard. */
+export const CONSULTAZIONE_SAMPLES: { key: string; title: string; entry: string; files: Files }[] = [
+  {
+    key: "statuto",
+    title: "Statuto",
+    entry: "main.tex",
+    files: {
+      "main.tex": String.raw`\documentclass[a4paper,11pt]{article}
+\usepackage{fontspec}
+\usepackage[italian]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\begin{document}
+\begin{center}{\LARGE\bfseries Statuto dell'Associazione PoliNetwork APS}\end{center}
+\section*{Art. 1 -- Denominazione e sede}
+È costituita l'associazione di promozione sociale denominata PoliNetwork APS, con sede a Milano.
+\section*{Art. 2 -- Scopo}
+L'Associazione non ha scopo di lucro e persegue finalità civiche, solidaristiche e di utilità sociale a favore degli studenti del Politecnico di Milano.
+\section*{Art. 3 -- Soci}
+Possono essere Soci le persone fisiche che ne condividono gli scopi e versano la quota associativa annuale.
+\section*{Art. 4 -- Organi}
+Sono organi dell'Associazione l'Assemblea dei Soci, il Consiglio Direttivo, il Presidente e il Collegio dei Probiviri.
+\end{document}
+`,
+    },
+  },
+  {
+    key: "elettorale",
+    title: "Regolamento Elettorale Direttivo",
+    entry: "RE.tex",
+    files: {
+      "RE.tex": String.raw`\documentclass[a4paper,11pt]{article}
+\usepackage{fontspec}
+\usepackage[italian]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\begin{document}
+\begin{center}{\LARGE\bfseries Regolamento Elettorale del Consiglio Direttivo}\end{center}
+\section*{Art. 1 -- Elettorato}
+Hanno diritto di voto i Soci in regola con la quota associativa alla data di convocazione dell'Assemblea.
+\section*{Art. 2 -- Candidature}
+Le candidature si presentano al Segretario almeno sette giorni prima dell'Assemblea elettiva.
+\section*{Art. 3 -- Votazione}
+Il voto è personale e segreto. Risultano eletti i candidati che ottengono il maggior numero di preferenze.
+\end{document}
+`,
+    },
+  },
+]
+
+/** Uploaded PDFs: the sample's scans stand in as LaTeX, compiled on first view, so the viewer gets a real file. */
+export const UPLOAD_SAMPLES = {
+  bilancio: [
+    { label: "v2026.04.30", publishedAt: "2026-04-30T17:00:00.000Z", note: "Bozza presentata al Direttivo" },
+    { label: "v2026.05.15", publishedAt: "2026-05-15T18:30:00.000Z", note: "Approvato dall'Assemblea dei Soci" },
+  ].map(({ label, publishedAt, note }) => ({
+    label,
+    publishedAt,
+    entry: "bilancio.tex",
+    files: {
+      "bilancio.tex": String.raw`\documentclass[a4paper,11pt]{article}
+\usepackage{fontspec}
+\usepackage[italian]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\setlength{\parindent}{0pt}
+\begin{document}
+{\LARGE\bfseries Bilancio consuntivo 2025}\par\medskip
+PoliNetwork APS -- ${note}\par\bigskip
+\begin{tabular}{@{}lr@{}}
+\textbf{Entrate} & \\
+Quote associative & 1.240,00 \\
+Contributi & 600,00 \\[6pt]
+\textbf{Uscite} & \\
+Servizi cloud e domini & 712,40 \\
+Eventi & 455,00 \\[6pt]
+\textbf{Avanzo} & 672,60 \\
+\end{tabular}
+\end{document}
+`,
+    },
+  })),
+} satisfies Record<string, { label: string; publishedAt: string; entry: string; files: Files }[]>

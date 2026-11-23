@@ -16,11 +16,11 @@ import { Count, PageBar, PageContent, Toolbar, useCan } from "@/components/shell
 import { Button } from "@/components/ui/button"
 
 import { NewDraftDialog, type NewDraftTarget } from "./new-draft-dialog"
-import { baseLabel, formatDay, ROLE_LABELS } from "./regulations-format"
+import { baseLabel, formatDay, isFinalState, ROLE_LABELS } from "./regulations-format"
 import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
 import type { DocumentInfo, DraftSummary, Me } from "./regulations.contract"
 
-type Filter = "open" | "emanated"
+type Filter = "open" | "closed"
 
 /**
  * Regolamenti › Bozze: every draft for the Direttivo and `regulations:read`; for anyone else, only the drafts they're
@@ -35,13 +35,15 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
   const generation = useOpenGeneration(dialog.open)
   const assignee = !me.permissions.read
 
-  const inFilter = drafts.filter((draft) => (filter === "open") === (draft.state !== "emanata"))
+  const inFilter = drafts.filter((draft) => (filter === "open") === !isFinalState(draft.state))
   const rows = inFilter.filter(
     (draft) =>
       !deferredQuery ||
       [draft.title, draft.createdBy.name].some((value) => value.toLocaleLowerCase().includes(deferredQuery))
   )
-  const open = drafts.filter((draft) => draft.state !== "emanata").length
+  const open = drafts.filter((draft) => !isFinalState(draft.state)).length
+  // Only documents that take drafts (not sola consultazione, uploads or ones still in creation).
+  const draftable = documents.filter((document) => document.editable)
 
   const columns: DataTableColumn<DraftSummary>[] = [
     {
@@ -115,13 +117,13 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
                 Nuova rettifica
               </Button>
             )}
-            {canWrite && documents.length > 0 && (
+            {canWrite && draftable.length > 0 && (
               <Button
                 className={buttonMotion}
                 onClick={() =>
                   setDialog({
                     open: true,
-                    target: { kind: "modifica", documents: documents.map(({ key, title }) => ({ key, title })) },
+                    target: { kind: "modifica", documents: draftable.map(({ key, title }) => ({ key, title })) },
                   })
                 }
               >
@@ -141,7 +143,7 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
                 onValueChange={setFilter}
                 items={[
                   { value: "open", label: "Aperte", count: open },
-                  { value: "emanated", label: "Emanate", count: drafts.length - open },
+                  { value: "closed", label: "Concluse", count: drafts.length - open },
                 ]}
               />
             }
@@ -155,6 +157,7 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
       />
       <PageContent>
         <DataTable
+          locale="it"
           label="Bozze"
           columns={columns}
           rows={rows}
@@ -185,11 +188,11 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
                   </Button>
                 }
               />
-            ) : filter === "emanated" ? (
+            ) : filter === "closed" ? (
               <EmptyState
                 icon={ScrollText}
-                title="Nessuna bozza emanata"
-                text="Le bozze emanate restano qui con la loro cronologia e le differenze."
+                title="Nessuna bozza conclusa"
+                text="Le bozze emanate o pubblicate restano qui con la loro cronologia."
               />
             ) : (
               <EmptyState

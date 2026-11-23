@@ -1,15 +1,30 @@
 import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Download, ExternalLink, FileDiff, FilePlus2, FileText, GitBranch, ScrollText } from "lucide-react"
+import {
+  BookOpen,
+  Download,
+  ExternalLink,
+  FileDiff,
+  FilePlus2,
+  FileText,
+  GitBranch,
+  Lock,
+  ScrollText,
+  Upload,
+} from "lucide-react"
 import { useState } from "react"
 
 import {
   buttonMotion,
+  Chip,
   DataTable,
   type DataTableColumn,
   EmptyState,
   Hint,
   IconButton,
+  InlineAlert,
+  inlineLink,
+  LoadingButton,
   RecordHeader,
   useOpenGeneration,
   RowActions,
@@ -26,10 +41,22 @@ import { failureMessage } from "./regulations-hooks"
 import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
 import type { DocumentInfo, DraftSummary, VersionSummary } from "./regulations.contract"
 import { getVersionPdf } from "./regulations.functions"
+import { UploadVersionDialog } from "./upload-version-dialog"
+
+/** One line under the title for the kinds whose rules differ from the regolamenti's. */
+function kindDescription(document: DocumentInfo) {
+  if (document.kind === "consultazione")
+    return "Si legge qui e si modifica solo nel repository documents: l'importazione ne registra la nuova versione."
+  if (document.origin === "upload") return "Un PDF caricato non si modifica: una nuova versione è un nuovo caricamento."
+  if (document.storage === "private")
+    return "Si scrive in bozza e si pubblica nella dashboard: non va su GitHub e non si notifica nessuno."
+  return undefined
+}
 
 /**
- * A document's published versions, newest first (the first is in force), and its drafts. Versions carry their
- * official PDF, release and differences; drafts open in the editor.
+ * A document's versions, newest first (the first is in force), and its drafts. What the page offers follows the
+ * document's kind: the RRI's full procedure (rettifiche, differences, releases), a documento's drafts and releases, an
+ * uploaded PDF's new uploads, or, for sola consultazione, only reading the PDF. Every PDF opens in the viewer.
  */
 export function DocumentPage({
   document,
@@ -42,7 +69,23 @@ export function DocumentPage({
 }) {
   const canWrite = useCan("regulations:write")
   const canRectify = useCan("regulations:rectify")
+  const canManage = useCan("regulations:manage")
   const pdf = useServerFn(getVersionPdf)
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const uploadGeneration = useOpenGeneration(uploadOpen)
+  const rri = document.procedureKey === "rri"
+  const consultazione = document.kind === "consultazione"
+  const uploaded = document.origin === "upload"
+  // Drafts exist for LaTeX documents with a procedure; new ones only while the backend says it's editable.
+  const hasDrafts = document.procedure !== null && !uploaded
+  const canDraft = canWrite && document.editable
+  // Every row keeps the same slots, so the icons line up whatever a version lacks.
+  const slots = {
+    diff: rri,
+    release: document.storage === "repo" && !consultazione,
+    branch: canDraft,
+  }
+  const slotCount = 2 + Number(slots.diff) + Number(slots.release) + Number(slots.branch)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ open: boolean; target: NewDraftTarget }>({
     open: false,
@@ -52,11 +95,12 @@ export function DocumentPage({
   const openDialog = (target: NewDraftTarget) => setDialog({ open: true, target })
   const latest = versions[0] ?? null
   const viewer = usePdfDialog()
+  const description = kindDescription(document)
 
   function view(version: VersionSummary) {
     viewer.show({
       title: `${document.title} · ${version.label}`,
-      description: `${version.id === latest?.id ? "In vigore · " : ""}${versionOrigin(version)}`,
+      description: `${version.id === latest?.id ? "In vigore · " : ""}${versionOrigin(version)} · ${formatDay(version.publishedAt)}`,
       load: () => pdf({ data: { versionId: version.id } }),
       failure: "Non è stato possibile aprire il PDF.",
     })
@@ -157,7 +201,30 @@ export function DocumentPage({
         context={document.title}
         right={
           <>
-            {canRectify && latest && (
+            {consultazione && latest?.pdfAvailable ? (
+              <>
+                <LoadingButton
+                  variant="outline"
+                  size="default"
+                  icon={Download}
+                  pending={downloading === latest.id}
+                  onClick={() => void download(latest)}
+                >
+                  Scarica il PDF
+                </LoadingButton>
+                <Button className={buttonMotion} onClick={() => view(latest)}>
+                  <FileText aria-hidden />
+                  Apri il PDF
+                </Button>
+              </>
+            ) : null}
+            {uploaded && canManage ? (
+              <Button className={buttonMotion} onClick={() => setUploadOpen(true)}>
+                <Upload aria-hidden />
+                Carica nuova versione
+              </Button>
+            ) : null}
+            {rri && canRectify && latest && document.editable && (
               <Button
                 variant="outline"
                 className={buttonMotion}
@@ -178,7 +245,7 @@ export function DocumentPage({
                 Nuova rettifica
               </Button>
             )}
-            {canWrite && (
+            {canDraft && (
               <Button
                 className={buttonMotion}
                 onClick={() => openDialog({ kind: "modifica", documents: [document], documentKey: document.key })}
@@ -194,20 +261,52 @@ export function DocumentPage({
         <div className="flex flex-col gap-8">
           <RecordHeader
             title={document.title}
-            meta={
-              latest ? `In vigore: versione ${latest.label} · ${versionOrigin(latest)}` : "Nessuna versione pubblicata"
+            badge={
+              document.storage === "private" ? (
+                <Chip>
+                  <Lock aria-hidden className="size-3" />
+                  Privato
+                </Chip>
+              ) : consultazione ? (
+                <Chip>
+                  <BookOpen aria-hidden className="size-3" />
+                  Sola consultazione
+                </Chip>
+              ) : undefined
             }
+            meta={
+              latest
+                ? `In vigore: versione ${latest.label} del ${formatDay(latest.publishedAt)} · ${versionOrigin(latest)}`
+                : "Nessuna versione pubblicata"
+            }
+            description={description}
           />
+          {document.status !== "active" ? (
+            <InlineAlert tone={document.status === "failed" ? "danger" : "info"}>
+              {document.status === "failed"
+                ? (document.creation?.error ?? "La creazione del documento non è riuscita.")
+                : "Il documento è in creazione: si potrà usare appena la sua pull request viene unita."}{" "}
+              {document.creation?.prUrl ? (
+                <a href={document.creation.prUrl} target="_blank" rel="noreferrer" className={inlineLink}>
+                  Apri la pull request
+                </a>
+              ) : null}
+            </InlineAlert>
+          ) : null}
           <section className="flex flex-col gap-3" aria-labelledby="versions-heading">
-            <SectionHeading id="versions-heading" title="Versioni pubblicate" count={versions.length} />
+            <SectionHeading
+              id="versions-heading"
+              title={uploaded ? "Versioni caricate" : "Versioni pubblicate"}
+              count={versions.length}
+            />
             <DataTable
-              label="Versioni pubblicate"
+              locale="it"
+              label={uploaded ? "Versioni caricate" : "Versioni pubblicate"}
               columns={versionColumns}
               rows={versions}
               getRowId={(version) => version.id}
-              actionsWidth={216}
+              actionsWidth={16 + slotCount * 40}
               actions={(version) => (
-                // Every row keeps the same five slots, so the icons line up whatever a version lacks.
                 <RowActions>
                   {version.pdfAvailable ? (
                     <>
@@ -231,7 +330,7 @@ export function DocumentPage({
                       <EmptySlot />
                     </>
                   )}
-                  {version.draftId ? (
+                  {!slots.diff ? null : version.draftId ? (
                     <IconButton
                       label="Differenze"
                       ariaLabel={`Differenze della versione ${version.label}`}
@@ -244,7 +343,7 @@ export function DocumentPage({
                   ) : (
                     <EmptySlot />
                   )}
-                  {version.releaseUrl ? (
+                  {!slots.release ? null : version.releaseUrl ? (
                     <IconButton
                       label="Apri la release su GitHub"
                       ariaLabel={`Apri la release ${version.label} su GitHub`}
@@ -255,7 +354,7 @@ export function DocumentPage({
                   ) : (
                     <EmptySlot />
                   )}
-                  {canWrite && (
+                  {slots.branch && (
                     <IconButton
                       label="Nuova bozza da qui"
                       ariaLabel={`Nuova bozza dalla versione ${version.label}`}
@@ -276,32 +375,49 @@ export function DocumentPage({
                 <EmptyState
                   icon={ScrollText}
                   title="Nessuna versione"
-                  text="Le versioni compaiono qui quando vengono emanate o importate da legal."
+                  text={
+                    uploaded
+                      ? "Le versioni compaiono qui quando si carica un PDF."
+                      : rri
+                        ? "Le versioni compaiono qui quando vengono emanate o importate dal repository."
+                        : "Le versioni compaiono qui quando vengono pubblicate o importate dal repository."
+                  }
                 />
               }
             />
           </section>
-          <section className="flex flex-col gap-3" aria-labelledby="drafts-heading">
-            <SectionHeading id="drafts-heading" title="Bozze" count={drafts.length} />
-            <DataTable
-              label="Bozze"
-              columns={draftColumns}
-              rows={drafts}
-              getRowId={(draft) => draft.id}
-              rowLabel={(draft) => draft.title}
-              rowHref={(draft) => `/dashboard/regulations/drafts/${draft.id}`}
-              empty={
-                <EmptyState
-                  icon={ScrollText}
-                  title="Nessuna bozza"
-                  text="Una bozza parte da una versione pubblicata o da un'altra bozza."
-                />
-              }
-            />
-          </section>
+          {hasDrafts ? (
+            <section className="flex flex-col gap-3" aria-labelledby="drafts-heading">
+              <SectionHeading id="drafts-heading" title="Bozze" count={drafts.length} />
+              <DataTable
+                locale="it"
+                label="Bozze"
+                columns={draftColumns}
+                rows={drafts}
+                getRowId={(draft) => draft.id}
+                rowLabel={(draft) => draft.title}
+                rowHref={(draft) => `/dashboard/regulations/drafts/${draft.id}`}
+                empty={
+                  <EmptyState
+                    icon={ScrollText}
+                    title="Nessuna bozza"
+                    text="Una bozza parte da una versione pubblicata o da un'altra bozza."
+                  />
+                }
+              />
+            </section>
+          ) : null}
         </div>
       </PageContent>
       <PdfDialog {...viewer.props} />
+      {uploaded && canManage ? (
+        <UploadVersionDialog
+          key={`upload-${uploadGeneration}`}
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          document={document}
+        />
+      ) : null}
       <NewDraftDialog
         key={generation}
         open={dialog.open}
