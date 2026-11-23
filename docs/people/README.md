@@ -15,15 +15,16 @@ Everything an agent needs to build, or continue building, the People area of the
 > (#155), then Soci › Fees and My area's Socio card (#156), which replaced the Receipts and fee-card mockups. Only the
 > census remains a mockup.
 
-| File                           | What it is                                                                               |
-| ------------------------------ | ---------------------------------------------------------------------------------------- |
-| [`brief.md`](brief.md)         | The original brief, verbatim                                                             |
-| [`decisions.md`](decisions.md) | What was settled after the brief: owner decisions, navigation, per-page rules, roles     |
-| [`contract.md`](contract.md)   | The `people.*` backend contract the dashboard codes against                              |
-| [`soci.md`](soci.md)           | Phase 2 (#144): the Soci register, fees, lapse and emails, as agreed on 9 November 2026  |
-| [`fees.md`](fees.md)           | The old fees and receipts design, superseded by `soci.md`; reference only                |
-| [`plan.md`](plan.md)           | Phases, checklist and progress log: **start here to know what is done and what is next** |
-| [`prototype/`](prototype/)     | The clickable prototype's source (structure and copy reference only)                     |
+| File                               | What it is                                                                               |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`brief.md`](brief.md)             | The original brief, verbatim                                                             |
+| [`decisions.md`](decisions.md)     | What was settled after the brief: owner decisions, navigation, per-page rules, roles     |
+| [`contract.md`](contract.md)       | The `people.*` backend contract the dashboard codes against                              |
+| [`soci.md`](soci.md)               | Phase 2 (#144): the Soci register, fees, lapse and emails, as agreed on 9 November 2026  |
+| [`soci-import.md`](soci-import.md) | Local preview of the Libro Soci CSV import (backend #152), before any application        |
+| [`fees.md`](fees.md)               | The old fees and receipts design, superseded by `soci.md`; reference only                |
+| [`plan.md`](plan.md)               | Phases, checklist and progress log: **start here to know what is done and what is next** |
+| [`prototype/`](prototype/)         | The clickable prototype's source (structure and copy reference only)                     |
 
 ## Continuing the work
 
