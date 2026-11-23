@@ -48,6 +48,7 @@ export type DashboardPath = Extract<keyof FileRoutesByTo, `/dashboard${string}`>
 
 export type ServiceId =
   | "overview"
+  | "associations"
   | "people"
   | "telegram"
   | "whatsapp"
@@ -115,6 +116,8 @@ export type Service = {
 
 export type PageMatch =
   | { kind: "overview" }
+  | { kind: "association-portal" }
+  | { kind: "association-detail"; id: string }
   | { kind: "account" }
   | { kind: "account-me" }
   | { kind: "people-overview" }
@@ -357,13 +360,6 @@ const web: Service = {
   path: "/dashboard/web/projects",
   sections: [
     { id: "projects", title: "Projects", icon: FolderKanban, path: "/dashboard/web/projects" },
-    {
-      id: "associations",
-      title: "Associations",
-      icon: Users,
-      path: "/dashboard/web/associations",
-      searchPlaceholder: "Search associations…",
-    },
     { id: "freshman", title: "Freshman", icon: BookOpen, path: "/dashboard/web/freshman" },
     {
       id: "faqs",
@@ -456,6 +452,23 @@ const regulations: Service = {
   ],
 }
 
+const associations: Service = {
+  id: "associations",
+  title: "Associazioni",
+  short: "Associazioni",
+  icon: UsersRound,
+  path: "/dashboard/associations",
+  sections: [
+    {
+      id: "portal",
+      title: "Le mie associazioni",
+      icon: UsersRound,
+      path: "/dashboard/associations",
+      selfService: true,
+    },
+  ],
+}
+
 const reports: Service = {
   id: "reports",
   title: "Reports",
@@ -485,6 +498,7 @@ const reports: Service = {
 /** Rail order: Overview, services with sections, then Account. */
 export const services: Service[] = [
   overview,
+  associations,
   people,
   telegram,
   whatsapp,
@@ -553,6 +567,8 @@ export function matchPath(pathname: string): PageMatch {
   const [head, second, third, ...rest] = segments
 
   if (head === undefined) return { kind: "overview" }
+  if (head === "associations" && third === undefined)
+    return second ? { kind: "association-detail", id: second } : { kind: "association-portal" }
   if (head === "account" && second === undefined) return { kind: "account" }
   if (head === "account" && second === "me" && third === undefined && rest.length === 0) return { kind: "account-me" }
 
@@ -647,6 +663,9 @@ export function matchPath(pathname: string): PageMatch {
 
 export function serviceFor(match: PageMatch): Service {
   switch (match.kind) {
+    case "association-portal":
+    case "association-detail":
+      return associations
     case "overview":
     case "not-found":
       return overview
@@ -711,6 +730,9 @@ export function serviceFor(match: PageMatch): Service {
 /** The panel section a page belongs to. Deep pages return their parent section (see `isDeepPage`). */
 export function sectionFor(match: PageMatch): Section | null {
   switch (match.kind) {
+    case "association-portal":
+    case "association-detail":
+      return section(associations, "portal")
     case "overview":
     case "not-found":
       return null
@@ -797,6 +819,7 @@ export function sectionFor(match: PageMatch): Section | null {
 /** Deep pages are reached from a section but are not themselves in the panel. */
 export function isDeepPage(match: PageMatch): boolean {
   return (
+    match.kind === "association-detail" ||
     match.kind === "telegram-user" ||
     match.kind === "web-category" ||
     match.kind === "web-tag" ||

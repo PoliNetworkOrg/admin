@@ -15,7 +15,7 @@ import {
   refreshTokens,
   revokeRefreshToken,
 } from "@/server/oidc.server"
-import { agentPermissions, canEnterDashboard, isAgentModeEnabled } from "@/server/permissions"
+import { agentPermissions, isAgentModeEnabled } from "@/server/permissions"
 import {
   AuthUnavailableError,
   ensureFreshSession,
@@ -212,28 +212,14 @@ export async function loadAccess(session: RequestSession, backend: BackendClient
 
   const result = await backend.me.access.query()
   const user = { ...session.user, telegramId: result.telegramId }
-  const admitted =
-    canEnterDashboard(result.permissions) || (!result.stale && (await hasRegulationsAccess(session.accessToken)))
+  // Any signed-in account may apply to represent an association. Navigation and server functions still gate
+  // internal services; a stale permission snapshot never admits an operator or applicant.
+  const admitted = !result.stale
   const access: DashboardAccess = admitted
     ? { status: "authorized", user, permissions: result.permissions }
     : { status: "forbidden", user, stale: result.stale }
   cacheAccess(session.key, access, now)
   return access
-}
-
-/**
- * Whether someone without `admin:access` or `people:self` has a way into Regolamenti: a draft they're assigned to, or a
- * delega to rectify (`regulations.me.get`, open to any signed-in account). A failure denies.
- */
-async function hasRegulationsAccess(accessToken: string | null) {
-  try {
-    const { backendRegulationsApi } = await import("@/features/regulations/regulations.api.server")
-    const me = await backendRegulationsApi(accessToken).getMe()
-    return me.assignedDrafts + me.deleghe > 0
-  } catch (error) {
-    console.error(error)
-    return false
-  }
 }
 
 function redirectResponse(location: string, cookies: string[], status = 303) {

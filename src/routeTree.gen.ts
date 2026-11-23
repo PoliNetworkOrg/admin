@@ -19,8 +19,10 @@ import { Route as DashboardWebRouteImport } from './routes/dashboard/web'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AssociationsInviteRouteImport } from './routes/associations/invite'
 import { Route as DashboardRegulationsIndexRouteImport } from './routes/dashboard/regulations/index'
 import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
+import { Route as DashboardAssociationsIndexRouteImport } from './routes/dashboard/associations/index'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
@@ -46,6 +48,7 @@ import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esig
 import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
+import { Route as DashboardAssociationsIdRouteImport } from './routes/dashboard/associations/$id'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
@@ -118,6 +121,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssociationsInviteRoute = AssociationsInviteRouteImport.update({
+  id: '/associations/invite',
+  path: '/associations/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRegulationsIndexRoute =
   DashboardRegulationsIndexRouteImport.update({
     id: '/regulations/',
@@ -129,6 +137,12 @@ const DashboardPeopleIndexRoute = DashboardPeopleIndexRouteImport.update({
   path: '/people/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssociationsIndexRoute =
+  DashboardAssociationsIndexRouteImport.update({
+    id: '/associations/',
+    path: '/associations/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardAccountIndexRoute = DashboardAccountIndexRouteImport.update({
   id: '/account/',
   path: '/account/',
@@ -256,6 +270,11 @@ const DashboardAzureMembersRoute = DashboardAzureMembersRouteImport.update({
 const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   id: '/azure/groups',
   path: '/azure/groups',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAssociationsIdRoute = DashboardAssociationsIdRouteImport.update({
+  id: '/associations/$id',
+  path: '/associations/$id',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAccountMeRoute = DashboardAccountMeRouteImport.update({
@@ -387,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/associations/invite': typeof AssociationsInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -394,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
+  '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -419,6 +440,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/associations/': typeof DashboardAssociationsIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -446,6 +468,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/associations/invite': typeof AssociationsInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -453,6 +476,7 @@ export interface FileRoutesByTo {
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
+  '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -478,6 +502,7 @@ export interface FileRoutesByTo {
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
+  '/dashboard/associations': typeof DashboardAssociationsIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -507,6 +532,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/associations/invite': typeof AssociationsInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -514,6 +540,7 @@ export interface FileRoutesById {
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
+  '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -539,6 +566,7 @@ export interface FileRoutesById {
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/associations/': typeof DashboardAssociationsIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
@@ -569,6 +597,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/unauthorized'
+    | '/associations/invite'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -576,6 +605,7 @@ export interface FileRouteTypes {
     | '/people/invite'
     | '/dashboard/'
     | '/dashboard/account/me'
+    | '/dashboard/associations/$id'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -601,6 +631,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account/'
+    | '/dashboard/associations/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
     | '/api/esign/agent/$'
@@ -628,6 +659,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/unauthorized'
+    | '/associations/invite'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -635,6 +667,7 @@ export interface FileRouteTypes {
     | '/people/invite'
     | '/dashboard'
     | '/dashboard/account/me'
+    | '/dashboard/associations/$id'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -660,6 +693,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account'
+    | '/dashboard/associations'
     | '/dashboard/people'
     | '/dashboard/regulations'
     | '/api/esign/agent/$'
@@ -688,6 +722,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/unauthorized'
+    | '/associations/invite'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -695,6 +730,7 @@ export interface FileRouteTypes {
     | '/people/invite'
     | '/dashboard/'
     | '/dashboard/account/me'
+    | '/dashboard/associations/$id'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -720,6 +756,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
     | '/dashboard/account/'
+    | '/dashboard/associations/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
     | '/api/esign/agent/$'
@@ -749,6 +786,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  AssociationsInviteRoute: typeof AssociationsInviteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
@@ -828,6 +866,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/associations/invite': {
+      id: '/associations/invite'
+      path: '/associations/invite'
+      fullPath: '/associations/invite'
+      preLoaderRoute: typeof AssociationsInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/regulations/': {
       id: '/dashboard/regulations/'
       path: '/regulations'
@@ -840,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/people'
       fullPath: '/dashboard/people/'
       preLoaderRoute: typeof DashboardPeopleIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/associations/': {
+      id: '/dashboard/associations/'
+      path: '/associations'
+      fullPath: '/dashboard/associations/'
+      preLoaderRoute: typeof DashboardAssociationsIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/account/': {
@@ -1015,6 +1067,13 @@ declare module '@tanstack/react-router' {
       path: '/azure/groups'
       fullPath: '/dashboard/azure/groups'
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/associations/$id': {
+      id: '/dashboard/associations/$id'
+      path: '/associations/$id'
+      fullPath: '/dashboard/associations/$id'
+      preLoaderRoute: typeof DashboardAssociationsIdRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/account/me': {
@@ -1199,6 +1258,7 @@ interface DashboardRouteChildren {
   DashboardWebRoute: typeof DashboardWebRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAccountMeRoute: typeof DashboardAccountMeRoute
+  DashboardAssociationsIdRoute: typeof DashboardAssociationsIdRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
@@ -1218,6 +1278,7 @@ interface DashboardRouteChildren {
   DashboardTelegramGroupsRoute: typeof DashboardTelegramGroupsRoute
   DashboardWhatsappGroupsRoute: typeof DashboardWhatsappGroupsRoute
   DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
+  DashboardAssociationsIndexRoute: typeof DashboardAssociationsIndexRoute
   DashboardPeopleIndexRoute: typeof DashboardPeopleIndexRoute
   DashboardRegulationsIndexRoute: typeof DashboardRegulationsIndexRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
@@ -1242,6 +1303,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardWebRoute: DashboardWebRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAccountMeRoute: DashboardAccountMeRoute,
+  DashboardAssociationsIdRoute: DashboardAssociationsIdRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,
@@ -1261,6 +1323,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTelegramGroupsRoute: DashboardTelegramGroupsRoute,
   DashboardWhatsappGroupsRoute: DashboardWhatsappGroupsRoute,
   DashboardAccountIndexRoute: DashboardAccountIndexRoute,
+  DashboardAssociationsIndexRoute: DashboardAssociationsIndexRoute,
   DashboardPeopleIndexRoute: DashboardPeopleIndexRoute,
   DashboardRegulationsIndexRoute: DashboardRegulationsIndexRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
@@ -1295,6 +1358,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  AssociationsInviteRoute: AssociationsInviteRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,

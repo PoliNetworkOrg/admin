@@ -4,7 +4,7 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
 
 ## Architecture
 
-- **Routes** (`src/routes/`): `/dashboard` loads `me.access` via the BFF and requires `admin:access`. The route context
+- **Routes** (`src/routes/`): `/dashboard` loads a fresh `me.access` via the BFF. Authenticated applicants can open Associazioni; internal areas retain their exact permissions. The route context
   carries display user data and permissions, never tokens. Navigation and mutation controls use exact permissions.
 - **Auth**: `/auth/login`, `/auth/callback` and POST `/auth/logout` implement OIDC with PKCE/state/nonce through
   `openid-client`. ID tokens are signature-checked. Tokens remain in the dedicated Redis server session store.
@@ -55,6 +55,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   from the backend. Every PDF opens in `PdfDialog`. The editor connects to the collab service with a single-use ticket
   from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
+
+- **Associazioni** (`src/features/association-portal/`): register, representatives and review; see `docs/associations/README.md`. The shell admits every signed-in account with a fresh `me.access`, so any function using `dashboardUserMiddleware` must add its own permission check; `associationSelfMiddleware` grants none. Operator commands (`operatorActions` in `portal.contract.ts`) go through `reviewPortalAssociation` (`web:content:write`); `changePortalAssociation` accepts only `applicantActions`. The backend checks membership on every call. UI copy is Italian.
 
 ## Conventions
 

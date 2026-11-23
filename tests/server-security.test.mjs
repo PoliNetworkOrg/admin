@@ -4,11 +4,6 @@ import test from "node:test"
 
 import ts from "typescript"
 
-import {
-  associationLinksInput,
-  associationSaveErrorMessage,
-  parseCreateAssociationForm,
-} from "../src/features/associations/associations.validation.ts"
 import { agentUserAgent } from "../src/features/esign/agent.ts"
 import { isValidLabelSegment } from "../src/features/group-labels/label-tree.ts"
 import { parseGuideForm } from "../src/features/guides/guides.validation.ts"
@@ -200,8 +195,9 @@ test("WhatsApp group links require a real HTTPS invite code", () => {
 
 test("dashboard server functions attach their scoped authorization middleware", async () => {
   const adminFunctionFiles = [
+    "src/features/association-portal/portal.functions.ts",
+    "src/features/association-portal/portal-review.functions.ts",
     "src/features/dashboard/overview.functions.ts",
-    "src/features/associations/associations.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/azure/groups.functions.ts",
     "src/features/esign/esign.functions.ts",
@@ -257,6 +253,8 @@ test("dashboard mutations enforce their exact write scope", async () => {
   // Mutations that join two domains list every middleware they need.
   const combinedScopes = {}
   const entries = [
+    ["associationSelfMiddleware", ["src/features/association-portal/portal.functions.ts"]],
+    ["webContentWriteMiddleware", ["src/features/association-portal/portal-review.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
     ["esignDrivesManageMiddleware", ["src/features/esign/drives.functions.ts"]],
@@ -267,7 +265,6 @@ test("dashboard mutations enforce their exact write scope", async () => {
     [
       "webContentWriteMiddleware",
       [
-        "src/features/associations/associations.functions.ts",
         "src/features/guides/guides.functions.ts",
         "src/features/projects/projects.functions.ts",
         "src/features/faqs/faqs.functions.ts",
@@ -336,7 +333,6 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/telegram/user-detail/profile.tsx": "tg:grants:manage",
     "src/features/telegram/groups-page.tsx": ["tg:groups:manage", "groups:labels:write"],
     "src/features/whatsapp/whatsapp-groups-page.tsx": ["wa:groups:manage", "groups:labels:write"],
-    "src/features/associations/associations-page.tsx": "web:content:write",
     "src/features/faqs/faqs-page.tsx": "web:content:write",
     "src/features/group-labels/group-labels-page.tsx": "groups:labels:write",
     "src/features/groups-by-label/categories-page.tsx": "groups:labels:write",
@@ -398,8 +394,10 @@ test("session middleware marks identity-dependent responses private", async () =
 test("event handlers integrate protected server-function redirects with the router", async () => {
   const consumers = {
     "src/components/telegram/create-grant-dialog.tsx": ["createTelegramGrant", "findTelegramUser"],
-    "src/features/associations/associations-page.tsx": ["createAssociation", "editAssociation", "deleteAssociation"],
-    "src/features/associations/association-links-dialog.tsx": ["editAssociationLinks"],
+    "src/features/association-portal/portal-ui.tsx": ["uploadPortalLogo"],
+    "src/features/association-portal/portal-index.tsx": ["createPortalAssociation", "changePortalAssociation"],
+    "src/features/association-portal/portal-detail.tsx": ["changePortalAssociation", "reviewPortalAssociation"],
+    "src/routes/associations/invite.tsx": ["acceptPortalInvitation"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
     "src/features/soci/fee-dialogs.tsx": ["confirmFee", "rejectFee", "markFeePaid"],
     "src/features/soci/my-socio-dialogs.tsx": ["uploadMyReceipt", "completeMyDetails"],
@@ -564,50 +562,6 @@ test("project validation accepts safe fields and supported logos", () => {
   assert.throws(() => parseProjectForm(oversized), /LOGO_TOO_LARGE/)
 })
 
-test("association validation accepts bounded image uploads and strict public links", () => {
-  const valid = new FormData()
-  valid.set("name", " Test association ")
-  valid.set("descriptionIt", "Descrizione")
-  valid.set("descriptionEn", "Description")
-  valid.set("logo", new File(["<svg />"], "logo.svg", { type: "image/svg+xml" }))
-  assert.equal(parseCreateAssociationForm(valid).name, "Test association")
-
-  const wrongType = new FormData()
-  wrongType.set("name", "Test association")
-  wrongType.set("descriptionIt", "Descrizione")
-  wrongType.set("descriptionEn", "Description")
-  wrongType.set("logo", new File([new Uint8Array(8)], "logo.gif", { type: "image/gif" }))
-  assert.throws(() => parseCreateAssociationForm(wrongType), /INVALID_LOGO_TYPE/)
-
-  const oversized = new FormData()
-  oversized.set("name", "Test association")
-  oversized.set("descriptionIt", "Descrizione")
-  oversized.set("descriptionEn", "Description")
-  oversized.set("logo", new File([new Uint8Array(1024 * 1024 + 1)], "logo.png", { type: "image/png" }))
-  assert.throws(() => parseCreateAssociationForm(oversized), /LOGO_TOO_LARGE/)
-
-  const validLinks = {
-    id: 1,
-    links: {
-      email: "hello@example.org",
-      website: "https://example.org",
-      facebook: null,
-      instagram: null,
-      tiktok: null,
-      x: null,
-      youtube: null,
-      telegram: null,
-      linkedin: null,
-      spotify: null,
-    },
-  }
-  assert.equal(associationLinksInput.parse(validLinks).links.website, "https://example.org")
-  assert.throws(
-    () => associationLinksInput.parse({ ...validLinks, links: { ...validLinks.links, website: "not a URL" } }),
-    /Invalid URL/
-  )
-})
-
 test("web content save errors explain actionable validation failures", () => {
   assert.equal(projectSaveErrorMessage(new Error("INVALID_LINK")), "Enter a valid HTTP or HTTPS project URL.")
   assert.equal(projectSaveErrorMessage("INVALID_LINK"), "Enter a valid HTTP or HTTPS project URL.")
@@ -620,41 +574,18 @@ test("web content save errors explain actionable validation failures", () => {
     "The project could not be saved. Check your permissions and try again."
   )
   assert.equal(projectSaveErrorMessage(new Error("LOGO_TOO_LARGE")), "The logo must be no larger than 1 MB.")
-  assert.equal(
-    associationSaveErrorMessage(new Error("INVALID_DESCRIPTIONEN")),
-    "Enter an English description no longer than 20,000 characters."
-  )
-  assert.equal(
-    associationSaveErrorMessage(new Error("INVALID_LOGO_TYPE")),
-    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
-  )
-  assert.equal(
-    associationSaveErrorMessage(new Error("INVALID_FILE_TYPE")),
-    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
-  )
-  assert.equal(
-    associationSaveErrorMessage({
-      message: "Input validation failed",
-      data: { zodError: { properties: { logo: { errors: ["Too big: expected value to be <= 1048576"] } } } },
-    }),
-    "Choose a JPG, PNG, or SVG logo no larger than 1 MB."
-  )
 })
 
-test("project and association mutations forward FormData to the backend", async () => {
-  const [projectsSource, associationsSource] = await Promise.all([
-    readFile(new URL("../src/features/projects/projects.functions.ts", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/associations/associations.functions.ts", import.meta.url), "utf8"),
-  ])
+test("project mutations forward FormData to the backend", async () => {
+  const projectsSource = await readFile(
+    new URL("../src/features/projects/projects.functions.ts", import.meta.url),
+    "utf8"
+  )
 
-  for (const source of [projectsSource, associationsSource]) {
-    assert.match(source, /new FormData\(\)/)
-    assert.doesNotMatch(source, /Buffer\.from/)
-  }
+  assert.match(projectsSource, /new FormData\(\)/)
+  assert.doesNotMatch(projectsSource, /Buffer\.from/)
   assert.match(projectsSource, /addProject\.mutate\(formData/)
   assert.match(projectsSource, /editProject\.mutate\(formData/)
-  assert.match(associationsSource, /addAssociation\.mutate\(formData/)
-  assert.match(associationsSource, /editAssociation\.mutate\(formData/)
 })
 
 test("every caught runtime error is written to the console", async () => {
