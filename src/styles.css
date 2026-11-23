@@ -541,6 +541,10 @@ tr:focus-visible {
   color: var(--pn-danger-fg);
 }
 
+[data-sonner-toast].app-toast[data-type="loading"] [data-icon] {
+  color: var(--pn-fg-muted);
+}
+
 [data-sonner-toast].app-toast [data-button] {
   height: 28px;
   padding: 0 10px;

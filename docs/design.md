@@ -368,7 +368,8 @@ Grant date/time fields use the calendar and time wheels on touch devices too, wi
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
 (`appToast.success/info/warning/error`, never raw `toast`) confirm actions; untinted, tone on the icon only, at most
-three, never infinite, no "Undo".
+three, no "Undo", never infinite but for a task that runs in the background for minutes: `appToast.loading` until it
+ends, then its outcome in the same toast (`id`), an error kept until dismissed.
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is

@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react"
+import { CircleCheck, CircleX, Info, LoaderCircle, TriangleAlert } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
@@ -7,6 +7,7 @@ const icons = {
   info: <Info className="size-4" />,
   warning: <TriangleAlert className="size-4" />,
   error: <CircleX className="size-4" />,
+  loading: <LoaderCircle className="size-4 animate-spin" />,
 }
 
 /** The app's one Toaster: bottom-right, three visible, untinted `app-toast` surfaces. */

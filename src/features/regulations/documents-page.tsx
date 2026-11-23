@@ -21,13 +21,15 @@ import {
   IconButton,
   InlineAlert,
   SectionHeading,
+  Spinner,
   StatusBadge,
   useOpenGeneration,
 } from "@/components/primitives"
-import { PageBar, PageContent, useCan } from "@/components/shell"
+import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+import { setDocumentsSync, useDocumentsSync } from "./documents-sync"
 import { NewDocumentDialog } from "./new-document-dialog"
 import { DOCUMENT_KIND_LABELS, formatDay } from "./regulations-format"
 import { failureMessage, useRefreshAfter } from "./regulations-hooks"
@@ -64,7 +66,7 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
   const create = useServerFn(createRegulationDocument)
   const refresh = useRefreshAfter()
   const [syncOpen, setSyncOpen] = useState(false)
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const { running: syncing, result: syncResult } = useDocumentsSync()
   const [newOpen, setNewOpen] = useState(false)
   const generation = useOpenGeneration(newOpen)
   const [retrying, setRetrying] = useState<DocumentInfo | null>(null)
@@ -91,15 +93,23 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
       ),
   })).filter((group) => group.documents.length > 0)
 
+  /** Runs in the background: the dialog closes at once and one toast follows the import until it ends. */
   async function runSync() {
+    setDocumentsSync({ running: true, result: null })
+    const toastId = appToast.loading("Importazione dei documenti in corso…")
     let result: SyncResult
     try {
       result = await sync()
     } catch (caught) {
       console.error(caught)
-      throw new Error(failureMessage(caught, "Non è stato possibile importare i documenti."), { cause: caught })
+      setDocumentsSync({ running: false })
+      appToast.error(failureMessage(caught, "Non è stato possibile importare i documenti."), {
+        id: toastId,
+        duration: Infinity,
+      })
+      return
     }
-    setSyncResult(result)
+    setDocumentsSync({ result })
     const changes = [
       result.imported.length ? plural(result.imported.length, "documento nuovo", "documenti nuovi") : null,
       result.updated.length ? plural(result.updated.length, "aggiornato", "aggiornati") : null,
@@ -107,8 +117,10 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
     await refresh(
       changes.length
         ? `Importazione completata: ${changes.join(", ")}.`
-        : "Importazione completata: nessun documento nuovo o cambiato."
+        : "Importazione completata: nessun documento nuovo o cambiato.",
+      toastId
     )
+    setDocumentsSync({ running: false })
   }
 
   async function runRetry() {
@@ -131,8 +143,8 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
         right={
           canManage ? (
             <>
-              <Button variant="outline" className={buttonMotion} onClick={() => setSyncOpen(true)}>
-                <RefreshCw aria-hidden />
+              <Button variant="outline" className={buttonMotion} disabled={syncing} onClick={() => setSyncOpen(true)}>
+                {syncing ? <Spinner /> : <RefreshCw aria-hidden />}
                 Importa dal repository
               </Button>
               <Button className={buttonMotion} onClick={() => setNewOpen(true)}>
@@ -196,7 +208,9 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
         description="Legge documents.json e i sorgenti attuali del repository documents: registra i documenti nuovi e una nuova versione di quelli di sola consultazione cambiati. Le bozze aperte non si toccano."
         confirmLabel="Importa"
         cancelLabel="Annulla"
-        onConfirm={runSync}
+        onConfirm={async () => {
+          runSync().catch((error) => console.error(error))
+        }}
       />
       <ConfirmDialog
         open={retryOpen}
@@ -221,7 +235,7 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
   )
 }
 
-/** What the last import left out and why: it stays until the page is left, as it may need action. */
+/** What the last import left out and why: it stays until the next import, as it may need action. */
 function SkippedAlert({ result }: { result: SyncResult }) {
   return (
     <InlineAlert tone="warning">

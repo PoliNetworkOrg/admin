@@ -45,8 +45,9 @@ Every section but Bozze also needs `admin:access`, like the rest of the dashboar
   (repository: a pull request, the document listed "In creazione" with its link until it merges, then active; the list
   reloads every 15 s meanwhile; a closed one is "Non creato", with "Crea di nuovo") or private (opened at once); "Carica
   un PDF" makes a private read-only document. The key is a slug of the title until edited, checked like the backend.
-- **Import.** "Importa dal repository" runs `documents.sync` and lists what it skipped, with the backend's reason, above
-  the sections until the page is left.
+- **Import.** "Importa dal repository" runs `documents.sync` in the background (`documents-sync.ts`, it takes minutes):
+  the dialog closes at once, a loading toast becomes the outcome when it ends, even on another page, and the button
+  stays disabled meanwhile. What it skipped, with the backend's reason, shows above the sections until the next import.
 - **PDFs.** Every PDF opens in `PdfDialog` (versions, the latest of a sola consultazione document, uploads, the
   editor's preview "Apri a tutta altezza", the differences), with Download in its toolbar.
 - Pages act on the document's `editable`, the draft's `can` and the IdP permissions, never on a kind alone.
