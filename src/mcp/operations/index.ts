@@ -1,4 +1,5 @@
 import type { Operation } from "../operation"
+import { acknowledgementsOperations } from "./acknowledgements"
 import { esignOperations } from "./esign"
 import { labelsOperations } from "./labels"
 import { microsoft365Operations } from "./microsoft365"
@@ -21,6 +22,7 @@ export const OPERATIONS: readonly Operation[] = [
   ...whatsappOperations,
   ...labelsOperations,
   ...websiteOperations,
+  ...acknowledgementsOperations,
   ...reportsOperations,
   ...microsoft365Operations,
   ...peopleOperations,
