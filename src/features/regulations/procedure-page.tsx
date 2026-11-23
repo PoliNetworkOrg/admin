@@ -1,6 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Check, FileCheck2, FileDiff, GitMerge, Landmark, PenLine, Send, Undo2, Users } from "lucide-react"
+import { Check, Eye, FileCheck2, FileDiff, GitMerge, Landmark, PenLine, Send, Undo2, Users } from "lucide-react"
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from "react"
 
 import {
@@ -24,7 +24,7 @@ import { ApproveDialog } from "./approve-dialog"
 import { DraftActions } from "./draft-actions"
 import { MembersDialog } from "./members-dialog"
 import { EmanationCard } from "./procedure-emanation"
-import { emanateRectification, retryEmanation } from "./regulations-draft.functions"
+import { emanateRectification, retryEmanation, revealDraft } from "./regulations-draft.functions"
 import {
   BODY_LABELS,
   baseLabel,
@@ -38,7 +38,7 @@ import {
 } from "./regulations-format"
 import { failureMessage, useRefreshAfter } from "./regulations-hooks"
 import { emanateDraft, withdrawApproval } from "./regulations-manage.functions"
-import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "./regulations-ui"
 import { transitionDraft } from "./regulations-write.functions"
 import type { Assignment, DocumentInfo, Draft, Emanation, StateKey } from "./regulations.contract"
 import { getEmanation } from "./regulations.functions"
@@ -190,12 +190,14 @@ export function ProcedurePage({
   const emanate = useServerFn(emanateDraft)
   const emanateRettifica = useServerFn(emanateRectification)
   const retry = useServerFn(retryEmanation)
+  const reveal = useServerFn(revealDraft)
   const fetchEmanation = useServerFn(getEmanation)
 
   const [pendingTransition, setPendingTransition] = useState<Transition | null>(null)
   const [transitionOpen, setTransitionOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
   const [emanateOpen, setEmanateOpen] = useState(false)
+  const [revealOpen, setRevealOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [emanation, setEmanation] = useState(loadedEmanation)
   const [retrying, setRetrying] = useState(false)
@@ -253,6 +255,18 @@ export function ProcedurePage({
       throw new Error(failureMessage(caught, "Non è stato possibile cambiare lo stato. Riprova."), { cause: caught })
     }
     await refresh((transitionText(draft.state, to) ?? TRANSITION_TEXT[to]).done)
+  }
+
+  async function runReveal() {
+    try {
+      await reveal({ data: { draftId: draft.id } })
+    } catch (caught) {
+      console.error(caught)
+      throw new Error(failureMessage(caught, "Non è stato possibile rendere visibile la bozza. Riprova."), {
+        cause: caught,
+      })
+    }
+    await refresh("Bozza resa visibile.")
   }
 
   async function runEmanation() {
@@ -350,13 +364,21 @@ export function ProcedurePage({
               <>
                 <DraftStateBadge state={draft.state} label={stateLabel} />
                 <DraftKindMark kind={draft.kind} />
+                <DraftSecretMark secret={draft.secret} />
               </>
             }
             meta={`${KIND_LABELS[draft.kind]} da ${baseLabel(draft.base)} · creata da ${draft.createdBy.name} il ${formatDay(draft.createdAt)}`}
           />
 
-          {draft.deadlines.length || draft.parses === false ? (
+          {draft.deadlines.length || draft.parses === false || draft.secret ? (
             <div className="flex flex-col gap-2">
+              {draft.secret ? (
+                <InlineAlert tone="info">
+                  {draft.can.reveal
+                    ? "Bozza segreta: la vedete solo tu e i membri che aggiungi, non chi ha accesso ai Regolamenti. La procedura parte quando la rendi visibile."
+                    : `Bozza segreta: la vedono solo ${draft.createdBy.name} e i membri che aggiunge, non chi ha accesso ai Regolamenti. La procedura parte quando la rende visibile.`}
+                </InlineAlert>
+              ) : null}
               {draft.parses === false && draft.state === "bozza" ? (
                 <InlineAlert tone="warning">
                   {documento
@@ -388,9 +410,15 @@ export function ProcedurePage({
               <SectionCard title="Procedura">
                 <div className="flex flex-col gap-4">
                   <Stepper draft={draft} />
-                  {plain.length || approval || draft.can.emanate || draft.can.emanateBlockedBy ? (
+                  {plain.length || approval || draft.can.emanate || draft.can.emanateBlockedBy || draft.can.reveal ? (
                     <div className="flex flex-col gap-3 border-t border-(--pn-line) pt-4">
                       <div className="flex flex-wrap gap-2">
+                        {draft.can.reveal ? (
+                          <Button className={buttonMotion} onClick={() => setRevealOpen(true)}>
+                            <Eye data-icon="inline-start" />
+                            Rendi visibile
+                          </Button>
+                        ) : null}
                         {draft.can.emanate ? (
                           <Button className={buttonMotion} onClick={() => setEmanateOpen(true)}>
                             <EmanateIcon data-icon="inline-start" />
@@ -399,7 +427,11 @@ export function ProcedurePage({
                         ) : draft.can.emanateBlockedBy ? (
                           <Hint label={draft.can.emanateBlockedBy}>
                             <span tabIndex={0} className="inline-flex rounded-(--pn-r-3)">
-                              <Button className={buttonMotion} disabled>
+                              <Button
+                                variant={draft.can.reveal ? "outline" : "default"}
+                                className={buttonMotion}
+                                disabled
+                              >
                                 <EmanateIcon data-icon="inline-start" />
                                 {emanateLabel}
                               </Button>
@@ -409,7 +441,7 @@ export function ProcedurePage({
                         {approval ? (
                           <TransitionButton
                             option={approval}
-                            primary={!draft.can.emanate}
+                            primary={!draft.can.emanate && !draft.can.reveal}
                             onClick={() => setApproveOpen(true)}
                           />
                         ) : null}
@@ -417,7 +449,7 @@ export function ProcedurePage({
                           <TransitionButton
                             key={option.to}
                             option={option}
-                            primary={!approval && !draft.can.emanate && option.to !== "bozza"}
+                            primary={!approval && !draft.can.emanate && !draft.can.reveal && option.to !== "bozza"}
                             onClick={() => {
                               setPendingTransition(option)
                               setTransitionOpen(true)
@@ -425,14 +457,15 @@ export function ProcedurePage({
                           />
                         ))}
                       </div>
-                      {draft.can.emanateBlockedBy ? (
+                      {/* A secret draft's reason is the alert above; the buttons keep it as their hint. */}
+                      {draft.can.emanateBlockedBy && !draft.secret ? (
                         <p className="text-[13px] text-(--pn-fg-muted)">
                           <span className="font-medium text-(--pn-fg)">{emanateLabel}:</span>{" "}
                           {draft.can.emanateBlockedBy}
                         </p>
                       ) : null}
                       {[approval, ...plain].map((option) =>
-                        option?.blockedBy ? (
+                        option?.blockedBy && !draft.secret ? (
                           <p key={option.to} className="text-[13px] text-(--pn-fg-muted)">
                             <span className="font-medium text-(--pn-fg)">{option.label}:</span> {option.blockedBy}
                           </p>
@@ -562,6 +595,19 @@ export function ProcedurePage({
         icon={EmanateIcon}
         onConfirm={runEmanation}
       />
+      {draft.can.reveal ? (
+        <ConfirmDialog
+          open={revealOpen}
+          onOpenChange={setRevealOpen}
+          title="Rendere visibile la bozza?"
+          description={`«${draft.title}» compare in Bozze per chi ha accesso ai Regolamenti (il Direttivo), che la può leggere e modificare, e la procedura si apre. Non torna segreta.`}
+          confirmLabel="Rendi visibile"
+          cancelLabel="Annulla"
+          tone="primary"
+          icon={Eye}
+          onConfirm={runReveal}
+        />
+      ) : null}
       <ApproveDialog open={approveOpen} onOpenChange={setApproveOpen} draft={draft} />
       {draft.can.assign ? (
         <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} draft={draft} members={members} />

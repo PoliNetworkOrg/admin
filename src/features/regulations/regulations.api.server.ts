@@ -92,6 +92,8 @@ export type RegulationsApi = {
   createDraft: (input: In<typeof createDraftInputSchema>) => Promise<{ id: string }>
   renameDraft: (input: In<typeof renameDraftInputSchema>) => Promise<void>
   deleteDraft: (input: DraftRef) => Promise<void>
+  /** A secret draft becomes visible to `regulations:read`, for good: its creator only. */
+  revealDraft: (input: DraftRef) => Promise<void>
   transition: (input: In<typeof transitionInputSchema>) => Promise<void>
   listAssignments: (input: DraftRef) => Promise<Assignment[]>
   setAssignment: (input: In<typeof setAssignmentInputSchema>) => Promise<void>
@@ -166,6 +168,7 @@ export function backendRegulationsApi(accessToken: string | null): RegulationsAp
     createDraft: async (input) => createdSchema.parse(await client.mutation("regulations.drafts.create", input)),
     renameDraft: (input) => mutate("drafts.rename", input),
     deleteDraft: (input) => mutate("drafts.delete", input),
+    revealDraft: (input) => mutate("drafts.reveal", input),
     transition: (input) => mutate("drafts.transition", input),
     listAssignments: (input) => query("assignments.list", input, assignmentSchema.array()),
     setAssignment: (input) => mutate("assignments.set", input),

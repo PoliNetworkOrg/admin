@@ -500,6 +500,7 @@ test("event handlers integrate protected server-function redirects with the rout
       "emanateDraft",
       "emanateRectification",
       "retryEmanation",
+      "revealDraft",
     ],
     "src/features/regulations/approve-dialog.tsx": ["approveDraft"],
     "src/features/regulations/diff-page.tsx": ["regenerateDiff"],

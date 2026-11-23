@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 
 import { NewDraftDialog, type NewDraftTarget } from "./new-draft-dialog"
 import { baseLabel, formatDay, isFinalState, ROLE_LABELS } from "./regulations-format"
-import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "./regulations-ui"
 import type { DocumentInfo, DraftSummary, Me } from "./regulations.contract"
 
 type Filter = "open" | "closed"
@@ -57,6 +57,7 @@ export function DraftsPage({ drafts, me, documents }: { drafts: DraftSummary[]; 
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate font-medium">{draft.title}</span>
             <DraftKindMark kind={draft.kind} />
+            <DraftSecretMark secret={draft.secret} />
           </span>
           <span className="truncate text-xs text-(--pn-fg-muted)">di {draft.createdBy.name}</span>
         </span>

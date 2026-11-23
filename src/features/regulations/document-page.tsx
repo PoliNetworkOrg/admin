@@ -38,7 +38,7 @@ import { NewDraftDialog, type NewDraftTarget } from "./new-draft-dialog"
 import { downloadPdf, PdfDialog, usePdfDialog } from "./pdf-dialog"
 import { baseLabel, formatDay, versionOrigin } from "./regulations-format"
 import { failureMessage } from "./regulations-hooks"
-import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "./regulations-ui"
 import type { DocumentInfo, DraftSummary, VersionSummary } from "./regulations.contract"
 import { getVersionPdf } from "./regulations.functions"
 import { UploadVersionDialog } from "./upload-version-dialog"
@@ -165,6 +165,7 @@ export function DocumentPage({
             <span className="truncate font-medium">{draft.title}</span>
           </Hint>
           <DraftKindMark kind={draft.kind} />
+          <DraftSecretMark secret={draft.secret} />
         </span>
       ),
     },

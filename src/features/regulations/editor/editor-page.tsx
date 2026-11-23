@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils"
 import { parseDocument, type StructureNode } from "../latex-structure"
 import { MembersDialog } from "../members-dialog"
 import { downloadPdf, PdfDialog, usePdfDialog } from "../pdf-dialog"
-import { DraftKindMark, DraftStateBadge } from "../regulations-ui"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "../regulations-ui"
 import type {
   Assignment,
   CommentThread,
@@ -431,6 +431,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
               <h1 className="min-w-0 truncate text-[22px]/8 font-semibold tracking-[-0.01em]">{draft.title}</h1>
               <DraftStateBadge state={draft.state} label={stateLabel} />
               <DraftKindMark kind={draft.kind} />
+              <DraftSecretMark secret={draft.secret} />
               <ConnectionState status={collab.status} />
               {collab.peers.length > 0 ? (
                 <AvatarGroup

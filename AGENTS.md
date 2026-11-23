@@ -52,7 +52,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   PDFs, `regulations:rectify` rettifiche and Deleghe. Per-draft access (viewer, commenter, editor) and deleghe are
   backend data: `regulations.me.get` admits an account without `admin:access` to Regolamenti › Bozze only, draft-scoped
   server functions use `regulationsAssigneeMiddleware`, and pages act on the document's `editable` and the draft's `can`
-  from the backend. Every PDF opens in `PdfDialog`. The editor connects to the collab service with a single-use ticket
+  from the backend. A secret draft (`secret`) is seen only by its creator and the members they add, permissions
+  notwithstanding, and its procedure stays closed until the creator makes it visible (`drafts.reveal`, for good). Every PDF opens in `PdfDialog`. The editor connects to the collab service with a single-use ticket
   from a server function, never a token. UI copy is Italian. Details: `docs/regulations/README.md`.
 - **Shared UI**: `src/components/shell`, `src/components/primitives`, `src/components/ui`.
 

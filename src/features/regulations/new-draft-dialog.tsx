@@ -66,6 +66,7 @@ export function NewDraftDialog({
     target.kind === "modifica" && target.from ? `${target.from.kind}:${target.from.id}` : null
   )
   const [title, setTitle] = useState(rettifica ? `Rettifica del ${formatDay(todayInRome())}` : "")
+  const [secret, setSecret] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   // A rettifica starts from the latest version, which `me.rectifiable` names; a modifica lists versions and drafts.
@@ -98,6 +99,8 @@ export function NewDraftDialog({
       ? `version:${latest.latestVersionId}`
       : null
     : (from ?? bases[0]?.value ?? null)
+  // A draft from a secret draft carries its text: the backend makes it secret too.
+  const fromSecret = !rettifica && data?.drafts.some((draft) => chosen === `draft:${draft.id}` && draft.secret)
   const titleError = submitted && !title.trim() ? "Scrivi un titolo." : undefined
 
   async function submit() {
@@ -108,7 +111,7 @@ export function NewDraftDialog({
     const base = kind === "draft" ? { kind: "draft" as const, id } : { kind: "version" as const, id }
     let created: { id: string }
     try {
-      const input = { documentKey, title: title.trim(), from: base }
+      const input = { documentKey, title: title.trim(), from: base, secret: secret || fromSecret === true }
       created = rettifica
         ? await rectify({ data: { ...input, kind: "rettifica" } })
         : await create({ data: { ...input, kind: "modifica" } })
@@ -117,7 +120,7 @@ export function NewDraftDialog({
       throw new Error(failureMessage(caught, "Non è stato possibile creare la bozza. Riprova."), { cause: caught })
     }
     onOpenChange(false)
-    appToast.success(rettifica ? "Rettifica creata." : "Bozza creata.")
+    appToast.success(rettifica ? "Rettifica creata." : secret || fromSecret ? "Bozza segreta creata." : "Bozza creata.")
     await navigate({ to: "/dashboard/regulations/drafts/$draftId", params: { draftId: created.id } })
   }
 
@@ -181,6 +184,28 @@ export function NewDraftDialog({
             {bases.map((base) => (
               <RadioCard key={base.value} value={base.value} label={base.label} description={base.description} />
             ))}
+          </RadioCardGroup>
+        )}
+        {fromSecret ? (
+          <p className="text-[13px] text-(--pn-fg-muted)">
+            Parte da una bozza segreta, quindi è segreta anche lei: la vedete solo tu e i membri che aggiungi.
+          </p>
+        ) : (
+          <RadioCardGroup
+            label="Chi la vede"
+            value={secret ? "secret" : "visible"}
+            onValueChange={(value) => setSecret(value === "secret")}
+          >
+            <RadioCard
+              value="visible"
+              label="Visibile"
+              description="Chi ha accesso ai Regolamenti (il Direttivo) e i membri che aggiungi."
+            />
+            <RadioCard
+              value="secret"
+              label="Segreta"
+              description="Solo tu e i membri che aggiungi. La procedura parte quando la rendi visibile, e non torna segreta."
+            />
           </RadioCardGroup>
         )}
       </div>
