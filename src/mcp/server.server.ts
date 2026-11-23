@@ -1,4 +1,4 @@
-import { isRedirect } from "@tanstack/react-router"
+import { isNotFound, isRedirect } from "@tanstack/react-router"
 import { TRPCClientError } from "@trpc/client"
 import { z } from "zod"
 
@@ -272,6 +272,7 @@ const DENIED =
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 function failure(operation: Operation, error: unknown) {
   if (isRedirect(error)) return text(DENIED, true)
+  if (isNotFound(error)) return text("NOT_FOUND: no such record.", true)
   const code = error instanceof TRPCClientError ? (trpcCodeSchema.safeParse(error.data).data?.code ?? null) : null
   const message = error instanceof Error ? error.message : "The operation failed."
   if (code === "UNAUTHORIZED" || code === "FORBIDDEN") return text(`${DENIED} (${message})`, true)
