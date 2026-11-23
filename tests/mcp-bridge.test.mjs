@@ -284,3 +284,38 @@ void test("refuses a message larger than the admin accepts without sending it", 
   await client.close()
   assert.equal(admin.received.length, 1)
 })
+
+void test("passes on only the answers to the requests it sent, one each", async (t) => {
+  const admin = await fakeAdmin(t, (message) => [
+    200,
+    [
+      // What a compromised admin could try: calling the client, notifying it, answering what nobody asked.
+      { jsonrpc: "2.0", id: 99, method: "sampling/createMessage", params: { messages: [] } },
+      { jsonrpc: "2.0", id: message.id, method: "roots/list" },
+      { jsonrpc: "2.0", method: "notifications/tools/list_changed" },
+      { jsonrpc: "2.0", id: 12345, result: { stray: true } },
+      { jsonrpc: "2.0", id: message.id, result: { ok: true } },
+      { jsonrpc: "2.0", id: message.id, result: { ok: "again" } },
+    ],
+  ])
+  const client = bridge(admin.origin)
+  client.send({ jsonrpc: "2.0", id: 1, method: "tools/list" })
+  assert.deepEqual(await client.next(), { jsonrpc: "2.0", id: 1, result: { ok: true } })
+  await client.close()
+  assert.deepEqual(client.pending(), [])
+})
+
+void test("a request the admin leaves unanswered gets an error instead of hanging", async (t) => {
+  const admin = await fakeAdmin(t, (message) => [200, [{ jsonrpc: "2.0", id: message[0].id, result: {} }]])
+  const client = bridge(admin.origin)
+  client.send([
+    { jsonrpc: "2.0", id: 1, method: "ping" },
+    { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "run_write" } },
+  ])
+  assert.deepEqual(await client.next(), { jsonrpc: "2.0", id: 1, result: {} })
+  const missing = await client.next()
+  assert.equal(missing.id, 2)
+  assert.match(missing.error.message, /did not answer.*may have run anyway/)
+  await client.close()
+  assert.deepEqual(client.pending(), [])
+})

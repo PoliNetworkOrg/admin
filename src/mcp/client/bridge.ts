@@ -23,9 +23,10 @@ const requestSchema = z.object({
   params: z.looseObject({ name: z.string().optional(), protocolVersion: z.string().optional() }).optional(),
 })
 type Request = z.infer<typeof requestSchema>
-/** The parts of the admin's answers the bridge reads. */
+/** The parts of the admin's answers the bridge reads. An answer has no method: only requests and notifications do. */
 const answerSchema = z.object({
   id: idSchema.nullish(),
+  method: z.undefined().optional(),
   result: z.looseObject({ protocolVersion: z.string().optional(), isError: z.boolean().optional() }).optional(),
   error: z.looseObject({ message: z.string() }).optional(),
 })
@@ -69,6 +70,13 @@ function eventData(body: string) {
 }
 
 class NetworkError extends Error {}
+
+/** What a request the admin left without an answer is told. */
+function unanswered(request: Request) {
+  return request.method === "tools/call"
+    ? "The admin did not answer. The operation may have run anyway: read the record before trying again."
+    : "The admin did not answer. Try again."
+}
 
 /**
  * The input's lines as bytes, without their `\n` (and `\r`). A line longer than `limit` comes back as null once it
@@ -188,16 +196,25 @@ export async function runBridge(options: BridgeOptions) {
       return
     }
     let announce = false
+    const waiting = new Set(requests)
     for (const message of messages) {
-      write(message)
       const answer = answerSchema.safeParse(message).data
-      const request = requests.find((entry) => entry.id === answer?.id)
-      if (!request || !answer?.result) continue
+      const request = [...waiting].find((entry) => entry.id === answer?.id)
+      // Only one answer per request sent reaches the client: the admin has no say in anything else the client does
+      // (its own requests, such as sampling, elicitation or roots, and its notifications are dropped).
+      if (!request || !answer || (!answer.result && !answer.error)) {
+        console.error(new Error("Dropped a message from the admin that answers no request."))
+        continue
+      }
+      waiting.delete(request)
+      write(message)
+      if (!answer.result) continue
       if (request.method === "initialize") protocolVersion = answer.result.protocolVersion ?? null
       if (request.method === "tools/call" && request.params?.name === MCP_REFRESH_TOOL && !answer.result.isError) {
         announce = true
       }
     }
+    for (const request of waiting) write(errorResponse(request.id, TRANSPORT_ERROR, unanswered(request)))
     // Permissions changed: the client reloads the tool list.
     if (announce) write({ jsonrpc: "2.0", method: "notifications/tools/list_changed" })
   }
