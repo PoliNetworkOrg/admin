@@ -6,20 +6,20 @@ import { appToast } from "@/components/shell"
 import { errorHasCode, errorMessage } from "@/lib/errors"
 
 /**
- * After a successful mutation: reload every loader, then confirm. A failed reload is not a failed mutation, so it
- * warns instead of offering to repeat it.
+ * After a successful mutation: reload every loader, then confirm, in place of the toast `toastId` when given. A failed
+ * reload is not a failed mutation, so it warns instead of offering to repeat it.
  */
 export function useRefreshAfter() {
   const router = useRouter()
-  return async (message: string) => {
+  return async (message: string, toastId?: string | number) => {
     try {
       await router.invalidate({ sync: true })
     } catch (caught) {
       console.error(caught)
-      appToast.warning(`${message.replace(/\.$/, "")}, ma la pagina non si è aggiornata.`)
+      appToast.warning(`${message.replace(/\.$/, "")}, ma la pagina non si è aggiornata.`, { id: toastId })
       return
     }
-    appToast.success(message)
+    appToast.success(message, { id: toastId })
   }
 }
 
