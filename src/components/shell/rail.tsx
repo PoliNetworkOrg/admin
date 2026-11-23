@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 import { AccountAvatar, type ShellUser } from "./account-avatar"
+import { GithubIcon, REPOSITORY_URL } from "./github-icon"
 import {
   isRailService,
   type DashboardPath,
@@ -48,6 +49,7 @@ const railActiveClass = cn(
 type RailItemTarget =
   | { kind: "link"; to: DashboardPath }
   | { kind: "button"; onClick: (event: MouseEvent<HTMLButtonElement>) => void }
+  | { kind: "external"; href: string }
 
 type RailItemProps = {
   label: string
@@ -85,6 +87,8 @@ function RailItem({
   const trigger =
     target.kind === "link" ? (
       <Link to={target.to} activeOptions={{ exact: true }} aria-current={active ? "page" : undefined} {...shared} />
+    ) : target.kind === "external" ? (
+      <a href={target.href} target="_blank" rel="noopener noreferrer" {...shared} />
     ) : (
       <button type="button" onClick={target.onClick} {...shared} />
     )
@@ -171,9 +175,10 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
   const activeId = serviceFor(match).id
   const account = visibleServices.find((service) => service.id === "account") ?? serviceById("account")
 
-  // Item order: logo (Overview), search, services…, theme, account.
+  // Item order: logo (Overview), search, services…, GitHub, theme, account.
   const serviceStart = 2
-  const themeIndex = serviceStart + panelServices.length
+  const githubIndex = serviceStart + panelServices.length
+  const themeIndex = githubIndex + 1
   const accountIndex = themeIndex + 1
   const activeIndex =
     activeId === "overview"
@@ -270,6 +275,15 @@ export function Rail({ match, serviceHref, onOpenPalette, user, pending, classNa
       ))}
 
       <div className="flex-1" />
+
+      <RailItem
+        label="GitHub repository"
+        active={false}
+        focusable={tabStop === githubIndex}
+        target={{ kind: "external", href: REPOSITORY_URL }}
+      >
+        <GithubIcon {...iconProps} />
+      </RailItem>
 
       <RailItem
         label={themeToggleLabel(theme)}
