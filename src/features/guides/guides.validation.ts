@@ -7,6 +7,14 @@ export function isValidGuideFile(file: File) {
   return file.type === "application/pdf" && file.size <= MAX_GUIDE_BYTES
 }
 
+/** The guide form's text fields, as the MCP takes them; the PDF is the `file` file. The parser decides. */
+export const guideFormFields = z.object({
+  version: z.string().trim().min(1).max(100),
+  date: z.iso.datetime(),
+})
+
+export const guideIdInput = z.object({ id: z.number().int().positive() })
+
 export function parseGuideForm(data: FormData) {
   const version = z.string().trim().min(1).max(100).safeParse(data.get("version"))
   const date = z.iso.datetime().safeParse(data.get("date"))
