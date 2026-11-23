@@ -1,6 +1,7 @@
 # Local preview of the Libro Soci import
 
-Status: CSV confirmed by the user; first local-only preview slice implemented locally in the backend. This document follows the
+Status: CSV confirmed by the user; first local-only preview slice in review as
+[backend #152](https://github.com/PoliNetworkOrg/backend/pull/152). This document follows the
 existing `soci.md` rules and does not authorize production access. Source-specific headers and interpretations are
 explicit operator configuration, not assumptions hardcoded into the reader.
 
@@ -98,7 +99,7 @@ connecting to production automatically.
 1. **Source adapter and mapping contract: complete locally.** CSV is confirmed. Source headers, dates and scope are
    explicit operator configuration; payment information is preserved as evidence without guessed meaning. Real
    personal records are not needed for design.
-2. **Local normalization preview: implemented locally.** Backend `scripts/soci-import-preview.ts`, pure parsing and
+2. **Local normalization preview: in review in backend #152.** Backend `scripts/soci-import-preview.ts`, pure parsing and
    normalization, existing validators and synthetic fixtures. No runtime import of the DB, Graph, mailer or configured
    Soci service. Operators can inspect and save a private report without credentials or network access. No application
    is supported; every normalized candidate remains unresolved.

@@ -247,8 +247,10 @@ Newest last. One line per commit or session: date, what was done, what is next.
 ### Next: local Libro Soci import preview
 
 The user selected local preparation and preview on 20 November 2026. See [`soci-import.md`](soci-import.md) for the
-preparation, acceptance checks and ordered milestones. The source format is CSV. The backend now has a local-only
-normalization CLI with explicit mappings, synthetic examples and private reports. Local snapshot reconciliation is
+preparation, acceptance checks and ordered milestones. The source format is CSV. A local-only normalization CLI with
+explicit mappings, synthetic examples and private reports is in review in
+[backend #152](https://github.com/PoliNetworkOrg/backend/pull/152); it doesn't depend on the lifecycle work in
+backend #151. Local snapshot reconciliation is
 the next implementation slice. The preview
 must not reuse admission/registration mutations, which create a paid fee and may write to Microsoft 365. No
 production access, application or automatic-lapse activation is included.
