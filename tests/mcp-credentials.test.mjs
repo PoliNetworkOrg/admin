@@ -212,3 +212,61 @@ void test("separate processes refresh once between them", async (t) => {
   )
   assert.equal(idp.grants.length, 1)
 })
+
+/** A fake PoliNetwork Auth whose revocation endpoint answers `status` with `body`. */
+async function revokingIdp(t, status, body = "") {
+  const requests = []
+  const server = createServer(async (request, reply) => {
+    const issuer = `http://127.0.0.1:${server.address().port}/api/auth`
+    if (request.url === "/api/auth/.well-known/openid-configuration") {
+      reply.writeHead(200, { "content-type": "application/json" })
+      reply.end(JSON.stringify({ issuer, revocation_endpoint: `${issuer}/revoke` }))
+      return
+    }
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    requests.push(Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString("utf8"))))
+    reply.writeHead(status, { "content-type": "application/json" }).end(body)
+  })
+  server.listen(0, "127.0.0.1")
+  await once(server, "listening")
+  t.after(() => {
+    server.closeAllConnections()
+    server.close()
+  })
+  return { issuer: `http://127.0.0.1:${server.address().port}/api/auth`, requests }
+}
+
+void test("logout tells a revoked session from one Auth refused or could not reach, and always removes the file", async (t) => {
+  t.mock.method(console, "error", () => {})
+  const cases = [
+    [200, "", { status: "revoked" }],
+    // An already rotated or revoked refresh token: Auth answers 400 although no session is left.
+    [
+      400,
+      JSON.stringify({ error: "invalid_request", error_description: "refresh token revoked" }),
+      { status: "revoked" },
+    ],
+    [400, JSON.stringify({ error: "invalid_client" }), { status: "refused", reason: "invalid_client" }],
+    [503, "unavailable", { status: "unreachable" }],
+  ]
+  for (const [status, body, expected] of cases) {
+    const { issuer, requests } = await revokingIdp(t, status, body)
+    const base = session()
+    const auth = await store(await directory(t), { ...base, config: { ...base.config, issuer } })
+    assert.deepEqual(await auth.logout(), expected, `${status} ${body}`)
+    assert.deepEqual(requests, [{ token: "refresh-1", token_type_hint: "refresh_token", client_id: "admin-mcp" }])
+    await assert.rejects(lstat(auth.file), { code: "ENOENT" })
+  }
+})
+
+void test("logout removes the credentials when PoliNetwork Auth cannot be reached", async (t) => {
+  t.mock.method(console, "error", () => {})
+  const base = session()
+  const auth = await store(await directory(t), {
+    ...base,
+    config: { ...base.config, issuer: "http://127.0.0.1:9/api/auth" },
+  })
+  assert.deepEqual(await auth.logout(), { status: "unreachable" })
+  await assert.rejects(lstat(auth.file), { code: "ENOENT" })
+})

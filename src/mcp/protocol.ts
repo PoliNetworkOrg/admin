@@ -2,7 +2,7 @@ import { z } from "zod"
 
 /** Shared by the admin's MCP endpoint and the local `polinetwork-admin-mcp` bridge. */
 export const MCP_NAME = "polinetwork-admin"
-export const MCP_VERSION = "1.0.0"
+export const MCP_VERSION = "1.0.1"
 export const MCP_PATH = "/api/mcp"
 export const MCP_CONFIG_PATH = "/api/mcp/config"
 export const MCP_DOWNLOAD_PATH = "/downloads/polinetwork-admin-mcp.tgz"

@@ -19,7 +19,9 @@ polinetwork-admin-mcp login
 
 - `polinetwork-admin-mcp status`: the account, whether the admin has the MCP enabled, and the exact absolute command for
   your MCP client.
-- `polinetwork-admin-mcp logout`: revokes the session and removes the local credentials.
+- `polinetwork-admin-mcp logout`: revokes the session and removes the local credentials. If PoliNetwork Auth cannot
+  be reached or refuses, it says so: the credentials are still removed, and the session expires on its own at most 30
+  days after its last renewal.
 - `--admin-url <origin>` (or `POLINETWORK_ADMIN_URL`) points every command at another deployment, with separate
   credentials; pass it to `login` and to `serve` alike. The default is `https://admin.polinetwork.org`. Use it only
   for a deployment you trust: that origin chooses where you sign in and receives your access token with every message.
