@@ -355,17 +355,25 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
     if (!document) return
     const map = document.getMap<Y.Text>("files")
     const entryText = entry ? map.get(entry) : null
+    // A file created meanwhile by someone else stays theirs: a second Y.Text under its key could replace it.
+    if (map.has(file.path)) {
+      appToast.error(`Esiste già ${file.path}.`)
+      return
+    }
+    const insertion = file.include && entryText ? inputInsertion(entryText.toJSON(), file.path) : null
     document.transact(() => {
       map.set(file.path, new Y.Text(starterText(entryText?.toJSON() ?? "", file.title)))
-      const insertion = file.include && entryText ? inputInsertion(entryText.toJSON(), file.path) : null
       if (entryText && insertion) entryText.insert(insertion.offset, insertion.text)
     })
     setPath(file.path)
-    appToast.success(file.include && entry ? `File creato e incluso in ${entry}.` : "File creato.")
+    if (insertion) appToast.success(`File creato e incluso in ${entry}.`)
+    else if (file.include)
+      appToast.success(`File creato, ma non incluso: aggiungi \\input in ${entry ?? "il file principale"} a mano.`)
+    else appToast.success("File creato.")
   }
   function deleteFile(target: string) {
     const document = collab.document
-    if (!document) return
+    if (!document || !entry || target === entry) return
     const map = document.getMap<Y.Text>("files")
     document.transact(() => {
       for (const [other, otherText] of map.entries()) {
@@ -547,7 +555,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                       onOpen={setPath}
                       className="@min-[1200px]/editor:hidden"
                     />
-                    {!readOnly && collab.document && sources ? (
+                    {!readOnly && collab.document && collab.synced && sources ? (
                       <div className="-mr-1.5 ml-auto flex shrink-0 items-center">
                         <IconButton
                           label="Nuovo file"
@@ -556,10 +564,10 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                           onClick={() => setNewFileOpen(true)}
                         />
                         <IconButton
-                          label={path === entry ? "Il file principale non si elimina" : "Elimina il file"}
+                          label={path === entry || !entry ? "Il file principale non si elimina" : "Elimina il file"}
                           icon={Trash2}
                           className="size-7"
-                          disabled={!path || path === entry}
+                          disabled={!path || !entry || path === entry}
                           onClick={() => setDeleting(path)}
                         />
                       </div>

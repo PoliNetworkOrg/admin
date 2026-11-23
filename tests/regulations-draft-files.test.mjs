@@ -51,6 +51,7 @@ test("a regolamento's new file starts with its \\regolamento", () => {
   assert.equal(isRegolamento(RRI), true)
   assert.equal(starterText(RRI, "Regolamento Alumni"), "\\regolamento{Regolamento Alumni}\n\n")
   assert.equal(starterText("\\documentclass{polinetwork}", "Titolo"), "")
+  assert.equal(starterText(RRI, "Attività & Eventi 100%"), "\\regolamento{Attività \\& Eventi 100\\%}\n\n")
 })
 
 test("the \\input goes after the last one, in its style", () => {
@@ -67,6 +68,9 @@ test("the \\input goes after the last one, in its style", () => {
   const none = inputInsertion("\\begin{document}\nTesto\n\\end{document}", "a.tex")
   assert.equal(none?.text, "\\input{./a.tex}\n\n")
   assert.equal(inputInsertion("Testo", "a.tex"), null)
+  const commented = "\\input{./a.tex}\n% \\input{./archivio.tex} vecchio\n\\end{document}"
+  assert.equal(inputInsertion(commented, "b.tex")?.offset, "\\input{./a.tex}".length)
+  assert.deepEqual(inputLinesOf("% \\input{a}\n", "a.tex"), [])
 })
 
 test("deleting a file removes the lines that include it", () => {

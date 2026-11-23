@@ -69,7 +69,34 @@ export function isRegolamento(entryText: string) {
 
 /** A regolamento's new file starts with its `\regolamento`; any other starts empty. */
 export function starterText(entryText: string, title: string) {
-  return isRegolamento(entryText) && title.trim() ? `\\regolamento{${title.trim()}}\n\n` : ""
+  return isRegolamento(entryText) && title.trim() ? `\\regolamento{${escapeLatex(title.trim())}}\n\n` : ""
+}
+
+const LATEX_SPECIALS = new Map([
+  ["\\", "\\textbackslash{}"],
+  ["&", "\\&"],
+  ["%", "\\%"],
+  ["$", "\\$"],
+  ["#", "\\#"],
+  ["_", "\\_"],
+  ["{", "\\{"],
+  ["}", "\\}"],
+  ["~", "\\textasciitilde{}"],
+  ["^", "\\textasciicircum{}"],
+])
+
+/** Plain text as LaTeX: the characters LaTeX reads as commands come out as themselves. */
+export function escapeLatex(text: string) {
+  return text.replace(/[\\&%$#_{}~^]/g, (char) => LATEX_SPECIALS.get(char) ?? char)
+}
+
+/** The `\input`s outside comments (after an unescaped `%` on their line). */
+function activeInputs(text: string) {
+  return [...text.matchAll(INPUT)].filter((match) => {
+    const index = match.index ?? 0
+    const line = text.slice(text.lastIndexOf("\n", index - 1) + 1, index)
+    return !/(^|[^\\])(\\\\)*%/.test(line)
+  })
 }
 
 const INPUT = /\\(?:input|include)\{([^}]*)\}/g
@@ -79,8 +106,7 @@ const INPUT = /\\(?:input|include)\{([^}]*)\}/g
  * before it when the last one has one), or before `\end{document}`. `null` when there's neither.
  */
 export function inputInsertion(entryText: string, path: string): { offset: number; text: string } | null {
-  const inputs = [...entryText.matchAll(INPUT)]
-  const last = inputs.at(-1)
+  const last = activeInputs(entryText).at(-1)
   if (last?.index !== undefined) {
     const target = last[1]
     const reference = `${target.startsWith("./") ? "./" : ""}${target.endsWith(".tex") ? path : path.replace(/\.tex$/, "")}`
@@ -103,7 +129,7 @@ export function inputInsertion(entryText: string, path: string): { offset: numbe
 export function inputLinesOf(text: string, path: string): { from: number; to: number }[] {
   const bare = path.replace(/\.tex$/, "")
   const ranges: { from: number; to: number }[] = []
-  for (const match of text.matchAll(INPUT)) {
+  for (const match of activeInputs(text)) {
     const target = match[1]
       .trim()
       .replace(/^\.\//, "")
