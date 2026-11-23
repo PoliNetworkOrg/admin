@@ -14,7 +14,7 @@ export const getTelegramUsers = createServerFn()
     return result.users ?? []
   })
 
-const telegramUserLookupInput = z.discriminatedUnion("by", [
+export const telegramUserLookupInput = z.discriminatedUnion("by", [
   z.object({ by: z.literal("username"), username: z.string().trim().min(1).max(32) }),
   z.object({ by: z.literal("id"), userId: z.number().int().positive() }),
 ])
@@ -52,13 +52,15 @@ export const findTelegramUser = createServerFn()
     }
   })
 
+export const telegramUserIdInput = z.object({ userId: z.number().int().positive() })
+
 /**
  * A Telegram user with the sections the signed-in admin may read: each needs its own permission in the backend
  * (`tg:messages:read`, `tg:audit:read`, `tg:grants:read`), and a section without it is `null`.
  */
 export const getTelegramUserDetails = createServerFn()
   .middleware([adminMiddleware])
-  .validator(z.object({ userId: z.number().int().positive() }))
+  .validator(telegramUserIdInput)
   .handler(async ({ data, context }) => {
     const { backend, permissions } = context
     const { user } = await backend.tg.users.get.query({ userId: data.userId })

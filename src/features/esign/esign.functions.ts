@@ -26,13 +26,15 @@ const placement = z.object({
   height: z.number().gt(0).max(1),
 })
 
+export const esignHomeInput = z.object({ scope: z.enum(["inbox", "mine", "all"]) })
+
 /**
  * Everything the signature pages need first: the configuration and the caller's requests. Also refreshes the
  * caller's signer profile (name and email from the ID token), so managers can pick them as signers.
  */
 export const getEsignHome = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(z.object({ scope: z.enum(["inbox", "mine", "all"]) }))
+  .validator(esignHomeInput)
   .handler(async ({ data, context }) => {
     await context.backend.esign.profile.sync.mutate({ name: context.user.name, email: context.user.email || null })
     const [config, requests] = await Promise.all([
@@ -60,9 +62,11 @@ async function requestDetail(backend: BackendClient, id: string) {
   return { ...detail, events, pdf: document?.pdf ?? null }
 }
 
+export const esignRequestIdInput = z.object({ id: z.uuid() })
+
 export const getEsignRequest = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(z.object({ id: z.uuid() }))
+  .validator(esignRequestIdInput)
   .handler(async ({ data, context }) => {
     const [config, detail, inbox] = await Promise.all([
       context.backend.esign.config.query(),
@@ -75,13 +79,15 @@ export const getEsignRequest = createServerFn()
     return { config, ...detail, me: context.user.sub, waiting: { count: others.length, next } }
   })
 
+export const esignBatchInput = z.object({ first: z.uuid().optional() })
+
 /**
  * The documents waiting for the caller's signature, in inbox order, for signing them together; `first` (the request
  * the caller came from) leads, so it is always among them.
  */
 export const getEsignBatch = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(z.object({ first: z.uuid().optional() }))
+  .validator(esignBatchInput)
   .handler(async ({ data, context }) => {
     const inbox = await context.backend.esign.requests.list.query({ scope: "inbox" })
     const mine = inbox.filter((r) => r.myTurn)
@@ -90,18 +96,27 @@ export const getEsignBatch = createServerFn()
     return { items, more: Math.max(waiting.length - MAX_BATCH, 0), me: context.user.sub }
   })
 
+export const esignDocumentIdInput = z.object({ documentId: z.uuid() })
+
 /** The PDF bytes of a document version, base64-encoded, for the viewer and downloads. */
 export const getEsignDocumentContent = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(z.object({ documentId: z.uuid() }))
+  .validator(esignDocumentIdInput)
   .handler(({ data, context }) => context.backend.esign.documents.content.query(data))
 
-const jobIds = z.object({ jobIds: z.array(z.uuid()).min(1).max(MAX_BATCH) })
+export const esignJobIdsInput = z.object({ jobIds: z.array(z.uuid()).min(1).max(MAX_BATCH) })
 
 export const getEsignJobStatus = createServerFn()
   .middleware([esignReadMiddleware])
-  .validator(jobIds)
+  .validator(esignJobIdsInput)
   .handler(({ data, context }) => context.backend.esign.jobs.statuses.query(data))
+
+export const startEsignSignatureInput = z.object({
+  items: z
+    .array(z.object({ requestId: z.uuid(), places: z.array(placement).max(20).optional() }))
+    .min(1)
+    .max(MAX_BATCH),
+})
 
 /**
  * Starts the caller's signatures of one or more requests: returns a single-use ticket per request, all opened in one
@@ -109,22 +124,17 @@ export const getEsignJobStatus = createServerFn()
  */
 export const startEsignSignature = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
-  .validator(
-    z.object({
-      items: z
-        .array(z.object({ requestId: z.uuid(), places: z.array(placement).max(20).optional() }))
-        .min(1)
-        .max(MAX_BATCH),
-    })
-  )
+  .validator(startEsignSignatureInput)
   .handler(({ data, context }) => context.backend.esign.jobs.create.mutate(data))
 
 export const cancelEsignSignature = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
-  .validator(jobIds)
+  .validator(esignJobIdsInput)
   .handler(({ data, context }) => context.backend.esign.jobs.cancel.mutate(data))
+
+export const declineEsignRequestInput = z.object({ id: z.uuid(), reason: z.string().trim().max(500).nullable() })
 
 export const declineEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignSignWriteMiddleware])
-  .validator(z.object({ id: z.uuid(), reason: z.string().trim().max(500).nullable() }))
+  .validator(declineEsignRequestInput)
   .handler(({ data, context }) => context.backend.esign.requests.decline.mutate(data))

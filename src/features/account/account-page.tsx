@@ -22,6 +22,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import type { DashboardUser } from "@/lib/auth"
 
+import { McpCard } from "./mcp-card"
+
 type AccountPageProps = {
   user: DashboardUser
   permissions: readonly string[]
@@ -29,7 +31,7 @@ type AccountPageProps = {
   accountUrl: string
 }
 
-/** Account: the IdP profile, the linked Telegram account, dashboard permissions, sign out. */
+/** Account: the IdP profile, the linked Telegram account, dashboard permissions, AI agents, sign out. */
 export function AccountPage({ user, permissions, accountUrl }: AccountPageProps) {
   return (
     <>
@@ -40,6 +42,7 @@ export function AccountPage({ user, permissions, accountUrl }: AccountPageProps)
             <ProfileCard user={user} accountUrl={accountUrl} />
             <TelegramCard telegramId={user.telegramId} accountUrl={accountUrl} />
             <PermissionsCard permissions={permissions} />
+            <McpCard />
           </div>
           <SignOutCard />
         </div>

@@ -54,6 +54,28 @@ export function parseProjectForm(data: FormData) {
   }
 }
 
+export function parseEditProjectForm(data: FormData) {
+  const id = Number(data.get("id"))
+  if (!Number.isInteger(id) || id <= 0) throw new Error("INVALID_ID")
+  return { id, ...parseProjectForm(data) }
+}
+
+/** The project form's text fields, as the MCP takes them; the logo is the `logoFile` file. The parsers decide. */
+export const projectFormFields = z.object({
+  title: z.string().trim().min(1).max(160),
+  descriptionIt: z.string().trim().min(1).max(5000),
+  descriptionEn: z.string().trim().min(1).max(5000),
+  link: z
+    .url({ protocol: /^https?$/ })
+    .max(2048)
+    .optional(),
+  category: projectCategorySchema,
+})
+export const editProjectFormFields = projectFormFields.extend({ id: z.number().int().positive() })
+
+export const projectIdInput = z.object({ id: z.number().int().positive() })
+export const reorderProjectsInput = z.object({ projectIds: z.array(z.number().int().positive()).min(1) })
+
 export function projectSaveErrorMessage(cause: unknown) {
   if (errorHasCode(cause, "INVALID_LINK")) return "Enter a valid HTTP or HTTPS project URL."
   if (errorHasCode(cause, "INVALID_TITLE")) return "Enter a project title no longer than 160 characters."

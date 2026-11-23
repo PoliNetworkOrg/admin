@@ -17,9 +17,17 @@ export function matchesGlob(path: string, glob: string): boolean {
   return new RegExp(`^${pattern}$`).test(path)
 }
 
-/** A path the document accepts: no globs means anywhere. */
+/** A relative path of plain segments: none empty, `.` or `..`, and no backslash or control character. */
+export function isPlainPath(path: string) {
+  return (
+    !/[\\\p{Cc}]/u.test(path) &&
+    path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
+  )
+}
+
+/** A path the document accepts: a plain relative path that matches a glob; no globs means any folder. */
 export function allowedPath(path: string, sources: string[]) {
-  return sources.length === 0 || sources.some((glob) => matchesGlob(path, glob))
+  return isPlainPath(path) && (sources.length === 0 || sources.some((glob) => matchesGlob(path, glob)))
 }
 
 /**

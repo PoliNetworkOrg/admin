@@ -43,6 +43,14 @@ export function parseEditAssociationForm(data: FormData) {
   return { id, ...associationFields(data) }
 }
 
+/** The association form's text fields, as the MCP takes them; the logo is the `logo` file. The parsers decide. */
+export const associationFormFields = z.object({
+  name: z.string().trim().min(1).max(200),
+  descriptionIt: z.string().trim().min(1).max(20_000),
+  descriptionEn: z.string().trim().min(1).max(20_000),
+})
+export const editAssociationFormFields = associationFormFields.extend({ id: z.number().int().positive() })
+
 const nullableUrl = z.union([z.url().max(2_048), z.null()])
 const nullableEmail = z.union([z.email().max(320), z.null()])
 

@@ -188,3 +188,10 @@ export async function endSessionUrl(config: AuthConfig, idToken: string) {
     post_logout_redirect_uri: config.postLogoutRedirectUri,
   })
 }
+
+/** The IdP's issuer and JWKS URI, to verify the ID tokens of the admin MCP's public client. */
+export async function idpKeys(config: AuthConfig) {
+  const metadata = (await oidcConfiguration(config)).serverMetadata()
+  if (!metadata.jwks_uri) throw new Error("The IdP publishes no JWKS.")
+  return { issuer: metadata.issuer, jwksUri: metadata.jwks_uri }
+}
