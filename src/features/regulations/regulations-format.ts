@@ -1,4 +1,13 @@
-import type { Delibera, DraftKind, DraftRole, StateKey, VersionSummary } from "./regulations.contract"
+import {
+  type Delibera,
+  type DocumentKind,
+  type DraftKind,
+  type DraftRole,
+  FINAL_STATES,
+  type Procedure,
+  type StateKey,
+  type VersionSummary,
+} from "./regulations.contract"
 
 /**
  * Regolamenti speak Italian: dates as the documents print them ("12/03/2026"), times in Europe/Rome, and the
@@ -46,6 +55,7 @@ export const STATE_TONES = {
   in_approvazione: "brand",
   approvata: "success",
   emanata: "neutral",
+  pubblicata: "neutral",
 } as const satisfies Record<StateKey, "warning" | "brand" | "success" | "neutral">
 
 /** Labels when the draft's own procedure isn't at hand (lists). */
@@ -54,6 +64,7 @@ export const STATE_LABELS = {
   in_approvazione: "In approvazione",
   approvata: "Approvata",
   emanata: "Emanata",
+  pubblicata: "Pubblicata",
 } as const satisfies Record<StateKey, string>
 
 export const KIND_LABELS = { modifica: "Modifica", rettifica: "Rettifica" } as const satisfies Record<DraftKind, string>
@@ -73,9 +84,40 @@ export function deliberaLine(delibera: Delibera) {
   return `Rettificato da ${delibera.rectifiedBy.name}${delibera.onBehalfOf ? " su delega del Segretario" : ""} il ${formatDay(delibera.date)}`
 }
 
+/** Where a version comes from, in one line: the delibera when it has one. */
 export function versionOrigin(version: VersionSummary) {
-  return version.delibera ? deliberaLine(version.delibera) : "Importata dal repository"
+  if (version.delibera) return deliberaLine(version.delibera)
+  return {
+    import: "Importata dal repository",
+    draft: "Pubblicata da una bozza",
+    template: "Testo iniziale dal modello",
+    upload: "PDF caricato",
+  }[version.origin]
 }
+
+/** A closed draft: emanated (`rri`) or published (`documento`), a version now. */
+export function isFinalState(state: StateKey) {
+  return FINAL_STATES.some((final) => final === state)
+}
+
+/**
+ * The procedure's own words for the step that publishes a draft of this kind: "Emana e notifica", "Emana rettifica",
+ * "Pubblica".
+ */
+export function finalStepLabel(procedure: Procedure, kind: DraftKind) {
+  return (
+    procedure.transitions.find((transition) => transition.kinds.includes(kind) && isFinalState(transition.to))?.label ??
+    "Emana e notifica"
+  )
+}
+
+/** Documenti's sections, in this order. */
+export const DOCUMENT_KIND_LABELS = {
+  regolamento: "Regolamenti",
+  generale: "Documenti generali",
+  privato: "Privati",
+  consultazione: "Sola consultazione",
+} as const satisfies Record<DocumentKind, string>
 
 export function baseLabel(base: { kind: "version"; label: string } | { kind: "draft"; title: string }) {
   return base.kind === "version" ? `Versione ${base.label}` : `Bozza «${base.title}»`

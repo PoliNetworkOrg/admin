@@ -16,7 +16,7 @@ import { appToast } from "@/components/shell"
 import { Input } from "@/components/ui/input"
 
 import { createRectification } from "./regulations-draft.functions"
-import { baseLabel, formatDay, todayInRome, versionOrigin } from "./regulations-format"
+import { baseLabel, formatDay, isFinalState, todayInRome, versionOrigin } from "./regulations-format"
 import { failureMessage, useLoaded } from "./regulations-hooks"
 import { createDraft } from "./regulations-write.functions"
 import type { Me } from "./regulations.contract"
@@ -25,7 +25,7 @@ import { getRegulationDocument } from "./regulations.functions"
 export type NewDraftTarget =
   | {
       kind: "modifica"
-      /** The documents to choose from (v1: the RRI only). */
+      /** The documents to choose from: those that take drafts. */
       documents: { key: string; title: string }[]
       /** Preselected document and base, e.g. "Nuova bozza da qui" on a version. */
       documentKey?: string
@@ -85,7 +85,7 @@ export function NewDraftDialog({
           description: versionOrigin(version),
         })),
         ...data.drafts
-          .filter((draft) => draft.state !== "emanata")
+          .filter((draft) => !isFinalState(draft.state))
           .map((draft) => ({
             value: `draft:${draft.id}`,
             label: baseLabel({ kind: "draft", title: draft.title }),
@@ -130,7 +130,7 @@ export function NewDraftDialog({
       description={
         rettifica
           ? "Solo correzioni di errori che non cambiano il significato del testo. Parte dall'ultima versione emanata e si emana senza approvazione."
-          : "Ogni bozza è un tavolo di lavoro: la puoi condividere, unire ad altre bozze e poi inviare in approvazione."
+          : "Ogni bozza è un tavolo di lavoro: la puoi condividere e unire ad altre bozze, poi portarla in approvazione o pubblicarla."
       }
       noun="la bozza"
       dirty={title.trim() !== "" && !rettifica}

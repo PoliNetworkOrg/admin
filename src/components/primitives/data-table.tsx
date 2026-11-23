@@ -84,7 +84,14 @@ type DataTableProps<T> = {
   className?: string
   /** Keep short edition rows in one line on mobile. */
   compactMobile?: boolean
+  /** The table's own words (the actions header, "Open {name}", loading) in Italian, for the Regolamenti pages. */
+  locale?: "en" | "it"
 }
+
+const COPY = {
+  en: { actions: "Actions", open: (name: string) => `Open ${name}`, loading: "Loading…" },
+  it: { actions: "Azioni", open: (name: string) => `Apri ${name}`, loading: "Caricamento…" },
+} as const
 
 const DEFAULT_MIN_WIDTH = 140
 // `max-width: 0` drops the column's min-content width, so the auto table layout gives it the leftover space.
@@ -217,13 +224,15 @@ export function DataTable<T>({
   rowProps,
   pagination,
   loading = false,
-  loadingLabel = "Loading…",
+  loadingLabel,
   empty,
   error,
   selectedRowId,
   className,
   compactMobile = false,
+  locale = "en",
 }: DataTableProps<T>) {
+  const copy = COPY[locale]
   const { tableRef, fits } = useTableFits()
   const router = useRouter()
   const hasActions = actions !== undefined
@@ -319,7 +328,7 @@ export function DataTable<T>({
           key={id}
           data-state={extra?.["data-state"]}
           tabIndex={interactive ? 0 : undefined}
-          aria-label={interactive && rowLabel ? `Open ${rowLabel(row)}` : undefined}
+          aria-label={interactive && rowLabel ? copy.open(rowLabel(row)) : undefined}
           data-selected={selectedRowId === id || undefined}
           onClick={
             interactive
@@ -391,7 +400,7 @@ export function DataTable<T>({
       )}
     >
       <span role="status" className="sr-only">
-        {loading ? loadingLabel : ""}
+        {loading ? (loadingLabel ?? copy.loading) : ""}
       </span>
       <Table
         ref={tableRef}
@@ -445,7 +454,7 @@ export function DataTable<T>({
                 className="h-10.5 w-px pr-4 pl-4 text-right text-xs font-medium text-(--pn-fg-muted)"
                 style={fixedLayout ? { width: actionsWidth } : undefined}
               >
-                Actions
+                {copy.actions}
               </TableHead>
             )}
           </TableRow>

@@ -53,6 +53,8 @@ type PdfViewerProps = {
   fill?: boolean
   /** The viewer's own words (page counter, zoom, errors) in Italian, for the Italian Regolamenti pages. */
   locale?: "en" | "it"
+  /** Extra classes on the frame, e.g. `min-h-0` in a dialog that must fit short windows. */
+  className?: string
 }
 
 const COPY = {
@@ -64,6 +66,7 @@ const COPY = {
     zoomOut: "Zoom out",
     zoomIn: "Zoom in",
     fit: "Fit width",
+    pages: "PDF pages",
   },
   it: {
     page: (n: number) => `Pagina ${n}`,
@@ -73,6 +76,7 @@ const COPY = {
     zoomOut: "Riduci",
     zoomIn: "Ingrandisci",
     fit: "Adatta alla larghezza",
+    pages: "Pagine del PDF",
   },
 } as const
 
@@ -113,6 +117,7 @@ export function PdfViewer({
   onPainted,
   fill = true,
   locale = "en",
+  className,
 }: PdfViewerProps) {
   const copy = COPY[locale]
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -237,7 +242,8 @@ export function PdfViewer({
       style={fill && !compact ? fillHeight.style : undefined}
       className={cn(
         "flex flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
-        compact ? "h-80" : fill ? "h-[calc(100dvh-210px)] min-h-[480px]" : "h-full min-h-[480px]"
+        compact ? "h-80" : fill ? "h-[calc(100dvh-210px)] min-h-[480px]" : "h-full min-h-[480px]",
+        className
       )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
@@ -276,7 +282,11 @@ export function PdfViewer({
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken)"
+        // A tab stop, so the keyboard scrolls the pages (arrows, Page Up/Down, Space) once it is focused.
+        tabIndex={0}
+        role="region"
+        aria-label={copy.pages}
+        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken) focus-visible:outline-offset-[-2px]"
         data-pdf-scroll
         onScroll={(event) => {
           reading.current = middleOf(event.currentTarget)

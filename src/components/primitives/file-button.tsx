@@ -19,6 +19,8 @@ type FileButtonProps = {
   /** Overrides the description, e.g. a `FormField`'s hint and error (`fieldHintId(id)`). */
   describedBy?: string
   className?: string
+  /** The remove button's words in Italian, for the Italian Regolamenti pages. */
+  locale?: "en" | "it"
 }
 
 /** The outline button over a hidden file input. `FileButton` adds the chosen file's chip; alone it picks several. */
@@ -87,8 +89,10 @@ export function FileButton({
   id,
   describedBy,
   className,
+  locale = "en",
 }: FileButtonProps) {
   const generatedId = useId()
+  const removeLabel = locale === "it" ? "Rimuovi il file" : "Remove file"
   const inputId = id ?? generatedId
   const hintId = `${inputId}-hint`
 
@@ -109,10 +113,10 @@ export function FileButton({
             <Hint overflowOnly label={file.name}>
               <span className="truncate">{file.name}</span>
             </Hint>
-            <Hint label="Remove file">
+            <Hint label={removeLabel}>
               <button
                 type="button"
-                aria-label="Remove file"
+                aria-label={removeLabel}
                 onClick={() => onChange(null)}
                 className="relative flex size-6 shrink-0 items-center justify-center rounded-full text-(--pn-fg-muted) transition-[background-color,color] duration-120 after:absolute after:-inset-1.5 hover:bg-(--pn-hover) hover:text-(--pn-fg)"
               >

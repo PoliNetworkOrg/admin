@@ -46,6 +46,17 @@ export const getRegulationDocument = createServerFn({ method: "GET" })
     return { document, versions, drafts }
   })
 
+/** The document alone (its storage and procedure), for pages that act on one of its drafts. */
+export const getRegulationDocumentInfo = createServerFn({ method: "GET" })
+  .middleware([regulationsReadMiddleware])
+  .validator(z.object({ documentKey: documentKeySchema }))
+  .handler(async ({ data, context }) => (await regulationsApi(context)).getDocument(data))
+
+/** The templates of `documents.json`, to create a document from. */
+export const getRegulationTemplates = createServerFn({ method: "GET" })
+  .middleware([regulationsReadMiddleware])
+  .handler(async ({ context }) => (await regulationsApi(context)).listTemplates())
+
 export const getVersionPdf = createServerFn({ method: "GET" })
   .middleware([regulationsReadMiddleware])
   .validator(z.object({ versionId: z.string().min(1).max(64) }))
