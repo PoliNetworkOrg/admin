@@ -413,7 +413,6 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                 Condividi
               </Button>
             ) : null}
-            <DraftActions draft={draft} layout="inline" />
             <Button
               variant="outline"
               className={buttonMotion}
@@ -423,6 +422,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
               <Workflow aria-hidden data-icon="inline-start" />
               Procedura
             </Button>
+            <DraftActions draft={draft} layout="inline" />
           </>
         }
       />

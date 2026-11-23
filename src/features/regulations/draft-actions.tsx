@@ -60,7 +60,7 @@ export function DraftActions({
               icon={Trash2}
               tone="danger"
               appearance="boxed"
-              className="size-10"
+              className="size-10 text-(--pn-danger-fg)"
               onClick={() => setDeleteOpen(true)}
             />
           ) : null}
