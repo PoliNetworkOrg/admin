@@ -106,6 +106,7 @@ export function DocumentsPage({ documents }: { documents: DocumentInfo[] }) {
       appToast.error(failureMessage(caught, "Non è stato possibile importare i documenti."), {
         id: toastId,
         duration: Infinity,
+        closeButton: true,
       })
       return
     }

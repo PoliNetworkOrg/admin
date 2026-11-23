@@ -1,7 +1,10 @@
 import { type ExternalToast, toast } from "sonner"
 
-/** `id` turns an earlier toast (a `loading` one) into this one; `duration: Infinity` keeps it until dismissed. */
-type AppToastOptions = Pick<ExternalToast, "id" | "duration">
+/**
+ * `id` turns an earlier toast (a `loading` one) into this one; `duration: Infinity` keeps it until dismissed, so pair it
+ * with `closeButton`: the only dismissal a keyboard can reach.
+ */
+type AppToastOptions = Pick<ExternalToast, "id" | "duration" | "closeButton">
 
 /**
  * Toasts with these durations: success/info 4s, warning 6s, error 8s; loading stays until its `id` gets another

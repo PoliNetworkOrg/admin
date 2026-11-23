@@ -32,7 +32,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       duration={4000}
       icons={icons}
       className="toaster group"
-      toastOptions={{ classNames: { toast: "app-toast" } }}
+      toastOptions={{ classNames: { toast: "app-toast" }, closeButtonAriaLabel: "Chiudi la notifica" }}
       {...props}
     />
   )
