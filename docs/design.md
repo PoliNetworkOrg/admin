@@ -471,6 +471,9 @@ Rules that the templates above don't imply.
   privacy notice is an info `InlineAlert` that appears in the dialog as soon as a name or phone is typed. Programmes are
   a multiple combobox with removable chips, campuses a three-column checkbox grid. Corsi e sedi is a List page with a
   Corsi/Sedi segmented lead; entries are retired (archive icon) rather than deleted.
+  Promozioni is a List page (status segmented lead, Dal/Al date fields above the table); a request is a Record
+  page: header with the status badge and the representative's actions, decision or publication cards for operators,
+  content and details side by side, then the history with comments. Italian dates read "6 ott 2026" (`formatDay`).
 - **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px, running to
   the screen edges on phones) ending in a dashed "Add category"; on phones questions wrap up to three lines; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All

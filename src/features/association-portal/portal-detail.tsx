@@ -1,6 +1,7 @@
 import { Link, useRouteContext, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { useState } from "react"
+import type { z } from "zod"
 
 import {
   FormDialog,
@@ -16,6 +17,7 @@ import { formatDate, formatDateTime } from "@/lib/format"
 
 import { ContactsPanel } from "./portal-contacts"
 import { eventLabel } from "./portal-events"
+import { PromotionsTab } from "./portal-promotions"
 import { reviewPortalAssociation } from "./portal-review.functions"
 import {
   cleanProfile,
@@ -35,12 +37,21 @@ import {
   type Command,
   type Detail,
   type Profile,
+  type promotionListSchema,
   type Request,
 } from "./portal.contract"
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
 
 type Action = Command extends infer T ? (T extends Command ? Omit<T, "id" | "revision" | "commandId"> : never) : never
-export function PortalDetail({ association: a, catalogue }: { association: Detail; catalogue: CatalogueEntry[] }) {
+export function PortalDetail({
+  association: a,
+  catalogue,
+  promotions,
+}: {
+  association: Detail
+  catalogue: CatalogueEntry[]
+  promotions: z.infer<typeof promotionListSchema>
+}) {
   const router = useRouter()
   const { user } = useRouteContext({ from: "/dashboard" })
   const change = useServerFn(changePortalAssociation)
@@ -50,7 +61,7 @@ export function PortalDetail({ association: a, catalogue }: { association: Detai
   const [destination, setDestination] = useState<string | null>(null)
   const [redirectReason, setRedirectReason] = useState("")
   const review = useServerFn(reviewPortalAssociation)
-  const [tab, setTab] = useState<"profile" | "contacts" | "requests" | "members" | "activity">("profile")
+  const [tab, setTab] = useState<"profile" | "contacts" | "promotions" | "requests" | "members" | "activity">("profile")
   const [edit, setEdit] = useState<{ requestId: string | null; profile: Profile; explanation: string } | null>(null)
   const [reasonAction, setReasonAction] = useState<{
     title: string
@@ -189,6 +200,9 @@ export function PortalDetail({ association: a, catalogue }: { association: Detai
                 ...(a.registered && (a.canEdit || a.operator || a.contacts.length > 0)
                   ? [{ value: "contacts" as const, label: "Contatti", count: a.staleContacts.length || undefined }]
                   : []),
+                ...(a.registered && (a.role || a.operator)
+                  ? [{ value: "promotions" as const, label: "Promozioni" }]
+                  : []),
                 { value: "requests", label: "Richieste", count: a.pending },
                 { value: "members", label: "Referenti" },
                 { value: "activity", label: "Attività" },
@@ -216,6 +230,14 @@ export function PortalDetail({ association: a, catalogue }: { association: Detai
           )}
           {tab === "contacts" && (
             <ContactsPanel association={a} onSave={(contacts) => run({ action: "contacts", contacts })} />
+          )}
+          {tab === "promotions" && (
+            <PromotionsTab
+              associationId={a.id}
+              promotions={promotions}
+              catalogue={catalogue}
+              canCreate={!!a.role && a.status === "active"}
+            />
           )}
           {tab === "requests" && (
             <div className="space-y-4">

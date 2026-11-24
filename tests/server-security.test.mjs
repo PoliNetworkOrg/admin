@@ -197,6 +197,7 @@ test("dashboard server functions attach their scoped authorization middleware", 
   const adminFunctionFiles = [
     "src/features/association-portal/portal.functions.ts",
     "src/features/association-portal/portal-review.functions.ts",
+    "src/features/association-portal/promotion.functions.ts",
     "src/features/dashboard/overview.functions.ts",
     "src/features/azure/azure.functions.ts",
     "src/features/azure/groups.functions.ts",
@@ -253,7 +254,10 @@ test("dashboard mutations enforce their exact write scope", async () => {
   // Mutations that join two domains list every middleware they need.
   const combinedScopes = {}
   const entries = [
-    ["associationSelfMiddleware", ["src/features/association-portal/portal.functions.ts"]],
+    [
+      "associationSelfMiddleware",
+      ["src/features/association-portal/portal.functions.ts", "src/features/association-portal/promotion.functions.ts"],
+    ],
     ["webContentWriteMiddleware", ["src/features/association-portal/portal-review.functions.ts"]],
     ["esignSignWriteMiddleware", ["src/features/esign/esign.functions.ts"]],
     ["esignRequestsManageMiddleware", ["src/features/esign/requests.functions.ts"]],
@@ -398,6 +402,12 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/association-portal/portal-index.tsx": ["createPortalAssociation", "changePortalAssociation"],
     "src/features/association-portal/portal-detail.tsx": ["changePortalAssociation", "reviewPortalAssociation"],
     "src/features/association-portal/portal-catalogue.tsx": ["savePortalCatalogue"],
+    "src/features/association-portal/portal-promotions.tsx": [
+      "uploadPortalPoster",
+      "createPortalPromotion",
+      "changePortalPromotion",
+      "reviewPortalPromotion",
+    ],
     "src/routes/associations/invite.tsx": ["acceptPortalInvitation"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
     "src/features/soci/fee-dialogs.tsx": ["confirmFee", "rejectFee", "markFeePaid"],

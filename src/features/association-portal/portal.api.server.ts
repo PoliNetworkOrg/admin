@@ -3,6 +3,7 @@ import { z } from "zod"
 import { env } from "@/env"
 import { createUntypedBackendClient } from "@/server/backend.server"
 
+import { inItalian } from "./portal-errors"
 import * as C from "./portal.contract"
 
 type Context = {
@@ -12,7 +13,12 @@ type Context = {
 type PortalApi = ReturnType<typeof backendPortalApi>
 
 function backendPortalApi(accessToken: string | null) {
-  const client = createUntypedBackendClient(accessToken)
+  const backend = createUntypedBackendClient(accessToken)
+  // The backend's English error sentences reach the page in Italian.
+  const client = {
+    query: (...args: Parameters<typeof backend.query>) => inItalian(() => backend.query(...args)),
+    mutation: (...args: Parameters<typeof backend.mutation>) => inItalian(() => backend.mutation(...args)),
+  }
   return {
     uploadLogo: async (input: FormData) =>
       z.object({ url: C.httpUrl }).parse(await client.mutation("associationPortal.uploadLogo", input)),
@@ -30,28 +36,50 @@ function backendPortalApi(accessToken: string | null) {
       C.invitationSchema.parse(await client.query("associationPortal.invitation", input)),
     accept: async (input: z.infer<typeof C.inviteSchema>) =>
       C.refSchema.parse(await client.mutation("associationPortal.accept", input)),
+    uploadPoster: async (input: FormData) =>
+      z.object({ url: C.httpUrl }).parse(await client.mutation("associationPortal.uploadPoster", input)),
+    promotions: {
+      list: async (input: z.infer<typeof C.refSchema>) =>
+        C.promotionListSchema.parse(await client.query("associationPortal.promotions.list", input)),
+      get: async (input: z.infer<typeof C.refSchema>) =>
+        C.promotionSchema.parse(await client.query("associationPortal.promotions.get", input)),
+      queue: async (input: z.infer<typeof C.promotionQueueSchema>) =>
+        C.promotionListSchema.parse(await client.query("associationPortal.promotions.queue", input)),
+      create: async (input: z.infer<typeof C.promotionCreateSchema>) =>
+        C.refSchema.parse(await client.mutation("associationPortal.promotions.create", input)),
+      command: async (input: C.PromotionCommand) =>
+        C.refSchema.parse(await client.mutation("associationPortal.promotions.command", input)),
+    },
   }
 }
 
 /** Agent mode without a backend token: the sample registry, parsed through the same contract as the backend's replies. */
 async function fakePortalApi(user: { sub: string; name: string; email: string }): Promise<PortalApi> {
   const { fakePortalApi: fake } = await import("./portal.fake.server")
-  const { viewer, service } = fake(user, env.AGENT_ASSOCIATION_ROLE)
+  const { viewer, service, promotions } = fake(user, env.AGENT_ASSOCIATION_ROLE)
   return {
     // No Blob storage in agent mode: an upload sets the dashboard's own icon as the logo.
     uploadLogo: async () => ({ url: `http://localhost:${process.env.PORT ?? "3000"}/favicon.ico` }),
-    list: async () => C.dashboardSchema.parse(await service.list(viewer)),
-    directory: async () => C.directorySchema.parse(await service.directory(viewer)),
-    catalogue: async () => C.catalogueSchema.parse(await service.catalogue(viewer)),
+    list: async () => C.dashboardSchema.parse(await inItalian(() => service.list(viewer))),
+    directory: async () => C.directorySchema.parse(await inItalian(() => service.directory(viewer))),
+    catalogue: async () => C.catalogueSchema.parse(await inItalian(() => service.catalogue(viewer))),
     saveCatalogue: async (input) => {
-      await service.saveCatalogue(viewer, input)
+      await inItalian(() => service.saveCatalogue(viewer, input))
       return { ok: true as const }
     },
-    get: async (input) => C.detailSchema.parse(await service.get(viewer, input.id)),
-    create: async (input) => C.refSchema.parse(await service.create(viewer, input)),
-    command: async (input) => C.refSchema.parse(await service.command(viewer, input)),
-    invitation: async (input) => C.invitationSchema.parse(await service.invitation(input.token)),
-    accept: async (input) => C.refSchema.parse(await service.accept(viewer, input.token)),
+    get: async (input) => C.detailSchema.parse(await inItalian(() => service.get(viewer, input.id))),
+    create: async (input) => C.refSchema.parse(await inItalian(() => service.create(viewer, input))),
+    command: async (input) => C.refSchema.parse(await inItalian(() => service.command(viewer, input))),
+    invitation: async (input) => C.invitationSchema.parse(await inItalian(() => service.invitation(input.token))),
+    accept: async (input) => C.refSchema.parse(await inItalian(() => service.accept(viewer, input.token))),
+    uploadPoster: async () => ({ url: `http://localhost:${process.env.PORT ?? "3000"}/favicon.ico` }),
+    promotions: {
+      list: async (input) => C.promotionListSchema.parse(await inItalian(() => promotions.list(viewer, input.id))),
+      get: async (input) => C.promotionSchema.parse(await inItalian(() => promotions.get(viewer, input.id))),
+      queue: async (input) => C.promotionListSchema.parse(await inItalian(() => promotions.queue(viewer, input))),
+      create: async (input) => C.refSchema.parse(await inItalian(() => promotions.create(viewer, input))),
+      command: async (input) => C.refSchema.parse(await inItalian(() => promotions.command(viewer, input))),
+    },
   }
 }
 

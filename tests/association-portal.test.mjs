@@ -6,6 +6,10 @@ import {
   applicantActions,
   contactSchema,
   directorySchema,
+  isPromotionOperatorAction,
+  posterFormSchema,
+  promotionApplicantActions,
+  promotionOperatorActions,
   profileSchema,
   isApplicantAction,
   isOperatorAction,
@@ -71,6 +75,29 @@ void test("responses from a backend without programmes, campuses or contacts sti
   assert.deepEqual(
     directorySchema.parse([{ id: "00000000-0000-4000-8000-000000000001", name: "A", revision: 1 }])[0].contacts,
     []
+  )
+})
+
+void test("promotion decisions are operator actions, drafting and submitting are not", () => {
+  for (const action of promotionOperatorActions) assert.equal(isPromotionOperatorAction(action), true)
+  for (const action of promotionApplicantActions) assert.equal(isPromotionOperatorAction(action), false)
+})
+
+void test("posters are PNG or JPEG of at most 5 MiB", () => {
+  const form = (file) => {
+    const data = new FormData()
+    data.set("id", "00000000-0000-4000-8000-000000000001")
+    data.set("file", file)
+    return data
+  }
+  assert.equal(
+    posterFormSchema.safeParse(form(new File([new Uint8Array(8)], "p.jpg", { type: "image/jpeg" }))).success,
+    true
+  )
+  assert.equal(
+    posterFormSchema.safeParse(form(new File([new Uint8Array(5 * 1024 * 1024 + 1)], "p.png", { type: "image/png" })))
+      .success,
+    false
   )
 })
 

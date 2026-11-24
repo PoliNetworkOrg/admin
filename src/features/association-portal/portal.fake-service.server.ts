@@ -28,7 +28,17 @@ export type Record = {
   /** Contacts visible to other associations or to PoliNetwork only; public ones live in the profile. */
   contacts: Contact[]
 }
-export type Mail = { id: string; to: string; subject: string; text: string }
+/**
+ * An outbox message. `text` is the plain fallback; `template` names a React Email template in `src/emails/` and its
+ * string props (`association-*.tsx`), rendered by the cron worker when it delivers the message.
+ */
+export type Mail = {
+  id: string
+  to: string
+  subject: string
+  text: string
+  template?: { kind: string; props: { [key: string]: string | null } }
+}
 export type Store = {
   list(): Promise<Record[]>
   get(id: string): Promise<Record | null>
@@ -41,7 +51,7 @@ export type Store = {
   catalogue(): Promise<CatalogueEntry[]>
   saveCatalogue(entry: CatalogueEntry, actor: string): Promise<void>
 }
-function fail(
+export function fail(
   code: "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "BAD_REQUEST" | "TOO_MANY_REQUESTS",
   message: string
 ): never {
@@ -88,7 +98,10 @@ function checkCatalogue(p: Profile, previous: Profile | null, catalogue: Catalog
     for (const slug of slugs) {
       const entry = catalogue.find((e) => e.kind === kind && e.slug === slug)
       if (!entry || (!entry.active && !before.includes(slug)))
-        fail("BAD_REQUEST", `Choose ${kind === "programme" ? "programmes" : "campuses"} from the PoliNetwork catalogue`)
+        fail(
+          "BAD_REQUEST",
+          kind === "programme" ? "Choose programmes from the catalogue" : "Choose campuses from the catalogue"
+        )
     }
   }
 }
@@ -118,14 +131,14 @@ function flagContactsOf(r: Record, v: Viewer, sub: string) {
   const linked = [...working.contacts, ...r.contacts].filter((c) => c.holderSub === sub)
   if (linked.length) event(r, v, "Contacts to update", linked.map((c) => c.label).join(", "))
 }
-const activeMember = (r: Record, v: Viewer) => r.members.find((m) => m.sub === v.sub && m.active)
+export const activeMember = (r: Record, v: Viewer) => r.members.find((m) => m.sub === v.sub && m.active)
 const accessible = (r: Record, v: Viewer) =>
   v.operator ||
   !!activeMember(r, v) ||
   r.creator === v.sub ||
   r.requests.some((q) => q.by === v.sub || q.targetSub === v.sub)
-const writable = (r: Record, v: Viewer) => v.operator || (r.status === "active" && !!activeMember(r, v))
-const responsible = (r: Record, v: Viewer) =>
+export const writable = (r: Record, v: Viewer) => v.operator || (r.status === "active" && !!activeMember(r, v))
+export const responsible = (r: Record, v: Viewer) =>
   v.operator || (r.status === "active" && activeMember(r, v)?.role === "responsible")
 const operator = (v: Viewer) => {
   if (!v.operator) fail("FORBIDDEN", "PoliNetwork approval is required")

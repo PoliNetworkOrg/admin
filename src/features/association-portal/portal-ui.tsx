@@ -200,10 +200,13 @@ export function ProgrammeFields({
   value,
   onChange,
   catalogue,
+  hideCrossProgramme = false,
 }: {
   value: Profile
   onChange: (value: Profile) => void
   catalogue: CatalogueEntry[]
+  /** For audiences: "everyone" is chosen elsewhere. */
+  hideCrossProgramme?: boolean
 }) {
   const id = useId()
   const [search, setSearch] = useState("")
@@ -212,26 +215,28 @@ export function ProgrammeFields({
   const campuses = catalogue.filter((e) => e.kind === "campus" && (e.active || value.campuses.includes(e.slug)))
   return (
     <fieldset className="space-y-4">
-      <legend className="text-sm font-medium">Corsi di studio e sedi</legend>
-      <label className="flex items-start gap-2.5 text-[14px]">
-        <Checkbox
-          checked={value.crossProgramme}
-          onCheckedChange={(checked) =>
-            onChange({
-              ...value,
-              crossProgramme: checked === true,
-              programmes: checked === true ? [] : value.programmes,
-            })
-          }
-          className={checkboxControl}
-        />
-        <span className="flex flex-col gap-0.5">
-          <span className="font-medium">Trasversale a tutti i corsi</span>
-          <span className="text-[13px] text-(--pn-fg-muted)">
-            L’associazione si rivolge a studenti di qualsiasi corso di studio.
+      <legend className={hideCrossProgramme ? "sr-only" : "text-sm font-medium"}>Corsi di studio e sedi</legend>
+      {!hideCrossProgramme && (
+        <label className="flex items-start gap-2.5 text-[14px]">
+          <Checkbox
+            checked={value.crossProgramme}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...value,
+                crossProgramme: checked === true,
+                programmes: checked === true ? [] : value.programmes,
+              })
+            }
+            className={checkboxControl}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium">Trasversale a tutti i corsi</span>
+            <span className="text-[13px] text-(--pn-fg-muted)">
+              L’associazione si rivolge a studenti di qualsiasi corso di studio.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
       {!value.crossProgramme && (
         <FormField htmlFor={`${id}-programme`} label="Corsi di studio" hint="Scegli dal catalogo di PoliNetwork.">
           <div className="space-y-2">

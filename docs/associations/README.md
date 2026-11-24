@@ -39,6 +39,22 @@ Lo storico registra etichetta e visibilità, mai nomi o numeri di telefono. Quan
 
 L’elenco delle associazioni nel portale mostra a ciascuno solo i contatti che può vedere: i contatti pubblici approvati a tutti, quelli per le altre associazioni a chi rappresenta un’associazione attiva, tutti ai propri referenti e agli operatori.
 
+## Richieste di promozione
+
+Un referente chiede a PoliNetwork di promuovere un evento, un annuncio o un bando: titolo, testo, link, locandina facoltativa (stesso storage dei loghi, PNG o JPEG fino a 5 MB), canali richiesti, pubblico (tutti, oppure corsi e sedi), data desiderata e scadenza facoltativa. I canali seguono l’art. 4.7 dell’RRI: canale PoliAssociazioni, canale broadcast di un corso, gruppo di un esame o scaglione, gruppo generale di livello, tutti i gruppi di un corso, altro (lo valuta PoliNetwork).
+
+| Stato               | Chi agisce                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Bozza               | Collaboratori e responsabili preparano e modificano                                                              |
+| In revisione        | Solo il responsabile invia                                                                                       |
+| Modifiche richieste | PoliNetwork chiede modifiche; i referenti aggiornano e il responsabile reinvia                                   |
+| Approvata           | PoliNetwork approva                                                                                              |
+| Programmata         | PoliNetwork fissa data, ora e canale effettivi                                                                   |
+| Pubblicata          | PoliNetwork segna la pubblicazione con il link                                                                   |
+| Respinta / Ritirata | PoliNetwork respinge (anche dopo l’approvazione); il responsabile ritira, l’autore può ritirare la propria bozza |
+
+Ogni passaggio registra chi l’ha fatto e quando e invia un’email all’autore e a chi ha inviato la richiesta. Gli operatori possono aggiungere note interne, mai visibili ai referenti. La pubblicazione sui canali resta manuale. Gli operatori trovano la coda in Associazioni › Promozioni, filtrabile per stato e date; i referenti trovano le richieste nella scheda Promozioni della propria associazione.
+
 ## Stati e gestione dei referenti
 
 Le richieste passano per bozza, invio, eventuali integrazioni, approvazione/rifiuto o ritiro. Le modifiche inviate restano separate dalla versione pubblicata, anche durante un rifiuto. La scheda richiede entrambe le descrizioni per essere pubblicata.
@@ -49,7 +65,7 @@ La sospensione blocca le modifiche dei referenti e può mantenere visibile la sc
 
 ## Contratto e rilascio
 
-Il backend espone `associationPortal.*`. Il BFF valida tutte le risposte con `portal.contract.ts`, copia del contratto backend. Login OIDC, sessioni Redis e controllo Origin restano quelli esistenti. L'accesso alla shell è aperto agli account autenticati con una risposta fresca di `me.access`; i singoli servizi interni continuano a richiedere i propri permessi.
+Il backend espone `associationPortal.*`. I suoi messaggi di errore sono frasi inglesi fisse: `portal-errors.ts` le traduce in italiano dove l’API risponde, e mostra così com’è un messaggio sconosciuto. Il BFF valida tutte le risposte con `portal.contract.ts`, copia del contratto backend. Login OIDC, sessioni Redis e controllo Origin restano quelli esistenti. L'accesso alla shell è aperto agli account autenticati con una risposta fresca di `me.access`; i singoli servizi interni continuano a richiedere i propri permessi.
 
 Il backend conserva registro, richieste, storico e collegamenti in un aggregato transazionale PostgreSQL. Revisioni ottimistiche, blocchi di riga e chiavi di idempotenza proteggono da approvazioni concorrenti e retry. Le email usano una coda durevole con retry; lo stato è consultabile anche nel portale. Nessuna modifica deve essere ripetuta solo perché il successivo aggiornamento della pagina fallisce.
 

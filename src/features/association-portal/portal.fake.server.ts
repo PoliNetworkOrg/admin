@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
-import type { CatalogueEntry, Contact, Member, Profile, Request } from "./portal.contract"
+import type { CatalogueEntry, Contact, Member, Profile, PromotionContent, Request } from "./portal.contract"
+import { createPromotionService, type Promotion, type PromotionStore } from "./portal.fake-promotions.server"
 import { createAssociationService, type Mail, type Record, type Store, type Viewer } from "./portal.fake-service.server"
 
 /**
@@ -225,17 +226,91 @@ function seed(agent: Viewer, role: Role) {
   return [alfa, beta, gamma]
 }
 
-type State = { rows: Map<string, Record>; catalogue: CatalogueEntry[]; creation: Map<string, string> }
+type State = {
+  rows: Map<string, Record>
+  catalogue: CatalogueEntry[]
+  creation: Map<string, string>
+  promotions: Map<string, Promotion>
+  keys: Map<string, string>
+}
+
+/** Sample promotion requests on Associazione Alfa: one in each stage an operator or a representative acts on. */
+function samplePromotions(alfa: Record): Promotion[] {
+  const author = alfa.members.find((m) => m.role === "collaborator") ?? alfa.members[0]
+  const responsible = alfa.members.find((m) => m.role === "responsible") ?? alfa.members[0]
+  const content = (title: string, offset: number): PromotionContent => ({
+    title,
+    text: `${title}: iscrizioni aperte a tutti gli studenti. Porta un amico!`,
+    link: "https://example.org/iscrizioni",
+    poster: null,
+    channels: [
+      { channel: "poliassociazioni", programme: null, note: "" },
+      { channel: "course_broadcast", programme: SAMPLE_PROGRAMMES.informatica, note: "" },
+    ],
+    audience: { everyone: false, programmes: [SAMPLE_PROGRAMMES.informatica], campuses: ["leonardo"] },
+    desiredDate: days(offset).slice(0, 10),
+    deadline: null,
+  })
+  const promotion = (title: string, offset: number, path: Promotion["status"][]): Promotion => {
+    const p: Promotion = {
+      id: randomUUID(),
+      associationId: alfa.id,
+      status: "draft",
+      revision: path.length,
+      content: content(title, offset),
+      createdBy: author.sub,
+      createdByName: author.name,
+      notify: [],
+      createdAt: days(-5),
+      updatedAt: days(-1),
+      scheduledAt: path.includes("scheduled") ? days(offset) : null,
+      scheduledChannel: path.includes("scheduled") ? "poliassociazioni" : null,
+      scheduledDetail: "",
+      publishedUrl: null,
+      publishedAt: null,
+      transitions: [],
+    }
+    let from: Promotion["status"] | null = null
+    const steps: Promotion["status"][] = ["draft", ...path]
+    for (const [i, to] of steps.entries()) {
+      const actor =
+        to === "draft" ? author : to === "submitted" ? responsible : { sub: "polinetwork", name: "PoliNetwork" }
+      p.transitions.push({
+        id: randomUUID(),
+        kind: "transition",
+        from,
+        to,
+        at: days(-5 + i),
+        actorSub: actor.sub,
+        actorName: actor.name,
+        note: to === "changes_requested" ? "Aggiungi la scadenza delle iscrizioni." : "",
+        internal: false,
+      })
+      from = to
+    }
+    p.status = from ?? "draft"
+    return p
+  }
+  return [
+    promotion("Torneo di calcetto", 9, []),
+    promotion("Hackathon d’autunno", 6, ["submitted"]),
+    promotion("Workshop di robotica", 12, ["submitted", "changes_requested"]),
+    promotion("Aperitivo di benvenuto", 3, ["submitted", "approved", "scheduled"]),
+  ]
+}
 const states = new Map<string, State>()
 
 function stateFor(agent: Viewer, role: Role) {
   const key = `${agent.sub}:${role}`
   let state = states.get(key)
   if (!state) {
+    const records = seed(agent, role)
     state = {
-      rows: new Map(seed(agent, role).map((r) => [r.id, r])),
+      rows: new Map(records.map((r) => [r.id, r])),
       catalogue: catalogue(),
       creation: new Map(),
+      promotions: new Map(samplePromotions(records[0]).map((p) => [p.id, p])),
+      keys: new Map(),
     }
     states.set(key, state)
   }
@@ -291,9 +366,56 @@ function memoryStore(state: State): Store {
   }
 }
 
+function memoryPromotions(state: State): PromotionStore {
+  const day = (p: Promotion) => p.scheduledAt?.slice(0, 10) ?? p.content.desiredDate ?? ""
+  return {
+    promotions: async (filter) =>
+      structuredClone(
+        [...state.promotions.values()]
+          .filter(
+            (p) =>
+              (!filter.associationId || p.associationId === filter.associationId) &&
+              (!filter.status || p.status === filter.status) &&
+              (!filter.from || day(p) >= filter.from) &&
+              (!filter.to || (!!day(p) && day(p) <= filter.to))
+          )
+          .sort((a, b) => (day(a) || "9999").localeCompare(day(b) || "9999"))
+      ),
+    promotion: async (id) => structuredClone(state.promotions.get(id) ?? null),
+    async createPromotion(associationId, key, operation) {
+      const existing = state.keys.get(key)
+      if (existing) return existing
+      const record = state.rows.get(associationId)
+      if (!record) throw new Error("Associazione non trovata")
+      const mail: Mail[] = []
+      const p = operation(structuredClone(record), mail)
+      state.promotions.set(p.id, p)
+      state.keys.set(key, p.id)
+      for (const m of mail) console.info(`[agent mode] Email to ${m.to}: ${m.subject}`)
+      return p.id
+    },
+    async changePromotion(id, key, operation) {
+      if (state.keys.has(key)) return id
+      const stored = state.promotions.get(id)
+      const record = stored && state.rows.get(stored.associationId)
+      if (!stored || !record) throw new Error("Richiesta non trovata")
+      const p = structuredClone(stored)
+      const mail: Mail[] = []
+      operation(p, structuredClone(record), mail)
+      state.promotions.set(id, p)
+      state.keys.set(key, id)
+      for (const m of mail) console.info(`[agent mode] Email to ${m.to}: ${m.subject}`)
+      return id
+    },
+  }
+}
+
 /** The fake API for this agent-mode user, with the same shape as `portalApi`'s backend client. */
 export function fakePortalApi(user: { sub: string; name: string; email: string }, role: Role) {
   const viewer: Viewer = { sub: user.sub, name: user.name, email: user.email, operator: role === "operator" }
-  const service = createAssociationService(memoryStore(stateFor(viewer, role)), "http://localhost:3000")
-  return { viewer, service }
+  const state = stateFor(viewer, role)
+  const store = memoryStore(state)
+  const service = createAssociationService(store, "http://localhost:3000")
+  const promotions = createPromotionService(memoryPromotions(state), store, "http://localhost:3000")
+  return { viewer, service, promotions }
 }
