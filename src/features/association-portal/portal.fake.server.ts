@@ -162,6 +162,7 @@ function record(name: string, members: Member[], extra: Partial<Record> = {}): R
     commands: [],
     contacts: [],
     collaboration: { open: false, contactId: null },
+    handover: null,
     ...extra,
   }
 }

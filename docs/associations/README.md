@@ -67,6 +67,12 @@ Da un evento approvato i referenti possono creare una richiesta di promozione gi
 
 Nell’elenco delle associazioni un’associazione può dichiararsi aperta a collaborazioni e indicare il contatto dedicato, scelto tra i suoi contatti. Il flag è visibile a tutti nel portale; il contatto solo a chi può già vederlo secondo la sua visibilità. Non serve approvazione.
 
+## Passaggio di consegne
+
+Il responsabile uscente avvia il passaggio dalla scheda Referenti. Il portale lo guida in tre passi: invitare chi gli succede come responsabile (l’invito e l’approvazione PoliNetwork sono quelli di sempre), rivedere i contatti con nome o telefono o collegati a lui e confermarli, controllare le richieste di promozione e gli eventi ancora aperti. Può completarlo solo quando c’è un altro responsabile approvato e i contatti sono confermati, scegliendo se lasciare l’associazione nello stesso momento. Il passaggio si chiude da solo se il responsabile uscente lascia o viene revocato; PoliNetwork può chiudere un passaggio fermo. Gli operatori vedono i passaggi in corso nel registro e nel contatore della pagina iniziale.
+
+Chi subentra eredita tutto: scheda, storico, richieste di promozione ed eventi appartengono all’associazione, non alla persona. Restano private solo le evidenze delle richieste di accesso altrui.
+
 ## Stati e gestione dei referenti
 
 Le richieste passano per bozza, invio, eventuali integrazioni, approvazione/rifiuto o ritiro. Le modifiche inviate restano separate dalla versione pubblicata, anche durante un rifiuto. La scheda richiede entrambe le descrizioni per essere pubblicata.

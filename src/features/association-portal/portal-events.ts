@@ -31,6 +31,12 @@ const eventLabels = new Map([
   ["Contacts updated", "Contatti aggiornati"],
   ["Public contacts proposed", "Contatti pubblici aggiunti alla proposta di scheda"],
   ["Contacts to update", "Contatti da aggiornare: il referente collegato non ha più accesso"],
+  ["Open to collaborations", "Aperta a collaborazioni"],
+  ["Closed to collaborations", "Non più aperta a collaborazioni"],
+  ["Handover started", "Passaggio di consegne avviato"],
+  ["Handover contacts reviewed", "Contatti personali rivisti per il passaggio di consegne"],
+  ["Handover completed", "Passaggio di consegne completato"],
+  ["Handover cancelled", "Passaggio di consegne annullato"],
 ])
 
 export function eventLabel(action: string) {

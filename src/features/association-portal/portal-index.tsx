@@ -136,6 +136,7 @@ export function PortalIndex({
                         <p className="text-sm">Nessun responsabile attivo</p>
                       )}
                       {!!a.pending && <p className="text-sm">{a.pending} richieste in revisione</p>}
+                      {a.handover && <p className="text-sm">Passaggio di consegne in corso</p>}
                     </Link>
                   ))}
               </div>

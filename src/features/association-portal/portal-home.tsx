@@ -50,6 +50,8 @@ export function actionText(a: Action) {
       return `Completa e invia l’evento ${title}`
     case "event_draft":
       return `Completa l’evento ${title}`
+    case "handover_open":
+      return `Il passaggio di consegne di ${a.associationName} non è finito`
     default:
       return `C’è qualcosa da controllare per ${a.associationName}`
   }
@@ -97,7 +99,7 @@ export function PortalHome({ home }: { home: Home }) {
           <h2 id="portal-queues" className="text-sm font-medium">
             Code di PoliNetwork
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NavCard
               title="Schede da approvare"
               count={c.profiles}
@@ -117,6 +119,11 @@ export function PortalHome({ home }: { home: Home }) {
               title="Eventi in revisione"
               count={c.events}
               render={<Link to="/dashboard/associations/events" search={{ status: "submitted" }} />}
+            />
+            <NavCard
+              title="Passaggi di consegne in corso"
+              count={c.handovers}
+              render={<Link to="/dashboard/associations" search={{ view: "registry" }} />}
             />
           </div>
         </section>

@@ -18,6 +18,7 @@ import { formatDate, formatDateTime } from "@/lib/format"
 import { EventsTab } from "./portal-calendar"
 import { ContactsPanel } from "./portal-contacts"
 import { eventLabel } from "./portal-events"
+import { HandoverCard } from "./portal-handover"
 import { PromotionsTab } from "./portal-promotions"
 import { reviewPortalAssociation } from "./portal-review.functions"
 import {
@@ -408,6 +409,20 @@ export function PortalDetail({
                 </section>
               ))}
             </div>
+          )}
+          {tab === "members" && (a.role || a.operator) && (
+            <HandoverCard
+              association={a}
+              userSub={user.sub}
+              promotions={promotions}
+              events={events}
+              onInvite={() => {
+                setRole("responsible")
+                setExplanation("Passaggio di consegne")
+                setInviting(true)
+              }}
+              onAction={run}
+            />
           )}
           {tab === "members" && (
             <section className={panelClass}>
