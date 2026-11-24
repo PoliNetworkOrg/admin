@@ -103,7 +103,7 @@ Known prototype defects to not reproduce:
   the table widens. Active / Former is the scope control. Row icon: Open in Telegram; the role actions follow it.
 - **Teams**: index = one `NavCard` per team (lead, member count, missing census answers) then all team members in one
   table with a Team column. Team page columns follow the team's fields (IT: GitHub, Areas; Design & Social: Tools,
-  Portfolio; HR and Events: Focus; International: Languages). Team Leads see phone and Telegram for their team. Lead
+  Portfolio; HR and Events: Focus). Team Leads see phone and Telegram for their team. Lead
   option in Add to team only for `people:appoint`. End membership needs a reason and keeps history.
 - **Census**: campaign list is a table with a stacked progress meter and counts. Campaign page: Import responses
   (primary), Send reminders (outline, an icon on phones) and Close campaign (icon). Segments: Expected (all), Answered, Continuing, Leaving, No

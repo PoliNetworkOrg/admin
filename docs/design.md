@@ -19,8 +19,8 @@ Login and onboarding pages use the same tokens but not the shell.
 4. **Borders separate; shadows float.** Static surfaces (cards, tables, nav) get a 1px line; only layers above the page
    (popover, menu, dialog, sheet, toast, drag ghost) cast a shadow.
 5. **Motion confirms, never decorates.** Animate only changes the user caused, mostly on `transform`/`opacity`, short
-   and ease-out. Switching pages, sorting, filtering, paging and keyboard moves never animate; the one exception is the
-   panel sliding in or out (§6).
+   and ease-out. Switching pages, sorting, filtering, paging and keyboard moves never animate; the exceptions are the
+   panel sliding in or out (§6) and the page width growing or shrinking with the full-width toggle (§3).
 
 ## 2. Shell and wayfinding
 
@@ -130,7 +130,10 @@ actions (theme, account, sign out).
 ## 3. Page templates
 
 Wrap every page body in `PageContent` and give `PageBar` the same `width` (both default to `wide`), so header and content
-share edges. All template names use the same 1280px maximum content width on desktop. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
+share edges. All template names use the same 1280px maximum content width on desktop. The full-width toggle (Maximize /
+Minimize, pinned to the column's top-right corner, shown once the column is 1400px wide) drops that maximum on every page
+until it is pressed again; it is remembered in the browser and applied before the first paint, and header and content
+animate their shared edges together. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
 does not move when data arrives.
 
 | Template        | `width`    | Used by                                                        |

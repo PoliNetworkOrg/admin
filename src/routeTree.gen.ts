@@ -22,6 +22,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DashboardRegulationsIndexRouteImport } from './routes/dashboard/regulations/index'
 import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
+import { Route as ApiMcpIndexRouteImport } from './routes/api/mcp/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
@@ -49,6 +50,7 @@ import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esi
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
+import { Route as ApiMcpConfigRouteImport } from './routes/api/mcp/config'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardRegulationsDraftsIndexRouteImport } from './routes/dashboard/regulations/drafts/index'
@@ -135,6 +137,11 @@ const DashboardAccountIndexRoute = DashboardAccountIndexRouteImport.update({
   id: '/account/',
   path: '/account/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const ApiMcpIndexRoute = ApiMcpIndexRouteImport.update({
+  id: '/api/mcp/',
+  path: '/api/mcp/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
   id: '/whatsapp/groups',
@@ -276,6 +283,11 @@ const DashboardAccountMeRoute = DashboardAccountMeRouteImport.update({
   path: '/account/me',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ApiMcpConfigRoute = ApiMcpConfigRouteImport.update({
+  id: '/api/mcp/config',
+  path: '/api/mcp/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
     id: '/groups-by-label/',
@@ -406,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -433,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
@@ -467,6 +481,7 @@ export interface FileRoutesByTo {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -494,6 +509,7 @@ export interface FileRoutesByTo {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp': typeof ApiMcpIndexRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations': typeof DashboardRegulationsIndexRoute
@@ -530,6 +546,7 @@ export interface FileRoutesById {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -557,6 +574,7 @@ export interface FileRoutesById {
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
@@ -594,6 +612,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -621,6 +640,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
@@ -655,6 +675,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -682,6 +703,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp'
     | '/dashboard/account'
     | '/dashboard/people'
     | '/dashboard/regulations'
@@ -717,6 +739,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -744,6 +767,7 @@ export interface FileRouteTypes {
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
@@ -778,6 +802,8 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   PeopleInviteRoute: typeof PeopleInviteRoute
+  ApiMcpConfigRoute: typeof ApiMcpConfigRoute
+  ApiMcpIndexRoute: typeof ApiMcpIndexRoute
   ApiEsignAgentSplatRoute: typeof ApiEsignAgentSplatRoute
 }
 
@@ -873,6 +899,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/account/'
       preLoaderRoute: typeof DashboardAccountIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/api/mcp/': {
+      id: '/api/mcp/'
+      path: '/api/mcp'
+      fullPath: '/api/mcp/'
+      preLoaderRoute: typeof ApiMcpIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/whatsapp/groups': {
       id: '/dashboard/whatsapp/groups'
@@ -1062,6 +1095,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/account/me'
       preLoaderRoute: typeof DashboardAccountMeRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/api/mcp/config': {
+      id: '/api/mcp/config'
+      path: '/api/mcp/config'
+      fullPath: '/api/mcp/config'
+      preLoaderRoute: typeof ApiMcpConfigRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
@@ -1342,6 +1382,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   PeopleInviteRoute: PeopleInviteRoute,
+  ApiMcpConfigRoute: ApiMcpConfigRoute,
+  ApiMcpIndexRoute: ApiMcpIndexRoute,
   ApiEsignAgentSplatRoute: ApiEsignAgentSplatRoute,
 }
 export const routeTree = rootRouteImport

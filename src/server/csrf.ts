@@ -13,7 +13,8 @@ export function isTrustedRequest(method: string, origin: string | null, appOrigi
 /**
  * The sign agent's proxy (`/api/esign/agent/…`) is called by the desktop agent, which sends no `Origin`. It reads no
  * cookie and forwards no credential: the single-use ticket in the path is the only authority, so CSRF cannot apply.
+ * The admin MCP (`/api/mcp`) reads no cookie either: its only credential is the bearer token in its header.
  */
 export function isCsrfExemptPath(pathname: string) {
-  return pathname.startsWith("/api/esign/agent/")
+  return pathname.startsWith("/api/esign/agent/") || pathname === "/api/mcp" || pathname === "/api/mcp/"
 }

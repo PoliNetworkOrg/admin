@@ -78,7 +78,7 @@ void test("a Lead manages their team's members, but appointing or ending a Lead 
   const end = (api, personId) => api.endTeamMembership({ teamId, personId, reason: "Test" })
 
   // Nobody gives themselves a role, and a Lead is no Lead of Leads.
-  const otherTeam = ["it", "hr", "design", "intl"].find((team) => team !== teamId)
+  const otherTeam = ["it", "hr", "design", "events"].find((team) => team !== teamId)
   await assert.rejects(
     asLead.addTeamMember({ teamId: otherTeam, personId: lead.id, role: "member", since: "2026-01-01", fields: {} }),
     /give themselves/
@@ -116,11 +116,11 @@ void test("a Lead's team lists the memberships in effect, pending ones of unlink
 void test("Auth's refusal reaches the record and the caller", async () => {
   const refusing = records.find((person) => person.account.status === "linked" && person.account.sub === "sub-0012")
   await assert.rejects(
-    hr.addTeamMember({ teamId: "intl", personId: refusing.id, role: "member", since: "2026-01-01", fields: {} }),
+    hr.addTeamMember({ teamId: "events", personId: refusing.id, role: "member", since: "2026-01-01", fields: {} }),
     /permissions/
   )
   const after = await hr.getPerson(refusing.id)
-  const refused = after.assignments.find((a) => a.team === "intl")
+  const refused = after.assignments.find((a) => a.team === "events")
   assert.equal(refused.status, "refused")
   assert.ok(refused.endedOn, "a refused start never took effect")
 })

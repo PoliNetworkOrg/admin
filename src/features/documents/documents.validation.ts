@@ -48,6 +48,13 @@ export function isValidDocumentFile(file: File) {
   return file.type === "application/pdf" && file.size > 0 && file.size <= MAX_DOCUMENT_FILE_BYTES
 }
 
+/** The version form's text fields, as the MCP takes them; the PDF is the `file` file. The parser decides. */
+export const documentVersionFormFields = z.object({
+  documentId: id,
+  version: z.string().trim().min(1).max(DOCUMENT_VERSION_MAX_LENGTH),
+  date: z.iso.date(),
+})
+
 export function parseDocumentVersionForm(data: FormData) {
   const documentId = z.coerce.number().int().positive().safeParse(data.get("documentId"))
   const version = z.string().trim().min(1).max(DOCUMENT_VERSION_MAX_LENGTH).safeParse(data.get("version"))

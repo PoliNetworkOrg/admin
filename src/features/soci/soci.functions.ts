@@ -34,13 +34,16 @@ export const getSociList = createServerFn({ method: "GET" })
   .middleware([sociReadMiddleware])
   .handler(async ({ context }) => (await sociApi(context)).list())
 
+/** A fee year; the current one when left out. */
+export const sociFeesInput = z.object({ year: feeYearSchema.optional() })
+
 /**
  * Soci › Fees: one fee year's fees, with the totals per status, and the fee years to choose from (back to the oldest
  * admission's).
  */
 export const getSociFees = createServerFn({ method: "GET" })
   .middleware([sociReadMiddleware])
-  .validator(z.object({ year: feeYearSchema.optional() }))
+  .validator(sociFeesInput)
   .handler(async ({ data, context }) => {
     const api = await sociApi(context)
     const [fees, register] = await Promise.all([api.fees.list({ year: data.year }), api.list()])

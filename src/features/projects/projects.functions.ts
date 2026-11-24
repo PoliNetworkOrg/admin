@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod"
 
 import { adminMiddleware, webContentWriteMiddleware } from "@/server/auth.middleware"
 
-import { parseProjectForm } from "./projects.validation"
+import { parseEditProjectForm, parseProjectForm, projectIdInput, reorderProjectsInput } from "./projects.validation"
 import type { Project } from "./types"
 
 function projectFields(project: Project) {
@@ -47,11 +46,7 @@ export const createProject = createServerFn({ method: "POST" })
 
 export const editProject = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
-  .validator((data: FormData) => {
-    const id = Number(data.get("id"))
-    if (!Number.isInteger(id) || id <= 0) throw new Error("INVALID_ID")
-    return { id, ...parseProjectForm(data) }
-  })
+  .validator(parseEditProjectForm)
   .handler(async ({ data, context }) => {
     const formData = projectFormData(data)
     formData.set("id", String(data.id))
@@ -62,7 +57,7 @@ export const editProject = createServerFn({ method: "POST" })
 
 export const deleteProject = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
-  .validator(z.object({ id: z.number().int().positive() }))
+  .validator(projectIdInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.deleteProject.mutate(data)
     if (result.error) throw new Error(result.error)
@@ -71,7 +66,7 @@ export const deleteProject = createServerFn({ method: "POST" })
 
 export const reorderProjects = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
-  .validator(z.object({ projectIds: z.array(z.number().int().positive()).min(1) }))
+  .validator(reorderProjectsInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.projects.reorderProjects.mutate(data)
     if (result.error) throw new Error(result.error)
