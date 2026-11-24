@@ -4,7 +4,7 @@ import test from "node:test"
 import { setImmediate } from "node:timers/promises"
 import { runInNewContext } from "node:vm"
 
-import ts from "typescript"
+import ts from "@typescript/typescript6"
 
 const path = "src/features/esign/pdf-viewer.tsx"
 const source = ts.createSourceFile(path, await readFile(path, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
