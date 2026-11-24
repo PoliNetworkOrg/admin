@@ -466,6 +466,20 @@ Rules that the templates above don't imply.
 - **Associations**: 17px semibold titles, IT/EN tags in a left column beside the description, and a divided footer
   with the public-link count left and Manage links right; edit/delete stay in the header. Links are edited in their
   own dialog, not inline.
+- **Associazioni**: the record's tabs are Scheda, Contatti, Richieste, Referenti, Attività. Contacts are a divided list
+  (label, function and visibility chips, email, then name and phone muted) with edit and remove icon buttons; the
+  privacy notice is an info `InlineAlert` that appears in the dialog as soon as a name or phone is typed. Programmes are
+  a multiple combobox with removable chips, campuses a three-column checkbox grid. Corsi e sedi is a List page with a
+  Corsi/Sedi segmented lead; entries are retired (archive icon) rather than deleted.
+  Promozioni is a List page (status segmented lead, Dal/Al date fields above the table); a request is a Record
+  page: header with the status badge and the representative's actions, decision or publication cards for operators,
+  content and details side by side, then the history with comments. Italian dates read "6 ott 2026" (`formatDay`).
+  Eventi mirrors Promozioni (queue and record page); an approved event's page offers "Chiedi una promozione", which opens
+  the request form prefilled from the event. Collaborazioni is a checkbox and an optional contact select at the end of
+  the Contatti tab; the directory shows an "Aperta a collaborazioni" chip and the dedicated contact's email.
+  Crediti (operators) is a Record-width page of two cards, Regole and Crediti del semestre; a record's Crediti tab shows
+  Saldo and Uso previsto as a `KeyValueList`, then the movements (negative amounts in danger text). Credit inputs take
+  comma decimals ("0,5").
 - **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px, running to
   the screen edges on phones) ending in a dashed "Add category"; on phones questions wrap up to three lines; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All

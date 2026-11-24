@@ -1,13 +1,29 @@
 import { useServerFn } from "@tanstack/react-start"
+import { X } from "lucide-react"
 import { useId, useState } from "react"
 import type { z } from "zod"
 
-import { FileButton, FormDialog, FormField, SelectField, fieldControl } from "@/components/primitives"
+import {
+  checkboxControl,
+  Chip,
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  FileButton,
+  FormDialog,
+  FormField,
+  SelectField,
+  fieldControl,
+} from "@/components/primitives"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-import { LOGO_MAX_BYTES, type Profile } from "./portal.contract"
+import { type CatalogueEntry, type Contact, LOGO_MAX_BYTES, type Profile } from "./portal.contract"
 import { uploadPortalLogo } from "./portal.functions"
 
 export const EMPTY_PROFILE: Profile = {
@@ -18,6 +34,31 @@ export const EMPTY_PROFILE: Profile = {
   email: "",
   logo: null,
   links: [],
+  programmes: [],
+  campuses: [],
+  crossProgramme: false,
+  contacts: [],
+}
+export const contactFunctionLabel = {
+  presidency: "Presidenza",
+  events: "Eventi",
+  collaborations: "Collaborazioni",
+  communications: "Comunicazione",
+  other: "Altro",
+} satisfies Record<Contact["function"], string>
+export const visibilityLabel = {
+  public: "Pubblico",
+  associations: "Altre associazioni",
+  polinetwork: "Solo PoliNetwork",
+} satisfies Record<Contact["visibility"], string>
+export const visibilityDescription = {
+  public: "Sul sito dopo l’approvazione di PoliNetwork, come il resto della scheda.",
+  associations: "Visibile ai referenti delle altre associazioni attive nel portale.",
+  polinetwork: "Visibile solo ai referenti di questa associazione e a PoliNetwork.",
+} satisfies Record<Contact["visibility"], string>
+/** The catalogue name of a programme or campus; a slug no longer in the catalogue is shown as is. */
+export function catalogueName(catalogue: CatalogueEntry[], kind: CatalogueEntry["kind"], slug: string) {
+  return catalogue.find((e) => e.kind === kind && e.slug === slug)?.nameIt ?? slug
 }
 export const roleOptions = [
   { value: "responsible", label: "Responsabile" },
@@ -77,6 +118,9 @@ const fieldLabel = new Map([
   ["reason", "Motivazione"],
   ["note", "Note"],
   ["token", "Invito"],
+  ["phone", "Telefono"],
+  ["programmes", "Corsi di studio"],
+  ["campuses", "Sedi"],
 ])
 
 /** Parses user input and throws an Italian message naming the field, never the raw Zod issue list. */
@@ -151,14 +195,137 @@ export function TextField({
   )
 }
 
+/** Programmes (searchable, as chips) and campuses (checkboxes), or the cross-programme flag. */
+export function ProgrammeFields({
+  value,
+  onChange,
+  catalogue,
+  hideCrossProgramme = false,
+}: {
+  value: Profile
+  onChange: (value: Profile) => void
+  catalogue: CatalogueEntry[]
+  /** For audiences: "everyone" is chosen elsewhere. */
+  hideCrossProgramme?: boolean
+}) {
+  const id = useId()
+  const [search, setSearch] = useState("")
+  // Retired entries stay listed on a record that already has them, but cannot be added.
+  const programmes = catalogue.filter((e) => e.kind === "programme" && e.active)
+  const campuses = catalogue.filter((e) => e.kind === "campus" && (e.active || value.campuses.includes(e.slug)))
+  return (
+    <fieldset className="space-y-4">
+      <legend className={hideCrossProgramme ? "sr-only" : "text-sm font-medium"}>Corsi di studio e sedi</legend>
+      {!hideCrossProgramme && (
+        <label className="flex items-start gap-2.5 text-[14px]">
+          <Checkbox
+            checked={value.crossProgramme}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...value,
+                crossProgramme: checked === true,
+                programmes: checked === true ? [] : value.programmes,
+              })
+            }
+            className={checkboxControl}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium">Trasversale a tutti i corsi</span>
+            <span className="text-[13px] text-(--pn-fg-muted)">
+              L’associazione si rivolge a studenti di qualsiasi corso di studio.
+            </span>
+          </span>
+        </label>
+      )}
+      {!value.crossProgramme && (
+        <FormField htmlFor={`${id}-programme`} label="Corsi di studio" hint="Scegli dal catalogo di PoliNetwork.">
+          <div className="space-y-2">
+            {value.programmes.length > 0 && (
+              <ul className="flex flex-wrap gap-2" aria-label="Corsi scelti">
+                {value.programmes.map((slug) => (
+                  <li key={slug}>
+                    <Chip className="h-8 pr-1">
+                      {catalogueName(catalogue, "programme", slug)}
+                      <button
+                        type="button"
+                        className="relative grid size-7 place-items-center rounded-(--pn-r-full) after:absolute after:-inset-1 hover:bg-(--pn-hover)"
+                        aria-label={`Rimuovi ${catalogueName(catalogue, "programme", slug)}`}
+                        onClick={() => onChange({ ...value, programmes: value.programmes.filter((p) => p !== slug) })}
+                      >
+                        <X aria-hidden className="size-3.5" />
+                      </button>
+                    </Chip>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Combobox
+              multiple
+              items={programmes}
+              value={programmes.filter((e) => value.programmes.includes(e.slug))}
+              inputValue={search}
+              onInputValueChange={setSearch}
+              onValueChange={(entries: CatalogueEntry[]) => {
+                // Keep retired programmes the record already lists: they are not in `items`.
+                const kept = value.programmes.filter((slug) => !programmes.some((e) => e.slug === slug))
+                onChange({ ...value, programmes: [...kept, ...entries.map((e) => e.slug)] })
+                setSearch("")
+              }}
+              itemToStringLabel={(entry: CatalogueEntry) => entry.nameIt}
+              itemToStringValue={(entry: CatalogueEntry) => entry.slug}
+            >
+              <ComboboxInput id={`${id}-programme`} listLabel="corsi" placeholder="Cerca un corso…" />
+              <ComboboxContent>
+                <ComboboxEmpty>Nessun corso corrisponde.</ComboboxEmpty>
+                <ComboboxList>
+                  {(entry: CatalogueEntry) => (
+                    <ComboboxItem key={entry.slug} value={entry}>
+                      {entry.nameIt}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+        </FormField>
+      )}
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm">Sedi</legend>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {campuses.map((campus) => (
+            <label key={campus.slug} className="flex items-center gap-2.5 text-[14px]">
+              <Checkbox
+                checked={value.campuses.includes(campus.slug)}
+                onCheckedChange={(checked) =>
+                  onChange({
+                    ...value,
+                    campuses:
+                      checked === true
+                        ? [...value.campuses, campus.slug]
+                        : value.campuses.filter((c) => c !== campus.slug),
+                  })
+                }
+                className={checkboxControl}
+              />
+              {campus.nameIt}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </fieldset>
+  )
+}
+
 export function ProfileFields({
   value,
   onChange,
   associationId,
+  catalogue,
 }: {
   value: Profile
   onChange: (value: Profile) => void
   associationId?: string
+  catalogue: CatalogueEntry[]
 }) {
   const upload = useServerFn(uploadPortalLogo)
   const [uploading, setUploading] = useState(false)
@@ -192,6 +359,7 @@ export function ProfileFields({
         onChange={(v) => set("descriptionEn", v)}
         hint="Puoi completarla dopo la registrazione, prima di chiedere la pubblicazione."
       />
+      <ProgrammeFields value={value} onChange={onChange} catalogue={catalogue} />
       <TextField
         label="Email pubblica dell’associazione"
         value={value.email}
@@ -294,8 +462,12 @@ export function ProfileFields({
   )
 }
 
-export function ProfilePreview({ profile }: { profile: Profile | null }) {
+export function ProfilePreview({ profile, catalogue }: { profile: Profile | null; catalogue: CatalogueEntry[] }) {
   if (!profile) return <p className="text-sm text-(--pn-fg-muted)">Nessuna versione pubblicata.</p>
+  const programmes = profile.crossProgramme
+    ? ["Trasversale a tutti i corsi"]
+    : profile.programmes.map((slug) => catalogueName(catalogue, "programme", slug))
+  const campuses = profile.campuses.map((slug) => catalogueName(catalogue, "campus", slug))
   return (
     <div className="space-y-3 break-words">
       {profile.logo && (
@@ -309,7 +481,27 @@ export function ProfilePreview({ profile }: { profile: Profile | null }) {
       <p className="whitespace-pre-wrap text-sm text-(--pn-fg-muted)" lang="en">
         {profile.descriptionEn}
       </p>
+      {(programmes.length > 0 || campuses.length > 0) && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Corsi e sedi">
+          {[...programmes, ...campuses].map((name) => (
+            <li key={name}>
+              <Chip>{name}</Chip>
+            </li>
+          ))}
+        </ul>
+      )}
       {profile.email && <p className="text-sm">{profile.email}</p>}
+      {profile.contacts.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {profile.contacts.map((c) => (
+            <li key={c.id}>
+              <span className="text-(--pn-fg-muted)">{c.label}:</span> {c.email}
+              {c.name ? ` · ${c.name}` : ""}
+              {c.phone ? ` · ${c.phone}` : ""}
+            </li>
+          ))}
+        </ul>
+      )}
       <ul className="space-y-2 text-sm">
         {profile.links.map((link, i) => (
           <li key={`${link.platform}-${i}`}>

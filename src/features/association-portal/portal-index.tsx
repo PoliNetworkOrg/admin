@@ -4,12 +4,15 @@ import { UsersRound } from "lucide-react"
 import { useState } from "react"
 import type { z } from "zod"
 
-import { EmptyState, FormDialog, SegmentedControl } from "@/components/primitives"
+import { Chip, EmptyState, FormDialog, SegmentedControl } from "@/components/primitives"
 import { appToast, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
+import { PortalHome } from "./portal-home"
 import {
+  catalogueName,
   cleanProfile,
+  contactFunctionLabel,
   EMPTY_PROFILE,
   panelClass,
   parseForm,
@@ -17,21 +20,34 @@ import {
   ReasonDialog,
   statusLabel,
   TextField,
+  visibilityLabel,
 } from "./portal-ui"
-import { createSchema, type dashboardSchema, type directorySchema } from "./portal.contract"
+import {
+  type CatalogueEntry,
+  createSchema,
+  type dashboardSchema,
+  type directorySchema,
+  type homeSchema,
+} from "./portal.contract"
 import { createPortalAssociation, changePortalAssociation } from "./portal.functions"
 
 export function PortalIndex({
   portal,
   directory,
+  catalogue,
+  home,
+  initialView = "registry",
 }: {
   portal: z.infer<typeof dashboardSchema>
   directory: z.infer<typeof directorySchema>
+  catalogue: CatalogueEntry[]
+  home: z.infer<typeof homeSchema>
+  initialView?: "registry" | "requests" | "directory"
 }) {
   const router = useRouter()
   const create = useServerFn(createPortalAssociation)
   const change = useServerFn(changePortalAssociation)
-  const [view, setView] = useState<"registry" | "requests" | "directory">("registry")
+  const [view, setView] = useState(initialView)
   const [query, setQuery] = useState("")
   const [creating, setCreating] = useState(false)
   const [profile, setProfile] = useState(EMPTY_PROFILE)
@@ -56,6 +72,7 @@ export function PortalIndex({
     await router.navigate({ to: "/dashboard/associations/$id", params: { id: result.id } })
   }
   const matches = (name: string) => name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+  const representative = portal.associations.some((a) => a.role && a.status === "active")
   return (
     <>
       <PageBar
@@ -81,6 +98,7 @@ export function PortalIndex({
       />
       <PageContent width="wide">
         <div className="space-y-6">
+          <PortalHome home={home} />
           <div className="overflow-x-auto">
             <SegmentedControl
               label="Viste associazioni"
@@ -93,7 +111,7 @@ export function PortalIndex({
                   label: "Richieste",
                   count: portal.requests.filter((r) => r.status === "submitted").length,
                 },
-                { value: "directory", label: "Richiedi accesso" },
+                { value: "directory", label: "Elenco associazioni" },
               ]}
             />
           </div>
@@ -118,6 +136,7 @@ export function PortalIndex({
                         <p className="text-sm">Nessun responsabile attivo</p>
                       )}
                       {!!a.pending && <p className="text-sm">{a.pending} richieste in revisione</p>}
+                      {a.handover && <p className="text-sm">Passaggio di consegne in corso</p>}
                     </Link>
                   ))}
               </div>
@@ -162,23 +181,96 @@ export function PortalIndex({
           {view === "directory" && (
             <div className="space-y-3">
               <p className="text-sm text-(--pn-fg-muted)">
-                Richiedi il collegamento al record esistente. PoliNetwork verificherà il tuo ruolo prima di concedere
-                accesso.
+                {representative || portal.operator
+                  ? "Le associazioni attive nel registro, con i contatti che condividono con te. Per collegarti a un’associazione, richiedi accesso: PoliNetwork verificherà il tuo ruolo."
+                  : "Le associazioni attive nel registro. Per collegarti a una, richiedi accesso: PoliNetwork verificherà il tuo ruolo."}
               </p>
               {directory
-                .filter((a) => matches(a.name))
-                .map((a) => (
-                  <div key={a.id} className={`${panelClass} flex flex-wrap items-center justify-between gap-3`}>
-                    <span className="font-medium">{a.name}</span>
-                    <Button
-                      variant="outline"
-                      disabled={portal.associations.some((own) => own.id === a.id && own.role)}
-                      onClick={() => setClaim(a)}
-                    >
-                      Richiedi accesso
-                    </Button>
-                  </div>
-                ))}
+                .filter((a) => matches(`${a.name} ${a.acronym}`))
+                .map((a) => {
+                  const own = portal.associations.some((mine) => mine.id === a.id && mine.role)
+                  const tags = [
+                    ...(a.crossProgramme ? ["Trasversale a tutti i corsi"] : []),
+                    ...a.programmes.map((slug) => catalogueName(catalogue, "programme", slug)),
+                    ...a.campuses.map((slug) => catalogueName(catalogue, "campus", slug)),
+                  ]
+                  return (
+                    <section key={a.id} className={panelClass} aria-labelledby={`directory-${a.id}`}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 id={`directory-${a.id}`} className="font-medium">
+                            {own ? (
+                              <Link to="/dashboard/associations/$id" params={{ id: a.id }} className="underline">
+                                {a.name}
+                              </Link>
+                            ) : (
+                              a.name
+                            )}
+                            {a.acronym ? ` (${a.acronym})` : ""}
+                          </h2>
+                          {a.collaboration.open && (
+                            <p className="mt-2 text-sm">
+                              <Chip>Aperta a collaborazioni</Chip>
+                              {(() => {
+                                const dedicated = a.contacts.find((c) => c.id === a.collaboration.contactId)
+                                return dedicated ? (
+                                  <span className="ml-2">
+                                    Scrivi a{" "}
+                                    <a href={`mailto:${dedicated.email}`} className="underline">
+                                      {dedicated.email}
+                                    </a>
+                                  </span>
+                                ) : null
+                              })()}
+                            </p>
+                          )}
+                          {tags.length > 0 && (
+                            <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Corsi e sedi">
+                              {tags.map((tag) => (
+                                <li key={tag}>
+                                  <Chip>{tag}</Chip>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        {!own && (
+                          <Button variant="outline" onClick={() => setClaim(a)}>
+                            Richiedi accesso
+                          </Button>
+                        )}
+                      </div>
+                      {a.contacts.length > 0 && (
+                        <ul className="divide-y divide-(--pn-line) border-t border-(--pn-line) text-sm">
+                          {a.contacts.map((c) => (
+                            <li
+                              key={c.id}
+                              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
+                            >
+                              <span>
+                                <span className="font-medium">{c.label}</span>
+                                {c.label !== contactFunctionLabel[c.function] && (
+                                  <span className="text-(--pn-fg-muted)"> · {contactFunctionLabel[c.function]}</span>
+                                )}
+                              </span>
+                              <span className="flex flex-wrap items-center gap-2">
+                                <a href={`mailto:${c.email}`} className="break-all underline">
+                                  {c.email}
+                                </a>
+                                {(c.name || c.phone) && (
+                                  <span className="text-(--pn-fg-muted)">
+                                    {[c.name, c.phone].filter(Boolean).join(" · ")}
+                                  </span>
+                                )}
+                                {c.visibility !== "public" && <Chip>{visibilityLabel[c.visibility]}</Chip>}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  )
+                })}
               {!directory.length && <p>Il registro non contiene ancora associazioni attive.</p>}
             </div>
           )}
@@ -212,7 +304,7 @@ export function PortalIndex({
             </Button>
           }
         >
-          <ProfileFields value={profile} onChange={setProfile} />
+          <ProfileFields value={profile} onChange={setProfile} catalogue={catalogue} />
           <TextField
             label="Il tuo ruolo nell’associazione"
             value={explanation}

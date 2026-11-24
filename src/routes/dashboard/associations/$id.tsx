@@ -2,11 +2,29 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { RecordSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
+import { getPortalCredits } from "@/features/association-portal/credit.functions"
+import { getPortalEvents } from "@/features/association-portal/event.functions"
 import { PortalDetail } from "@/features/association-portal/portal-detail"
-import { getPortalAssociation } from "@/features/association-portal/portal.functions"
+import { getPortalAssociation, getPortalCatalogue } from "@/features/association-portal/portal.functions"
+import { getPortalPromotions } from "@/features/association-portal/promotion.functions"
 
 export const Route = createFileRoute("/dashboard/associations/$id")({
-  loader: ({ params }) => getPortalAssociation({ data: { id: params.id } }),
+  loader: async ({ params }) => {
+    const [association, catalogue] = await Promise.all([
+      getPortalAssociation({ data: { id: params.id } }),
+      getPortalCatalogue(),
+    ])
+    // Requests are readable by the association's representatives and operators only.
+    const team = association.role || association.operator
+    const [promotions, events, credits] = team
+      ? await Promise.all([
+          getPortalPromotions({ data: { id: params.id } }),
+          getPortalEvents({ data: { id: params.id } }),
+          association.registered ? getPortalCredits({ data: { id: params.id } }) : null,
+        ])
+      : [[], [], null]
+    return { association, catalogue, promotions, events, credits }
+  },
   pendingComponent: () => (
     <>
       <PageBar back={{ label: "Associazioni", link: { to: "/dashboard/associations" } }} />
@@ -18,6 +36,15 @@ export const Route = createFileRoute("/dashboard/associations/$id")({
   component: Page,
 })
 function Page() {
-  const association = Route.useLoaderData()
-  return <PortalDetail key={association.id} association={association} />
+  const { association, catalogue, promotions, events, credits } = Route.useLoaderData()
+  return (
+    <PortalDetail
+      key={association.id}
+      association={association}
+      catalogue={catalogue}
+      promotions={promotions}
+      events={events}
+      credits={credits}
+    />
+  )
 }
