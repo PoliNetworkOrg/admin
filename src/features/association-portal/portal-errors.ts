@@ -126,6 +126,12 @@ const messages = new Map([
   ["Only the responsible can submit the event", "Solo il responsabile può inviare l’evento."],
   ["You cannot edit this event", "Non puoi modificare questo evento."],
   ["You cannot withdraw this event", "Non puoi ritirare questo evento."],
+  [
+    "Set the cost: a requested channel has no fixed cost",
+    "Indica il costo: un canale richiesto non ha un costo fisso.",
+  ],
+  ["The association does not have enough credits", "L’associazione non ha crediti sufficienti."],
+  ["A grant must be positive", "Un’assegnazione deve essere positiva."],
   ["You already have an open access request", "Hai già una richiesta di accesso aperta."],
   [
     "You already have ten registration drafts or requests. Contact PoliNetwork.",

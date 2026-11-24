@@ -17,6 +17,7 @@ import { formatDate, formatDateTime } from "@/lib/format"
 
 import { EventsTab } from "./portal-calendar"
 import { ContactsPanel } from "./portal-contacts"
+import { CreditsTab } from "./portal-credits"
 import { eventLabel } from "./portal-events"
 import { HandoverCard } from "./portal-handover"
 import { PromotionsTab } from "./portal-promotions"
@@ -41,6 +42,7 @@ import {
   type Profile,
   type promotionListSchema,
   type calendarEventListSchema,
+  type creditAccountSchema,
   type Request,
 } from "./portal.contract"
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
@@ -51,11 +53,13 @@ export function PortalDetail({
   catalogue,
   promotions,
   events,
+  credits,
 }: {
   association: Detail
   catalogue: CatalogueEntry[]
   promotions: z.infer<typeof promotionListSchema>
   events: z.infer<typeof calendarEventListSchema>
+  credits: z.infer<typeof creditAccountSchema> | null
 }) {
   const router = useRouter()
   const { user } = useRouteContext({ from: "/dashboard" })
@@ -67,7 +71,7 @@ export function PortalDetail({
   const [redirectReason, setRedirectReason] = useState("")
   const review = useServerFn(reviewPortalAssociation)
   const [tab, setTab] = useState<
-    "profile" | "contacts" | "promotions" | "events" | "requests" | "members" | "activity"
+    "profile" | "contacts" | "promotions" | "events" | "credits" | "requests" | "members" | "activity"
   >("profile")
   const [edit, setEdit] = useState<{ requestId: string | null; profile: Profile; explanation: string } | null>(null)
   const [reasonAction, setReasonAction] = useState<{
@@ -211,6 +215,9 @@ export function PortalDetail({
                   ? [
                       { value: "promotions" as const, label: "Promozioni" },
                       { value: "events" as const, label: "Eventi" },
+                      ...(credits && (credits.enabled || a.operator)
+                        ? [{ value: "credits" as const, label: "Crediti" }]
+                        : []),
                     ]
                   : []),
                 { value: "requests", label: "Richieste", count: a.pending },
@@ -261,6 +268,7 @@ export function PortalDetail({
               canCreate={!!a.role && a.status === "active"}
             />
           )}
+          {tab === "credits" && credits && <CreditsTab associationId={a.id} credits={credits} operator={a.operator} />}
           {tab === "requests" && (
             <div className="space-y-4">
               {!a.requests.length && <p className="text-sm text-(--pn-fg-muted)">Non ci sono richieste.</p>}

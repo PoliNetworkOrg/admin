@@ -3,6 +3,7 @@ import test from "node:test"
 
 import { portalErrorMessage } from "../src/features/association-portal/portal-errors.ts"
 import { eventLabel } from "../src/features/association-portal/portal-events.ts"
+import { formatCredits, parseCredits } from "../src/features/association-portal/portal-format.ts"
 import {
   applicantActions,
   contactSchema,
@@ -114,6 +115,16 @@ void test("posters are PNG or JPEG of at most 5 MiB", () => {
 void test("backend errors are shown in Italian, unknown ones as sent", () => {
   assert.equal(portalErrorMessage("Choose the desired date"), "Scegli la data desiderata.")
   assert.equal(portalErrorMessage("Something new"), "Something new")
+})
+
+void test("credits are shown and typed in hundredths", () => {
+  assert.equal(formatCredits(250), "2,5 crediti")
+  assert.equal(formatCredits(100), "1 credito")
+  assert.equal(formatCredits(-25), "-0,25 crediti")
+  assert.equal(parseCredits("1,5"), 150)
+  assert.equal(parseCredits("0.25"), 25)
+  assert.equal(parseCredits(""), null)
+  assert.equal(parseCredits("tre"), null)
 })
 
 void test("history events are shown in Italian, unknown ones as recorded", () => {

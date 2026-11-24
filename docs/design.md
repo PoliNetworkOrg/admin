@@ -477,6 +477,9 @@ Rules that the templates above don't imply.
   Eventi mirrors Promozioni (queue and record page); an approved event's page offers "Chiedi una promozione", which opens
   the request form prefilled from the event. Collaborazioni is a checkbox and an optional contact select at the end of
   the Contatti tab; the directory shows an "Aperta a collaborazioni" chip and the dedicated contact's email.
+  Crediti (operators) is a Record-width page of two cards, Regole and Crediti del semestre; a record's Crediti tab shows
+  Saldo and Uso previsto as a `KeyValueList`, then the movements (negative amounts in danger text). Credit inputs take
+  comma decimals ("0,5").
 - **FAQs**: the categories are a list beside the questions (icon, Italian title, count; pills below 1100px, running to
   the screen edges on phones) ending in a dashed "Add category"; on phones questions wrap up to three lines; the selected category's header holds its edit and delete actions and the question search.
 - **Freshman guide**: the latest edition is a card (version, "Latest", publication date, Download PDF) above the "All

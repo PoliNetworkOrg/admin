@@ -29,10 +29,13 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 
+import { creditInput, formatCredits, parseCredits } from "./portal-format"
 import { reviewPortalPromotion } from "./portal-review.functions"
 import { catalogueName, panelClass, parseForm, ProgrammeFields, TextField } from "./portal-ui"
 import {
   type CatalogueEntry,
+  type creditAccountSchema,
+  estimateCost,
   POSTER_MAX_BYTES,
   type Profile,
   programmeChannels,
@@ -455,9 +458,18 @@ type Dialog =
   | { kind: "comment" }
   | { kind: "schedule" }
   | { kind: "publish" }
+  | { kind: "approve" }
 
 /** One request: what was asked, where it stands, its history, and the actions open to this viewer. */
-export function PromotionPage({ promotion: p, catalogue }: { promotion: Promotion; catalogue: CatalogueEntry[] }) {
+export function PromotionPage({
+  promotion: p,
+  catalogue,
+  credits,
+}: {
+  promotion: Promotion
+  catalogue: CatalogueEntry[]
+  credits: z.infer<typeof creditAccountSchema> | null
+}) {
   const router = useRouter()
   const change = useServerFn(changePortalPromotion)
   const review = useServerFn(reviewPortalPromotion)
@@ -525,6 +537,9 @@ export function PromotionPage({ promotion: p, catalogue }: { promotion: Promotio
               </>
             }
           />
+          {credits?.enabled && (p.canSubmit || p.status === "submitted") && (
+            <CostNotice promotion={p} credits={credits} />
+          )}
           {p.status === "changes_requested" && !p.operator && (
             <InlineAlert tone="warning">
               PoliNetwork ha chiesto delle modifiche: le trovi nello storico. Aggiorna la richiesta e inviala di nuovo.
@@ -534,20 +549,7 @@ export function PromotionPage({ promotion: p, catalogue }: { promotion: Promotio
             <section className={panelClass} aria-label="Decisione">
               <h2 className="font-medium">Decisione di PoliNetwork</h2>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() =>
-                    setDialog({
-                      kind: "note",
-                      title: "Approva la richiesta",
-                      description: "Dopo l’approvazione potrai programmarla con data e canale effettivi.",
-                      label: "Approva",
-                      required: false,
-                      action: (note) => ({ action: "approve", note }),
-                    })
-                  }
-                >
-                  Approva
-                </Button>
+                <Button onClick={() => setDialog({ kind: "approve" })}>Approva</Button>
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -743,6 +745,17 @@ export function PromotionPage({ promotion: p, catalogue }: { promotion: Promotio
           onClose={() => setDialog(null)}
           onSubmit={async (action) => {
             await run(action, "Richiesta programmata.")
+            setDialog(null)
+          }}
+        />
+      )}
+      {dialog?.kind === "approve" && (
+        <ApproveDialog
+          promotion={p}
+          credits={credits}
+          onClose={() => setDialog(null)}
+          onSubmit={async (note, cost) => {
+            await run({ action: "approve", note, cost }, "Richiesta approvata.")
             setDialog(null)
           }}
         />
@@ -1065,5 +1078,71 @@ export function PromotionQueue({
         />
       </PageContent>
     </>
+  )
+}
+
+/** The request's estimated cost against the balance, shown before submitting and while it waits for a decision. */
+function CostNotice({ promotion: p, credits }: { promotion: Promotion; credits: z.infer<typeof creditAccountSchema> }) {
+  const estimate = estimateCost(p.content.channels, credits.programmes, credits.config)
+  const text = `Costo stimato: ${formatCredits(estimate.total)}${estimate.unknown ? " più i canali che PoliNetwork valuta caso per caso" : ""}. Saldo: ${formatCredits(credits.balance)}.`
+  const short = !credits.config.allowNegative && estimate.total > credits.balance
+  return (
+    <InlineAlert tone={short ? "warning" : "info"}>
+      {text} I crediti si scalano all’approvazione e tornano se la richiesta viene respinta o ritirata.
+      {short && " Il saldo non basta: PoliNetwork non potrà approvarla così."}
+    </InlineAlert>
+  )
+}
+
+/** Approval, with the cost to debit when credits are on: the estimate, or a price for channels without one. */
+function ApproveDialog({
+  promotion: p,
+  credits,
+  onClose,
+  onSubmit,
+}: {
+  promotion: Promotion
+  credits: z.infer<typeof creditAccountSchema> | null
+  onClose: () => void
+  onSubmit: (note: string, cost: number | null) => Promise<void>
+}) {
+  const estimate = credits?.enabled ? estimateCost(p.content.channels, credits.programmes, credits.config) : null
+  const [note, setNote] = useState("")
+  const [cost, setCost] = useState(estimate && !estimate.unknown ? creditInput(estimate.total) : "")
+  const parsed = parseCredits(cost)
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      title="Approva la richiesta"
+      description={
+        estimate
+          ? `L’approvazione scala i crediti dall’associazione (saldo ${formatCredits(credits?.balance ?? 0)}). Poi potrai programmarla.`
+          : "Dopo l’approvazione potrai programmarla con data e canale effettivi."
+      }
+      noun="richiesta"
+      locale="it"
+      dirty={!!note}
+      submitLabel="Approva"
+      canSubmit={!estimate || (parsed !== null && parsed >= 0)}
+      onSubmit={() => onSubmit(note, estimate && (estimate.unknown || parsed !== estimate.total) ? parsed : null)}
+    >
+      {estimate && (
+        <TextField
+          label="Crediti da scalare"
+          value={cost}
+          onChange={setCost}
+          maxLength={10}
+          hint={
+            estimate.unknown
+              ? `Stima per i canali con costo fisso: ${formatCredits(estimate.total)}. Aggiungi il costo dei canali “Altro”.`
+              : `Stima secondo le regole: ${formatCredits(estimate.total)}.`
+          }
+        />
+      )}
+      <TextField label="Nota (facoltativa)" value={note} onChange={setNote} multiline maxLength={4000} />
+    </FormDialog>
   )
 }

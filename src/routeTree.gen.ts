@@ -48,6 +48,7 @@ import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esig
 import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
+import { Route as DashboardAssociationsCreditsRouteImport } from './routes/dashboard/associations/credits'
 import { Route as DashboardAssociationsCatalogueRouteImport } from './routes/dashboard/associations/catalogue'
 import { Route as DashboardAssociationsIdRouteImport } from './routes/dashboard/associations/$id'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
@@ -277,6 +278,12 @@ const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   path: '/azure/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssociationsCreditsRoute =
+  DashboardAssociationsCreditsRouteImport.update({
+    id: '/associations/credits',
+    path: '/associations/credits',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardAssociationsCatalogueRoute =
   DashboardAssociationsCatalogueRouteImport.update({
     id: '/associations/catalogue',
@@ -451,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
+  '/dashboard/associations/credits': typeof DashboardAssociationsCreditsRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -518,6 +526,7 @@ export interface FileRoutesByTo {
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
+  '/dashboard/associations/credits': typeof DashboardAssociationsCreditsRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -587,6 +596,7 @@ export interface FileRoutesById {
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
   '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
+  '/dashboard/associations/credits': typeof DashboardAssociationsCreditsRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
     | '/dashboard/associations/catalogue'
+    | '/dashboard/associations/credits'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -724,6 +735,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
     | '/dashboard/associations/catalogue'
+    | '/dashboard/associations/credits'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -792,6 +804,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
     | '/dashboard/associations/catalogue'
+    | '/dashboard/associations/credits'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -1134,6 +1147,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/associations/credits': {
+      id: '/dashboard/associations/credits'
+      path: '/associations/credits'
+      fullPath: '/dashboard/associations/credits'
+      preLoaderRoute: typeof DashboardAssociationsCreditsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/associations/catalogue': {
       id: '/dashboard/associations/catalogue'
       path: '/associations/catalogue'
@@ -1360,6 +1380,7 @@ interface DashboardRouteChildren {
   DashboardAccountMeRoute: typeof DashboardAccountMeRoute
   DashboardAssociationsIdRoute: typeof DashboardAssociationsIdRoute
   DashboardAssociationsCatalogueRoute: typeof DashboardAssociationsCatalogueRoute
+  DashboardAssociationsCreditsRoute: typeof DashboardAssociationsCreditsRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
@@ -1410,6 +1431,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountMeRoute: DashboardAccountMeRoute,
   DashboardAssociationsIdRoute: DashboardAssociationsIdRoute,
   DashboardAssociationsCatalogueRoute: DashboardAssociationsCatalogueRoute,
+  DashboardAssociationsCreditsRoute: DashboardAssociationsCreditsRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,

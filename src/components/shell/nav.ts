@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CircleCheck,
   CircleQuestionMark,
+  Coins,
   ClipboardList,
   Cloud,
   Crown,
@@ -126,6 +127,7 @@ export type PageMatch =
   | { kind: "association-promotion"; id: string }
   | { kind: "association-events" }
   | { kind: "association-event"; id: string }
+  | { kind: "association-credits" }
   | { kind: "account" }
   | { kind: "account-me" }
   | { kind: "people-overview" }
@@ -489,6 +491,13 @@ const associations: Service = {
       permission: "web:content:write",
     },
     {
+      id: "credits",
+      title: "Crediti",
+      icon: Coins,
+      path: "/dashboard/associations/credits",
+      permission: "web:content:write",
+    },
+    {
       id: "catalogue",
       title: "Corsi e sedi",
       icon: GraduationCap,
@@ -597,6 +606,7 @@ export function matchPath(pathname: string): PageMatch {
 
   if (head === undefined) return { kind: "overview" }
   if (head === "associations" && second === "catalogue" && third === undefined) return { kind: "association-catalogue" }
+  if (head === "associations" && second === "credits" && third === undefined) return { kind: "association-credits" }
   if (head === "associations" && second === "promotions" && rest.length === 0)
     return third ? { kind: "association-promotion", id: third } : { kind: "association-promotions" }
   if (head === "associations" && second === "events" && rest.length === 0)
@@ -704,6 +714,7 @@ export function serviceFor(match: PageMatch): Service {
     case "association-promotion":
     case "association-events":
     case "association-event":
+    case "association-credits":
       return associations
     case "overview":
     case "not-found":
@@ -778,6 +789,8 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(associations, "promotions")
     case "association-events":
       return section(associations, "events")
+    case "association-credits":
+      return section(associations, "credits")
     // Representatives open their own requests and events: those pages belong to the self-service section.
     case "association-promotion":
     case "association-event":

@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto"
 
 import type { CatalogueEntry, Contact, Member, Profile, PromotionContent, Request } from "./portal.contract"
+import { RRI_CREDIT_RULES } from "./portal.contract"
+import {
+  createCreditService,
+  type CreditStore,
+  type Ledger,
+  type NewCreditEntry,
+  type StoredCreditEntry,
+} from "./portal.fake-credits.server"
 import { type CalendarEvent, createEventService, type EventStore } from "./portal.fake-events.server"
 import { createHomeService } from "./portal.fake-home.server"
 import { createPromotionService, type Promotion, type PromotionStore } from "./portal.fake-promotions.server"
@@ -236,6 +244,7 @@ type State = {
   promotions: Map<string, Promotion>
   events: Map<string, CalendarEvent>
   keys: Map<string, string>
+  credits: { config: typeof RRI_CREDIT_RULES; entries: StoredCreditEntry[] }
 }
 
 /** Sample calendar events on Associazione Alfa: approved, waiting for review, and a draft. */
@@ -362,6 +371,25 @@ function stateFor(agent: Viewer, role: Role) {
       creation: new Map(),
       promotions: new Map(samplePromotions(records[0]).map((p) => [p.id, p])),
       events: new Map(sampleEvents(records[0]).map((e) => [e.id, e])),
+      // Credits are off in production until PoliNetwork turns them on; agent mode shows them, with this semester's grant.
+      credits: {
+        config: { ...RRI_CREDIT_RULES, enabled: true },
+        entries: [
+          {
+            id: randomUUID(),
+            associationId: records[0].id,
+            kind: "credit",
+            amount: 300,
+            reason: "Crediti del semestre",
+            authorSub: "polinetwork",
+            authorName: "PoliNetwork",
+            promotionId: null,
+            reversesId: null,
+            period: "2026-27 S1",
+            createdAt: days(-40),
+          },
+        ],
+      },
       keys: new Map(),
     }
     states.set(key, state)
@@ -418,6 +446,67 @@ function memoryStore(state: State): Store {
   }
 }
 
+/** The association's ledger for one operation; what it posts is kept only if the operation succeeds. */
+function openLedger(state: State, associationId: string) {
+  const posted: NewCreditEntry[] = []
+  const ledger: Ledger = {
+    config: structuredClone(state.credits.config),
+    entries: structuredClone(state.credits.entries.filter((e) => e.associationId === associationId)),
+    post: (entry) => {
+      posted.push(entry)
+    },
+  }
+  return {
+    ledger,
+    flush: () => {
+      for (const e of posted)
+        state.credits.entries.push({ ...e, id: randomUUID(), associationId, createdAt: new Date().toISOString() })
+    },
+  }
+}
+
+function memoryCredits(state: State): CreditStore {
+  return {
+    config: async () => structuredClone(state.credits.config),
+    async saveConfig(config) {
+      state.credits.config = structuredClone(config)
+    },
+    entries: async (associationId) =>
+      structuredClone(state.credits.entries.filter((e) => e.associationId === associationId)),
+    async post(associationId, key, operation) {
+      if (state.keys.has(key)) return associationId
+      const record = state.rows.get(associationId)
+      if (!record) throw new Error("Associazione non trovata")
+      const { ledger, flush } = openLedger(state, associationId)
+      operation(ledger, structuredClone(record))
+      flush()
+      state.keys.set(key, associationId)
+      return associationId
+    },
+    async semester(input, author, ids) {
+      let granted = 0
+      for (const associationId of ids) {
+        const { ledger, flush } = openLedger(state, associationId)
+        if (ledger.entries.some((e) => e.kind === "credit" && e.period === input.period)) continue
+        const balance = ledger.entries.reduce((sum, e) => sum + e.amount, 0)
+        const base = { authorSub: author.sub, authorName: author.name, promotionId: null, reversesId: null }
+        if (input.resetUnused && balance > 0)
+          ledger.post({
+            ...base,
+            kind: "adjustment",
+            amount: -balance,
+            reason: `Crediti non usati scaduti (${input.period})`,
+            period: null,
+          })
+        ledger.post({ ...base, kind: "credit", amount: input.amount, reason: input.reason, period: input.period })
+        flush()
+        granted++
+      }
+      return granted
+    },
+  }
+}
+
 function memoryPromotions(state: State): PromotionStore {
   const day = (p: Promotion) => p.scheduledAt?.slice(0, 10) ?? p.content.desiredDate ?? ""
   return {
@@ -453,7 +542,9 @@ function memoryPromotions(state: State): PromotionStore {
       if (!stored || !record) throw new Error("Richiesta non trovata")
       const p = structuredClone(stored)
       const mail: Mail[] = []
-      operation(p, structuredClone(record), mail)
+      const { ledger, flush } = openLedger(state, stored.associationId)
+      operation(p, structuredClone(record), mail, ledger)
+      flush()
       state.promotions.set(id, p)
       state.keys.set(key, id)
       for (const m of mail) console.info(`[agent mode] Email to ${m.to}: ${m.subject}`)
@@ -520,5 +611,6 @@ export function fakePortalApi(user: { sub: string; name: string; email: string }
     async (id) => state.events.get(id)?.associationId ?? null
   )
   const home = createHomeService(store, promotionStore, eventStore)
-  return { viewer, service, promotions, home, events }
+  const credits = createCreditService(memoryCredits(state), store, promotionStore)
+  return { viewer, service, promotions, home, events, credits }
 }

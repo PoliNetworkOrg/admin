@@ -63,13 +63,26 @@ function backendPortalApi(accessToken: string | null) {
       command: async (input: C.CalendarEventCommand) =>
         C.refSchema.parse(await client.mutation("associationPortal.events.command", input)),
     },
+    credits: {
+      account: async (input: z.infer<typeof C.refSchema>) =>
+        C.creditAccountSchema.parse(await client.query("associationPortal.credits.account", input)),
+      config: async () => C.creditConfigSchema.parse(await client.query("associationPortal.credits.config")),
+      saveConfig: async (input: C.CreditConfig) =>
+        z.object({ ok: z.literal(true) }).parse(await client.mutation("associationPortal.credits.saveConfig", input)),
+      operate: async (input: z.infer<typeof C.creditOperationSchema>) =>
+        C.refSchema.parse(await client.mutation("associationPortal.credits.operate", input)),
+      semester: async (input: z.infer<typeof C.creditSemesterSchema>) =>
+        z
+          .object({ granted: z.number().int() })
+          .parse(await client.mutation("associationPortal.credits.semester", input)),
+    },
   }
 }
 
 /** Agent mode without a backend token: the sample registry, parsed through the same contract as the backend's replies. */
 async function fakePortalApi(user: { sub: string; name: string; email: string }): Promise<PortalApi> {
   const { fakePortalApi: fake } = await import("./portal.fake.server")
-  const { viewer, service, promotions, home, events } = fake(user, env.AGENT_ASSOCIATION_ROLE)
+  const { viewer, service, promotions, home, events, credits } = fake(user, env.AGENT_ASSOCIATION_ROLE)
   return {
     // No Blob storage in agent mode: an upload sets the dashboard's own icon as the logo.
     uploadLogo: async () => ({ url: `http://localhost:${process.env.PORT ?? "3000"}/favicon.ico` }),
@@ -100,6 +113,16 @@ async function fakePortalApi(user: { sub: string; name: string; email: string })
       queue: async (input) => C.calendarEventListSchema.parse(await inItalian(() => events.queue(viewer, input))),
       create: async (input) => C.refSchema.parse(await inItalian(() => events.create(viewer, input))),
       command: async (input) => C.refSchema.parse(await inItalian(() => events.command(viewer, input))),
+    },
+    credits: {
+      account: async (input) => C.creditAccountSchema.parse(await inItalian(() => credits.account(viewer, input.id))),
+      config: async () => C.creditConfigSchema.parse(await inItalian(() => credits.config(viewer))),
+      saveConfig: async (input) => {
+        await inItalian(() => credits.saveConfig(viewer, input))
+        return { ok: true as const }
+      },
+      operate: async (input) => C.refSchema.parse(await inItalian(() => credits.operate(viewer, input))),
+      semester: async (input) => await inItalian(() => credits.semester(viewer, input)),
     },
   }
 }

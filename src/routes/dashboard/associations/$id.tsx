@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { RecordSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
+import { getPortalCredits } from "@/features/association-portal/credit.functions"
 import { getPortalEvents } from "@/features/association-portal/event.functions"
 import { PortalDetail } from "@/features/association-portal/portal-detail"
 import { getPortalAssociation, getPortalCatalogue } from "@/features/association-portal/portal.functions"
@@ -15,13 +16,14 @@ export const Route = createFileRoute("/dashboard/associations/$id")({
     ])
     // Requests are readable by the association's representatives and operators only.
     const team = association.role || association.operator
-    const [promotions, events] = team
+    const [promotions, events, credits] = team
       ? await Promise.all([
           getPortalPromotions({ data: { id: params.id } }),
           getPortalEvents({ data: { id: params.id } }),
+          association.registered ? getPortalCredits({ data: { id: params.id } }) : null,
         ])
-      : [[], []]
-    return { association, catalogue, promotions, events }
+      : [[], [], null]
+    return { association, catalogue, promotions, events, credits }
   },
   pendingComponent: () => (
     <>
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/dashboard/associations/$id")({
   component: Page,
 })
 function Page() {
-  const { association, catalogue, promotions, events } = Route.useLoaderData()
+  const { association, catalogue, promotions, events, credits } = Route.useLoaderData()
   return (
     <PortalDetail
       key={association.id}
@@ -42,6 +44,7 @@ function Page() {
       catalogue={catalogue}
       promotions={promotions}
       events={events}
+      credits={credits}
     />
   )
 }

@@ -8,6 +8,9 @@ import {
   calendarEventQueueSchema,
   catalogueEntrySchema,
   commandSchema,
+  creditConfigSchema,
+  creditOperationSchema,
+  creditSemesterSchema,
   promotionCommandSchema,
   promotionQueueSchema,
 } from "./portal.contract"
@@ -42,3 +45,20 @@ export const reviewPortalEvent = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
   .validator(calendarEventCommandSchema)
   .handler(async ({ context, data }) => (await portalApi(context)).events.command(data))
+
+/** Credit rules (RRI art. 4.7), grants and adjustments: operators only, like the other queues. */
+export const getCreditConfig = createServerFn()
+  .middleware([webContentWriteMiddleware])
+  .handler(async ({ context }) => (await portalApi(context)).credits.config())
+export const saveCreditConfig = createServerFn({ method: "POST" })
+  .middleware([webContentWriteMiddleware])
+  .validator(creditConfigSchema)
+  .handler(async ({ context, data }) => (await portalApi(context)).credits.saveConfig(data))
+export const operateCredits = createServerFn({ method: "POST" })
+  .middleware([webContentWriteMiddleware])
+  .validator(creditOperationSchema)
+  .handler(async ({ context, data }) => (await portalApi(context)).credits.operate(data))
+export const grantSemesterCredits = createServerFn({ method: "POST" })
+  .middleware([webContentWriteMiddleware])
+  .validator(creditSemesterSchema)
+  .handler(async ({ context, data }) => (await portalApi(context)).credits.semester(data))

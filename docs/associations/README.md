@@ -73,6 +73,14 @@ Il responsabile uscente avvia il passaggio dalla scheda Referenti. Il portale lo
 
 Chi subentra eredita tutto: scheda, storico, richieste di promozione ed eventi appartengono all’associazione, non alla persona. Restano private solo le evidenze delle richieste di accesso altrui.
 
+## Crediti
+
+I crediti seguono l’art. 4.7 dell’RRI e sono **spenti** finché PoliNetwork non li attiva in Associazioni › Crediti. Le regole iniziali vengono dall’RRI e sono modificabili dagli operatori, su indicazione del Direttivo: 3 crediti a semestre, non cumulabili; costo per invio di 0 sul canale PoliAssociazioni, 1 sul canale broadcast del corso, 0,5 per un gruppo d’esame o di scaglione, 2 per un gruppo generale di livello, 3 per tutti i gruppi di un corso, mentre i casi “Altro” li prezza PoliNetwork all’approvazione; metà prezzo sui canali del corso a cui l’associazione fa riferimento; nessun saldo negativo; 15 giorni tra due messaggi nello stesso gruppo.
+
+Il registro dei crediti è in sola aggiunta: accrediti, addebiti, storni e rettifiche, ciascuno con motivazione, autore e, se c’è, la richiesta collegata. Il saldo è la somma dei movimenti. Con i crediti attivi i referenti vedono saldo, movimenti e uso previsto nella scheda Crediti, e il costo stimato di una richiesta prima di inviarla. L’addebito avviene all’approvazione e viene stornato se la richiesta è respinta o ritirata dopo l’approvazione; un addebito non può mai essere registrato due volte. Gli operatori assegnano crediti e rettifiche con motivazione, e assegnano i crediti del semestre a tutte le associazioni attive (una volta per periodo, facendo scadere quelli non usati).
+
+Restano da decidere: un permesso dedicato per i crediti (oggi bastano `admin:access` e `web:content:write`) e come applicare il credito aggiuntivo per i corsi poco numerosi (oggi è una rettifica manuale, senza vincolo di spesa su quei corsi).
+
 ## Stati e gestione dei referenti
 
 Le richieste passano per bozza, invio, eventuali integrazioni, approvazione/rifiuto o ritiro. Le modifiche inviate restano separate dalla versione pubblicata, anche durante un rifiuto. La scheda richiede entrambe le descrizioni per essere pubblicata.
