@@ -15,6 +15,7 @@ import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatDateTime } from "@/lib/format"
 
+import { EventsTab } from "./portal-calendar"
 import { ContactsPanel } from "./portal-contacts"
 import { eventLabel } from "./portal-events"
 import { PromotionsTab } from "./portal-promotions"
@@ -38,6 +39,7 @@ import {
   type Detail,
   type Profile,
   type promotionListSchema,
+  type calendarEventListSchema,
   type Request,
 } from "./portal.contract"
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
@@ -47,10 +49,12 @@ export function PortalDetail({
   association: a,
   catalogue,
   promotions,
+  events,
 }: {
   association: Detail
   catalogue: CatalogueEntry[]
   promotions: z.infer<typeof promotionListSchema>
+  events: z.infer<typeof calendarEventListSchema>
 }) {
   const router = useRouter()
   const { user } = useRouteContext({ from: "/dashboard" })
@@ -61,7 +65,9 @@ export function PortalDetail({
   const [destination, setDestination] = useState<string | null>(null)
   const [redirectReason, setRedirectReason] = useState("")
   const review = useServerFn(reviewPortalAssociation)
-  const [tab, setTab] = useState<"profile" | "contacts" | "promotions" | "requests" | "members" | "activity">("profile")
+  const [tab, setTab] = useState<
+    "profile" | "contacts" | "promotions" | "events" | "requests" | "members" | "activity"
+  >("profile")
   const [edit, setEdit] = useState<{ requestId: string | null; profile: Profile; explanation: string } | null>(null)
   const [reasonAction, setReasonAction] = useState<{
     title: string
@@ -201,7 +207,10 @@ export function PortalDetail({
                   ? [{ value: "contacts" as const, label: "Contatti", count: a.staleContacts.length || undefined }]
                   : []),
                 ...(a.registered && (a.role || a.operator)
-                  ? [{ value: "promotions" as const, label: "Promozioni" }]
+                  ? [
+                      { value: "promotions" as const, label: "Promozioni" },
+                      { value: "events" as const, label: "Eventi" },
+                    ]
                   : []),
                 { value: "requests", label: "Richieste", count: a.pending },
                 { value: "members", label: "Referenti" },
@@ -229,12 +238,24 @@ export function PortalDetail({
             </div>
           )}
           {tab === "contacts" && (
-            <ContactsPanel association={a} onSave={(contacts) => run({ action: "contacts", contacts })} />
+            <ContactsPanel
+              association={a}
+              onSave={(contacts) => run({ action: "contacts", contacts })}
+              onCollaboration={(open, contactId) => run({ action: "collaboration", open, contactId })}
+            />
           )}
           {tab === "promotions" && (
             <PromotionsTab
               associationId={a.id}
               promotions={promotions}
+              catalogue={catalogue}
+              canCreate={!!a.role && a.status === "active"}
+            />
+          )}
+          {tab === "events" && (
+            <EventsTab
+              associationId={a.id}
+              events={events}
               catalogue={catalogue}
               canCreate={!!a.role && a.status === "active"}
             />

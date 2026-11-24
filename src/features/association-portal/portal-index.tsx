@@ -207,6 +207,22 @@ export function PortalIndex({
                             )}
                             {a.acronym ? ` (${a.acronym})` : ""}
                           </h2>
+                          {a.collaboration.open && (
+                            <p className="mt-2 text-sm">
+                              <Chip>Aperta a collaborazioni</Chip>
+                              {(() => {
+                                const dedicated = a.contacts.find((c) => c.id === a.collaboration.contactId)
+                                return dedicated ? (
+                                  <span className="ml-2">
+                                    Scrivi a{" "}
+                                    <a href={`mailto:${dedicated.email}`} className="underline">
+                                      {dedicated.email}
+                                    </a>
+                                  </span>
+                                ) : null
+                              })()}
+                            </p>
+                          )}
                           {tags.length > 0 && (
                             <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Corsi e sedi">
                               {tags.map((tag) => (

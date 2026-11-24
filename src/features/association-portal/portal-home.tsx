@@ -44,15 +44,23 @@ export function actionText(a: Action) {
       return a.at ? `${title} è programmata per ${whenFormat.format(new Date(a.at))}` : `${title} è programmata`
     case "promotion_published":
       return `${title} è stata pubblicata`
+    case "event_changes":
+      return `PoliNetwork ha chiesto modifiche all’evento ${title}`
+    case "event_to_submit":
+      return `Completa e invia l’evento ${title}`
+    case "event_draft":
+      return `Completa l’evento ${title}`
     default:
       return `C’è qualcosa da controllare per ${a.associationName}`
   }
 }
 
 function actionLink(a: Action) {
-  return a.kind.startsWith("promotion_") && a.targetId
-    ? ({ to: "/dashboard/associations/promotions/$promotionId", params: { promotionId: a.targetId } } as const)
-    : ({ to: "/dashboard/associations/$id", params: { id: a.associationId } } as const)
+  if (a.kind.startsWith("promotion_") && a.targetId)
+    return { to: "/dashboard/associations/promotions/$promotionId", params: { promotionId: a.targetId } } as const
+  if (a.kind.startsWith("event_") && a.targetId)
+    return { to: "/dashboard/associations/events/$eventId", params: { eventId: a.targetId } } as const
+  return { to: "/dashboard/associations/$id", params: { id: a.associationId } } as const
 }
 
 /** The top of the portal: what needs attention, then (operators) how much waits in each queue. */
@@ -89,7 +97,7 @@ export function PortalHome({ home }: { home: Home }) {
           <h2 id="portal-queues" className="text-sm font-medium">
             Code di PoliNetwork
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <NavCard
               title="Schede da approvare"
               count={c.profiles}
@@ -104,6 +112,11 @@ export function PortalHome({ home }: { home: Home }) {
               title="Promozioni in revisione"
               count={c.promotions}
               render={<Link to="/dashboard/associations/promotions" search={{ status: "submitted" }} />}
+            />
+            <NavCard
+              title="Eventi in revisione"
+              count={c.events}
+              render={<Link to="/dashboard/associations/events" search={{ status: "submitted" }} />}
             />
           </div>
         </section>

@@ -51,13 +51,25 @@ function backendPortalApi(accessToken: string | null) {
       command: async (input: C.PromotionCommand) =>
         C.refSchema.parse(await client.mutation("associationPortal.promotions.command", input)),
     },
+    events: {
+      list: async (input: z.infer<typeof C.refSchema>) =>
+        C.calendarEventListSchema.parse(await client.query("associationPortal.events.list", input)),
+      get: async (input: z.infer<typeof C.refSchema>) =>
+        C.calendarEventSchema.parse(await client.query("associationPortal.events.get", input)),
+      queue: async (input: z.infer<typeof C.calendarEventQueueSchema>) =>
+        C.calendarEventListSchema.parse(await client.query("associationPortal.events.queue", input)),
+      create: async (input: z.infer<typeof C.calendarEventCreateSchema>) =>
+        C.refSchema.parse(await client.mutation("associationPortal.events.create", input)),
+      command: async (input: C.CalendarEventCommand) =>
+        C.refSchema.parse(await client.mutation("associationPortal.events.command", input)),
+    },
   }
 }
 
 /** Agent mode without a backend token: the sample registry, parsed through the same contract as the backend's replies. */
 async function fakePortalApi(user: { sub: string; name: string; email: string }): Promise<PortalApi> {
   const { fakePortalApi: fake } = await import("./portal.fake.server")
-  const { viewer, service, promotions, home } = fake(user, env.AGENT_ASSOCIATION_ROLE)
+  const { viewer, service, promotions, home, events } = fake(user, env.AGENT_ASSOCIATION_ROLE)
   return {
     // No Blob storage in agent mode: an upload sets the dashboard's own icon as the logo.
     uploadLogo: async () => ({ url: `http://localhost:${process.env.PORT ?? "3000"}/favicon.ico` }),
@@ -81,6 +93,13 @@ async function fakePortalApi(user: { sub: string; name: string; email: string })
       queue: async (input) => C.promotionListSchema.parse(await inItalian(() => promotions.queue(viewer, input))),
       create: async (input) => C.refSchema.parse(await inItalian(() => promotions.create(viewer, input))),
       command: async (input) => C.refSchema.parse(await inItalian(() => promotions.command(viewer, input))),
+    },
+    events: {
+      list: async (input) => C.calendarEventListSchema.parse(await inItalian(() => events.list(viewer, input.id))),
+      get: async (input) => C.calendarEventSchema.parse(await inItalian(() => events.get(viewer, input.id))),
+      queue: async (input) => C.calendarEventListSchema.parse(await inItalian(() => events.queue(viewer, input))),
+      create: async (input) => C.refSchema.parse(await inItalian(() => events.create(viewer, input))),
+      command: async (input) => C.refSchema.parse(await inItalian(() => events.command(viewer, input))),
     },
   }
 }

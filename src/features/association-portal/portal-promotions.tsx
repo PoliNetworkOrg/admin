@@ -6,6 +6,7 @@ import type { z } from "zod"
 
 import {
   checkboxControl,
+  fieldControl,
   ConfirmDialog,
   DataTable,
   DateField,
@@ -127,6 +128,7 @@ export const EMPTY_PROMOTION: PromotionContent = {
   audience: { everyone: true, programmes: [], campuses: [] },
   desiredDate: null,
   deadline: null,
+  eventId: null,
 }
 
 /** The request form: content, channels, audience and dates. Used to create and to edit a draft. */
@@ -779,7 +781,7 @@ const rejectDialog: Dialog = {
   action: (note) => ({ action: "reject", note }),
 }
 
-function NoteDialog({
+export function NoteDialog({
   title,
   description,
   label,
@@ -828,7 +830,7 @@ function NoteDialog({
   )
 }
 
-function CommentDialog({
+export function CommentDialog({
   operator,
   onClose,
   onSubmit,
@@ -917,7 +919,13 @@ function ScheduleDialog({
           <DateField id={`${id}-day`} value={day} onChange={setDay} locale="it" pastYears={0} futureYears={1} />
         </FormField>
         <FormField htmlFor={`${id}-time`} label="Ora">
-          <Input id={`${id}-time`} type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          <Input
+            id={`${id}-time`}
+            type="time"
+            className={fieldControl}
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
         </FormField>
       </div>
       <FormField htmlFor={`${id}-channel`} label="Canale">

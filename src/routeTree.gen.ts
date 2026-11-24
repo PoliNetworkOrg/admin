@@ -59,6 +59,7 @@ import { Route as DashboardPeopleSociIndexRouteImport } from './routes/dashboard
 import { Route as DashboardPeopleCensusIndexRouteImport } from './routes/dashboard/people/census/index'
 import { Route as DashboardEsignRequestsIndexRouteImport } from './routes/dashboard/esign/requests/index'
 import { Route as DashboardAssociationsPromotionsIndexRouteImport } from './routes/dashboard/associations/promotions/index'
+import { Route as DashboardAssociationsEventsIndexRouteImport } from './routes/dashboard/associations/events/index'
 import { Route as DashboardWebTagsTagRouteImport } from './routes/dashboard/web/tags/$tag'
 import { Route as DashboardWebGroupsByLabelSplatRouteImport } from './routes/dashboard/web/groups-by-label/$'
 import { Route as DashboardTelegramUsersUserIdRouteImport } from './routes/dashboard/telegram/users/$userId'
@@ -68,6 +69,7 @@ import { Route as DashboardPeopleSociNumberRouteImport } from './routes/dashboar
 import { Route as DashboardPeopleCensusCampaignIdRouteImport } from './routes/dashboard/people/census/$campaignId'
 import { Route as DashboardEsignRequestsRequestIdRouteImport } from './routes/dashboard/esign/requests/$requestId'
 import { Route as DashboardAssociationsPromotionsPromotionIdRouteImport } from './routes/dashboard/associations/promotions/$promotionId'
+import { Route as DashboardAssociationsEventsEventIdRouteImport } from './routes/dashboard/associations/events/$eventId'
 import { Route as ApiEsignAgentSplatRouteImport } from './routes/api/esign/agent/$'
 import { Route as DashboardRegulationsDraftsDraftIdIndexRouteImport } from './routes/dashboard/regulations/drafts/$draftId/index'
 import { Route as DashboardRegulationsDraftsDraftIdProcedureRouteImport } from './routes/dashboard/regulations/drafts/$draftId/procedure'
@@ -339,6 +341,12 @@ const DashboardAssociationsPromotionsIndexRoute =
     path: '/associations/promotions/',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardAssociationsEventsIndexRoute =
+  DashboardAssociationsEventsIndexRouteImport.update({
+    id: '/associations/events/',
+    path: '/associations/events/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardWebTagsTagRoute = DashboardWebTagsTagRouteImport.update({
   id: '/tags/$tag',
   path: '/tags/$tag',
@@ -390,6 +398,12 @@ const DashboardAssociationsPromotionsPromotionIdRoute =
   DashboardAssociationsPromotionsPromotionIdRouteImport.update({
     id: '/associations/promotions/$promotionId',
     path: '/associations/promotions/$promotionId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardAssociationsEventsEventIdRoute =
+  DashboardAssociationsEventsEventIdRouteImport.update({
+    id: '/associations/events/$eventId',
+    path: '/associations/events/$eventId',
     getParentRoute: () => DashboardRoute,
   } as any)
 const ApiEsignAgentSplatRoute = ApiEsignAgentSplatRouteImport.update({
@@ -466,6 +480,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/associations/events/$eventId': typeof DashboardAssociationsEventsEventIdRoute
   '/dashboard/associations/promotions/$promotionId': typeof DashboardAssociationsPromotionsPromotionIdRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
@@ -475,6 +490,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/associations/events/': typeof DashboardAssociationsEventsIndexRoute
   '/dashboard/associations/promotions/': typeof DashboardAssociationsPromotionsIndexRoute
   '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
@@ -531,6 +547,7 @@ export interface FileRoutesByTo {
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/associations/events/$eventId': typeof DashboardAssociationsEventsEventIdRoute
   '/dashboard/associations/promotions/$promotionId': typeof DashboardAssociationsPromotionsPromotionIdRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
@@ -540,6 +557,7 @@ export interface FileRoutesByTo {
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/associations/events': typeof DashboardAssociationsEventsIndexRoute
   '/dashboard/associations/promotions': typeof DashboardAssociationsPromotionsIndexRoute
   '/dashboard/esign/requests': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/people/census': typeof DashboardPeopleCensusIndexRoute
@@ -598,6 +616,7 @@ export interface FileRoutesById {
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
   '/api/esign/agent/$': typeof ApiEsignAgentSplatRoute
+  '/dashboard/associations/events/$eventId': typeof DashboardAssociationsEventsEventIdRoute
   '/dashboard/associations/promotions/$promotionId': typeof DashboardAssociationsPromotionsPromotionIdRoute
   '/dashboard/esign/requests/$requestId': typeof DashboardEsignRequestsRequestIdRoute
   '/dashboard/people/census/$campaignId': typeof DashboardPeopleCensusCampaignIdRoute
@@ -607,6 +626,7 @@ export interface FileRoutesById {
   '/dashboard/telegram/users/$userId': typeof DashboardTelegramUsersUserIdRoute
   '/dashboard/web/groups-by-label/$': typeof DashboardWebGroupsByLabelSplatRoute
   '/dashboard/web/tags/$tag': typeof DashboardWebTagsTagRoute
+  '/dashboard/associations/events/': typeof DashboardAssociationsEventsIndexRoute
   '/dashboard/associations/promotions/': typeof DashboardAssociationsPromotionsIndexRoute
   '/dashboard/esign/requests/': typeof DashboardEsignRequestsIndexRoute
   '/dashboard/people/census/': typeof DashboardPeopleCensusIndexRoute
@@ -666,6 +686,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/'
     | '/dashboard/regulations/'
     | '/api/esign/agent/$'
+    | '/dashboard/associations/events/$eventId'
     | '/dashboard/associations/promotions/$promotionId'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
@@ -675,6 +696,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
+    | '/dashboard/associations/events/'
     | '/dashboard/associations/promotions/'
     | '/dashboard/esign/requests/'
     | '/dashboard/people/census/'
@@ -731,6 +753,7 @@ export interface FileRouteTypes {
     | '/dashboard/people'
     | '/dashboard/regulations'
     | '/api/esign/agent/$'
+    | '/dashboard/associations/events/$eventId'
     | '/dashboard/associations/promotions/$promotionId'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
@@ -740,6 +763,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
+    | '/dashboard/associations/events'
     | '/dashboard/associations/promotions'
     | '/dashboard/esign/requests'
     | '/dashboard/people/census'
@@ -797,6 +821,7 @@ export interface FileRouteTypes {
     | '/dashboard/people/'
     | '/dashboard/regulations/'
     | '/api/esign/agent/$'
+    | '/dashboard/associations/events/$eventId'
     | '/dashboard/associations/promotions/$promotionId'
     | '/dashboard/esign/requests/$requestId'
     | '/dashboard/people/census/$campaignId'
@@ -806,6 +831,7 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/users/$userId'
     | '/dashboard/web/groups-by-label/$'
     | '/dashboard/web/tags/$tag'
+    | '/dashboard/associations/events/'
     | '/dashboard/associations/promotions/'
     | '/dashboard/esign/requests/'
     | '/dashboard/people/census/'
@@ -1185,6 +1211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAssociationsPromotionsIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/associations/events/': {
+      id: '/dashboard/associations/events/'
+      path: '/associations/events'
+      fullPath: '/dashboard/associations/events/'
+      preLoaderRoute: typeof DashboardAssociationsEventsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/web/tags/$tag': {
       id: '/dashboard/web/tags/$tag'
       path: '/tags/$tag'
@@ -1246,6 +1279,13 @@ declare module '@tanstack/react-router' {
       path: '/associations/promotions/$promotionId'
       fullPath: '/dashboard/associations/promotions/$promotionId'
       preLoaderRoute: typeof DashboardAssociationsPromotionsPromotionIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/associations/events/$eventId': {
+      id: '/dashboard/associations/events/$eventId'
+      path: '/associations/events/$eventId'
+      fullPath: '/dashboard/associations/events/$eventId'
+      preLoaderRoute: typeof DashboardAssociationsEventsEventIdRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/api/esign/agent/$': {
@@ -1342,6 +1382,7 @@ interface DashboardRouteChildren {
   DashboardAssociationsIndexRoute: typeof DashboardAssociationsIndexRoute
   DashboardPeopleIndexRoute: typeof DashboardPeopleIndexRoute
   DashboardRegulationsIndexRoute: typeof DashboardRegulationsIndexRoute
+  DashboardAssociationsEventsEventIdRoute: typeof DashboardAssociationsEventsEventIdRoute
   DashboardAssociationsPromotionsPromotionIdRoute: typeof DashboardAssociationsPromotionsPromotionIdRoute
   DashboardEsignRequestsRequestIdRoute: typeof DashboardEsignRequestsRequestIdRoute
   DashboardPeopleCensusCampaignIdRoute: typeof DashboardPeopleCensusCampaignIdRoute
@@ -1349,6 +1390,7 @@ interface DashboardRouteChildren {
   DashboardPeopleTeamsTeamIdRoute: typeof DashboardPeopleTeamsTeamIdRoute
   DashboardRegulationsDocumentsDocumentKeyRoute: typeof DashboardRegulationsDocumentsDocumentKeyRoute
   DashboardTelegramUsersUserIdRoute: typeof DashboardTelegramUsersUserIdRoute
+  DashboardAssociationsEventsIndexRoute: typeof DashboardAssociationsEventsIndexRoute
   DashboardAssociationsPromotionsIndexRoute: typeof DashboardAssociationsPromotionsIndexRoute
   DashboardEsignRequestsIndexRoute: typeof DashboardEsignRequestsIndexRoute
   DashboardPeopleCensusIndexRoute: typeof DashboardPeopleCensusIndexRoute
@@ -1390,6 +1432,8 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAssociationsIndexRoute: DashboardAssociationsIndexRoute,
   DashboardPeopleIndexRoute: DashboardPeopleIndexRoute,
   DashboardRegulationsIndexRoute: DashboardRegulationsIndexRoute,
+  DashboardAssociationsEventsEventIdRoute:
+    DashboardAssociationsEventsEventIdRoute,
   DashboardAssociationsPromotionsPromotionIdRoute:
     DashboardAssociationsPromotionsPromotionIdRoute,
   DashboardEsignRequestsRequestIdRoute: DashboardEsignRequestsRequestIdRoute,
@@ -1399,6 +1443,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardRegulationsDocumentsDocumentKeyRoute:
     DashboardRegulationsDocumentsDocumentKeyRoute,
   DashboardTelegramUsersUserIdRoute: DashboardTelegramUsersUserIdRoute,
+  DashboardAssociationsEventsIndexRoute: DashboardAssociationsEventsIndexRoute,
   DashboardAssociationsPromotionsIndexRoute:
     DashboardAssociationsPromotionsIndexRoute,
   DashboardEsignRequestsIndexRoute: DashboardEsignRequestsIndexRoute,

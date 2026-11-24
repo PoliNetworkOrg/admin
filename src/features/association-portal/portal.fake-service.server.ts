@@ -6,7 +6,17 @@ import { createHash, randomBytes, randomUUID } from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import type { z } from "zod"
 
-import type { CatalogueEntry, Command, Contact, createSchema, Event, Member, Profile, Request } from "./portal.contract"
+import type {
+  CatalogueEntry,
+  Collaboration,
+  Command,
+  Contact,
+  createSchema,
+  Event,
+  Member,
+  Profile,
+  Request,
+} from "./portal.contract"
 
 export type Viewer = { sub: string; name: string; operator: boolean; email?: string }
 export type Invitation = { requestId: string; hash: string; expiresAt: string }
@@ -27,6 +37,8 @@ export type Record = {
   commands: string[]
   /** Contacts visible to other associations or to PoliNetwork only; public ones live in the profile. */
   contacts: Contact[]
+  /** Shown in the portal directory only, so it needs no review. */
+  collaboration: Collaboration
 }
 /**
  * An outbox message. `text` is the plain fallback; `template` names a React Email template in `src/emails/` and its
@@ -74,6 +86,7 @@ export function normalizeRecord(r: Record): Record {
   if (r.published) r.published = normalizeProfile(r.published)
   for (const q of r.requests) if (q.profile) q.profile = normalizeProfile(q.profile)
   r.contacts ??= []
+  r.collaboration ??= { open: false, contactId: null }
   return r
 }
 const openContent = (r: Record) =>
@@ -201,6 +214,7 @@ export function present(r: Record, v: Viewer) {
         : (r.published ?? { ...r.profile, descriptionIt: "", descriptionEn: "", email: "", links: [], logo: null }),
     publishedProfile: r.published,
     contacts: v.operator || member ? r.contacts : [],
+    collaboration: r.collaboration,
     staleContacts: v.operator || member ? staleContacts(r).map((c) => c.id) : [],
     members: v.operator || member ? r.members : [],
     requests,
@@ -235,6 +249,11 @@ export function createAssociationService(store: Store, dashboardUrl: string) {
       return records.map((r) => {
         const own = v.operator || !!activeMember(r, v)
         const shown = own ? r.profile : (r.published ?? r.profile)
+        const contacts = [
+          ...(own ? r.profile.contacts : (r.published?.contacts ?? [])),
+          ...r.contacts.filter((c) => own || (representative && c.visibility === "associations")),
+        ]
+        const { open, contactId } = r.collaboration
         return {
           id: r.id,
           name: r.profile.name,
@@ -243,10 +262,9 @@ export function createAssociationService(store: Store, dashboardUrl: string) {
           programmes: shown.programmes,
           campuses: shown.campuses,
           crossProgramme: shown.crossProgramme,
-          contacts: [
-            ...(own ? r.profile.contacts : (r.published?.contacts ?? [])),
-            ...r.contacts.filter((c) => own || (representative && c.visibility === "associations")),
-          ],
+          contacts,
+          // The dedicated contact only when the viewer can see it.
+          collaboration: { open, contactId: contactId && contacts.some((c) => c.id === contactId) ? contactId : null },
         }
       })
     },
@@ -285,6 +303,7 @@ export function createAssociationService(store: Store, dashboardUrl: string) {
         notes: "",
         commands: [],
         contacts: [],
+        collaboration: { open: false, contactId: null },
       }
       if (v.operator && input.submit) {
         r.registered = true
@@ -546,6 +565,17 @@ export function createAssociationService(store: Store, dashboardUrl: string) {
             event(r, v, "Contacts updated", describeContacts(r.contacts, hidden))
             r.contacts = hidden
           }
+        } else if (c.action === "collaboration") {
+          if (!r.registered || !writable(r, v)) fail("FORBIDDEN", "You cannot edit this association")
+          const known = [
+            ...(openContent(r)?.profile ?? r.profile).contacts,
+            ...r.contacts,
+            ...(r.published?.contacts ?? []),
+          ]
+          if (c.contactId && !known.some((x) => x.id === c.contactId))
+            fail("BAD_REQUEST", "Choose one of the association's contacts")
+          r.collaboration = { open: c.open, contactId: c.open ? c.contactId : null }
+          event(r, v, c.open ? "Open to collaborations" : "Closed to collaborations")
         } else if (c.action === "leave" || c.action === "revoke") {
           if (c.action === "revoke") operator(v)
           const member = r.members.find((m) => m.sub === (c.action === "leave" ? v.sub : c.sub) && m.active)

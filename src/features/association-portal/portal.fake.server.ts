@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { CatalogueEntry, Contact, Member, Profile, PromotionContent, Request } from "./portal.contract"
+import { type CalendarEvent, createEventService, type EventStore } from "./portal.fake-events.server"
 import { createHomeService } from "./portal.fake-home.server"
 import { createPromotionService, type Promotion, type PromotionStore } from "./portal.fake-promotions.server"
 import { createAssociationService, type Mail, type Record, type Store, type Viewer } from "./portal.fake-service.server"
@@ -160,6 +161,7 @@ function record(name: string, members: Member[], extra: Partial<Record> = {}): R
     notes: "",
     commands: [],
     contacts: [],
+    collaboration: { open: false, contactId: null },
     ...extra,
   }
 }
@@ -197,16 +199,15 @@ function seed(agent: Viewer, role: Role) {
     crossProgramme: true,
     campuses: ["bovisa", "lecco"],
   })
+  const betaCollaborations = contact("collaborations", "Collaborazioni", "associations")
   const beta = record(
     "Associazione Beta",
     [{ sub: "sample-beta", name: "Luca Russo", role: "responsible", active: true }],
     {
       profile: betaProfile,
       published: betaProfile,
-      contacts: [
-        contact("collaborations", "Collaborazioni", "associations"),
-        contact("communications", "Comunicazione interna", "polinetwork"),
-      ],
+      contacts: [betaCollaborations, contact("communications", "Comunicazione interna", "polinetwork")],
+      collaboration: { open: true, contactId: betaCollaborations.id },
     }
   )
   const gammaProfile = profile("Gruppo Gamma", { programmes: [SAMPLE_PROGRAMMES.architettura], campuses: ["mantova"] })
@@ -232,7 +233,54 @@ type State = {
   catalogue: CatalogueEntry[]
   creation: Map<string, string>
   promotions: Map<string, Promotion>
+  events: Map<string, CalendarEvent>
   keys: Map<string, string>
+}
+
+/** Sample calendar events on Associazione Alfa: approved, waiting for review, and a draft. */
+function sampleEvents(alfa: Record): CalendarEvent[] {
+  const author = alfa.members.find((m) => m.role === "collaborator") ?? alfa.members[0]
+  const event = (title: string, offset: number, status: CalendarEvent["status"]): CalendarEvent => ({
+    id: randomUUID(),
+    associationId: alfa.id,
+    status,
+    revision: 1,
+    content: {
+      title,
+      descriptionIt: `${title}: aperto a tutti gli studenti del Politecnico.`,
+      descriptionEn: `${title}: open to every Politecnico student.`,
+      startsAt: days(offset),
+      endsAt: null,
+      online: false,
+      venue: "Aula studio, edificio 3",
+      campus: "leonardo",
+      link: "https://example.org/evento",
+      poster: null,
+    },
+    createdBy: author.sub,
+    createdByName: author.name,
+    notify: [],
+    createdAt: days(-3),
+    updatedAt: days(-1),
+    transitions: [
+      {
+        id: randomUUID(),
+        kind: "transition",
+        from: null,
+        to: status,
+        at: days(-1),
+        actorSub: author.sub,
+        actorName: author.name,
+        note: "",
+        internal: false,
+      },
+    ],
+  })
+  return [
+    event("Torneo di scacchi", 10, "approved"),
+    event("Conferenza sull’intelligenza artificiale", 14, "submitted"),
+    event("Cena sociale", 20, "draft"),
+  ]
 }
 
 /** Sample promotion requests on Associazione Alfa: one in each stage an operator or a representative acts on. */
@@ -251,6 +299,7 @@ function samplePromotions(alfa: Record): Promotion[] {
     audience: { everyone: false, programmes: [SAMPLE_PROGRAMMES.informatica], campuses: ["leonardo"] },
     desiredDate: days(offset).slice(0, 10),
     deadline: null,
+    eventId: null,
   })
   const promotion = (title: string, offset: number, path: Promotion["status"][]): Promotion => {
     const p: Promotion = {
@@ -311,6 +360,7 @@ function stateFor(agent: Viewer, role: Role) {
       catalogue: catalogue(),
       creation: new Map(),
       promotions: new Map(samplePromotions(records[0]).map((p) => [p.id, p])),
+      events: new Map(sampleEvents(records[0]).map((e) => [e.id, e])),
       keys: new Map(),
     }
     states.set(key, state)
@@ -411,6 +461,48 @@ function memoryPromotions(state: State): PromotionStore {
   }
 }
 
+function memoryEvents(state: State): EventStore {
+  const day = (e: CalendarEvent) => e.content.startsAt?.slice(0, 10) ?? ""
+  return {
+    events: async (filter) =>
+      structuredClone(
+        [...state.events.values()]
+          .filter(
+            (e) =>
+              (!filter.associationId || e.associationId === filter.associationId) &&
+              (!filter.status || e.status === filter.status) &&
+              (!filter.from || day(e) >= filter.from) &&
+              (!filter.to || (!!day(e) && day(e) <= filter.to))
+          )
+          .sort((a, b) => (day(a) || "9999").localeCompare(day(b) || "9999"))
+      ),
+    event: async (id) => structuredClone(state.events.get(id) ?? null),
+    async createEvent(associationId, key, operation) {
+      const existing = state.keys.get(key)
+      if (existing) return existing
+      const record = state.rows.get(associationId)
+      if (!record) throw new Error("Associazione non trovata")
+      const e = operation(structuredClone(record), [])
+      state.events.set(e.id, e)
+      state.keys.set(key, e.id)
+      return e.id
+    },
+    async changeEvent(id, key, operation) {
+      if (state.keys.has(key)) return id
+      const stored = state.events.get(id)
+      const record = stored && state.rows.get(stored.associationId)
+      if (!stored || !record) throw new Error("Evento non trovato")
+      const e = structuredClone(stored)
+      const mail: Mail[] = []
+      operation(e, structuredClone(record), mail)
+      state.events.set(id, e)
+      state.keys.set(key, id)
+      for (const m of mail) console.info(`[agent mode] Email to ${m.to}: ${m.subject}`)
+      return id
+    },
+  }
+}
+
 /** The fake API for this agent-mode user, with the same shape as `portalApi`'s backend client. */
 export function fakePortalApi(user: { sub: string; name: string; email: string }, role: Role) {
   const viewer: Viewer = { sub: user.sub, name: user.name, email: user.email, operator: role === "operator" }
@@ -418,7 +510,14 @@ export function fakePortalApi(user: { sub: string; name: string; email: string }
   const store = memoryStore(state)
   const service = createAssociationService(store, "http://localhost:3000")
   const promotionStore = memoryPromotions(state)
-  const promotions = createPromotionService(promotionStore, store, "http://localhost:3000")
-  const home = createHomeService(store, promotionStore)
-  return { viewer, service, promotions, home }
+  const eventStore = memoryEvents(state)
+  const events = createEventService(eventStore, store, "http://localhost:3000")
+  const promotions = createPromotionService(
+    promotionStore,
+    store,
+    "http://localhost:3000",
+    async (id) => state.events.get(id)?.associationId ?? null
+  )
+  const home = createHomeService(store, promotionStore, eventStore)
+  return { viewer, service, promotions, home, events }
 }

@@ -3,7 +3,14 @@ import { createServerFn } from "@tanstack/react-start"
 import { webContentWriteMiddleware } from "@/server/auth.middleware"
 
 import { portalApi } from "./portal.api.server"
-import { catalogueEntrySchema, commandSchema, promotionCommandSchema, promotionQueueSchema } from "./portal.contract"
+import {
+  calendarEventCommandSchema,
+  calendarEventQueueSchema,
+  catalogueEntrySchema,
+  commandSchema,
+  promotionCommandSchema,
+  promotionQueueSchema,
+} from "./portal.contract"
 
 export const reviewPortalAssociation = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
@@ -25,3 +32,13 @@ export const reviewPortalPromotion = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
   .validator(promotionCommandSchema)
   .handler(async ({ context, data }) => (await portalApi(context)).promotions.command(data))
+
+/** Operators' event queue across associations, filtered by status and date. */
+export const getPortalEventQueue = createServerFn()
+  .middleware([webContentWriteMiddleware])
+  .validator(calendarEventQueueSchema)
+  .handler(async ({ context, data }) => (await portalApi(context)).events.queue(data))
+export const reviewPortalEvent = createServerFn({ method: "POST" })
+  .middleware([webContentWriteMiddleware])
+  .validator(calendarEventCommandSchema)
+  .handler(async ({ context, data }) => (await portalApi(context)).events.command(data))

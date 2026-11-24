@@ -2,6 +2,7 @@ import { Pencil, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 import {
+  checkboxControl,
   Chip,
   ConfirmDialog,
   FormDialog,
@@ -12,7 +13,9 @@ import {
   RadioCardGroup,
   SelectField,
 } from "@/components/primitives"
+import { appToast } from "@/components/shell"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import {
   contactFunctionLabel,
@@ -50,9 +53,11 @@ export function PrivacyNotice() {
 export function ContactsPanel({
   association: a,
   onSave,
+  onCollaboration,
 }: {
   association: Detail
   onSave: (contacts: Contact[]) => Promise<void>
+  onCollaboration: (open: boolean, contactId: string | null) => Promise<void>
 }) {
   const working = a.requests.find((q) => q.kind === "content" && ["draft", "changes", "submitted"].includes(q.status))
   const shown = (working?.profile ?? a.profile).contacts
@@ -151,6 +156,7 @@ export function ContactsPanel({
           </li>
         ))}
       </ul>
+      <CollaborationCard association={a} contacts={all} onSave={onCollaboration} />
       {editing && (
         <ContactDialog
           key={editing.id}
@@ -279,5 +285,76 @@ function ContactDialog({
           ))}
       </RadioCardGroup>
     </FormDialog>
+  )
+}
+
+/** Open to collaborations, and which contact other associations should write to. Shown in the portal directory only. */
+function CollaborationCard({
+  association: a,
+  contacts,
+  onSave,
+}: {
+  association: Detail
+  contacts: Contact[]
+  onSave: (open: boolean, contactId: string | null) => Promise<void>
+}) {
+  const [open, setOpen] = useState(a.collaboration.open)
+  const [contactId, setContactId] = useState(a.collaboration.contactId ?? "")
+  const [saving, setSaving] = useState(false)
+  const dirty = open !== a.collaboration.open || (contactId || null) !== a.collaboration.contactId
+  return (
+    <div className="space-y-3 border-t border-(--pn-line) pt-4">
+      <h3 className="text-sm font-medium">Collaborazioni</h3>
+      <label className="flex items-start gap-2.5 text-[14px]">
+        <Checkbox
+          checked={open}
+          disabled={!a.canEdit}
+          onCheckedChange={(checked) => setOpen(checked === true)}
+          className={checkboxControl}
+        />
+        <span className="flex flex-col gap-0.5">
+          <span className="font-medium">Aperta a collaborazioni con altre associazioni</span>
+          <span className="text-[13px] text-(--pn-fg-muted)">
+            Compare nell’elenco delle associazioni del portale, non sul sito.
+          </span>
+        </span>
+      </label>
+      {open && a.canEdit && (
+        <FormField
+          htmlFor="collaboration-contact"
+          label="Contatto dedicato (facoltativo)"
+          hint="Le altre associazioni lo vedono solo se la sua visibilità lo permette."
+        >
+          <SelectField
+            id="collaboration-contact"
+            value={contactId}
+            options={[
+              { value: "", label: "Nessuno" },
+              ...contacts.map((c) => ({ value: c.id, label: `${c.label} · ${c.email}` })),
+            ]}
+            onChange={setContactId}
+          />
+        </FormField>
+      )}
+      {a.canEdit && (
+        <Button
+          variant="outline"
+          disabled={!dirty || saving}
+          onClick={async () => {
+            setSaving(true)
+            try {
+              await onSave(open, open ? contactId || null : null)
+            } catch (error) {
+              console.error(error)
+              appToast.error(error instanceof Error ? error.message : "Non è stato possibile salvare.")
+            } finally {
+              setSaving(false)
+            }
+          }}
+        >
+          Salva collaborazioni
+        </Button>
+      )}
+    </div>
   )
 }

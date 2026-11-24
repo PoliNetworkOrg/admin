@@ -59,6 +59,14 @@ Un referente chiede a PoliNetwork di promuovere un evento, un annuncio o un band
 
 Ogni passaggio registra chi l’ha fatto e quando e invia un’email all’autore e a chi ha inviato la richiesta. Gli operatori possono aggiungere note interne, mai visibili ai referenti. La pubblicazione sui canali resta manuale. Gli operatori trovano la coda in Associazioni › Promozioni, filtrabile per stato e date; i referenti trovano le richieste nella scheda Promozioni della propria associazione.
 
+## Eventi e collaborazioni
+
+Un’associazione propone eventi per il calendario condiviso: titolo, descrizione italiana e inglese, inizio e fine facoltativa, luogo oppure online, sede facoltativa, link e locandina. Collaboratori e responsabili preparano la bozza, il responsabile la invia; PoliNetwork commenta, chiede modifiche, approva o respinge. Un evento compare nel calendario del sito solo dopo l’approvazione, e il responsabile può toglierlo in ogni momento. Gli operatori trovano gli eventi in Associazioni › Eventi.
+
+Da un evento approvato i referenti possono creare una richiesta di promozione già compilata (titolo, testo, link, locandina, data qualche giorno prima), collegata all’evento.
+
+Nell’elenco delle associazioni un’associazione può dichiararsi aperta a collaborazioni e indicare il contatto dedicato, scelto tra i suoi contatti. Il flag è visibile a tutti nel portale; il contatto solo a chi può già vederlo secondo la sua visibilità. Non serve approvazione.
+
 ## Stati e gestione dei referenti
 
 Le richieste passano per bozza, invio, eventuali integrazioni, approvazione/rifiuto o ritiro. Le modifiche inviate restano separate dalla versione pubblicata, anche durante un rifiuto. La scheda richiede entrambe le descrizioni per essere pubblicata.

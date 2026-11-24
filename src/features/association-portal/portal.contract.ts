@@ -123,6 +123,9 @@ export const detailSchema = summarySchema.extend({
   contacts: z.array(contactSchema).default([]),
   /** Contacts (public or not) whose linked representative no longer has access. */
   staleContacts: z.array(z.uuid()).default([]),
+  collaboration: z
+    .object({ open: z.boolean(), contactId: z.uuid().nullable() })
+    .default({ open: false, contactId: null }),
   members: z.array(memberSchema),
   requests: z.array(requestSchema),
   events: z.array(eventSchema),
@@ -147,6 +150,10 @@ export const directoryEntrySchema = z.object({
   crossProgramme: z.boolean().default(false),
   /** Only the contacts the viewer may see: public ones for everyone, `associations` for other active associations. */
   contacts: z.array(contactSchema).default([]),
+  /** Open to collaborations, with the dedicated contact when the viewer may see it. */
+  collaboration: z
+    .object({ open: z.boolean(), contactId: z.uuid().nullable() })
+    .default({ open: false, contactId: null }),
 })
 export const directorySchema = z.array(directoryEntrySchema)
 export const catalogueSchema = z.array(catalogueEntrySchema)
@@ -217,6 +224,7 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ ...base, action: z.literal("note"), note: text }),
   // Non-public contacts are saved at once; public ones go into the working profile, which the responsible submits.
   z.object({ ...base, action: z.literal("contacts"), contacts: z.array(contactSchema).max(40) }),
+  z.object({ ...base, action: z.literal("collaboration"), open: z.boolean(), contactId: z.uuid().nullable() }),
   z.object({ ...base, action: z.literal("leave"), reason }),
   z.object({ ...base, action: z.literal("revoke"), sub: z.string().min(1).max(200), reason }),
 ])
@@ -232,6 +240,7 @@ export const applicantActions = [
   "membership",
   "leave",
   "contacts",
+  "collaboration",
 ] as const
 type Uncovered = Exclude<Command["action"], (typeof operatorActions)[number] | (typeof applicantActions)[number]>
 // Compile error if `commandSchema` gains an action that is in neither list.
@@ -269,6 +278,16 @@ type UncoveredPromotion = Exclude<
 export const promotionActionsCovered: [UncoveredPromotion] extends [never] ? true : never = true
 const promotionOperatorSet = new Set<string>(promotionOperatorActions)
 export const isPromotionOperatorAction = (action: string) => promotionOperatorSet.has(action)
+/** Event decisions only operators send (`reviewPortalEvent`); representatives send the others. */
+export const eventOperatorActions = ["changes", "approve", "reject"] as const
+export const eventApplicantActions = ["save", "submit", "withdraw", "comment"] as const
+type UncoveredEvent = Exclude<
+  CalendarEventCommand["action"],
+  (typeof eventOperatorActions)[number] | (typeof eventApplicantActions)[number]
+>
+export const eventActionsCovered: [UncoveredEvent] extends [never] ? true : never = true
+const eventOperatorSet = new Set<string>(eventOperatorActions)
+export const isEventOperatorAction = (action: string) => eventOperatorSet.has(action)
 export const inviteSchema = z.object({ token: z.string().min(32).max(128) })
 export const invitationSchema = z.object({ associationName: z.string(), role: roleSchema, expiresAt: z.string() })
 // Promotion requests. Channels follow the RRI (art. 4.7): the PoliAssociazioni channel, a course's broadcast channel,
@@ -317,6 +336,8 @@ export const promotionContentSchema = z.object({
   }),
   desiredDate: isoDate.nullable(),
   deadline: isoDate.nullable(),
+  /** The calendar event this request promotes, if it was created from one. */
+  eventId: z.uuid().nullable().default(null),
 })
 export const promotionTransitionSchema = z.object({
   id: z.uuid(),
@@ -385,6 +406,63 @@ export type PromotionContent = z.infer<typeof promotionContentSchema>
 export type PromotionCommand = z.infer<typeof promotionCommandSchema>
 export type PromotionStatus = z.infer<typeof promotionStatus>
 export type PromotionTransition = z.infer<typeof promotionTransitionSchema>
+// Events for the shared calendar: public only after an operator approves them.
+export const eventStatus = z.enum(["draft", "submitted", "changes_requested", "approved", "rejected", "withdrawn"])
+export const calendarEventContentSchema = z.object({
+  title: z.string().trim().max(200),
+  descriptionIt: z.string().trim().max(5000),
+  descriptionEn: z.string().trim().max(5000),
+  startsAt: z.iso.datetime({ offset: true }).nullable(),
+  endsAt: z.iso.datetime({ offset: true }).nullable(),
+  online: z.boolean(),
+  venue: z.string().trim().max(300),
+  campus: catalogueSlug.nullable(),
+  link: z.union([z.literal(""), httpUrl]),
+  poster: httpUrl.nullable(),
+})
+export const calendarEventSchema = z.object({
+  id: z.uuid(),
+  associationId: z.uuid(),
+  associationName: z.string(),
+  status: eventStatus,
+  revision: z.number().int(),
+  content: calendarEventContentSchema,
+  createdByName: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  transitions: z.array(promotionTransitionSchema.extend({ from: eventStatus.nullable(), to: eventStatus.nullable() })),
+  canEdit: z.boolean(),
+  canSubmit: z.boolean(),
+  canWithdraw: z.boolean(),
+  operator: z.boolean(),
+})
+export const calendarEventListSchema = z.array(calendarEventSchema)
+export const calendarEventQueueSchema = z.object({
+  status: eventStatus.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+})
+export const calendarEventCreateSchema = z.object({
+  associationId: z.uuid(),
+  content: calendarEventContentSchema,
+  commandId: z.uuid(),
+})
+export const calendarEventCommandSchema = z.discriminatedUnion("action", [
+  z.object({ ...promotionBase, action: z.literal("save"), content: calendarEventContentSchema }),
+  z.object({ ...promotionBase, action: z.literal("submit") }),
+  z.object({ ...promotionBase, action: z.literal("withdraw"), note: text }),
+  z.object({ ...promotionBase, action: z.literal("comment"), note: reason, internal: z.boolean() }),
+  z.object({ ...promotionBase, action: z.literal("changes"), note: reason }),
+  z.object({ ...promotionBase, action: z.literal("approve"), note: text }),
+  z.object({ ...promotionBase, action: z.literal("reject"), note: reason }),
+])
+/** Whether the association is open to collaborations, and which of its contacts to write to. */
+export const collaborationSchema = z.object({ open: z.boolean(), contactId: z.uuid().nullable() })
+export type CalendarEventContent = z.infer<typeof calendarEventContentSchema>
+export type CalendarEventCommand = z.infer<typeof calendarEventCommandSchema>
+export type EventStatus = z.infer<typeof eventStatus>
+export type Collaboration = z.infer<typeof collaborationSchema>
+
 // The portal home: what needs the viewer's attention, computed on the server. `kind` is open (a newer backend may add
 // kinds the admin renders generically); `homeActionKinds` lists the ones this version produces.
 export const homeActionKinds = [
@@ -399,6 +477,9 @@ export const homeActionKinds = [
   "promotion_draft",
   "promotion_scheduled",
   "promotion_published",
+  "event_changes",
+  "event_to_submit",
+  "event_draft",
 ] as const
 export const homeSchema = z.object({
   operator: z.boolean(),

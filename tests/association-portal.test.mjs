@@ -7,6 +7,9 @@ import {
   applicantActions,
   contactSchema,
   directorySchema,
+  eventApplicantActions,
+  eventOperatorActions,
+  isEventOperatorAction,
   isPromotionOperatorAction,
   posterFormSchema,
   promotionApplicantActions,
@@ -82,6 +85,12 @@ void test("responses from a backend without programmes, campuses or contacts sti
 void test("promotion decisions are operator actions, drafting and submitting are not", () => {
   for (const action of promotionOperatorActions) assert.equal(isPromotionOperatorAction(action), true)
   for (const action of promotionApplicantActions) assert.equal(isPromotionOperatorAction(action), false)
+})
+
+void test("event decisions are operator actions, drafting and submitting are not", () => {
+  for (const action of eventOperatorActions) assert.equal(isEventOperatorAction(action), true)
+  for (const action of eventApplicantActions) assert.equal(isEventOperatorAction(action), false)
+  assert.equal(isApplicantAction("collaboration"), true)
 })
 
 void test("posters are PNG or JPEG of at most 5 MiB", () => {

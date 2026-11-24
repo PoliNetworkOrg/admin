@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  CalendarDays,
   CircleCheck,
   CircleQuestionMark,
   ClipboardList,
@@ -123,6 +124,8 @@ export type PageMatch =
   | { kind: "association-catalogue" }
   | { kind: "association-promotions" }
   | { kind: "association-promotion"; id: string }
+  | { kind: "association-events" }
+  | { kind: "association-event"; id: string }
   | { kind: "account" }
   | { kind: "account-me" }
   | { kind: "people-overview" }
@@ -479,6 +482,13 @@ const associations: Service = {
       permission: "web:content:write",
     },
     {
+      id: "events",
+      title: "Eventi",
+      icon: CalendarDays,
+      path: "/dashboard/associations/events",
+      permission: "web:content:write",
+    },
+    {
       id: "catalogue",
       title: "Corsi e sedi",
       icon: GraduationCap,
@@ -589,6 +599,8 @@ export function matchPath(pathname: string): PageMatch {
   if (head === "associations" && second === "catalogue" && third === undefined) return { kind: "association-catalogue" }
   if (head === "associations" && second === "promotions" && rest.length === 0)
     return third ? { kind: "association-promotion", id: third } : { kind: "association-promotions" }
+  if (head === "associations" && second === "events" && rest.length === 0)
+    return third ? { kind: "association-event", id: third } : { kind: "association-events" }
   if (head === "associations" && third === undefined)
     return second ? { kind: "association-detail", id: second } : { kind: "association-portal" }
   if (head === "account" && second === undefined) return { kind: "account" }
@@ -690,6 +702,8 @@ export function serviceFor(match: PageMatch): Service {
     case "association-catalogue":
     case "association-promotions":
     case "association-promotion":
+    case "association-events":
+    case "association-event":
       return associations
     case "overview":
     case "not-found":
@@ -762,8 +776,11 @@ export function sectionFor(match: PageMatch): Section | null {
       return section(associations, "catalogue")
     case "association-promotions":
       return section(associations, "promotions")
-    // Representatives open their own requests: the page belongs to the self-service section.
+    case "association-events":
+      return section(associations, "events")
+    // Representatives open their own requests and events: those pages belong to the self-service section.
     case "association-promotion":
+    case "association-event":
       return section(associations, "portal")
     case "overview":
     case "not-found":
@@ -853,6 +870,7 @@ export function isDeepPage(match: PageMatch): boolean {
   return (
     match.kind === "association-detail" ||
     match.kind === "association-promotion" ||
+    match.kind === "association-event" ||
     match.kind === "telegram-user" ||
     match.kind === "web-category" ||
     match.kind === "web-tag" ||
