@@ -14,6 +14,7 @@ import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatDateTime } from "@/lib/format"
 
+import { ContactsPanel } from "./portal-contacts"
 import { eventLabel } from "./portal-events"
 import { reviewPortalAssociation } from "./portal-review.functions"
 import {
@@ -30,6 +31,7 @@ import {
 import {
   commandSchema,
   isOperatorAction,
+  type CatalogueEntry,
   type Command,
   type Detail,
   type Profile,
@@ -38,7 +40,7 @@ import {
 import { changePortalAssociation, getPortalDirectory } from "./portal.functions"
 
 type Action = Command extends infer T ? (T extends Command ? Omit<T, "id" | "revision" | "commandId"> : never) : never
-export function PortalDetail({ association: a }: { association: Detail }) {
+export function PortalDetail({ association: a, catalogue }: { association: Detail; catalogue: CatalogueEntry[] }) {
   const router = useRouter()
   const { user } = useRouteContext({ from: "/dashboard" })
   const change = useServerFn(changePortalAssociation)
@@ -48,7 +50,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
   const [destination, setDestination] = useState<string | null>(null)
   const [redirectReason, setRedirectReason] = useState("")
   const review = useServerFn(reviewPortalAssociation)
-  const [tab, setTab] = useState<"profile" | "requests" | "members" | "activity">("profile")
+  const [tab, setTab] = useState<"profile" | "contacts" | "requests" | "members" | "activity">("profile")
   const [edit, setEdit] = useState<{ requestId: string | null; profile: Profile; explanation: string } | null>(null)
   const [reasonAction, setReasonAction] = useState<{
     title: string
@@ -184,6 +186,9 @@ export function PortalDetail({ association: a }: { association: Detail }) {
               onValueChange={setTab}
               items={[
                 { value: "profile", label: "Scheda" },
+                ...(a.registered && (a.canEdit || a.operator || a.contacts.length > 0)
+                  ? [{ value: "contacts" as const, label: "Contatti", count: a.staleContacts.length || undefined }]
+                  : []),
                 { value: "requests", label: "Richieste", count: a.pending },
                 { value: "members", label: "Referenti" },
                 { value: "activity", label: "Attività" },
@@ -194,13 +199,13 @@ export function PortalDetail({ association: a }: { association: Detail }) {
             <div className="grid items-start gap-5 lg:grid-cols-2">
               <section className={panelClass}>
                 <h2 className="font-medium">Sul sito</h2>
-                <ProfilePreview profile={a.publishedProfile} />
+                <ProfilePreview profile={a.publishedProfile} catalogue={catalogue} />
               </section>
               <section className={panelClass}>
                 <h2 className="font-medium">
                   {working ? `Proposta · ${statusLabel[working.status]}` : "Dati nel registro"}
                 </h2>
-                <ProfilePreview profile={working?.profile ?? a.profile} />
+                <ProfilePreview profile={working?.profile ?? a.profile} catalogue={catalogue} />
                 {working && (
                   <Button variant="outline" onClick={() => setTab("requests")}>
                     Apri richiesta
@@ -208,6 +213,9 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                 )}
               </section>
             </div>
+          )}
+          {tab === "contacts" && (
+            <ContactsPanel association={a} onSave={(contacts) => run({ action: "contacts", contacts })} />
           )}
           {tab === "requests" && (
             <div className="space-y-4">
@@ -257,12 +265,12 @@ export function PortalDetail({ association: a }: { association: Detail }) {
                         {q.kind === "content" && (
                           <div>
                             <h3 className="mb-3 text-sm font-medium">Pubblicata</h3>
-                            <ProfilePreview profile={a.publishedProfile} />
+                            <ProfilePreview profile={a.publishedProfile} catalogue={catalogue} />
                           </div>
                         )}
                         <div>
                           <h3 className="mb-3 text-sm font-medium">Proposta</h3>
-                          <ProfilePreview profile={q.profile} />
+                          <ProfilePreview profile={q.profile} catalogue={catalogue} />
                         </div>
                       </div>
                     </details>
@@ -592,6 +600,7 @@ export function PortalDetail({ association: a }: { association: Detail }) {
             }}
           >
             <ProfileFields
+              catalogue={catalogue}
               associationId={a.id}
               value={edit.profile}
               onChange={(profile) => setEdit({ ...edit, profile })}

@@ -11,6 +11,7 @@ import {
   FolderKanban,
   FolderTree,
   Globe,
+  GraduationCap,
   IdCard,
   HardDrive,
   Inbox,
@@ -118,6 +119,7 @@ export type PageMatch =
   | { kind: "overview" }
   | { kind: "association-portal" }
   | { kind: "association-detail"; id: string }
+  | { kind: "association-catalogue" }
   | { kind: "account" }
   | { kind: "account-me" }
   | { kind: "people-overview" }
@@ -466,6 +468,13 @@ const associations: Service = {
       path: "/dashboard/associations",
       selfService: true,
     },
+    {
+      id: "catalogue",
+      title: "Corsi e sedi",
+      icon: GraduationCap,
+      path: "/dashboard/associations/catalogue",
+      permission: "web:content:write",
+    },
   ],
 }
 
@@ -567,6 +576,7 @@ export function matchPath(pathname: string): PageMatch {
   const [head, second, third, ...rest] = segments
 
   if (head === undefined) return { kind: "overview" }
+  if (head === "associations" && second === "catalogue" && third === undefined) return { kind: "association-catalogue" }
   if (head === "associations" && third === undefined)
     return second ? { kind: "association-detail", id: second } : { kind: "association-portal" }
   if (head === "account" && second === undefined) return { kind: "account" }
@@ -665,6 +675,7 @@ export function serviceFor(match: PageMatch): Service {
   switch (match.kind) {
     case "association-portal":
     case "association-detail":
+    case "association-catalogue":
       return associations
     case "overview":
     case "not-found":
@@ -733,6 +744,8 @@ export function sectionFor(match: PageMatch): Section | null {
     case "association-portal":
     case "association-detail":
       return section(associations, "portal")
+    case "association-catalogue":
+      return section(associations, "catalogue")
     case "overview":
     case "not-found":
       return null

@@ -20,6 +20,11 @@ export const env = createEnv({
      */
     AGENT_SOCIO: z.string().default("7"),
     /**
+     * Development only: who the agent-mode user is in the Associazioni sample registry: a PoliNetwork `operator`, the
+     * `responsible` or a `collaborator` of the first sample association, or `none` (an account with no association).
+     */
+    AGENT_ASSOCIATION_ROLE: z.enum(["operator", "responsible", "collaborator", "none"]).default("operator"),
+    /**
      * Development only: a bearer token agent mode sends to the backend instead of none, so pages read a real local
      * backend (e.g. one minted by the backend's dev IdP shim). Permissions then come from the backend's `me.access`.
      */

@@ -3,10 +3,16 @@ import { createFileRoute } from "@tanstack/react-router"
 import { RecordSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { PortalDetail } from "@/features/association-portal/portal-detail"
-import { getPortalAssociation } from "@/features/association-portal/portal.functions"
+import { getPortalAssociation, getPortalCatalogue } from "@/features/association-portal/portal.functions"
 
 export const Route = createFileRoute("/dashboard/associations/$id")({
-  loader: ({ params }) => getPortalAssociation({ data: { id: params.id } }),
+  loader: async ({ params }) => {
+    const [association, catalogue] = await Promise.all([
+      getPortalAssociation({ data: { id: params.id } }),
+      getPortalCatalogue(),
+    ])
+    return { association, catalogue }
+  },
   pendingComponent: () => (
     <>
       <PageBar back={{ label: "Associazioni", link: { to: "/dashboard/associations" } }} />
@@ -18,6 +24,6 @@ export const Route = createFileRoute("/dashboard/associations/$id")({
   component: Page,
 })
 function Page() {
-  const association = Route.useLoaderData()
-  return <PortalDetail key={association.id} association={association} />
+  const { association, catalogue } = Route.useLoaderData()
+  return <PortalDetail key={association.id} association={association} catalogue={catalogue} />
 }

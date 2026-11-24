@@ -3,12 +3,12 @@ import { createFileRoute } from "@tanstack/react-router"
 import { CardsSkeleton } from "@/components/primitives"
 import { PageBar, PageContent } from "@/components/shell"
 import { PortalIndex } from "@/features/association-portal/portal-index"
-import { getPortal, getPortalDirectory } from "@/features/association-portal/portal.functions"
+import { getPortal, getPortalCatalogue, getPortalDirectory } from "@/features/association-portal/portal.functions"
 
 export const Route = createFileRoute("/dashboard/associations/")({
   loader: async () => {
-    const [portal, directory] = await Promise.all([getPortal(), getPortalDirectory()])
-    return { portal, directory }
+    const [portal, directory, catalogue] = await Promise.all([getPortal(), getPortalDirectory(), getPortalCatalogue()])
+    return { portal, directory, catalogue }
   },
   pendingComponent: () => (
     <>

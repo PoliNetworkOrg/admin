@@ -397,6 +397,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/association-portal/portal-ui.tsx": ["uploadPortalLogo"],
     "src/features/association-portal/portal-index.tsx": ["createPortalAssociation", "changePortalAssociation"],
     "src/features/association-portal/portal-detail.tsx": ["changePortalAssociation", "reviewPortalAssociation"],
+    "src/features/association-portal/portal-catalogue.tsx": ["savePortalCatalogue"],
     "src/routes/associations/invite.tsx": ["acceptPortalInvitation"],
     "src/features/soci/socio-dialogs.tsx": ["admitSocio", "registerSocio", "updateSocio", "setSocioNumber"],
     "src/features/soci/fee-dialogs.tsx": ["confirmFee", "rejectFee", "markFeePaid"],

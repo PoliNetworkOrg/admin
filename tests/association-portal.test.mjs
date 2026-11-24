@@ -4,6 +4,9 @@ import test from "node:test"
 import { eventLabel } from "../src/features/association-portal/portal-events.ts"
 import {
   applicantActions,
+  contactSchema,
+  directorySchema,
+  profileSchema,
   isApplicantAction,
   isOperatorAction,
   logoFormSchema,
@@ -37,9 +40,44 @@ void test("logo uploads are PNG or JPEG of at most 1 MiB for a known association
   assert.equal(logoFormSchema.safeParse(form(null)).success, false)
 })
 
+void test("contacts are an applicant action, saved by representatives without review rights", () => {
+  assert.equal(isApplicantAction("contacts"), true)
+  assert.equal(isOperatorAction("contacts"), false)
+})
+
+void test("contacts keep personal fields optional and refuse malformed phone numbers", () => {
+  const base = {
+    id: "00000000-0000-4000-8000-000000000001",
+    function: "events",
+    label: "Eventi",
+    email: "eventi@example.org",
+    visibility: "associations",
+  }
+  assert.deepEqual(contactSchema.parse(base).name, "")
+  assert.equal(contactSchema.safeParse({ ...base, phone: "+39 333 123 4567" }).success, true)
+  assert.equal(contactSchema.safeParse({ ...base, phone: "call me" }).success, false)
+  assert.equal(contactSchema.safeParse({ ...base, visibility: "everyone" }).success, false)
+})
+
+void test("responses from a backend without programmes, campuses or contacts still parse", () => {
+  const legacy = { name: "A", acronym: "", descriptionIt: "", descriptionEn: "", logo: null, email: "", links: [] }
+  assert.deepEqual(profileSchema.parse(legacy), {
+    ...legacy,
+    programmes: [],
+    campuses: [],
+    crossProgramme: false,
+    contacts: [],
+  })
+  assert.deepEqual(
+    directorySchema.parse([{ id: "00000000-0000-4000-8000-000000000001", name: "A", revision: 1 }])[0].contacts,
+    []
+  )
+})
+
 void test("history events are shown in Italian, unknown ones as recorded", () => {
   assert.equal(eventLabel("Draft saved"), "Bozza salvata")
   assert.equal(eventLabel("Request approved"), "Richiesta approvata")
   assert.equal(eventLabel("Association suspended"), "Associazione sospesa")
+  assert.equal(eventLabel("Contacts updated"), "Contatti aggiornati")
   assert.equal(eventLabel("Something new"), "Something new")
 })

@@ -48,6 +48,7 @@ import { Route as DashboardEsignInboxRouteImport } from './routes/dashboard/esig
 import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esign/drives'
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
+import { Route as DashboardAssociationsCatalogueRouteImport } from './routes/dashboard/associations/catalogue'
 import { Route as DashboardAssociationsIdRouteImport } from './routes/dashboard/associations/$id'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
@@ -272,6 +273,12 @@ const DashboardAzureGroupsRoute = DashboardAzureGroupsRouteImport.update({
   path: '/azure/groups',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssociationsCatalogueRoute =
+  DashboardAssociationsCatalogueRouteImport.update({
+    id: '/associations/catalogue',
+    path: '/associations/catalogue',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardAssociationsIdRoute = DashboardAssociationsIdRouteImport.update({
   id: '/associations/$id',
   path: '/associations/$id',
@@ -415,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
+  '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
+  '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -541,6 +550,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/associations/$id': typeof DashboardAssociationsIdRoute
+  '/dashboard/associations/catalogue': typeof DashboardAssociationsCatalogueRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
   '/dashboard/esign/drives': typeof DashboardEsignDrivesRoute
@@ -606,6 +616,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
+    | '/dashboard/associations/catalogue'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -668,6 +679,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
+    | '/dashboard/associations/catalogue'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -731,6 +743,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/account/me'
     | '/dashboard/associations/$id'
+    | '/dashboard/associations/catalogue'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
     | '/dashboard/esign/drives'
@@ -1069,6 +1082,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAzureGroupsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/associations/catalogue': {
+      id: '/dashboard/associations/catalogue'
+      path: '/associations/catalogue'
+      fullPath: '/dashboard/associations/catalogue'
+      preLoaderRoute: typeof DashboardAssociationsCatalogueRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/associations/$id': {
       id: '/dashboard/associations/$id'
       path: '/associations/$id'
@@ -1259,6 +1279,7 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAccountMeRoute: typeof DashboardAccountMeRoute
   DashboardAssociationsIdRoute: typeof DashboardAssociationsIdRoute
+  DashboardAssociationsCatalogueRoute: typeof DashboardAssociationsCatalogueRoute
   DashboardAzureGroupsRoute: typeof DashboardAzureGroupsRoute
   DashboardAzureMembersRoute: typeof DashboardAzureMembersRoute
   DashboardEsignDrivesRoute: typeof DashboardEsignDrivesRoute
@@ -1304,6 +1325,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAccountMeRoute: DashboardAccountMeRoute,
   DashboardAssociationsIdRoute: DashboardAssociationsIdRoute,
+  DashboardAssociationsCatalogueRoute: DashboardAssociationsCatalogueRoute,
   DashboardAzureGroupsRoute: DashboardAzureGroupsRoute,
   DashboardAzureMembersRoute: DashboardAzureMembersRoute,
   DashboardEsignDrivesRoute: DashboardEsignDrivesRoute,

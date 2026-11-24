@@ -28,6 +28,9 @@ const eventLabels = new Map([
   ["Association archived", "Associazione archiviata"],
   ["Profile unpublished", "Scheda rimossa dal sito"],
   ["Internal note updated", "Nota interna aggiornata"],
+  ["Contacts updated", "Contatti aggiornati"],
+  ["Public contacts proposed", "Contatti pubblici aggiunti alla proposta di scheda"],
+  ["Contacts to update", "Contatti da aggiornare: il referente collegato non ha più accesso"],
 ])
 
 export function eventLabel(action: string) {

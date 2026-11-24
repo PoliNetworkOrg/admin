@@ -23,6 +23,22 @@ Una richiesta duplicata di registrazione può essere trasferita da PoliNetwork a
 
 La scheda comprende nome, sigla, descrizioni italiana e inglese, email pubblica, logo e fino a 30 link con piattaforma, etichetta e URL. Si possono inserire più link Telegram, Twitch o altri canali della stessa piattaforma. Il logo può essere un URL HTTP/S oppure un PNG/JPEG fino a 1 MiB caricato dopo il salvataggio iniziale. Motivazioni di rappresentanza, email degli inviti e note interne non finiscono sul sito pubblico.
 
+## Corsi, sedi e contatti
+
+La scheda indica uno o più corsi di studio e una o più sedi scelti dal catalogo di PoliNetwork, oppure dichiara l’associazione **trasversale** a tutti i corsi (in quel caso non elenca corsi). Corsi e sedi fanno parte della scheda pubblica e passano dalla revisione. Gli operatori gestiscono il catalogo in Associazioni › Corsi e sedi: aggiungono, rinominano e ritirano voci, mai le cancellano. Le chiavi dei corsi seguono le etichette dei gruppi (`didattica.<scuola>.<livello>.<corso>`); una voce ritirata resta sulle schede che già la citano ma non si può più scegliere.
+
+I contatti sono organizzati per funzione (presidenza, eventi, collaborazioni, comunicazione, altro) con etichetta ed email, nome e telefono facoltativi. Ogni contatto ha una visibilità:
+
+| Visibilità         | Chi lo vede                                                    | Revisione                                |
+| ------------------ | -------------------------------------------------------------- | ---------------------------------------- |
+| Pubblico           | Tutti, sul sito, dopo l’approvazione                           | Entra nella proposta di scheda           |
+| Altre associazioni | I referenti delle associazioni attive, nell’elenco del portale | Nessuna; la modifica resta nello storico |
+| Solo PoliNetwork   | I referenti dell’associazione e gli operatori                  | Nessuna; la modifica resta nello storico |
+
+Lo storico registra etichetta e visibilità, mai nomi o numeri di telefono. Quando si inseriscono nome o telefono il portale mostra l’avviso sui dati personali. Un contatto può essere collegato al referente a cui si riferisce: se quel referente lascia l’associazione o viene revocato, il contatto è segnalato al responsabile come da aggiornare.
+
+L’elenco delle associazioni nel portale mostra a ciascuno solo i contatti che può vedere: i contatti pubblici approvati a tutti, quelli per le altre associazioni a chi rappresenta un’associazione attiva, tutti ai propri referenti e agli operatori.
+
 ## Stati e gestione dei referenti
 
 Le richieste passano per bozza, invio, eventuali integrazioni, approvazione/rifiuto o ritiro. Le modifiche inviate restano separate dalla versione pubblicata, anche durante un rifiuto. La scheda richiede entrambe le descrizioni per essere pubblicata.
