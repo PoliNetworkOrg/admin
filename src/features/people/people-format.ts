@@ -4,8 +4,14 @@ import { formatDate } from "@/lib/format"
 import {
   type AccountStatus,
   type Assignment,
+  type CampusId,
+  type Course,
+  type CourseLevel,
   type PersonLike,
+  type PersonRecord,
   type PersonRow,
+  REPRESENTATIVE_LABELS,
+  SCHOOLS,
   TEAMS,
   type TeamId,
 } from "./people.contract"
@@ -169,4 +175,43 @@ export function telegramUrl(username: string) {
 
 export function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`
+}
+
+/** Campus labels in the dashboard's English; the contract's `CAMPUSES` are the backend's Italian ones. */
+export const CAMPUS_LABEL = {
+  leonardo: "Leonardo",
+  bovisa: "Bovisa",
+  lecco: "Lecco",
+  cremona: "Cremona",
+  mantova: "Mantova",
+  piacenza: "Piacenza",
+  external: "External",
+} satisfies Record<CampusId, string>
+
+export const COURSE_LEVEL = {
+  bachelor: "Bachelor's",
+  master: "Master's",
+  "single-cycle": "Single-cycle",
+} satisfies Record<CourseLevel, string>
+
+/** "Bachelor's · 3I · 358": what tells two courses with similar names apart. */
+export function courseDetail(course: Course) {
+  return `${COURSE_LEVEL[course.level]} · ${SCHOOLS[course.school].short} · ${course.code}`
+}
+
+/**
+ * A representative's seats as readable lines: "CCS · Ingegneria Informatica", "School · 3I", "Senate",
+ * "Board (CdA)", "Other · Comitato Sportivo". A CCS or school seat is the person's own course's.
+ */
+export function representativeSeats(
+  person: Pick<PersonRecord, "course" | "representativeRoles" | "representativeOther">
+) {
+  return person.representativeRoles.map((role) => {
+    if (role === "ccs" && person.course) return `${REPRESENTATIVE_LABELS.ccs} · ${person.course.name}`
+    if (role === "school" && person.course)
+      return `${REPRESENTATIVE_LABELS.school} · ${SCHOOLS[person.course.school].short}`
+    if (role === "other" && person.representativeOther)
+      return `${REPRESENTATIVE_LABELS.other} · ${person.representativeOther}`
+    return REPRESENTATIVE_LABELS[role]
+  })
 }

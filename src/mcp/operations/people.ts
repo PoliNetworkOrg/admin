@@ -46,6 +46,8 @@ import {
 } from "@/features/people/people.contract"
 import {
   getAdminsAndCapos,
+  getAssociationSuggestions,
+  getCourses,
   getMyPeopleRoles,
   getPendingInvites,
   getPeople,
@@ -64,26 +66,41 @@ const TEAM_FIELD_KEYS = TEAM_IDS.map(
 
 const ROLES_NOTE = "Pending until the record is linked to an account; then PoliNetwork Auth applies it, or refuses."
 
+const PROFILE_NOTE =
+  "Profile: courseCode (an active course from people.courses.list), campus, otherAssociations (names, spelled as in people.associations.suggest), representativeRoles (ccs and school need a course; other needs representativeOther, the seat's name)."
+
 export const peopleOperations = [
   // Records.
   read("people.persons.list", getPeople, {
     guard: "peopleReadMiddleware",
-    description: "List every People record (IDs like P-0001) with its account status and role assignments.",
+    description:
+      "List every People record (IDs like P-0001) with its account status, role assignments, course and campus.",
   }),
   read("people.persons.get", getPerson, {
     guard: "peopleReadMiddleware",
     input: getPersonInput,
-    description: "One People record by ID (from people.persons.list): contacts, note, account, assignments, activity.",
+    description:
+      "One People record by ID (from people.persons.list): contacts, profile (course, campus, other associations, representative seats), note, account, assignments, activity.",
   }),
   write("people.persons.create", createPerson, {
     guard: "peopleWriteMiddleware",
     input: newPersonInputSchema,
-    description: `Add a People record, starting from today the roles given (Admin, Capo Admin with its scope, teams). The result lists roles refused, in the backend's words. ${ROLES_NOTE}`,
+    description: `Add a People record, starting from today the roles given (Admin, Capo Admin with its scope, teams). The result lists roles refused, in the backend's words. ${ROLES_NOTE} ${PROFILE_NOTE} Omitted profile fields are empty.`,
   }),
   write("people.persons.update", updatePerson, {
     guard: "peopleWriteMiddleware",
     input: updatePersonInputSchema,
-    description: "Edit a People record's name and contacts (empty string when unknown).",
+    description: `Edit a People record's name, contacts (empty string when unknown) and profile. ${PROFILE_NOTE} An omitted profile field stays unchanged: send only what changes, after reading the record.`,
+  }),
+  read("people.courses.list", getCourses, {
+    guard: "peopleReadMiddleware",
+    description:
+      "Every Politecnico degree course (code, name, level, school, campuses, languages), active or no longer offered, sorted by school, level and name. A record's courseCode must be an active one's code.",
+  }),
+  read("people.associations.suggest", getAssociationSuggestions, {
+    guard: "peopleReadMiddleware",
+    description:
+      "The association names already on records, most used first: reuse their spelling in otherAssociations.",
   }),
   write("people.persons.setNote", setPersonNote, {
     guard: "peopleWriteMiddleware",

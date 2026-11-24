@@ -1,4 +1,14 @@
-import { type Activity, type Assignment, TEAM_IDS, type TeamId } from "./people.contract"
+import {
+  type Activity,
+  type Assignment,
+  type CampusId,
+  type Course,
+  COURSE_LEVELS,
+  type RepresentativeRole,
+  SCHOOL_IDS,
+  TEAM_IDS,
+  type TeamId,
+} from "./people.contract"
 
 /**
  * Agent mode's sample register. Deterministic, so the same records come back after a dev server restart. It covers
@@ -26,6 +36,11 @@ export type StoredPerson = {
   linkedOn: string | null
   linkedBy: string | null
   invite: StoredInvite | null
+  courseCode: number | null
+  campus: CampusId | null
+  otherAssociations: string[]
+  representativeRoles: RepresentativeRole[]
+  representativeOther: string | null
   assignments: StoredAssignment[]
   activity: Activity[]
   createdBy: string
@@ -143,6 +158,103 @@ const LAST = [
 
 const HR_SUB = "sub-0002"
 
+const course = (
+  code: number,
+  name: string,
+  level: Course["level"],
+  school: Course["school"],
+  campuses: string[],
+  languages: string[] = ["Italiano"],
+  active = true
+): Course => ({ code, name, level, school, campuses, languages, active })
+
+/**
+ * A sample of Politecnico's courses across the four schools and three levels, in `courses.list` order (school, level,
+ * name). Names are real; codes other than Ingegneria Informatica's 358 are illustrative. The Como course is no longer
+ * offered: a record that still points to it keeps it.
+ */
+export const SAMPLE_COURSES: Course[] = [
+  course(1, "Progettazione dell'Architettura", "bachelor", "auic", ["Milano Leonardo"]),
+  course(1093, "Architecture - Built Environment - Interiors", "master", "auic", ["Milano Leonardo"], ["Inglese"]),
+  course(1046, "Ingegneria Edile - Architettura", "single-cycle", "auic", ["Milano Leonardo", "Lecco"]),
+  course(340, "Ingegneria Civile", "bachelor", "icat", ["Milano Leonardo"]),
+  course(341, "Ingegneria per l'Ambiente e il Territorio", "bachelor", "icat", ["Milano Leonardo"]),
+  course(484, "Ingegneria Civile - Civil Engineering", "master", "icat", ["Milano Leonardo"], ["Inglese"]),
+  course(351, "Ingegneria Aerospaziale", "bachelor", "3i", ["Milano Bovisa"]),
+  course(352, "Ingegneria Gestionale", "bachelor", "3i", ["Milano Bovisa", "Cremona"]),
+  course(358, "Ingegneria Informatica", "bachelor", "3i", ["Milano Leonardo", "Cremona"]),
+  course(377, "Ingegneria Informatica", "bachelor", "3i", ["Como"], ["Italiano"], false),
+  course(359, "Ingegneria Meccanica", "bachelor", "3i", ["Milano Bovisa", "Lecco", "Piacenza"]),
+  course(
+    481,
+    "Computer Science and Engineering - Ingegneria Informatica",
+    "master",
+    "3i",
+    ["Milano Leonardo", "Cremona"],
+    ["Inglese"]
+  ),
+  course(494, "Management Engineering - Ingegneria Gestionale", "master", "3i", ["Milano Bovisa"], ["Inglese"]),
+  course(1170, "Design della Comunicazione", "bachelor", "design", ["Milano Bovisa"]),
+  course(1171, "Design del Prodotto Industriale", "bachelor", "design", ["Milano Bovisa"]),
+  course(1263, "Digital and Interaction Design", "master", "design", ["Milano Bovisa"], ["Inglese"]),
+].toSorted(
+  (a, b) =>
+    SCHOOL_IDS.indexOf(a.school) - SCHOOL_IDS.indexOf(b.school) ||
+    COURSE_LEVELS.indexOf(a.level) - COURSE_LEVELS.indexOf(b.level) ||
+    a.name.localeCompare(b.name, "it") ||
+    a.code - b.code
+)
+
+type Profile = Pick<
+  StoredPerson,
+  "courseCode" | "campus" | "otherAssociations" | "representativeRoles" | "representativeOther"
+>
+
+/**
+ * The profile from the 2026 admin census, for some records: student representatives (one on a CCS and the Comitato
+ * Sportivo), a course no longer offered, an external member with no course, and records nobody filled in.
+ */
+const PROFILES = new Map<number, Partial<Profile>>([
+  [1, { courseCode: 358, campus: "leonardo", otherAssociations: ["Skyward Experimental Rocketry"] }],
+  [2, { courseCode: 494, campus: "bovisa" }],
+  [
+    3,
+    {
+      courseCode: 352,
+      campus: "bovisa",
+      otherAssociations: ["Lista Aperta"],
+      representativeRoles: ["ccs", "other"],
+      representativeOther: "Comitato Sportivo",
+    },
+  ],
+  [4, { courseCode: 358, campus: "cremona" }],
+  [5, { courseCode: 1170, campus: "bovisa", representativeRoles: ["school"], otherAssociations: ["Lista Aperta"] }],
+  [6, { courseCode: 340, campus: "leonardo" }],
+  [7, { courseCode: 481, campus: "leonardo", representativeRoles: ["senate"], otherAssociations: ["Lista Aperta"] }],
+  [9, { courseCode: 377, campus: "leonardo" }],
+  [10, { campus: "leonardo", representativeRoles: ["board"] }],
+  [11, { courseCode: 359, campus: "piacenza", otherAssociations: ["Polimi Motorsport", "ESN Politecnico Milano"] }],
+  [12, { courseCode: 1046, campus: "lecco" }],
+  [13, { courseCode: 351, campus: "bovisa", otherAssociations: ["Skyward Experimental Rocketry"] }],
+  [16, { courseCode: 1, campus: "leonardo" }],
+  [21, { courseCode: 358, campus: "leonardo", otherAssociations: ["ESN Politecnico Milano"] }],
+  [22, { courseCode: 481, campus: "leonardo" }],
+  [30, { courseCode: 1263, campus: "bovisa" }],
+  [31, { courseCode: 1171, campus: "bovisa" }],
+  [40, { campus: "external" }],
+])
+
+function profileOf(n: number): Profile {
+  return {
+    courseCode: null,
+    campus: null,
+    otherAssociations: [],
+    representativeRoles: [],
+    representativeOther: null,
+    ...PROFILES.get(n),
+  }
+}
+
 export function addDays(date: string, days: number) {
   const next = new Date(`${date}T12:00:00Z`)
   next.setUTCDate(next.getUTCDate() + days)
@@ -224,6 +336,7 @@ export function buildPeopleStore(): PeopleStore {
             sentBy: HR_SUB,
           }
         : null,
+      ...profileOf(n),
       assignments: [],
       activity: [
         ...(linked && linkedOn

@@ -28,7 +28,7 @@ import {
   EndAdminDialog,
   EndCapoDialog,
 } from "./admin-dialogs"
-import { currentAdmin, formatDay, personName, telegramUrl, waitingForAuth } from "./people-format"
+import { CAMPUS_LABEL, currentAdmin, formatDay, personName, telegramUrl, waitingForAuth } from "./people-format"
 import { useDialog, useDialogState } from "./people-hooks"
 import { ActionMenu, AssignmentBadge, PersonCell, RefusalText, TruncatedChip } from "./people-ui"
 import type { AdminSummary, CapoSummary, PersonRow } from "./people.contract"
@@ -71,12 +71,9 @@ const adminColumns: DataTableColumn<AdminSummary>[] = [
     mobile: "main",
     cell: ({ person, admin, capo }) => (
       <>
-        <PersonCell
-          name={personName(person)}
-          secondary={person.telegramUsername ? `@${person.telegramUsername}` : null}
-          secondaryMono
-        />
+        <PersonCell name={personName(person)} secondary={person.course?.name} />
         <span className="mt-2 hidden flex-wrap items-center gap-1.5 pl-11 max-shell:flex">
+          {person.campus ? <Chip>{CAMPUS_LABEL[person.campus]}</Chip> : null}
           {capo?.capoScope ? <Chip>Capo Admin · {capo.capoScope}</Chip> : null}
           {admin.capoOfReference ? (
             <span className="text-xs text-(--pn-fg-muted)">Capo Admin: {admin.capoOfReference.name}</span>
@@ -101,11 +98,19 @@ const adminColumns: DataTableColumn<AdminSummary>[] = [
       ),
   },
   {
+    id: "campus",
+    label: "Campus",
+    width: 120,
+    priority: 4,
+    mobile: "hidden",
+    cell: ({ person }) => (person.campus ? CAMPUS_LABEL[person.campus] : <Unset />),
+  },
+  {
     id: "since",
     label: "Since",
     sortable: true,
     width: 128,
-    priority: 4,
+    priority: 5,
     mobile: "hidden",
     cell: ({ admin }) => <span className="whitespace-nowrap">{formatDay(admin.since)}</span>,
   },
@@ -220,7 +225,7 @@ export function AdminsPage({
         (capoFilter === NO_CAPO
           ? !row.admin.capoOfReference && !row.capo
           : row.admin.capoOfReference?.id === capoFilter)) &&
-      matches(row.person, deferredQuery, [row.admin.capoOfReference?.name ?? null])
+      matches(row.person, deferredQuery, [row.admin.capoOfReference?.name ?? null, row.person.course?.name ?? null])
   )
   const filteredCapos = capos.filter((row) => matches(row.person, deferredQuery, [row.capo.capoScope]))
   const sortedAdmins = sortBy(filteredAdmins, sort, (row) => row.admin.since)
@@ -297,7 +302,7 @@ export function AdminsPage({
             search={{
               value: query,
               onChange: resetPage(setQuery),
-              placeholder: tab === "admins" ? "Search admins…" : "Search Capo Admins or scopes…",
+              placeholder: tab === "admins" ? "Search admins or courses…" : "Search Capo Admins or scopes…",
             }}
             filters={
               <>
