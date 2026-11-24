@@ -26,6 +26,13 @@ const widthClass = {
   overview: "max-w-[1280px]",
 } satisfies Record<ContentWidth, string>
 
+/**
+ * The centered column of `PageBar` and `PageContent`. Full width (`usePageWidth`) lets it fill the gutters; header and
+ * content run the same transition, so their edges stay together while it grows or shrinks.
+ */
+const columnClass =
+  "mx-auto w-full transition-[max-width] duration-320 ease-(--pn-ease-move) full-width:max-w-full motion-reduce:transition-none"
+
 export type ShellFrame = {
   /** The page's scroll container. */
   main: HTMLElement | null
@@ -77,7 +84,7 @@ export function PageContent({
 }) {
   return (
     <div data-page-content className={cn("flex-1 pb-7", fill ? "shell:pb-6" : "shell:pb-12", gutter)}>
-      <div className={cn("mx-auto w-full", widthClass[width])}>{children}</div>
+      <div className={cn(columnClass, widthClass[width])}>{children}</div>
     </div>
   )
 }
@@ -206,7 +213,7 @@ export function PageBar({
 
   return (
     <header data-page-bar="" className={cn("pt-4.5 pb-4 shell:pt-7 shell:pb-5", gutter)}>
-      <div className={cn("mx-auto flex w-full flex-col gap-4 shell:gap-5", widthClass[width])}>
+      <div className={cn(columnClass, "flex flex-col gap-4 shell:gap-5", widthClass[width])}>
         {head}
         {left ? <div className="flex min-w-0">{left}</div> : null}
       </div>

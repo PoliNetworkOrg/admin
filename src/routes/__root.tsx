@@ -24,7 +24,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <meta name="darkreader-lock" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("polinetwork-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}}catch(e){console.error(e)}`,
+            __html: `try{var t=localStorage.getItem("polinetwork-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}if(localStorage.getItem("polinetwork-page-width")==="full"){document.documentElement.setAttribute("data-page-width","full")}}catch(e){console.error(e)}`,
           }}
         />
         <HeadContent />

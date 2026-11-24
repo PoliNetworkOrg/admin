@@ -6,6 +6,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant full-width (&:is([data-page-width="full"] *));
 
 .custom-scroll-area {
   position: relative;
