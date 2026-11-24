@@ -23,8 +23,9 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
     `representativeOther` (the Other seat's name), on the record only and empty without `people:read`. A CCS seat is
     on the council of the person's own course and a school seat in its school, so neither is stored.
 - **Course:** Polimi's own `code` (`k_corso_la`), `name`, `level` (`bachelor`, `master`, `single-cycle`), `school`
-  (`auic`, `icat`, `3i`, `design`), `campuses`, `languages`, and `active` (`false` once a yearly update no longer lists
-  it; kept, since records may point to it).
+  (`auic`, `icat`, `3i`, `design`), `regulation` (`96/23` for the current courses, `270` for the older ones Polimi keeps
+  until their students finish: the same degree can appear under both, with different codes), `campuses`, `languages`,
+  and `active` (`false` once a yearly update no longer lists it; kept, since records may point to it).
 - **Account:** `none`, `invite` (an open invite: address, sent on, expiry, sender) or `linked` (account ID, `method`
   `invite` / `manual` / `auth`, when and by whom). `auth` is a record People created for someone given a bound role by
   hand in PoliNetwork Auth.

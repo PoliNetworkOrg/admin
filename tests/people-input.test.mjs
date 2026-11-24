@@ -96,6 +96,7 @@ const row = {
     name: "Ingegneria Informatica",
     level: "bachelor",
     school: "3i",
+    regulation: "270",
     campuses: ["Milano Leonardo", "Cremona"],
     languages: ["Italiano"],
     active: true,

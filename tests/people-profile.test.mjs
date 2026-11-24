@@ -76,7 +76,7 @@ void test("the schema refuses duplicates and a seat text without the Other seat"
 
 void test("create applies the rules on the record as it will be saved", async () => {
   await assert.rejects(hr.createPerson({ ...base, representativeRoles: ["school"] }), /course/)
-  await assert.rejects(hr.createPerson({ ...base, courseCode: 377 }), /no longer offered/)
+  await assert.rejects(hr.createPerson({ ...base, courseCode: 481 }), /no longer offered/)
   await assert.rejects(hr.createPerson({ ...base, courseCode: 99999 }), /No course/)
   await assert.rejects(hr.createPerson({ ...base, representativeRoles: ["other"] }), /other seat/)
 

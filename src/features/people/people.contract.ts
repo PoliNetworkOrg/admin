@@ -68,6 +68,11 @@ export const courseSchema = z.object({
   name: z.string(),
   level: z.enum(COURSE_LEVELS),
   school: schoolIdSchema,
+  /**
+   * The regulation it runs under: "96/23" for the current courses, "270" for the older ones, kept until their students
+   * finish. The same degree can be listed under both, with different codes.
+   */
+  regulation: z.string(),
   /** As Polimi names them, e.g. "Milano Leonardo", "Cremona". */
   campuses: z.array(z.string()),
   /** As the manifesto lists them, e.g. ["Italiano"], ["Inglese"]. */

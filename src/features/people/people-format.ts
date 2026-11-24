@@ -194,9 +194,12 @@ export const COURSE_LEVEL = {
   "single-cycle": "Single-cycle",
 } satisfies Record<CourseLevel, string>
 
-/** "Bachelor's · 3I · 358": what tells two courses with similar names apart. */
+/**
+ * "Bachelor's · 3I · DM 270 · 358": what tells two courses with similar names apart, such as one degree under the
+ * current and the older regulation.
+ */
 export function courseDetail(course: Course) {
-  return `${COURSE_LEVEL[course.level]} · ${SCHOOLS[course.school].short} · ${course.code}`
+  return `${COURSE_LEVEL[course.level]} · ${SCHOOLS[course.school].short} · DM ${course.regulation} · ${course.code}`
 }
 
 /**

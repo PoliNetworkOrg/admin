@@ -95,7 +95,7 @@ export const peopleOperations = [
   read("people.courses.list", getCourses, {
     guard: "peopleReadMiddleware",
     description:
-      "Every Politecnico degree course (code, name, level, school, campuses, languages), active or no longer offered, sorted by school, level and name. A record's courseCode must be an active one's code.",
+      "Every Politecnico degree course (code, name, level, school, regulation, campuses, languages), active or no longer offered, sorted by school, level and name. A degree can appear twice, under the current regulation (96/23) and the older one (270), with different codes. A record's courseCode must be an active one's code.",
   }),
   read("people.associations.suggest", getAssociationSuggestions, {
     guard: "peopleReadMiddleware",
