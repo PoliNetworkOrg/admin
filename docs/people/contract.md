@@ -34,7 +34,7 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
   A refused start ends the assignment (it never took effect); a refused end leaves it current. While any change of a
   linked record is `sent`, the backend refuses another role change for it.
 
-- **Teams:** `it`, `hr`, `design` (Design & Marketing), `intl`, `events`. `teams.list` reports per team whether Auth
+- **Teams:** `it`, `hr`, `design` (Design & Marketing), `events`. `teams.list` reports per team whether Auth
   binds a member and a Lead role (`assignable`); a role that isn't bound can't be assigned, and the dashboard doesn't
   offer it. Only these kinds exist: Admin, Capo Admin, team member, team Lead.
 

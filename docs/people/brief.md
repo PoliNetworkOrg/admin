@@ -13,8 +13,8 @@ existing dashboard exactly. Desktop 1440px and mobile 390px, light and dark them
 ## Context
 
 PoliNetwork is a student association at Politecnico di Milano. It runs hundreds of Telegram/WhatsApp course groups
-through ~150 volunteer group admins, plus internal teams (IT, HR, Design & Social, International, Events &
-Partnerships) and a smaller set of paying members (soci).
+through ~150 volunteer group admins, plus internal teams (IT, HR, Design & Social, Events & Partnerships) and a smaller
+set of paying members (soci).
 
 Today volunteer data lives in a Microsoft Forms spreadsheet ("Modulo Volontari", yearly), and members live only as
 Microsoft 365 accounts. This area brings everything into the dashboard: one record per person, and on that record three

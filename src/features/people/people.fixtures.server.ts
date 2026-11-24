@@ -49,7 +49,6 @@ export const BOUND_TEAM_ROLES = {
   it: { member: true, lead: true },
   hr: { member: true, lead: true },
   design: { member: true, lead: true },
-  intl: { member: true, lead: true },
   events: { member: true, lead: false },
 } satisfies Record<TeamId, { member: boolean; lead: boolean }>
 
@@ -181,7 +180,6 @@ const TEAMS_OF = {
   it: { lead: 7, members: [1, 21, 22, 23, 24, 25], former: [28] },
   hr: { lead: 2, members: [26, 27, 29], former: [] },
   design: { lead: 30, members: [31, 32, 33], former: [35] },
-  intl: { lead: 36, members: [37, 38], former: [] },
   events: { lead: null, members: [39, 40, 34], former: [] },
 } satisfies Record<TeamId, { lead: number | null; members: number[]; former: number[] }>
 /** Sent to Auth and not confirmed: an admin start and a team end. */
@@ -191,7 +189,6 @@ const FIELDS = {
   it: (n) => ({ github: `dev${n}`, areas: n % 2 ? ["Frontend", "Backend"] : ["Bot"] }),
   hr: (n) => ({ focus: n % 2 ? ["Recruiting"] : ["Onboarding", "Census"] }),
   design: (n) => ({ tools: n % 2 ? ["Figma", "Illustrator"] : ["Photoshop"], portfolio: "" }),
-  intl: (n) => ({ languages: n % 2 ? ["English", "Spanish"] : ["English", "French"] }),
   events: (n) => ({ focus: n % 2 ? ["Partnerships"] : ["Logistics"] }),
 } satisfies Record<TeamId, (n: number) => Record<string, string | string[]>>
 

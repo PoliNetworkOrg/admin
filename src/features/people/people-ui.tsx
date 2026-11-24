@@ -228,7 +228,7 @@ export function PersonPicker({
   )
 }
 
-/** Multi-select options as pressable pills, for team fields such as Areas or Languages. */
+/** Multi-select options as pressable pills, for team fields such as Areas or Tools. */
 export function ChoiceChips<T extends string>({
   id,
   label,
