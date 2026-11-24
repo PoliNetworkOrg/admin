@@ -8,6 +8,7 @@ import { Chip, EmptyState, FormDialog, SegmentedControl } from "@/components/pri
 import { appToast, PageBar, PageContent, Toolbar } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
+import { PortalHome } from "./portal-home"
 import {
   catalogueName,
   cleanProfile,
@@ -21,22 +22,32 @@ import {
   TextField,
   visibilityLabel,
 } from "./portal-ui"
-import { type CatalogueEntry, createSchema, type dashboardSchema, type directorySchema } from "./portal.contract"
+import {
+  type CatalogueEntry,
+  createSchema,
+  type dashboardSchema,
+  type directorySchema,
+  type homeSchema,
+} from "./portal.contract"
 import { createPortalAssociation, changePortalAssociation } from "./portal.functions"
 
 export function PortalIndex({
   portal,
   directory,
   catalogue,
+  home,
+  initialView = "registry",
 }: {
   portal: z.infer<typeof dashboardSchema>
   directory: z.infer<typeof directorySchema>
   catalogue: CatalogueEntry[]
+  home: z.infer<typeof homeSchema>
+  initialView?: "registry" | "requests" | "directory"
 }) {
   const router = useRouter()
   const create = useServerFn(createPortalAssociation)
   const change = useServerFn(changePortalAssociation)
-  const [view, setView] = useState<"registry" | "requests" | "directory">("registry")
+  const [view, setView] = useState(initialView)
   const [query, setQuery] = useState("")
   const [creating, setCreating] = useState(false)
   const [profile, setProfile] = useState(EMPTY_PROFILE)
@@ -87,6 +98,7 @@ export function PortalIndex({
       />
       <PageContent width="wide">
         <div className="space-y-6">
+          <PortalHome home={home} />
           <div className="overflow-x-auto">
             <SegmentedControl
               label="Viste associazioni"

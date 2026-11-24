@@ -23,6 +23,7 @@ function backendPortalApi(accessToken: string | null) {
     uploadLogo: async (input: FormData) =>
       z.object({ url: C.httpUrl }).parse(await client.mutation("associationPortal.uploadLogo", input)),
     list: async () => C.dashboardSchema.parse(await client.query("associationPortal.list")),
+    home: async () => C.homeSchema.parse(await client.query("associationPortal.home")),
     directory: async () => C.directorySchema.parse(await client.query("associationPortal.directory")),
     catalogue: async () => C.catalogueSchema.parse(await client.query("associationPortal.catalogue")),
     saveCatalogue: async (input: C.CatalogueEntry) =>
@@ -56,11 +57,12 @@ function backendPortalApi(accessToken: string | null) {
 /** Agent mode without a backend token: the sample registry, parsed through the same contract as the backend's replies. */
 async function fakePortalApi(user: { sub: string; name: string; email: string }): Promise<PortalApi> {
   const { fakePortalApi: fake } = await import("./portal.fake.server")
-  const { viewer, service, promotions } = fake(user, env.AGENT_ASSOCIATION_ROLE)
+  const { viewer, service, promotions, home } = fake(user, env.AGENT_ASSOCIATION_ROLE)
   return {
     // No Blob storage in agent mode: an upload sets the dashboard's own icon as the logo.
     uploadLogo: async () => ({ url: `http://localhost:${process.env.PORT ?? "3000"}/favicon.ico` }),
     list: async () => C.dashboardSchema.parse(await inItalian(() => service.list(viewer))),
+    home: async () => C.homeSchema.parse(await inItalian(() => home.home(viewer))),
     directory: async () => C.directorySchema.parse(await inItalian(() => service.directory(viewer))),
     catalogue: async () => C.catalogueSchema.parse(await inItalian(() => service.catalogue(viewer))),
     saveCatalogue: async (input) => {

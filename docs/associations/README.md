@@ -23,6 +23,10 @@ Una richiesta duplicata di registrazione può essere trasferita da PoliNetwork a
 
 La scheda comprende nome, sigla, descrizioni italiana e inglese, email pubblica, logo e fino a 30 link con piattaforma, etichetta e URL. Si possono inserire più link Telegram, Twitch o altri canali della stessa piattaforma. Il logo può essere un URL HTTP/S oppure un PNG/JPEG fino a 1 MiB caricato dopo il salvataggio iniziale. Motivazioni di rappresentanza, email degli inviti e note interne non finiscono sul sito pubblico.
 
+## Pagina iniziale
+
+In cima ad Associazioni compare **Da fare**: le azioni che chiedono attenzione, calcolate dal backend (`associationPortal.home`) sullo stato attuale e mai salvate, con prima quelle urgenti. Per esempio: modifiche chieste da PoliNetwork alla scheda o a una richiesta di promozione, bozze da completare (l’autore) o da inviare (il responsabile), contatti pubblici da confermare, contatti da aggiornare perché il referente collegato non ha più accesso, una scheda registrata ma non pubblicata, promozioni programmate nella settimana o appena pubblicate, integrazioni chieste a una propria richiesta di registrazione o di accesso. Ogni voce porta alla pagina dove si risolve. Gli operatori vedono anche i contatori delle code: schede, accessi e promozioni in revisione.
+
 ## Corsi, sedi e contatti
 
 La scheda indica uno o più corsi di studio e una o più sedi scelti dal catalogo di PoliNetwork, oppure dichiara l’associazione **trasversale** a tutti i corsi (in quel caso non elenca corsi). Corsi e sedi fanno parte della scheda pubblica e passano dalla revisione. Gli operatori gestiscono il catalogo in Associazioni › Corsi e sedi: aggiungono, rinominano e ritirano voci, mai le cancellano. Le chiavi dei corsi seguono le etichette dei gruppi (`didattica.<scuola>.<livello>.<corso>`); una voce ritirata resta sulle schede che già la citano ma non si può più scegliere.

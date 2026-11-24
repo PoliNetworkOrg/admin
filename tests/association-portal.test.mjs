@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+import { portalErrorMessage } from "../src/features/association-portal/portal-errors.ts"
 import { eventLabel } from "../src/features/association-portal/portal-events.ts"
 import {
   applicantActions,
@@ -99,6 +100,11 @@ void test("posters are PNG or JPEG of at most 5 MiB", () => {
       .success,
     false
   )
+})
+
+void test("backend errors are shown in Italian, unknown ones as sent", () => {
+  assert.equal(portalErrorMessage("Choose the desired date"), "Scegli la data desiderata.")
+  assert.equal(portalErrorMessage("Something new"), "Something new")
 })
 
 void test("history events are shown in Italian, unknown ones as recorded", () => {

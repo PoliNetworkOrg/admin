@@ -16,6 +16,10 @@ import {
 export const getPortal = createServerFn()
   .middleware([associationSelfMiddleware])
   .handler(async ({ context }) => (await portalApi(context)).list())
+/** What needs the viewer's attention, and operators' queue counters. */
+export const getPortalHome = createServerFn()
+  .middleware([associationSelfMiddleware])
+  .handler(async ({ context }) => (await portalApi(context)).home())
 export const getPortalDirectory = createServerFn()
   .middleware([associationSelfMiddleware])
   .handler(async ({ context }) => (await portalApi(context)).directory())

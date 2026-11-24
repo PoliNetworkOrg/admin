@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { CatalogueEntry, Contact, Member, Profile, PromotionContent, Request } from "./portal.contract"
+import { createHomeService } from "./portal.fake-home.server"
 import { createPromotionService, type Promotion, type PromotionStore } from "./portal.fake-promotions.server"
 import { createAssociationService, type Mail, type Record, type Store, type Viewer } from "./portal.fake-service.server"
 
@@ -416,6 +417,8 @@ export function fakePortalApi(user: { sub: string; name: string; email: string }
   const state = stateFor(viewer, role)
   const store = memoryStore(state)
   const service = createAssociationService(store, "http://localhost:3000")
-  const promotions = createPromotionService(memoryPromotions(state), store, "http://localhost:3000")
-  return { viewer, service, promotions }
+  const promotionStore = memoryPromotions(state)
+  const promotions = createPromotionService(promotionStore, store, "http://localhost:3000")
+  const home = createHomeService(store, promotionStore)
+  return { viewer, service, promotions, home }
 }
