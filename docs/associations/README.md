@@ -98,3 +98,9 @@ Il backend conserva registro, richieste, storico e collegamenti in un aggregato 
 Le tre PR vanno coordinate: migrazione e backend, poi admin; il sito supporta sia la vecchia risposta sia `extraLinks`. Durante il breve intervallo tra backend e admin, il vecchio editor rifiuta le scritture. La migrazione conserva identificativi e schede pubbliche esistenti, senza assegnare referenti. Verificare `ESIGN_DASHBOARD_URL=https://admin.polinetwork.org`, configurazione email e storage Azure del backend. Non sono richieste nuove autorizzazioni globali nel repository Auth.
 
 Il rilascio richiede backup e normale procedura di migrazione del backend. Queste PR non eseguono migrazioni né deployment in produzione. Dopo il rilascio verificare login reale, consegna invito via email e caricamento logo contro i servizi configurati; la prova automatizzata locale usa account e recapiti fittizi.
+
+## Rilascio delle funzioni aggiuntive
+
+Ordine: backend (migrazioni 0041–0045), poi admin; il sito può andare prima o dopo. L’admin legge anche le risposte del backend precedente (i campi nuovi hanno valori predefiniti), ma le nuove schermate richiedono il nuovo backend. Dopo il rilascio: controllare i nomi dei corsi importati dalle etichette dei gruppi in Associazioni › Corsi e sedi, provare un invito (il backend corregge un difetto che impediva di trovarli) e una richiesta di promozione in staging con le email. I crediti partono spenti: si attivano in Associazioni › Crediti solo su decisione del Direttivo.
+
+In modalità agente (`AGENT_MODE=true`) tutte le schermate funzionano senza backend: `AGENT_ASSOCIATION_ROLE` sceglie operatore, responsabile, collaboratore o account senza associazione; per i referenti usare anche `AGENT_PERMISSIONS=none`.
