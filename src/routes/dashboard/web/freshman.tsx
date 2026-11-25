@@ -9,17 +9,26 @@ import { FreshmanTabs } from "@/features/freshman/freshman-tabs"
 import { getFreshmanContent } from "@/features/freshman/freshman.functions"
 import { GuidesPage } from "@/features/guides/guides-page"
 import { getGuides } from "@/features/guides/guides.functions"
+import { getTelegramGroups } from "@/features/telegram/groups.functions"
 
 export const Route = createFileRoute("/dashboard/web/freshman")({
   validateSearch: z.object({ tab: z.enum(["resources", "telegram", "faqs", "guide"]).optional() }),
   loaderDeps: ({ search }) => ({ tab: search.tab ?? "resources" }),
   loader: async ({ deps }) => {
     if (deps.tab === "guide") return { tab: deps.tab, guides: await getGuides() } as const
-    const [content, categories] = await Promise.all([
+    const [content, categories, groups] = await Promise.all([
       getFreshmanContent(),
       deps.tab === "faqs" ? listFAQs() : Promise.resolve([]),
+      deps.tab === "telegram" ? getTelegramGroups() : Promise.resolve([]),
     ])
-    return { tab: deps.tab, content, catalog: categories.flatMap((category) => category.faqs) } as const
+    return {
+      tab: deps.tab,
+      content,
+      catalog: categories.flatMap((category) => category.faqs),
+      groups: groups
+        .filter((group) => group.link)
+        .sort((a, b) => a.title.localeCompare(b.title, "it", { sensitivity: "base" })),
+    } as const
   },
   pendingComponent: () => (
     <>
@@ -43,5 +52,13 @@ function FreshmanRoute() {
     />
   )
   if (data.tab === "guide") return <GuidesPage guides={data.guides} navigation={navigation} />
-  return <FreshmanPage tab={data.tab} content={data.content} catalog={data.catalog} navigation={navigation} />
+  return (
+    <FreshmanPage
+      tab={data.tab}
+      content={data.content}
+      catalog={data.catalog}
+      groups={data.groups}
+      navigation={navigation}
+    />
+  )
 }

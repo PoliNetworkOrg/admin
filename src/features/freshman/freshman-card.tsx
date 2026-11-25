@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Pencil } from "lucide-react"
+import type { ReactNode } from "react"
 
 import { IconButton } from "@/components/primitives"
 
@@ -7,6 +8,8 @@ import type { FreshmanCard } from "./types"
 
 type FreshmanCardRowProps = {
   card: FreshmanCard
+  /** Replaces the destination line (Telegram slots: the linked group). */
+  detail?: ReactNode
   canWrite: boolean
   pending: boolean
   first: boolean
@@ -15,7 +18,16 @@ type FreshmanCardRowProps = {
   onEdit: () => void
 }
 
-export function FreshmanCardRow({ card, canWrite, pending, first, last, onMove, onEdit }: FreshmanCardRowProps) {
+export function FreshmanCardRow({
+  card,
+  detail,
+  canWrite,
+  pending,
+  first,
+  last,
+  onMove,
+  onEdit,
+}: FreshmanCardRowProps) {
   const Icon = FRESHMAN_ICONS[card.icon]
   return (
     <div className="flex items-start gap-3 border-b border-(--pn-line) p-4 last:border-0">
@@ -23,7 +35,7 @@ export function FreshmanCardRow({ card, canWrite, pending, first, last, onMove, 
       <div className="min-w-0 flex-1">
         <h3 className="text-sm font-medium break-words text-(--pn-fg)">{card.title}</h3>
         {card.description && <p className="mt-1 text-[13px] text-(--pn-fg-muted)">{card.description}</p>}
-        <p className="mt-1 break-all text-xs text-(--pn-fg-muted)">{card.href || "No destination set"}</p>
+        {detail ?? <p className="mt-1 break-all text-xs text-(--pn-fg-muted)">{card.href || "No destination set"}</p>}
       </div>
       {canWrite && (
         <div className="flex shrink-0 flex-wrap justify-end gap-0.5 max-shell:max-w-18">

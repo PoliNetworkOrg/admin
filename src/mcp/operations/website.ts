@@ -56,11 +56,13 @@ import {
   moveFreshmanCard,
   selectFreshmanFaq,
   updateFreshmanCard,
+  updateFreshmanTelegramCard,
 } from "@/features/freshman/freshman.functions"
 import {
   moveFreshmanCardInput,
   selectFreshmanFaqInput,
   updateFreshmanCardInput,
+  updateFreshmanTelegramCardInput,
 } from "@/features/freshman/freshman.validation"
 import { createGuide, deleteGuide, getGuides } from "@/features/guides/guides.functions"
 import { guideFormFields, guideIdInput } from "@/features/guides/guides.validation"
@@ -201,7 +203,13 @@ export const websiteOperations = [
     guard: "webContentWriteMiddleware",
     input: updateFreshmanCardInput,
     description:
-      "Replace one card of the public freshman page (slot id from website.freshman.get); href is a site path or an HTTP(S) URL.",
+      "Replace one resource card of the public freshman page (slot id from website.freshman.get, not a telegram-* slot); href is a site path or an HTTP(S) URL.",
+  }),
+  write("website.freshman.updateTelegramCard", updateFreshmanTelegramCard, {
+    guard: "webContentWriteMiddleware",
+    input: updateFreshmanTelegramCardInput,
+    description:
+      "Link one Telegram slot of the public freshman page (telegram-1…8) to a Telegram group (telegramGroupId from telegram.groups.list; it needs an invite link): the website shows the group's current link. title is a display name, empty for the group's own.",
   }),
   write("website.freshman.moveCard", moveFreshmanCard, {
     guard: "webContentWriteMiddleware",

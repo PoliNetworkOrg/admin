@@ -27,13 +27,20 @@ const freshmanSlotId = z
   .string()
   .regex(/^(?:featured-[12]|guides-[1-5]|materials-1|tools-[12]|telegram-[1-8])$/, "Unknown website slot.")
 
+/** Resource slots only: a Telegram slot links a group (`updateFreshmanTelegramCardInput`). */
 export const updateFreshmanCardInput = freshmanCardInput
-  .extend({ id: freshmanSlotId })
+  .extend({ id: z.string().regex(/^(?:featured-[12]|guides-[1-5]|materials-1|tools-[12])$/, "Unknown resource slot.") })
   .strict()
-  .superRefine((input, ctx) => {
-    if (input.id.startsWith("telegram-") && !input.href)
-      ctx.addIssue({ code: "custom", path: ["href"], message: "Enter a group link." })
+
+export const updateFreshmanTelegramCardInput = z
+  .object({
+    id: z.string().regex(/^telegram-[1-8]$/, "Unknown Telegram slot."),
+    /** Empty shows the group's own title. */
+    title: z.string().trim().max(120),
+    icon: freshmanIconInput,
+    telegramGroupId: z.number({ error: "Choose a group." }).int(),
   })
+  .strict()
 
 export const moveFreshmanCardInput = z
   .object({

@@ -10,16 +10,15 @@ import { updateFreshmanCard } from "./freshman.functions"
 import { updateFreshmanCardInput } from "./freshman.validation"
 import type { FreshmanCard, FreshmanCardInput, FreshmanCardErrors } from "./types"
 
+/** Edits a resource slot; Telegram slots use `FreshmanTelegramDialog`. */
 export function FreshmanCardDialog({
   card,
-  section,
   open,
   onClose,
   onSaved,
 }: {
   card: FreshmanCard
   open: boolean
-  section: "resources" | "telegram"
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
@@ -83,23 +82,21 @@ export function FreshmanCardDialog({
           onChange={(event) => setValues({ ...values, title: event.target.value })}
         />
       </FormField>
-      {section === "resources" && (
-        <FormField label="Description" htmlFor={`${fieldPrefix}-description`} optional error={errors.description}>
-          <Textarea
-            id={`${fieldPrefix}-description`}
-            value={values.description}
-            maxLength={1000}
-            aria-invalid={!!errors.description}
-            aria-describedby={fieldHintId(`${fieldPrefix}-description`)}
-            className={fieldControl}
-            onChange={(event) => setValues({ ...values, description: event.target.value })}
-          />
-        </FormField>
-      )}
+      <FormField label="Description" htmlFor={`${fieldPrefix}-description`} optional error={errors.description}>
+        <Textarea
+          id={`${fieldPrefix}-description`}
+          value={values.description}
+          maxLength={1000}
+          aria-invalid={!!errors.description}
+          aria-describedby={fieldHintId(`${fieldPrefix}-description`)}
+          className={fieldControl}
+          onChange={(event) => setValues({ ...values, description: event.target.value })}
+        />
+      </FormField>
       <FormField
         label="Destination"
         htmlFor={`${fieldPrefix}-href`}
-        optional={section === "resources"}
+        optional
         error={errors.href}
         hint="A site path such as /materials, or a full https:// URL. An empty resource has no link."
       >
