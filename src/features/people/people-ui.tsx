@@ -386,6 +386,7 @@ export function TagInput({
           aria-invalid={invalid || undefined}
           aria-describedby={fieldHintId(id)}
           onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
             // Enter adds the typed name instead of submitting the dialog; a highlighted suggestion adds itself.
             if (event.key !== "Enter" || highlighted) return
             event.preventDefault()

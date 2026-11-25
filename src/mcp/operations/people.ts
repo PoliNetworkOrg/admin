@@ -90,7 +90,7 @@ export const peopleOperations = [
   write("people.persons.update", updatePerson, {
     guard: "peopleWriteMiddleware",
     input: updatePersonInputSchema,
-    description: `Edit a People record's name, contacts (empty string when unknown) and profile. ${PROFILE_NOTE} An omitted profile field stays unchanged: send only what changes, after reading the record.`,
+    description: `Edit a People record's name, contacts and profile. Read the record first. Always send id, firstName, lastName, contactEmail, phone and telegramUsername, even if unchanged (use an empty string for unknown contacts). ${PROFILE_NOTE} Only unchanged optional profile fields may be omitted.`,
   }),
   read("people.courses.list", getCourses, {
     guard: "peopleReadMiddleware",
