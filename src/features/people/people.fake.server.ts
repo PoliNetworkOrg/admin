@@ -4,9 +4,14 @@ import type { PeopleApi, PeopleViewer } from "./people.api.server"
 import {
   type Account,
   type Assignment,
+  CAMPUSES,
+  type CreatePersonInput,
   type MyArea,
   type PersonRecord,
   type PersonRow,
+  REPRESENTATIVE_LABELS,
+  REPRESENTATIVE_ROLES,
+  SEATS_NEEDING_COURSE,
   TEAM_IDS,
   TEAMS,
   type TeamId,
@@ -19,6 +24,7 @@ import {
   type PeopleStore,
   REFUSAL,
   REFUSING_ACCOUNTS,
+  SAMPLE_COURSES,
   type StoredAssignment,
   type StoredPerson,
 } from "./people.fixtures.server"
@@ -159,6 +165,103 @@ function assignmentView({ settlesAt, ...assignment }: StoredAssignment): Assignm
   return assignment
 }
 
+type Profile = Pick<
+  StoredPerson,
+  "courseCode" | "campus" | "otherAssociations" | "representativeRoles" | "representativeOther"
+>
+
+function courseOf(code: number | null) {
+  return code === null ? null : (SAMPLE_COURSES.find((course) => course.code === code) ?? null)
+}
+
+function courseText(code: number) {
+  return `${courseOf(code)?.name ?? "Unknown course"} (${code})`
+}
+
+function seatsText(profile: Pick<Profile, "representativeRoles" | "representativeOther">) {
+  return profile.representativeRoles
+    .map((role) =>
+      role === "other"
+        ? `${REPRESENTATIVE_LABELS.other} (${profile.representativeOther ?? ""})`
+        : REPRESENTATIVE_LABELS[role]
+    )
+    .join(", ")
+}
+
+/**
+ * The profile as it will be saved, with the backend's rules: on create an omitted field is empty, on update unchanged;
+ * a course being set must be active; the Other seat has its name and nothing else does; a CCS or school seat needs a
+ * course. Associations keep their first spelling, in input order.
+ */
+function mergeProfile(
+  input: Omit<CreatePersonInput, "firstName" | "lastName" | "contactEmail" | "phone" | "telegramUsername">,
+  stored: Profile | null
+): Profile {
+  const courseCode = input.courseCode === undefined ? (stored?.courseCode ?? null) : input.courseCode
+  if (courseCode !== null && courseCode !== stored?.courseCode) {
+    const course = courseOf(courseCode)
+    if (!course) throw new Error(`No course has code ${courseCode}.`)
+    if (!course.active)
+      throw new Error(`${course.name} (${course.code}) is no longer offered: choose an active course.`)
+  }
+  const seen = new Set<string>()
+  const otherAssociations = (input.otherAssociations ?? stored?.otherAssociations ?? []).filter((name) => {
+    const key = name.toLocaleLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  const roles = new Set(input.representativeRoles ?? stored?.representativeRoles ?? [])
+  const representativeRoles = REPRESENTATIVE_ROLES.filter((role) => roles.has(role))
+  const other =
+    input.representativeOther === undefined ? (stored?.representativeOther ?? null) : input.representativeOther
+  let representativeOther: string | null = null
+  if (roles.has("other")) {
+    if (!other) throw new Error("Say which other seat they hold.")
+    representativeOther = other
+  } else if (input.representativeOther) throw new Error("Another seat's name needs the Other seat.")
+  if (courseCode === null && representativeRoles.some((role) => SEATS_NEEDING_COURSE.includes(role)))
+    throw new Error("A CCS or school seat is on the council of the person's own course: set their course first.")
+  return {
+    courseCode,
+    campus: input.campus === undefined ? (stored?.campus ?? null) : input.campus,
+    otherAssociations,
+    representativeRoles,
+    representativeOther,
+  }
+}
+
+/** What changed in the profile, as the record's activity says it. */
+function profileChanges(before: Profile | null, after: Profile) {
+  const changes: string[] = []
+  const verb = (wasEmpty: boolean) => (wasEmpty ? "set" : "changed")
+  if (after.courseCode !== (before?.courseCode ?? null))
+    changes.push(
+      after.courseCode === null
+        ? "Course cleared"
+        : `Course ${verb((before?.courseCode ?? null) === null)} to ${courseText(after.courseCode)}`
+    )
+  if (after.campus !== (before?.campus ?? null))
+    changes.push(
+      after.campus === null
+        ? "Campus cleared"
+        : `Campus ${verb((before?.campus ?? null) === null)} to ${CAMPUSES[after.campus]}`
+    )
+  if (after.otherAssociations.join("\n") !== (before?.otherAssociations ?? []).join("\n"))
+    changes.push(
+      after.otherAssociations.length
+        ? `Other associations ${verb(!before?.otherAssociations.length)} to ${after.otherAssociations.join(", ")}`
+        : "Other associations cleared"
+    )
+  if (seatsText(after) !== (before ? seatsText(before) : ""))
+    changes.push(
+      after.representativeRoles.length
+        ? `Representative roles ${verb(!before?.representativeRoles.length)} to ${seatsText(after)}`
+        : "Representative roles cleared"
+    )
+  return changes
+}
+
 export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
   const canRead = viewer.permissions.includes("people:read")
   /** The record the signed-in person acts as: the one an invite linked, or `AGENT_PERSON`. */
@@ -183,6 +286,8 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       telegramUsername: person.telegramUsername,
       account: own || canRead ? account(person) : { status: "none" },
       assignments: person.assignments.map(assignmentView),
+      course: courseOf(person.courseCode),
+      campus: person.campus,
     }
   }
 
@@ -190,7 +295,10 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     return {
       ...row(person),
       notes: canRead ? person.notes : null,
-      activity: canRead ? [...person.activity].sort((a, b) => (a.at < b.at ? 1 : -1)) : [],
+      otherAssociations: canRead ? [...person.otherAssociations] : [],
+      representativeRoles: canRead ? [...person.representativeRoles] : [],
+      representativeOther: canRead ? person.representativeOther : null,
+      activity: canRead ? [...person.activity].sort((a, b) => b.at.localeCompare(a.at)) : [],
       createdBy: person.createdBy,
       createdAt: person.createdAt,
       updatedBy: person.updatedBy,
@@ -322,6 +430,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       const { people, byId } = data()
       const id = `P-${String(people.length + 1).padStart(4, "0")}`
       const now = new Date().toISOString()
+      const profile = mergeProfile(input, null)
       const person: StoredPerson = {
         id,
         firstName: input.firstName,
@@ -335,6 +444,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         linkedOn: null,
         linkedBy: null,
         invite: null,
+        ...profile,
         assignments: [],
         activity: [],
         createdBy: sub(),
@@ -343,6 +453,7 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
         updatedAt: now,
       }
       log(person, sub(), "Created the record")
+      for (const change of profileChanges(null, profile)) log(person, sub(), change)
       people.push(person)
       byId.set(id, person)
       return { id }
@@ -350,15 +461,29 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
     updatePerson: async (input) => {
       require(viewer, "people:write")
       const person = find(input.id)
-      Object.assign(person, {
+      const before: Profile = {
+        ...person,
+        otherAssociations: [...person.otherAssociations],
+      }
+      const profile = mergeProfile(input, before)
+      const contacts = {
         firstName: input.firstName,
         lastName: input.lastName,
         contactEmail: input.contactEmail || null,
         phone: input.phone || null,
         telegramUsername: input.telegramUsername || null,
-      })
+      }
+      const contactsChanged =
+        contacts.firstName !== person.firstName ||
+        contacts.lastName !== person.lastName ||
+        contacts.contactEmail !== person.contactEmail ||
+        contacts.phone !== person.phone ||
+        contacts.telegramUsername !== person.telegramUsername
+      const changes = profileChanges(before, profile)
+      Object.assign(person, contacts, profile)
       touch(person, sub())
-      log(person, sub(), "Updated the record")
+      if (contactsChanged || !changes.length) log(person, sub(), "Updated the record")
+      for (const change of changes) log(person, sub(), change)
     },
     setNote: async (input) => {
       require(viewer, "people:write")
@@ -366,6 +491,17 @@ export function fakePeopleApi(viewer: PeopleViewer): PeopleApi {
       person.notes = input.note || null
       touch(person, sub())
       log(person, sub(), "Updated the HR note")
+    },
+    listCourses: async () => {
+      require(viewer, "people:read")
+      return SAMPLE_COURSES.map((course) => ({ ...course }))
+    },
+    suggestAssociations: async () => {
+      require(viewer, "people:read")
+      const uses = new Map<string, number>()
+      for (const person of data().people)
+        for (const name of person.otherAssociations) uses.set(name, (uses.get(name) ?? 0) + 1)
+      return [...uses].sort(([a, aUses], [b, bUses]) => bUses - aUses || a.localeCompare(b, "it")).map(([name]) => name)
     },
 
     listAdmins: async () => {

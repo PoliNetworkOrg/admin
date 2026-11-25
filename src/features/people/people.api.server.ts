@@ -1,4 +1,4 @@
-import type { z } from "zod"
+import { z } from "zod"
 
 import { createUntypedBackendClient } from "@/server/backend.server"
 
@@ -16,6 +16,8 @@ import {
   type CapoScopeInput,
   type CapoSummary,
   capoSummarySchema,
+  type Course,
+  courseSchema,
   type CreatePersonInput,
   createdSchema,
   type EndAssignmentInput,
@@ -60,6 +62,10 @@ export type PeopleApi = {
   createPerson: (input: CreatePersonInput) => Promise<{ id: string }>
   updatePerson: (input: UpdatePersonInput) => Promise<void>
   setNote: (input: SetNoteInput) => Promise<void>
+  /** Every Politecnico course, active and inactive, sorted by school, level and name. */
+  listCourses: () => Promise<Course[]>
+  /** The association names stored on records, most used first. */
+  suggestAssociations: () => Promise<string[]>
   listAdmins: () => Promise<AdminSummary[]>
   assignAdmin: (input: AssignAdminInput) => Promise<void>
   endAdmin: (input: EndAssignmentInput) => Promise<void>
@@ -107,6 +113,8 @@ function backendPeopleApi(accessToken: string | null): PeopleApi {
     createPerson: (input) => mutateParsed("persons.create", input, createdSchema),
     updatePerson: (input) => mutate("persons.update", input),
     setNote: (input) => mutate("persons.setNote", input),
+    listCourses: () => query("courses.list", undefined, courseSchema.array()),
+    suggestAssociations: () => query("associations.suggest", undefined, z.string().array()),
     listAdmins: () => query("admins.list", undefined, adminSummarySchema.array()),
     assignAdmin: (input) => mutate("admins.assign", input),
     endAdmin: (input) => mutate("admins.end", input),

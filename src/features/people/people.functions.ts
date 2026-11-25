@@ -15,6 +15,16 @@ export const getPeople = createServerFn({ method: "GET" })
   .middleware([peopleReadMiddleware])
   .handler(async ({ context }) => (await peopleApi(context)).listPeople())
 
+/** Every Politecnico course, active and inactive: the course picker offers the active ones. */
+export const getCourses = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).listCourses())
+
+/** Association names already on records, most used first, so new entries keep the same spelling. */
+export const getAssociationSuggestions = createServerFn({ method: "GET" })
+  .middleware([peopleReadMiddleware])
+  .handler(async ({ context }) => (await peopleApi(context)).suggestAssociations())
+
 export const getPersonInput = z.object({ id: personIdSchema })
 
 export const getPerson = createServerFn({ method: "GET" })

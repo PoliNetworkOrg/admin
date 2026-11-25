@@ -24,6 +24,8 @@ What the app is and how to run it: [`README.md`](README.md). UI rules: [`docs/de
   in-memory fake (`AGENT_PERMISSIONS`, `AGENT_PERSON` pick the viewer). A person's roles are assignments (Admin, Capo
   Admin, team member or Lead, nothing else): `pending` until the record is linked to an account, then held by
   PoliNetwork Auth, which may refuse a change; pages show each assignment's status and Auth's refusal word for word.
+  A record's profile is its course (from the backend's Politecnico course list, `people.courses.list`), campus, other
+  associations and student representative seats; associations and seats need `people:read`.
   `people:write` edits records, admins and invites, `people:appoint` Capo Admins and Leads, `people:link` links and
   unlinks by hand. Invite links open `/people/invite`, outside the dashboard shell and its gate, so an account with no
   permissions yet can accept one (`peopleInviteMiddleware`: signed in, the token is the proof); the old

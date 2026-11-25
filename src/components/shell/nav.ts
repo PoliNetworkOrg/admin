@@ -210,7 +210,7 @@ const people: Service = {
       path: "/dashboard/people",
       permission: "people:read",
       group: "Volunteers",
-      searchPlaceholder: "Search by name, email or Telegram…",
+      searchPlaceholder: "Search by name, email, Telegram or course…",
     },
     {
       id: "admins",

@@ -24,6 +24,7 @@ import { type AccountAction, AccountActionDialog } from "./account-action-dialog
 import { LinkAccountDialog } from "./link-account-dialog"
 import {
   ACCOUNT_STATUS,
+  CAMPUS_LABEL,
   currentAdmin,
   currentAssignments,
   currentCapo,
@@ -38,7 +39,12 @@ import { ActionMenu, PersonCell, StateBadge, TruncatedChip } from "./people-ui"
 import {
   ACCOUNT_STATUSES,
   type AccountStatus,
+  CAMPUS_IDS,
+  type CampusId,
   type PersonRow,
+  SCHOOL_IDS,
+  SCHOOLS,
+  type SchoolId,
   TEAM_IDS,
   type TeamId,
   type TeamSummary,
@@ -52,9 +58,11 @@ type Filters = {
   team: TeamId | null
   account: AccountStatus | null
   change: ChangeFilter | null
+  campus: CampusId | null
+  school: SchoolId | null
 }
 
-const NO_FILTERS: Filters = { role: null, team: null, account: null, change: null }
+const NO_FILTERS: Filters = { role: null, team: null, account: null, change: null, campus: null, school: null }
 
 const ROLE_TEST = {
   admin: (person) => currentAdmin(person) !== null,
@@ -81,12 +89,14 @@ function matchesFilters(person: PersonRow, filters: Filters) {
   if (filters.team && !currentTeams(person).some((team) => team.team === filters.team)) return false
   if (filters.account && person.account.status !== filters.account) return false
   if (filters.change && !CHANGE_TEST[filters.change](person)) return false
+  if (filters.campus && person.campus !== filters.campus) return false
+  if (filters.school && person.course?.school !== filters.school) return false
   return true
 }
 
 function matchesQuery(person: PersonRow, query: string) {
   if (query === "") return true
-  const haystack = `${personName(person)} ${person.contactEmail ?? ""} ${person.telegramUsername ?? ""} ${person.id}`
+  const haystack = `${personName(person)} ${person.contactEmail ?? ""} ${person.telegramUsername ?? ""} ${person.id} ${person.course?.name ?? ""}`
   return haystack.toLocaleLowerCase().includes(query.replace(/^@/, ""))
 }
 
@@ -263,6 +273,28 @@ export function PeopleOverviewPage({ people, teams }: { people: PersonRow[]; tea
                     value: status,
                     label: ACCOUNT_STATUS[status].label,
                     count: count((person) => person.account.status === status),
+                  }))}
+                />
+                <FilterMenu<CampusId>
+                  label="Campus"
+                  allLabel="All campuses"
+                  value={filters.campus}
+                  onChange={(value) => setFilter("campus", value)}
+                  options={CAMPUS_IDS.map((campus) => ({
+                    value: campus,
+                    label: CAMPUS_LABEL[campus],
+                    count: count((person) => person.campus === campus),
+                  }))}
+                />
+                <FilterMenu<SchoolId>
+                  label="School"
+                  allLabel="All schools"
+                  value={filters.school}
+                  onChange={(value) => setFilter("school", value)}
+                  options={SCHOOL_IDS.map((school) => ({
+                    value: school,
+                    label: SCHOOLS[school].short,
+                    count: count((person) => person.course?.school === school),
                   }))}
                 />
                 <FilterMenu<ChangeFilter>

@@ -357,7 +357,7 @@ test("dashboard mutation controls use their server's write scope", async () => {
     "src/features/projects/projects-page.tsx": "web:content:write",
     "src/features/people/overview-page.tsx": ["people:write", "people:link"],
     "src/features/people/person-page.tsx": ["people:write", "people:read", "people:appoint", "people:link"],
-    "src/features/people/person-dialog.tsx": "people:appoint",
+    "src/features/people/person-dialog.tsx": ["people:appoint", "people:read"],
     "src/features/people/admins-page.tsx": ["people:write", "people:appoint"],
     "src/features/people/teams-page.tsx": ["people:read", "people:write", "people:appoint"],
     "src/features/people/linking-page.tsx": ["people:write", "people:link"],

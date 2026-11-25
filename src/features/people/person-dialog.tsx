@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { type ChangeEvent, useState } from "react"
+import { type ChangeEvent, useMemo, useState } from "react"
 
 import { checkboxControl, fieldControl, fieldHintId, FormDialog, FormField, SelectField } from "@/components/primitives"
 import { useCan } from "@/components/shell"
@@ -8,20 +8,42 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-import { errorMessage, useRefreshAfter } from "./people-hooks"
+import { CAMPUS_LABEL, courseDetail } from "./people-format"
+import { errorMessage, useLoaded, useRefreshAfter } from "./people-hooks"
+import { CoursePicker, TagInput } from "./people-ui"
 import { createPerson, updatePerson } from "./people-write.functions"
 import {
-  type PersonRow,
+  CAMPUS_IDS,
+  type CampusId,
+  type Course,
+  type PersonRecord,
+  REPRESENTATIVE_LABELS,
+  REPRESENTATIVE_ROLES,
+  type RepresentativeRole,
+  SCHOOLS,
+  SEATS_NEEDING_COURSE,
   TEAM_IDS,
   TELEGRAM_USERNAME_PATTERN,
   type TeamId,
   type TeamRole,
   type TeamSummary,
 } from "./people.contract"
+import { getAssociationSuggestions, getCourses } from "./people.functions"
 
 const SAVE_ERROR = "Couldn't save the person. Check the values and try again."
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const NO_TEAM = "none"
+const NO_CAMPUS = "none"
+const MAX_ASSOCIATIONS = 10
+
+/** What each seat is, in the Politecnico's own words where the English label is an acronym. */
+const SEAT_HINT = {
+  ccs: "Consiglio di Corso di Studio of their course.",
+  school: "School board or Giunta di Scuola of their course's school.",
+  senate: "Senato Accademico.",
+  board: "Consiglio di Amministrazione.",
+  other: "Another seat, such as the Comitato Sportivo.",
+} satisfies Record<RepresentativeRole, string>
 
 function validTelegram(value: string) {
   return value.trim() === "" || TELEGRAM_USERNAME_PATTERN.test(value.trim())
@@ -32,8 +54,10 @@ function validEmail(value: string) {
 }
 
 /**
- * Add a person, or edit a record's name and contacts (`person`). Only the name is required. A new record can start
- * with roles (`teams` lists the teams to offer); they stay pending until the record is linked to an account.
+ * Add a person, or edit a record's name, contacts and profile (`person`). Only the name is required. A new record can
+ * start with roles (`teams` lists the teams to offer); they stay pending until the record is linked to an account. The
+ * profile's course comes from the backend's course list; associations are suggested from other records with
+ * `people:read`.
  */
 export function PersonDialog({
   open,
@@ -43,7 +67,7 @@ export function PersonDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  person?: PersonRow
+  person?: PersonRecord
   teams?: readonly TeamSummary[]
 }) {
   const create = useServerFn(createPerson)
@@ -51,6 +75,9 @@ export function PersonDialog({
   const navigate = useNavigate()
   const refresh = useRefreshAfter()
   const canAppoint = useCan("people:appoint")
+  const canRead = useCan("people:read")
+  const loadCourses = useServerFn(getCourses)
+  const loadSuggestions = useServerFn(getAssociationSuggestions)
   const initial = {
     firstName: person?.firstName ?? "",
     lastName: person?.lastName ?? "",
@@ -63,7 +90,26 @@ export function PersonDialog({
   const [capo, setCapo] = useState(false)
   const [capoScope, setCapoScope] = useState("")
   const [teamRoles, setTeamRoles] = useState<Partial<Record<TeamId, TeamRole>>>({})
+  const initialProfile = {
+    course: person?.course ?? null,
+    campus: person?.campus ?? null,
+    otherAssociations: person?.otherAssociations ?? [],
+    representativeRoles: person?.representativeRoles ?? [],
+    representativeOther: person?.representativeOther ?? "",
+  }
+  const [profile, setProfile] = useState(initialProfile)
   const [submitted, setSubmitted] = useState(false)
+
+  const { data: allCourses, failed: coursesFailed } = useLoaded(
+    useMemo(() => (open ? () => loadCourses() : null), [open, loadCourses])
+  )
+  const { data: suggestions } = useLoaded(
+    useMemo(() => (open && canRead ? () => loadSuggestions() : null), [open, canRead, loadSuggestions])
+  )
+  // Active courses, and the record's own course even once it is no longer offered: it stays until someone changes it.
+  const courses = allCourses?.filter((course) => course.active || course.code === initialProfile.course?.code) ?? []
+  const { course } = profile
+  const hasOther = profile.representativeRoles.includes("other")
 
   const errors: Partial<Record<keyof typeof initial | "capoScope", string>> = submitted
     ? {
@@ -76,14 +122,49 @@ export function PersonDialog({
         capoScope: capo && !capoScope.trim() ? "Enter what they coordinate." : undefined,
       }
     : {}
+  const otherError = submitted && hasOther && !profile.representativeOther.trim() ? "Say which seat." : undefined
   const chosenTeams = TEAM_IDS.flatMap((team) => {
     const role = teamRoles[team]
     return role ? [{ team, role }] : []
   })
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || admin || capo || chosenTeams.length > 0
+  const dirty =
+    JSON.stringify(values) !== JSON.stringify(initial) ||
+    JSON.stringify(profile) !== JSON.stringify(initialProfile) ||
+    admin ||
+    capo ||
+    chosenTeams.length > 0
 
   function set<K extends keyof typeof values>(key: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  /** A CCS or school seat is the course's: clearing the course clears them. */
+  function setCourse(next: Course | null) {
+    setProfile((current) => ({
+      ...current,
+      course: next,
+      representativeRoles: next
+        ? current.representativeRoles
+        : current.representativeRoles.filter((role) => !SEATS_NEEDING_COURSE.includes(role)),
+    }))
+  }
+
+  function toggleSeat(role: RepresentativeRole, checked: boolean) {
+    setProfile((current) => {
+      const roles = new Set(current.representativeRoles)
+      if (checked) roles.add(role)
+      else roles.delete(role)
+      return {
+        ...current,
+        representativeRoles: REPRESENTATIVE_ROLES.filter((seat) => roles.has(seat)),
+      }
+    })
+  }
+
+  function seatLabel(role: RepresentativeRole) {
+    if (role === "ccs" && course) return `${REPRESENTATIVE_LABELS.ccs} · ${course.name}`
+    if (role === "school" && course) return `${REPRESENTATIVE_LABELS.school} · ${SCHOOLS[course.school].short}`
+    return REPRESENTATIVE_LABELS[role]
   }
 
   async function submit() {
@@ -93,7 +174,8 @@ export function PersonDialog({
       !values.lastName.trim() ||
       !validEmail(values.contactEmail) ||
       !validTelegram(values.telegramUsername) ||
-      (capo && !capoScope.trim())
+      (capo && !capoScope.trim()) ||
+      (hasOther && !profile.representativeOther.trim())
     ) {
       return
     }
@@ -103,6 +185,12 @@ export function PersonDialog({
       contactEmail: values.contactEmail.trim(),
       phone: values.phone.trim(),
       telegramUsername: values.telegramUsername.trim(),
+      courseCode: profile.course?.code ?? null,
+      campus: profile.campus,
+      // Without `people:read` the record comes without them: leaving them out (undefined) keeps them unchanged.
+      otherAssociations: canRead ? profile.otherAssociations : undefined,
+      representativeRoles: canRead ? profile.representativeRoles : undefined,
+      representativeOther: canRead ? (hasOther ? profile.representativeOther.trim() : null) : undefined,
     }
     if (person) {
       try {
@@ -201,6 +289,127 @@ export function PersonDialog({
           />
         </FormField>
       </div>
+      <fieldset className="mt-6 flex flex-col gap-4">
+        <legend className="mb-3 text-[14px] font-medium">
+          Profile <span className="font-normal text-(--pn-fg-muted)">(optional)</span>
+        </legend>
+        <div className="grid grid-cols-1 gap-4 shell:grid-cols-2">
+          <FormField
+            label="Course"
+            htmlFor="person-course"
+            optional
+            className="shell:col-span-2"
+            error={coursesFailed ? "Couldn't load the courses. Close and try again." : undefined}
+            hint={
+              course && !course.active
+                ? `${courseDetail(course)} · No longer offered: it stays until you choose another course.`
+                : course
+                  ? courseDetail(course)
+                  : "Search by name or code. Leave it empty if they aren't a Politecnico student."
+            }
+          >
+            <CoursePicker
+              id="person-course"
+              courses={courses}
+              value={course}
+              onChange={setCourse}
+              disabled={allCourses === null}
+              placeholder={allCourses === null && !coursesFailed ? "Loading courses…" : undefined}
+              invalid={coursesFailed}
+            />
+          </FormField>
+          <FormField label="Campus" htmlFor="person-campus" optional>
+            <SelectField<CampusId | typeof NO_CAMPUS>
+              id="person-campus"
+              value={profile.campus ?? NO_CAMPUS}
+              options={[
+                { value: NO_CAMPUS, label: "Not set" },
+                ...CAMPUS_IDS.map((campus) => ({
+                  value: campus,
+                  label: CAMPUS_LABEL[campus],
+                })),
+              ]}
+              onChange={(campus) =>
+                setProfile((current) => ({
+                  ...current,
+                  campus: campus === NO_CAMPUS ? null : campus,
+                }))
+              }
+            />
+          </FormField>
+          {canRead ? (
+            <FormField
+              label="Other associations"
+              htmlFor="person-associations"
+              optional
+              className="shell:col-span-2"
+              hint="Student associations or lists they belong to. Press Enter to add each; pick a suggestion to keep the same spelling."
+            >
+              <TagInput
+                id="person-associations"
+                label="Other associations"
+                value={profile.otherAssociations}
+                onChange={(otherAssociations) => setProfile((current) => ({ ...current, otherAssociations }))}
+                suggestions={suggestions ?? []}
+                max={MAX_ASSOCIATIONS}
+                maxLength={100}
+                placeholder="e.g. Lista Aperta"
+              />
+            </FormField>
+          ) : null}
+        </div>
+        {canRead ? (
+          <div role="group" aria-labelledby="person-seats-label" className="flex flex-col gap-3">
+            <span id="person-seats-label" className="text-[13px] leading-5 font-medium">
+              Student representative <span className="font-normal text-(--pn-fg-muted)">(optional)</span>
+            </span>
+            <div className="grid grid-cols-1 gap-3 shell:grid-cols-2">
+              {REPRESENTATIVE_ROLES.map((role) => {
+                const needsCourse = SEATS_NEEDING_COURSE.includes(role) && !course
+                return (
+                  <label
+                    key={role}
+                    className={cn("flex items-start gap-2.5 text-[14px]", needsCourse && "text-(--pn-fg-muted)")}
+                  >
+                    <Checkbox
+                      checked={profile.representativeRoles.includes(role)}
+                      disabled={needsCourse}
+                      onCheckedChange={(checked) => toggleSeat(role, checked === true)}
+                      className={checkboxControl}
+                    />
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="font-medium [overflow-wrap:anywhere]">{seatLabel(role)}</span>
+                      <span className="text-xs text-(--pn-fg-muted)">
+                        {needsCourse ? "Set their course first: the seat belongs to it." : SEAT_HINT[role]}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+            {hasOther ? (
+              <FormField label="Other seat" htmlFor="person-seat-other" error={otherError}>
+                <Input
+                  id="person-seat-other"
+                  value={profile.representativeOther}
+                  onChange={(event) =>
+                    setProfile((current) => ({
+                      ...current,
+                      representativeOther: event.target.value,
+                    }))
+                  }
+                  maxLength={100}
+                  placeholder="e.g. Comitato Sportivo"
+                  autoComplete="off"
+                  aria-invalid={otherError ? true : undefined}
+                  aria-describedby={fieldHintId("person-seat-other")}
+                  className={fieldControl}
+                />
+              </FormField>
+            ) : null}
+          </div>
+        ) : null}
+      </fieldset>
       {person ? null : (
         <fieldset className="mt-6 flex flex-col gap-4">
           <legend className="mb-3 text-[14px] font-medium">

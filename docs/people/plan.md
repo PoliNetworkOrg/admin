@@ -244,6 +244,14 @@ Newest last. One line per commit or session: date, what was done, what is next.
   Auth's reason), or "being applied" while the account can't read My area yet. The old My area invite link redirects
   there, and My area no longer accepts invites.
 
+- 2026-11-25: profile fields, on the backend PR that adds them and the Politecnico course list. Records gain a course
+  (from `people.courses.list`, picked among active courses; one no longer offered stays with a hint), a campus, other
+  associations (chips with suggestions from `people.associations.suggest`) and student representative seats (CCS and
+  School are the course's own and need one; Other names its seat). Associations and seats need `people:read`. Add and
+  Edit person, the person page's Profile card, Overview's Campus and School filters and course search, and Admins'
+  course line and Campus column show them; MCP gains both reads. A Representative filter needs record data rows don't
+  carry, so it waits for Phase 3's census (#145), which keeps these fields up to date.
+
 ### Next: local Libro Soci import preview
 
 The user selected local preparation and preview on 20 November 2026. See [`soci-import.md`](soci-import.md) for the

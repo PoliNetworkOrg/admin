@@ -9,6 +9,9 @@ import { z } from "zod"
  * of a team). While the record isn't linked to a sign-in account they wait as `pending`; once linked, PoliNetwork Auth
  * holds them as RBAC roles and has the last word.
  *
+ * A record's profile (course, campus, other associations, representative seats) is filled from the admin census; the
+ * course comes from the backend's list of Politecnico courses (`courses.list`).
+ *
  * Soci, fees, receipts and the census are not part of it (#138): their pages are unconnected mockups with their own
  * sample data (`mockup-data.ts`).
  */
@@ -21,6 +24,63 @@ export const TEAM_IDS = ["it", "hr", "design", "events"] as const
 
 export const teamIdSchema = z.enum(TEAM_IDS)
 export type TeamId = z.infer<typeof teamIdSchema>
+
+/** Where a person studies or works from. `external`: not a Politecnico student (UI label "Esterno"/"External"). */
+export const CAMPUS_IDS = ["leonardo", "bovisa", "lecco", "cremona", "mantova", "piacenza", "external"] as const
+export const campusSchema = z.enum(CAMPUS_IDS)
+export type CampusId = z.infer<typeof campusSchema>
+export const CAMPUSES = {
+  leonardo: "Leonardo",
+  bovisa: "Bovisa",
+  lecco: "Lecco",
+  cremona: "Cremona",
+  mantova: "Mantova",
+  piacenza: "Piacenza",
+  external: "Esterno",
+} satisfies Record<CampusId, string>
+
+/** Politecnico's four schools. Every course belongs to exactly one (the one its official manifesto page names). */
+export const SCHOOL_IDS = ["auic", "icat", "3i", "design"] as const
+export const schoolIdSchema = z.enum(SCHOOL_IDS)
+export type SchoolId = z.infer<typeof schoolIdSchema>
+export const SCHOOLS = {
+  auic: { short: "AUIC", name: "Architettura Urbanistica Ingegneria delle Costruzioni" },
+  icat: { short: "ICAT", name: "Ingegneria Civile, Ambientale e Territoriale" },
+  "3i": { short: "3I", name: "Ingegneria Industriale e dell'Informazione" },
+  design: { short: "Design", name: "Design" },
+} satisfies Record<SchoolId, { short: string; name: string }>
+// (The backend verifies the official names against Polimi's manifesti and may fix these strings; ids are fixed.)
+
+export const COURSE_LEVELS = ["bachelor", "master", "single-cycle"] as const
+export type CourseLevel = (typeof COURSE_LEVELS)[number]
+
+/**
+ * Student representative seats. Which CCS and which school are never stored: a CCS seat is on the council of the
+ * person's own course, a school seat (including Giunta di Scuola) is in their course's school.
+ */
+export const REPRESENTATIVE_ROLES = ["ccs", "school", "senate", "board", "other"] as const
+export const representativeRoleSchema = z.enum(REPRESENTATIVE_ROLES)
+export type RepresentativeRole = z.infer<typeof representativeRoleSchema>
+
+/** A Politecnico degree course, from the official manifesti. `code` is Polimi's own course code (`k_corso_la`). */
+export const courseSchema = z.object({
+  code: z.number().int(),
+  name: z.string(),
+  level: z.enum(COURSE_LEVELS),
+  school: schoolIdSchema,
+  /**
+   * The regulation it runs under: "96/23" for the current courses, "270" for the older ones, kept until their students
+   * finish. The same degree can be listed under both, with different codes.
+   */
+  regulation: z.string(),
+  /** As Polimi names them, e.g. "Milano Leonardo", "Cremona". */
+  campuses: z.array(z.string()),
+  /** As the manifesto lists them, e.g. ["Italiano"], ["Inglese"]. */
+  languages: z.array(z.string()),
+  /** `false` once a yearly update no longer lists it (kept: records may point to it). */
+  active: z.boolean(),
+})
+export type Course = z.infer<typeof courseSchema>
 
 const personRefSchema = z.object({ id: z.string(), name: z.string() })
 export type PersonRef = z.infer<typeof personRefSchema>
@@ -105,6 +165,9 @@ export const personRowSchema = z.object({
   /** `none` without `people:read`, except on one's own record. */
   account: accountSchema,
   assignments: z.array(assignmentSchema),
+  /** The person's course, `null` when unknown or not a student. */
+  course: courseSchema.nullable(),
+  campus: campusSchema.nullable(),
 })
 
 export const activitySchema = z.object({ actor: z.string(), text: z.string(), at: z.string() })
@@ -112,6 +175,12 @@ export const activitySchema = z.object({ actor: z.string(), text: z.string(), at
 export const personRecordSchema = personRowSchema.extend({
   /** `null` without `people:read`. */
   notes: z.string().nullable(),
+  /** Other student associations or lists, by name. Empty without `people:read`. */
+  otherAssociations: z.array(z.string()),
+  /** Empty when not a representative, and without `people:read`. */
+  representativeRoles: z.array(representativeRoleSchema),
+  /** The seat, when `representativeRoles` has `other` (e.g. "Comitato Sportivo"). `null` otherwise and without `people:read`. */
+  representativeOther: z.string().nullable(),
   /** Newest first; empty without `people:read`. */
   activity: z.array(activitySchema),
   createdBy: z.string(),
@@ -298,9 +367,52 @@ export const personInputSchema = z.object({
   phone: z.string().trim().max(40),
   /** Empty when unknown. */
   telegramUsername: telegramUsernameSchema,
+  // Profile. On create an omitted field means `null` / `[]`; on update it means unchanged.
+  courseCode: z.number().int().positive().nullable().optional(),
+  campus: campusSchema.nullable().optional(),
+  /** Trimmed, 1–100 characters each, at most 10, no case-insensitive duplicates. */
+  otherAssociations: z.array(z.string().trim().min(1).max(100)).max(10).optional(),
+  /** No duplicates. */
+  representativeRoles: z.array(representativeRoleSchema).max(5).optional(),
+  /** Trimmed, at most 100 characters. */
+  representativeOther: z.string().trim().max(100).nullable().optional(),
 })
-export const createPersonInputSchema = personInputSchema
-export const updatePersonInputSchema = personInputSchema.extend({ id: personIdSchema })
+
+/** A CCS or school seat is on the council of the person's own course, or in its school. */
+export const SEATS_NEEDING_COURSE: readonly RepresentativeRole[] = ["ccs", "school"]
+
+/**
+ * The profile rules that can be checked on the input alone. The backend checks them again on the record as it will be
+ * saved (the input merged over the stored values), and that the course set is an active one.
+ */
+export function checkProfileInput(input: z.infer<typeof personInputSchema>, context: z.RefinementCtx) {
+  const associations = input.otherAssociations ?? []
+  if (new Set(associations.map((name) => name.toLocaleLowerCase())).size !== associations.length)
+    context.addIssue({ code: "custom", path: ["otherAssociations"], message: "Each association once." })
+  const roles = input.representativeRoles
+  if (roles && new Set(roles).size !== roles.length)
+    context.addIssue({ code: "custom", path: ["representativeRoles"], message: "Each seat once." })
+  if (roles && input.representativeOther !== undefined) {
+    const other = roles.includes("other")
+    if (other && !input.representativeOther)
+      context.addIssue({ code: "custom", path: ["representativeOther"], message: "Say which other seat they hold." })
+    if (!other && input.representativeOther)
+      context.addIssue({
+        code: "custom",
+        path: ["representativeOther"],
+        message: "Another seat's name needs the Other seat.",
+      })
+  }
+  if (input.courseCode === null && roles?.some((role) => SEATS_NEEDING_COURSE.includes(role)))
+    context.addIssue({
+      code: "custom",
+      path: ["representativeRoles"],
+      message: "A CCS or school seat needs the person's course.",
+    })
+}
+
+export const createPersonInputSchema = personInputSchema.superRefine(checkProfileInput)
+export const updatePersonInputSchema = personInputSchema.extend({ id: personIdSchema }).superRefine(checkProfileInput)
 export const setNoteInputSchema = z.object({ id: personIdSchema, note: z.string().trim().max(2000) })
 
 export const assignAdminInputSchema = z.object({
@@ -379,6 +491,15 @@ export type AccountStatus = Account["status"]
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number]
 export type AssignmentKind = (typeof ASSIGNMENT_KINDS)[number]
 export type TeamRole = (typeof TEAM_ROLES)[number]
+/** The representative seats in English, keeping the Italian acronyms recognisable. */
+export const REPRESENTATIVE_LABELS = {
+  ccs: "CCS",
+  school: "School",
+  senate: "Senate",
+  board: "Board (CdA)",
+  other: "Other",
+} satisfies Record<RepresentativeRole, string>
+
 /** A person's record, or one row of a list: both carry the assignments. */
 export type PersonLike = Pick<PersonRow, "id" | "firstName" | "lastName" | "assignments" | "account">
 
@@ -386,7 +507,7 @@ export type PersonLike = Pick<PersonRow, "id" | "firstName" | "lastName" | "assi
  * Add person: the record, then the roles it starts with. The backend creates the record and each assignment in
  * separate calls; a Capo Admin needs the Admin role too.
  */
-export const newPersonInputSchema = createPersonInputSchema
+export const newPersonInputSchema = personInputSchema
   .extend({
     admin: z.boolean(),
     capoScope: capoScopeSchema.nullable(),
@@ -395,6 +516,7 @@ export const newPersonInputSchema = createPersonInputSchema
       .max(TEAM_IDS.length)
       .refine((teams) => new Set(teams.map((entry) => entry.team)).size === teams.length, "Each team once."),
   })
+  .superRefine(checkProfileInput)
   .refine((input) => input.admin || input.capoScope === null, "A Capo Admin must be an admin too.")
 export type NewPersonInput = z.infer<typeof newPersonInputSchema>
 /** The new record, and the roles the backend refused to start it with, in its words. */
