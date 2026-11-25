@@ -29,11 +29,13 @@ export function FreshmanCardRow({
   onEdit,
 }: FreshmanCardRowProps) {
   const Icon = FRESHMAN_ICONS[card.icon]
+  // A Telegram slot without a display name has no title once its group is deleted.
+  const title = card.title || "Untitled"
   return (
     <div className="flex items-start gap-3 border-b border-(--pn-line) p-4 last:border-0">
       <Icon aria-hidden className="mt-1 size-5 shrink-0 text-(--pn-fg-muted)" />
       <div className="min-w-0 flex-1">
-        <h3 className="text-sm font-medium break-words text-(--pn-fg)">{card.title}</h3>
+        <h3 className="text-sm font-medium break-words text-(--pn-fg)">{title}</h3>
         {card.description && <p className="mt-1 text-[13px] text-(--pn-fg-muted)">{card.description}</p>}
         {detail ?? <p className="mt-1 break-all text-xs text-(--pn-fg-muted)">{card.href || "No destination set"}</p>}
       </div>
@@ -41,19 +43,19 @@ export function FreshmanCardRow({
         <div className="flex shrink-0 flex-wrap justify-end gap-0.5 max-shell:max-w-18">
           <IconButton
             label="Move up"
-            ariaLabel={`Move ${card.title} up`}
+            ariaLabel={`Move ${title} up`}
             icon={ArrowUp}
             disabled={pending || first}
             onClick={() => onMove(-1)}
           />
           <IconButton
             label="Move down"
-            ariaLabel={`Move ${card.title} down`}
+            ariaLabel={`Move ${title} down`}
             icon={ArrowDown}
             disabled={pending || last}
             onClick={() => onMove(1)}
           />
-          <IconButton label="Edit" ariaLabel={`Edit ${card.title}`} icon={Pencil} disabled={pending} onClick={onEdit} />
+          <IconButton label="Edit" ariaLabel={`Edit ${title}`} icon={Pencil} disabled={pending} onClick={onEdit} />
         </div>
       )}
     </div>

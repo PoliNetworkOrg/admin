@@ -61,7 +61,7 @@ export function FreshmanTelegramDialog({
       onOpenChange={(open) => {
         if (!open) onClose()
       }}
-      title={`Edit ${card.title}`}
+      title={card.title ? `Edit ${card.title}` : "Edit Telegram group link"}
       description="Link this position to a Telegram group. The website shows the group's current invite link."
       noun="group link"
       dirty={dirty}
