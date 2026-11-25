@@ -608,3 +608,83 @@ tr:focus-visible {
 .user-growth-chart :focus:not(:focus-visible) {
   outline: none;
 }
+
+/*
+ * The PDF viewer's text layer (pdf-viewer.tsx): pdf.js's TextLayer places each run of text, transparent, over the
+ * drawn page, so it can be selected and copied. From pdf.js's own `.textLayer` rules (web/pdf_viewer.css).
+ */
+.pn-text-layer {
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  position: absolute;
+  inset: 0;
+  /* Its own stacking context, so its runs of text (z-index 1) stay under the links. */
+  z-index: 0;
+  overflow: clip;
+  color-scheme: only light;
+  text-align: initial;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+
+  :is(span, br) {
+    position: absolute;
+    color: transparent;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    user-select: text;
+  }
+
+  > :not(.markedContent),
+  .markedContent span:not(.markedContent) {
+    --font-height: 0;
+    --scale-x: 1;
+    --rotate: 0deg;
+    z-index: 1;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+  }
+
+  .markedContent {
+    display: contents;
+  }
+
+  span[role="img"] {
+    cursor: default;
+    user-select: none;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--pn-brand-500), transparent 70%);
+    color: transparent;
+  }
+
+  br::selection {
+    background: transparent;
+  }
+
+  .endOfContent {
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: 0;
+    display: block;
+    cursor: default;
+    user-select: none;
+  }
+
+  &.selecting .endOfContent {
+    top: 0;
+  }
+}
+
+/* While a drag selects text, the links on the page let it through. */
+.pn-text-layer.selecting ~ .pn-link-layer > * {
+  pointer-events: none;
+}
