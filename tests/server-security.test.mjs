@@ -459,6 +459,7 @@ test("event handlers integrate protected server-function redirects with the rout
     "src/features/guides/guide-dialogs.tsx": ["createGuide"],
     "src/features/freshman/freshman-card-dialog.tsx": ["updateFreshmanCard"],
     "src/features/freshman/freshman-faq-dialog.tsx": ["selectFreshmanFaq"],
+    "src/features/freshman/freshman-telegram-dialog.tsx": ["updateFreshmanTelegramCard"],
     "src/features/freshman/freshman-page.tsx": ["moveFreshmanCard"],
     "src/features/guides/guides-page.tsx": ["deleteGuide"],
     "src/features/documents/document-dialogs.tsx": [

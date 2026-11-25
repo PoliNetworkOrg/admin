@@ -82,7 +82,12 @@ There is no browser storage, demo catalog or local restore action.
 
 The Guide tab keeps the existing PDF edition management and loads editions only when selected. The former
 `/dashboard/web/guides` URL redirects to `/dashboard/web/freshman?tab=guide`. The selected tab stays in the URL;
-the full FAQ catalog loads only on the FAQs tab. Page titles, introductory text and slot counts remain fixed.
+the full FAQ catalog loads only on the FAQs tab, and the Telegram groups only on the Telegram Hub tab.
+
+Each Telegram Hub slot links a group of the bot's database (`tg_groups`, only groups with an invite link) by its
+Telegram ID, so the website always shows the group's current invite link. The optional display name replaces the
+group's title; left empty, the slot follows the group's renames. Slots still holding a link typed before this, or
+whose group was deleted, read "No group linked" until an editor picks one. Page titles, introductory text and slot counts remain fixed.
 
 ### Pending backend package release
 

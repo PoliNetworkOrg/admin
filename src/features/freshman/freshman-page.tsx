@@ -3,27 +3,59 @@ import { useServerFn } from "@tanstack/react-start"
 import { Pencil } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import { IconButton, SectionCard } from "@/components/primitives"
+import { IconButton, SectionCard, StatusBadge } from "@/components/primitives"
 import { appToast, PageBar, PageContent, useCan } from "@/components/shell"
+import type { TgGroup } from "@/lib/api/types"
 import { errorMessage } from "@/lib/errors"
 
 import { FreshmanCardRow } from "./freshman-card"
 import { FreshmanCardDialog } from "./freshman-card-dialog"
 import { FreshmanFaqDialog } from "./freshman-faq-dialog"
+import { FreshmanTelegramDialog } from "./freshman-telegram-dialog"
 import { FRESHMAN_RESOURCE_GROUPS, type FreshmanTab } from "./freshman.constants"
 import { moveFreshmanCard } from "./freshman.functions"
-import type { FreshmanCard, FreshmanContent, FreshmanCardSection, FreshmanFaq } from "./types"
+import type { FreshmanCard, FreshmanContent, FreshmanFaq, FreshmanTelegramCard } from "./types"
 
-type Editing = { section: FreshmanCardSection; card: FreshmanCard } | { section: "faqs"; index: number; faqId: number }
+type Editing =
+  | { section: "resources"; card: FreshmanCard }
+  | { section: "telegram"; card: FreshmanTelegramCard }
+  | { section: "faqs"; index: number; faqId: number }
+
+/** Where a Telegram slot's link comes from: its group, or a legacy link typed before slots linked groups. */
+function TelegramDetail({ card }: { card: FreshmanTelegramCard }) {
+  const group = card.telegramGroup
+  const line = "mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--pn-fg-muted)"
+  if (!group)
+    return (
+      <p className={line}>
+        <StatusBadge tone="warning">No group linked</StatusBadge>
+        {card.href && <span className="break-all">Old link: {card.href}</span>}
+      </p>
+    )
+  return (
+    <p className={line}>
+      {group.link ? (
+        <span className="break-all">{group.link}</span>
+      ) : (
+        <StatusBadge tone="warning">Group has no invite link</StatusBadge>
+      )}
+      {card.customTitle && card.customTitle !== group.title && <span>Group: {group.title}</span>}
+      {group.hide && <StatusBadge tone="neutral">Hidden group</StatusBadge>}
+    </p>
+  )
+}
 
 export function FreshmanPage({
   content,
   catalog,
+  groups,
   tab,
   navigation,
 }: {
   content: FreshmanContent
   catalog: FreshmanFaq[]
+  /** Telegram tab: the groups a slot can link. */
+  groups: TgGroup[]
   tab: Exclude<FreshmanTab, "guide">
   navigation: ReactNode
 }) {
@@ -66,19 +98,21 @@ export function FreshmanPage({
     }
   }
 
-  function cardRows(section: FreshmanCardSection, cards: FreshmanCard[]) {
-    return cards.map((card, index) => (
+  function cardRow(item: Exclude<Editing, { section: "faqs" }>, index: number, count: number) {
+    const { card } = item
+    return (
       <FreshmanCardRow
         key={card.id}
         card={card}
+        detail={item.section === "telegram" ? <TelegramDetail card={item.card} /> : undefined}
         canWrite={canWrite}
         pending={moving}
         first={index === 0}
-        last={index === cards.length - 1}
+        last={index === count - 1}
         onMove={(direction) => void move(card.id, direction)}
-        onEdit={() => edit({ section, card })}
+        onEdit={() => edit(item)}
       />
-    ))
+    )
   }
 
   return (
@@ -89,15 +123,20 @@ export function FreshmanPage({
           {tab === "resources" &&
             FRESHMAN_RESOURCE_GROUPS.map((group) => (
               <SectionCard key={group.id} title={group.title} padding="flush">
-                {cardRows(
-                  "resources",
-                  content.resources.filter((card) => card.group === group.id)
-                )}
+                {content.resources
+                  .filter((card) => card.group === group.id)
+                  .map((card, index, cards) => cardRow({ section: "resources", card }, index, cards.length))}
               </SectionCard>
             ))}
           {tab === "telegram" && (
-            <SectionCard title="Group links" description="Eight fixed positions, in website order." padding="flush">
-              {cardRows("telegram", content.telegram)}
+            <SectionCard
+              title="Group links"
+              description="Eight fixed positions, in website order. Each links a group of the Telegram database and shows its current invite link."
+              padding="flush"
+            >
+              {content.telegram.map((card, index, cards) =>
+                cardRow({ section: "telegram", card }, index, cards.length)
+              )}
             </SectionCard>
           )}
           {tab === "faqs" && (
@@ -139,12 +178,20 @@ export function FreshmanPage({
             onClose={() => setDialogOpen(false)}
             onSaved={saved}
           />
+        ) : editing.section === "telegram" ? (
+          <FreshmanTelegramDialog
+            key={dialogGeneration}
+            open={dialogOpen}
+            card={editing.card}
+            groups={groups}
+            onClose={() => setDialogOpen(false)}
+            onSaved={saved}
+          />
         ) : (
           <FreshmanCardDialog
             key={dialogGeneration}
             open={dialogOpen}
             card={editing.card}
-            section={editing.section}
             onClose={() => setDialogOpen(false)}
             onSaved={saved}
           />
