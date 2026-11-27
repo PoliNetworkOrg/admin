@@ -1,6 +1,6 @@
 # Ruoli e permessi — dashboard e People
 
-**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026.
+**Versione:** 4.0 · **Aggiornamento:** 27 novembre 2026.
 [PRD](PRD_Admin_Dashboard_PoliNetwork.md), [People](Persone_Volontari_Soci.md),
 [IdP](IdentityProvider_Design.md), [modello dati](IdentityProvider_DataModel.md).
 
@@ -73,10 +73,12 @@ in una vecchia proposta non offre questa protezione. Il Capo non gestisce admin 
 
 - Cleanup integrato: i permessi `people:members:*`, `people:fees:write`, `people:receipts:sign` non sono nel catalogo admin.
 - Audit: `audit:read` è in [auth#76](https://github.com/PoliNetworkOrg/auth/pull/76), non nel catalogo admin main;
-  distinto da `tg:audit:read`. Richiede backend#90/admin#123 e assegnazione esplicita ai revisori.
+  distinto da `tg:audit:read`. Il backend è in main (#90). Restano la vista admin#123 e l'assegnazione esplicita ai revisori.
 - Soci: `soci:read`/`soci:write` attivi con `admin:access`; `soci.me.*` usa `people:self` e object ID Entra verificato.
-  Il futuro `soci:delete` del design non è nel catalogo admin né applicato da un router di cancellazione corrente.
-- Censimento fase 3, candidature, partner, eventi e newsletter: catalogo da definire con il processo.
+  `soci:delete` è usato nel flusso di cancellazione in admin#169/backend#151, ancora in PR.
+- Portale associazioni in admin#168/#183 e backend#150/#158: ruoli per associazione per i referenti,
+  `admin:access` e `web:content:write` per gli operatori. Permesso dedicato ai crediti ancora da decidere.
+- Censimento fase 3, candidature e newsletter: catalogo da definire con il processo.
 - MCP admin #137: account personale e permessi delle stesse operazioni; nessun ruolo «agente» con poteri impliciti.
   L'MCP Auth già integrato è un servizio separato.
 

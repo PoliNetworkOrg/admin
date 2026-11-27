@@ -1,6 +1,6 @@
 # People, volontari e Soci — direzione di prodotto
 
-**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026.
+**Versione:** 4.0 · **Aggiornamento:** 27 novembre 2026.
 
 Fonti prevalenti: [roadmap #146](https://github.com/PoliNetworkOrg/admin/issues/146),
 [cleanup #142](https://github.com/PoliNetworkOrg/admin/issues/142),
@@ -38,7 +38,7 @@ La tabella riassume concetti del contratto; i nomi SQL sono definiti nello schem
 | Activity            | Storico append-only di modifiche e collegamenti                                                                                        |
 | Invito              | Token conservato come hash, destinatario, scadenza, uso/revoca e attore                                                                |
 
-Le chiavi team restano configurate (`it`, `hr`, `design`, `intl`, `events`) e verificate contro i binding Auth.
+Le chiavi team restano configurate (`it`, `hr`, `design`, `events`) e verificate contro i binding Auth.
 Un team senza ruoli associati non è assegnabile. Non occorre un catalogo dinamico di team per questo rilascio.
 
 ### Incarichi e fonte di verità
@@ -97,21 +97,22 @@ Admin#148/#149 implementano:
 
 - **Overview:** record, Admin, Capo, team, collegamento e stati pending/refused.
 - **Scheda:** profilo, account, incarichi con stato/motivo e storico. Creazione con soli nome/cognome.
+  Corso, sede, appartenenze associative e incarichi di rappresentanza sono in admin#186/backend#164.
 - **Admins:** attivi e Capo di riferimento modificabile; nomina/fine Capo protette da `people:appoint`.
 - **Capo Admin:** propri admin in sola lettura; scoping nel backend, non filtro solo browser.
 - **Teams:** membri e Lead; il Lead gestisce soltanto i membri del proprio team.
 - **La mia area:** propria scheda e ruoli con stato, con card Socio separata via `soci.me.*`, senza censimento.
 - **Linking:** inviti, link manuale e collegamenti recenti; nessuna coda di matching.
 
-## 7. Import persone: lavoro residuo
+## 7. Import persone e Libro Soci
 
-[Backend#103](https://github.com/PoliNetworkOrg/backend/issues/103) e
-[admin#141](https://github.com/PoliNetworkOrg/admin/issues/141): CSV template → upload → anteprima con errori,
-duplicati e incarichi non autorizzati → commit esplicito → eventuali inviti. Non è import censimento.
-Il router corrente non espone l’import CSV generale. Admin#153, ancora aperta, propone uno script una tantum
-di seed dal censimento: non sostituisce questo flusso e non viene eseguito qui.
-Il vecchio wizard può fornire componenti da recuperare dalla storia, eliminando i passaggi di campagna.
-Non collegare account per contatto o nome durante l'import. Verificare idempotenza e delega anche al commit.
+L'import CSV generale People è stato stralciato ([backend#103](https://github.com/PoliNetworkOrg/backend/issues/103)
+e [admin#141](https://github.com/PoliNetworkOrg/admin/issues/141)). Lo script di seed dal censimento
+[admin#153](https://github.com/PoliNetworkOrg/admin/pull/153) è chiuso senza merge.
+
+Per il Libro Soci è integrata una preview CSV locale in backend#152, documentata in admin#173.
+La preview valida le colonne e produce un report. L'applicazione dei dati richiede una decisione separata.
+[Procedura di preview](docs/people/soci-import.md).
 
 ## 8. Fase 2: Soci implementati in parte
 
@@ -122,8 +123,8 @@ L'ammissione passa da Soci con `soci:write`; backend#127 ha ritirato le scrittur
 La quota è 5 euro; il socio carica prova bonifico e il Direttivo conferma/rifiuta o marca pagato.
 My area usa `people:self` anche senza scheda People, con identità Microsoft 365 verificata.
 Nessuna ricevuta associativa numerata o firma CIE nel design approvato. Backend#130 implementa i compleanni.
-Cessazione/ripristino, decadenza automatica e cancellazione account restano da implementare: non basta che siano
-elencati nel design. Valutare il nuovo permesso di cancellazione quando si realizza quel flusso.
+Cessazione/ripristino, anteprima/job di decadenza e cancellazione account sono in admin#169/backend#151.
+Le PR attendono la decisione del Direttivo sulla decadenza automatica. Il job nel branch è disattivato di default.
 
 ## 9. Fase 3: censimento admin
 
@@ -142,6 +143,6 @@ Per Soci: registrazione esistenti, ammissione, unicità numero, accesso proprio 
 review concorrente sul `fileId`, rifiuto e pagamento manuale, annualità/esenzioni ed email idempotenti.
 Completare il ciclo fine appartenenza prima di dichiarare operativa la decadenza automatica.
 
-Import generale e seed richiedono revisioni distinte; censimento segue un nuovo design.
+La preview Libro Soci e il nuovo censimento hanno percorsi distinti.
 `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build`; test UI desktop/mobile e permessi limitati nelle PR funzionali.
 Questa revisione documentale non autorizza ulteriori raccolte di dati o import di massa.

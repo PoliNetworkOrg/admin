@@ -1,6 +1,6 @@
 # PRD — Admin Dashboard PoliNetwork
 
-**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026 · **Stato:** proposta di prodotto aggiornata per revisione.
+**Versione:** 4.0 · **Aggiornamento:** 27 novembre 2026 · **Stato:** proposta di prodotto aggiornata per revisione.
 
 Documenti: [classificazione e prossime attività](PRD_Classificazione_Feature.md), [MVP](MVP.md),
 [People](Persone_Volontari_Soci.md), [permessi](RBAC_Ruoli_Permessi.md),
@@ -23,16 +23,19 @@ prevalgono sui vecchi documenti e sulle descrizioni delle PR #132/#136. Le fonti
 - OIDC/BFF, permessi puntuali, shell, overview, Telegram, WhatsApp, etichette, report e CMS sono in main.
 - eSign generico è integrato: CIE locale, più firmatari/documenti, OneDrive e consegna email.
 - Cleanup People #147, record/incarichi #148 e inviti/link #149 sono integrati; Auth#73 e backend#105/#106/#109
-  implementano binding e sincronizzazione. L'import CSV generale non è presente; admin#153 propone un seed una tantum.
+  implementano binding e sincronizzazione. Corso, sede, appartenenze associative e incarichi di rappresentanza
+  sono in admin#186/backend#164. L'import CSV generale è stato stralciato. Il seed una tantum admin#153 è chiuso senza merge.
 - Soci ha un dominio separato `soci.*`: registro/ammissione #158–#161, quote e area personale #163 in main.
-  Censimento resta mockup. Decadenza e cancellazione account sono ancora requisiti, non procedure disponibili.
+  Censimento resta mockup. Il ciclo di cessazione, decadenza e cancellazione è in admin#169/backend#151, aperte.
 - Microsoft 365 è interamente in sola lettura. Ammissione e cambio numero sono passati a Soci;
   backend#127 ha rimosso `azure.members.create` e `setAssocNumber`.
 - Regolamenti #150/#151 e backend#110–#117/#133/#134 sono integrati: editor collaborativo LaTeX,
-  PDF, diff, merge, iter di approvazione, emanazione e notifiche.
-- Matricole è modificabile da admin e letto da web. Documenti pubblici: backend#132 integrata,
-  admin#162 e web#220 aperte. Il lockfile admin risolve ancora `@polinetwork/backend` 4.0.0:
-  non equivale alla versione corrente del servizio backend.
+  PDF, diff, merge, iter di approvazione, emanazione e notifiche. Gestione documenti/file e bozze segrete in main.
+- Matricole è modificabile da admin e letto da web. L'hub Telegram è collegato ai gruppi a database
+  (admin#187/backend#165). Catalogo Documenti, editor CMS e viewer pubblico sono in main (backend#132,
+  admin#162 e web#220). Admin risolve `@polinetwork/backend` 10.8.0.
+- MCP admin #137 e Ringraziamenti admin#179/backend#157/web#237 sono integrati.
+- Portale associazioni e richieste di promozione sono in PR. L'invio Telegram automatico resta da realizzare (§12).
 - Backend rifiuta chiamate anonime; web usa il proprio token. Nessun rollback `LEGACY_ANONYMOUS=allow`.
 
 ## 1. Persone, ruoli e gerarchie
@@ -67,7 +70,7 @@ Il Capo Admin consulta i propri admin; la loro gestione resta futura.
 
 L'audit RBAC di Auth e quello di moderazione non sono un registro unificato già disponibile in admin.
 Filone aperto: [auth#76](https://github.com/PoliNetworkOrg/auth/pull/76) registra `audit:read`,
-[backend#90](https://github.com/PoliNetworkOrg/backend/pull/90) registra le mutazioni e offre `audit.list`,
+il backend registra le mutazioni e offre `audit.list` in main ([backend#90](https://github.com/PoliNetworkOrg/backend/pull/90)) e
 [admin#123](https://github.com/PoliNetworkOrg/admin/pull/123) aggiunge la pagina.
 
 Accettazione: ricerca e filtri per attore, oggetto, azione, esito e periodo; dettaglio prima/dopo dove raccolto;
@@ -106,7 +109,7 @@ Riusare viewer, compositore, firma multipla e gestione drive. Il ponte ricevute 
 Prima di dichiarare il servizio operativo, raccogliere evidenza di configurazione Graph/drive, permessi,
 installazione dell'agent e firma con CIE reale sui sistemi supportati ([tracker](docs/esign/TRACKER.md)).
 
-## 3. People: fase 1 integrata e import residuo
+## 3. People: fase 1 integrata
 
 La roadmap [#146](https://github.com/PoliNetworkOrg/admin/issues/146) resta il riferimento di separazione dei domini.
 Cleanup #147, ruoli #148 e collegamenti #149 sono in main con Auth#73 e backend#105/#106/#109.
@@ -115,8 +118,9 @@ Cleanup #147, ruoli #148 e collegamenti #149 sono in main con Auth#73 e backend#
 Le schede richiedono nome/cognome; incarichi `pending`, `sent`, `applied`, `refused` distinguono attesa e rifiuto.
 Invito e link manuale sono gli unici collegamenti; `/people/invite` è fuori dalla shell protetta.
 Non creare placeholder Auth o ripristinare matching, merge identità e tracciamento gruppi Telegram.
-Restano import CSV generale (#141/backend#103), seed una tantum in PR #153 e collaudo dei binding nell'ambiente target.
-Il seed non sostituisce il workflow CSV con preview e commit, e questa revisione non lo esegue.
+Resta il collaudo dei binding nell'ambiente target. L'import CSV generale (#141/backend#103) è stato stralciato.
+La PR #153 per il seed una tantum è chiusa senza merge. La preview locale CSV del Libro Soci è un filone separato
+(backend#152/admin#173).
 
 ## 4. Governance e Regolamenti
 
@@ -126,8 +130,9 @@ differenze, merge, approvazione, emanazione tramite GitHub App e notifiche Soci 
 Auth#82 aggiunge Presidente e Segretario. Permessi e deleghe sono descritti nel documento RBAC.
 
 Verificare worker LaTeX isolato, servizio collab, repository legal, GitHub App e destinatari prima del rilascio operativo.
-L'editor seleziona i file esistenti ma non li aggiunge/rinomina/elimina. Non estendere automaticamente il supporto
-allo statuto. Fonte implementativa: [Regolamenti](docs/regulations/README.md).
+Sono integrati il catalogo di più documenti, upload, creazione/rinomina/eliminazione bozze, aggiunta e rimozione
+dei sorgenti e bozze segrete (admin#172/#174–#178, backend#153–#156). Il bot riceve il comando di pubblicazione
+dei regolamenti (telegram#161). Fonte implementativa: [Regolamenti](docs/regulations/README.md).
 
 ## 5. Admin e Capo Admin
 
@@ -148,13 +153,14 @@ rifiuta con motivo o segna pagato manualmente. My area funziona anche senza sche
 e object ID Entra nello snapshot Auth#86. Nessuna ricevuta associativa numerata o firma CIE in questa fase.
 
 Backend#129 e admin#163 implementano quote e self-service; backend#130 compleanni e template italiani.
-Decadenza automatica, cessazione/ripristino e coda cancellazione account restano da implementare: compaiono nel design,
-ma non nel router corrente. Non dichiarare attivo `SOCI_AUTO_LAPSE` sulla sola base della specifica.
+Cessazione/ripristino, anteprima e job di decadenza, e cancellazione manuale di un account in attesa sono in
+admin#169/backend#151. Le PR sono aperte in attesa della decisione del Direttivo sulla decadenza automatica,
+disattivata di default nel branch. La preview locale CSV del Libro Soci è integrata (backend#152, admin#173).
 
 ## 7. Team
 
 UI, vista Lead, binding e stati degli incarichi sono in main. Chiavi del contratto People:
-`it`, `hr`, `design` (Design & Marketing), `intl`, `events`. Un ruolo senza binding non è assegnabile.
+`it`, `hr`, `design` (Design & Marketing), `events`. Il team International è stato rimosso (admin#184/backend#160). Un ruolo senza binding non è assegnabile.
 Il Lead gestisce i membri del proprio team, non promuove Lead. Il catalogo pubblico del sito non determina i binding.
 Tool specifici dei team restano backlog.
 
@@ -190,15 +196,44 @@ future da validare anche sul contratto backend, non blocchi automatici del lanci
 
 ## 12. Associazioni partner
 
-Backlog dopo il lavoro interno: referenti multipli, ownership dell'organizzazione, richieste di creazione/modifica,
-approvazione editoriale e pubblicazioni sui canali. Il CRUD interno non offre accesso esterno scoped.
-Definire isolamento dei record e successione dei referenti, senza trasferire account personali.
-Canali (Telegram/WhatsApp), crediti e responsabilità di approvazione restano da concordare.
+Il CRUD interno esiste in main. Il portale rappresentanti è in [admin#168](https://github.com/PoliNetworkOrg/admin/pull/168)
+e [backend#150](https://github.com/PoliNetworkOrg/backend/pull/150), entrambe aperte. Gli account personali hanno accesso
+limitato alla propria associazione in base all'incarico. PoliNetwork valuta separatamente accesso e profilo pubblico.
+La parte pubblica è in [web#226](https://github.com/PoliNetworkOrg/web/pull/226).
+
+### 12.1 Richieste di promozione e consegna Telegram
+
+[admin#183](https://github.com/PoliNetworkOrg/admin/pull/183) e
+[backend#158](https://github.com/PoliNetworkOrg/backend/pull/158) sono aperte e si appoggiano al portale base.
+
+| Passaggio                            | Stato verificato                                                                                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Preparare e sottoporre una richiesta | Il responsabile invia a PoliNetwork una bozza con testo, link, eventuale locandina, destinatari, canali richiesti, giorno preferito e scadenza. Il giorno preferito è una data senza orario.                  |
+| Revisione                            | L'operatore PoliNetwork può chiedere modifiche, approvare o respingere. La coda mostra lo storico e le transizioni generano notifiche email. I crediti del RRI sono disattivati di default.                   |
+| Programmazione editoriale            | L'operatore salva data e ora, un canale e il suo dettaglio. Il backend conserva l'istante e lo comunica in ora italiana. Il salvataggio non accoda alcun invio Telegram.                                      |
+| Pubblicazione                        | L'operatore pubblica manualmente e incolla l'URL con l'azione «Segna come pubblicata». Il backend registra lo stato e invia l'email di esito. Non verifica l'URL con Telegram né riceve una conferma dal bot. |
+
+Nel main di Telegram e nelle PR aperte consultate manca il comando per le promozioni. Il bot riceve già dal
+backend comandi via socket per pubblicare subito **i regolamenti**, con allegati, gestione dei rate limit e
+risposta con gli ID dei messaggi. La deduplicazione di quel comando è in memoria.
+[telegram#161](https://github.com/PoliNetworkOrg/telegram/pull/161) · [backend#117](https://github.com/PoliNetworkOrg/backend/pull/117).
+
+**Lavoro assegnabile al team Telegram.** Concordare con backend il contratto di un comando di pubblicazione
+autenticato, con destinazione già risolta, testo, link, eventuale locandina e chiave per invio. Implementare invio
+al canale/topic, gestione del rate limit, risposta con ID o errore e comportamento sui retry, anche dopo riavvio.
+Primo collaudo su un solo canale di test. L'approvazione editoriale resta a PoliNetwork.
+
+**Dipendenza backend/admin.** Dopo approvazione, risolvere i canali del RRI in destinazioni autorizzate e far partire
+un job persistente all'ora confermata. Fissare il fuso nella UI e verificare l'ora legale. Il form corrente
+interpreta l'orario nel fuso del browser, mentre il backend lo comunica in `Europe/Rome`. Registrare l'esito per destinazione, gestire riprogrammazione/revoca e
+mantenere visibili errori o successi parziali. Per la pubblicazione automatica, segnare come pubblicate solo le
+consegne confermate dal bot. Verificare l'intero percorso con bot indisponibile, permessi mancanti e retry.
 
 ## 13. Eventi / PoliTamTam
 
-Backlog: inserimento da partner o PoliNetwork e approvazione prima della pubblicazione.
-Dipende dal design di ownership e revisione dei contenuti; non è parte del MVP interno.
+La revisione degli eventi delle associazioni è in admin#183/backend#158. [web#252](https://github.com/PoliNetworkOrg/web/pull/252)
+mostra quelli approvati e filtra l'elenco per corso e sede. Le PR sono aperte. Una richiesta di promozione può partire
+da un evento. PoliTamTam, come servizio più ampio, rimane in backlog.
 
 ## 14. Aziende
 
@@ -228,30 +263,30 @@ UI admin prevalentemente inglese, Regolamenti in italiano; localizzazione genera
 
 Contabilità completa, gateway pagamenti, modifica dello statuto, gestione libera dei gruppi Entra e migrazione
 dei dati People di test. MCP admin è un filone separato in [#137](https://github.com/PoliNetworkOrg/admin/pull/137):
-OAuth personale e permessi correnti, ancora da integrare e attivare; la firma richiede comunque la persona.
+codice integrato, con OAuth personale e permessi correnti. Restano configurazione e collaudo nell'ambiente target.
 
 ## 19. Decisioni residue e prossimo ordine
 
 1. Collaudare People integrato: binding/delega, inviti senza permessi, link/unlink, revoche e indisponibilità Auth.
-2. Revisionare il seed #153 separatamente dall'import CSV generale #141/backend#103; nessun import implicito.
-3. Completare il ciclo Soci (cessazione, ripristino, decadenza e cancellazione manuale account) sul design approvato;
-   verificare quote, email e identità Entra senza ripristinare le ricevute associative.
-4. Collaudare Regolamenti end-to-end con i suoi servizi e permessi; completare gestione file dell'editor.
-5. Completare Documenti pubblici (admin#162/web#220), audit e review MCP; collaudo eSign/Matricole separato.
+2. Verificare la preview locale Libro Soci con dati di test e decidere come applicare un futuro import.
+3. Chiudere la decisione del Direttivo sulla decadenza, poi revisionare admin#169/backend#151 e collaudare Soci.
+4. Collaudare Regolamenti end-to-end con i suoi servizi, permessi e destinatari Telegram.
+5. Popolare Documenti pubblici, chiudere audit Auth/admin e collaudare MCP, eSign e Matricole.
 6. Progettare censimento #145, consensi, candidature HR e localizzazione. Lancio web nella checklist dedicata.
-7. Concordare partner/eventi, newsletter e casa dopo le priorità interne.
+7. Revisionare il portale associazioni e concordare il lavoro Telegram/backend del §12. Newsletter e casa restano backlog.
 
 ## 20. Fonti della revisione
 
-Snapshot consultato il **16 novembre 2026**: fetch dei main, lettura di codice/contratti e stato GitHub delle PR.
+Snapshot consultato il **27 novembre 2026**: fetch dei main, lettura di codice/contratti e stato GitHub delle PR.
 Il merge non certifica il deploy. Non sono state eseguite migrazioni, import o verifiche di produzione.
 
-| Repository                                                                                         | Baseline fissata | Evidenze principali                                                           |
-| -------------------------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| [admin](https://github.com/PoliNetworkOrg/admin/tree/e98b2b7acc7ab77f7f8949bbfad9786f5e1ffb91)     | `e98b2b7`        | Route, permessi, contratti People/Soci/Regolamenti, lockfile e test           |
-| [backend](https://github.com/PoliNetworkOrg/backend/tree/275f519a81d2d00c873221d4d8fae69c88fee1d6) | `275f519`        | Router People/Soci, schema, job quote/compleanni, Documenti e Regolamenti     |
-| [auth](https://github.com/PoliNetworkOrg/auth/tree/9fe232e2bffab154b070f30532cb9e45f68b0ca9)       | `9fe232e`        | Binding People, Presidente/Segretario, object ID Entra e claim permessi array |
-| [web](https://github.com/PoliNetworkOrg/web/tree/17f8c5bb10dc9452d9dc6fee49af870c6408c7a3)         | `17f8c5b`        | Stack visuale confluito in #199, header #221, token backend e Matricole       |
+| Repository                                                                                           | Baseline fissata | Evidenze principali                                           |
+| ---------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------- |
+| [admin](https://github.com/PoliNetworkOrg/admin/tree/e9deb471cd3096b4506a80df0d4b317ec84bfa2f)       | `e9deb47`        | People, Soci, Regolamenti, Documenti, MCP e lockfile          |
+| [backend](https://github.com/PoliNetworkOrg/backend/tree/a14d593e3bcf8261b9fdcd9500af41415bad4677)   | `a14d593`        | Router, job, Documenti, Regolamenti, audit e preview Soci     |
+| [auth](https://github.com/PoliNetworkOrg/auth/tree/27b9e18c5a61335f32ee7795c61d607710b2c7e6)         | `27b9e18`        | Binding People, ruoli e claim, verifiche studente e hardening |
+| [web](https://github.com/PoliNetworkOrg/web/tree/1d6daee0b34922b5294f20f628088bef6749a41c)           | `1d6daee`        | TanStack Start, Documenti, Ringraziamenti e Matricole         |
+| [telegram](https://github.com/PoliNetworkOrg/telegram/tree/4766818a6e4cdae2dbcb3afd233b32cfc371ab67) | `4766818`        | Comandi socket e pubblicazione regolamenti                    |
 
 Fonti di prodotto: [roadmap #146](https://github.com/PoliNetworkOrg/admin/issues/146),
 [contratto People](docs/people/contract.md), [design Soci](docs/people/soci.md),
@@ -261,5 +296,8 @@ Fonti di prodotto: [roadmap #146](https://github.com/PoliNetworkOrg/admin/issues
 Inventario PR nella [classificazione](PRD_Classificazione_Feature.md) e nella [checklist web](Checklist_Sito_Web.md).
 I documenti storici `docs/people/fees.md` non prevalgono sul design Soci del 9 novembre; alcune note README e
 contratto People sui mockup restano storiche. Solo Censimento è ancora mockup nella baseline admin.
-Bot, legal, polinet.cc, aule e altri repository non sono stati riesaminati: i riferimenti non attestano il loro deploy.
+Il bot Telegram è stato riesaminato per le promozioni e l'integrazione dei regolamenti.
 Questa PR incorpora main e modifica soltanto gli otto documenti di pianificazione rispetto a quella baseline.
+Per il flusso promozioni, sorgenti esaminati in
+[admin](https://github.com/PoliNetworkOrg/admin/blob/ceea2a1d8c45ab8184899fa273e77a64c53d25de/src/features/association-portal/portal-promotions.tsx)
+e [backend](https://github.com/PoliNetworkOrg/backend/blob/c238fc1b8d470426eb409233e633104d74a62b4f/src/associations/promotions.ts).

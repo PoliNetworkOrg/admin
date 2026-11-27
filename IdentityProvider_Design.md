@@ -1,6 +1,6 @@
 # Design — Identity Provider e integrazione admin
 
-**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026.
+**Versione:** 4.0 · **Aggiornamento:** 27 novembre 2026.
 [PRD](PRD_Admin_Dashboard_PoliNetwork.md), [dati e contratti](IdentityProvider_DataModel.md),
 [RBAC](RBAC_Ruoli_Permessi.md), [People](Persone_Volontari_Soci.md).
 Baseline e SHA dei repository nel PRD §20; distinguere sempre main, PR e provisioning dell'ambiente.
@@ -79,11 +79,11 @@ Censimento #145, consensi e onboarding HR richiedono ancora design. Login e firm
 
 ## 6. MCP e audit
 
-MCP Auth è in main (PR #72), con il suo controllo `idp:mcp`. MCP admin è separato, ancora in #137:
+MCP Auth è in main (PR #72), con il suo controllo `idp:mcp`. MCP admin è un servizio separato, integrato con #137:
 client pubblico Native con PKCE, callback loopback, `ADMIN_MCP_CLIENT_ID`, deploy e prova reale necessari.
 L'attivazione non è stata effettuata da questa revisione; firma CIE sempre con persona/agent locale.
 
-Audit unificato è un filone aperto auth#76/backend#90/admin#123. L'audit RBAC esiste, ma verificare che le
+Il registro backend è integrato con #90. Auth#76 e la vista admin#123 sono aperte. L'audit RBAC esiste, ma verificare che le
 modifiche Auth siano effettivamente consultabili nel nuovo registro; non dedurre copertura dal solo middleware backend.
 
 ## 7. Prossimi controlli

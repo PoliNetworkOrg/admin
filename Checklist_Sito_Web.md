@@ -1,7 +1,7 @@
 # Checklist lancio sito PoliNetwork
 
-**Aggiornamento:** 16 novembre 2026.
-Fonte codice: [web main 17f8c5b](https://github.com/PoliNetworkOrg/web/tree/17f8c5bb10dc9452d9dc6fee49af870c6408c7a3).
+**Aggiornamento:** 27 novembre 2026.
+Fonte codice: [web main 1d6daee](https://github.com/PoliNetworkOrg/web/tree/1d6daee0b34922b5294f20f628088bef6749a41c).
 [PRD admin](PRD_Admin_Dashboard_PoliNetwork.md), [roadmap](PRD_Classificazione_Feature.md).
 
 `[x]` codice integrato verificato; `[ ]` lavoro o verifica da completare. Non certifica il deploy né la qualità
@@ -29,12 +29,13 @@ MVP.md contiene il MVP interno admin: questa è l'unica checklist per il lancio 
       #218/#219 sono state integrate sullo stesso branch prima di #199; #217 è chiusa senza merge.
       Non assegnare una nuova sequenza di merge #200–#216 sulla base della vecchia checklist.
 - [x] [#221](https://github.com/PoliNetworkOrg/web/pull/221): posizione della navbar mobile.
-- [ ] [#222](https://github.com/PoliNetworkOrg/web/pull/222): ulteriori correzioni Su di noi/Storia/Unisciti e caroselli mobile.
-- [ ] [#223](https://github.com/PoliNetworkOrg/web/pull/223): audit sito, hydration/404, SEO, risorse mobile,
-      accessibilità, copy e immagini. È aperta: risultati e screenshot della PR non sono baseline main.
-- [ ] [#179](https://github.com/PoliNetworkOrg/web/pull/179): confrontare la spaziatura proposta con lo stack già integrato.
+- [x] [#222](https://github.com/PoliNetworkOrg/web/pull/222): ulteriori correzioni Su di noi/Storia/Unisciti e caroselli mobile.
+- [x] [#223](https://github.com/PoliNetworkOrg/web/pull/223): audit sito, hydration/404, SEO, risorse mobile,
+      accessibilità, copy e immagini.
+- [x] Migrazione da Next.js a TanStack Start con [#266](https://github.com/PoliNetworkOrg/web/pull/266).
+- [x] Ringraziamenti da backend con web#237, backend#157 e admin#179.
 - [ ] Verificare desktop/mobile, tastiera e movimento ridotto sul risultato finale.
-- [ ] #163 (easter egg), #145 (gioco CFU) e #197 (dipendenza Zod) sono aperte, non traguardi del lancio.
+- [ ] Valutare [#269](https://github.com/PoliNetworkOrg/web/pull/269) per le prestazioni mobile. Easter egg #163 e gioco CFU #145 sono aperte.
 
 #223 segnala inoltre attività esterne al codice: Email Obfuscation Cloudflare con hydration su alcune pagine,
 contenuti backend mancanti/di prova e decisioni sul copy inglese. Verificare nell'ambiente target e assegnare ai
@@ -44,7 +45,7 @@ responsabili; questa revisione non modifica Cloudflare o dati di produzione.
 
 - [ ] **Gruppi:** verificare nomi, piattaforma e anno (es. Informatica WhatsApp 26/27), il generale Telegram assente
       dalla ricerca e i link reali. Prima distinguere errore di dati/etichette da errore della ricerca.
-- [ ] **Matricole:** aggiornare card senza destinazione e link vecchi. Provare modifica admin → ricaricamento web
+- [ ] **Matricole:** verificare l'hub collegato ai gruppi a database (admin#187/backend#165), i link e la modifica admin → ricaricamento web
       senza fallback statico, errori backend e FAQ selezionate. Struttura e titoli restano fissi.
 - [ ] **FAQ:** popolare catalogo da gruppi/vecchio sito e definire import da file; riferimento precedente @L3ox64.
       Non confondere CRUD admin esistente con import ancora mancante.
@@ -54,8 +55,8 @@ responsabili; questa revisione non modifica Cloudflare o dati di produzione.
       Verificare riferimenti pubblici a `info@polinetwork.org` invece di contatti personali.
 - [ ] **Link progetto per piattaforma:** [backend#72](https://github.com/PoliNetworkOrg/backend/pull/72) ancora aperta;
       poi pubblicare i tipi, implementare editor admin e visualizzazione web. La pagina dettaglio già integrata non basta.
-- [ ] **Associazioni:** verificare campi richiesti dal vecchio sito (Twitch, più canali Telegram). Richieste di aggiunta,
-      modifica e approvazione da esterni sono un nuovo workflow, non il CRUD interno attuale.
+- [ ] **Associazioni:** rivedere profili approvati, link multipli e accesso al portale in web#226. Filtri per corso/sede
+      ed eventi sono in web#252. Dipendenze e promozioni nel [PRD](PRD_Admin_Dashboard_PoliNetwork.md#12-associazioni-partner).
 - [ ] **Storia/Su di noi/Team:** dati direttivi passati, ringraziamenti, numeri coerenti e testi approvati.
       #202 condivide l'organigramma nel codice; non dedurre aggiornamento dei dati da quel refactor.
 - [ ] **Home:** numeri derivati da dati attivi o contenuti editoriali verificati, senza contatori dimostrativi.
@@ -65,12 +66,12 @@ responsabili; questa revisione non modifica Cloudflare o dati di produzione.
 ## Documenti e processi esterni
 
 - [x] Backend#132: catalogo Documenti con categorie e storico versioni.
-- [ ] Integrare [admin#162](https://github.com/PoliNetworkOrg/admin/pull/162) e
-      [web#220](https://github.com/PoliNetworkOrg/web/pull/220): gestione CMS, catalogo pubblico e viewer PDF.
+- [x] Integrati [admin#162](https://github.com/PoliNetworkOrg/admin/pull/162) e
+      [web#220](https://github.com/PoliNetworkOrg/web/pull/220) per gestione CMS, catalogo pubblico e viewer PDF.
 - [ ] Popolare statuto, regolamenti, privacy/cookie, bilanci e collegare il footer alle versioni approvate.
       Non confondere questo catalogo con l’editor collaborativo RRI già presente in admin. Donazioni/5x1000 da valutare.
-- [ ] Definire referenti, ownership e moderazione di richieste associazioni/progetti; non assegnare ownership
-      trasferendo account personali. È backlog esterno del PRD, non gate del MVP People.
+- [ ] Collaudare referenti, successione e moderazione delle richieste nel portale associazioni dopo il merge.
+      Il workflow per i progetti resta da definire.
 - [ ] Valutare il Figma della dashboard utente (riferimento precedente Enrico) e il bisogno di login personale.
       Il token di servizio del sito non offre già quel login.
 
@@ -82,8 +83,7 @@ responsabili; questa revisione non modifica Cloudflare o dati di produzione.
 - [ ] Italiano coerente; decidere scope e responsabilità dell'eventuale versione inglese.
 - [ ] Backend non disponibile: messaggi e retry comprensibili sulle pagine, senza cataloghi finti.
 - [ ] Configurare client web, chiave e risorsa `backend:public:read`; senza token il backend rifiuta la richiesta.
-- [ ] Allineare tipi e versione distribuita del backend. La vecchia nota README sul pacchetto 1.4.0 non è
-      prova di un blocco attuale: admin risolve 4.0.0; verificare separatamente il lockfile web.
+- [ ] Verificare la compatibilità tra il pacchetto backend dei consumer e il servizio distribuito nell'ambiente target.
 - [ ] Controllare con i responsabili i contenuti di produzione e gli eventuali dati di prova.
       Non eliminare righe in massa durante il controllo.
 - [ ] Smoke test pubblico: ricerca gruppi, Appunti, FAQ, Matricole/PDF, progetto e link, contatti e Documenti;

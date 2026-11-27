@@ -1,6 +1,6 @@
 # Modello dati e contratti — Auth, backend e admin
 
-**Versione:** 4.0 · **Aggiornamento:** 16 novembre 2026.
+**Versione:** 4.0 · **Aggiornamento:** 27 novembre 2026.
 [Design IdP](IdentityProvider_Design.md), [People](Persone_Volontari_Soci.md),
 [RBAC](RBAC_Ruoli_Permessi.md), [fonti/SHA](PRD_Admin_Dashboard_PoliNetwork.md#20-fonti-della-revisione).
 
@@ -43,7 +43,7 @@ Gli override di permessi ereditati sono in Auth#68, ancora aperta: non sono una 
 - Microsoft 365: Entra object ID per l'utente, `employeeId` per numero socio, gruppo Soci per appartenenza.
   Microsoft 365 è in sola lettura; il nuovo socio è ammesso tramite il workflow `soci.members.admit`.
 
-La dipendenza admin/lockfile è `@polinetwork/backend` 4.0.0, con `web.freshman` presente. Versione del pacchetto,
+La dipendenza admin/lockfile è `@polinetwork/backend` 10.8.0, con `web.freshman` presente. Versione del pacchetto,
 versione dell'app backend e contratto realmente distribuito sono evidenze diverse: controllarle separatamente.
 
 ## 3. Cleanup e contratti integrati
@@ -57,7 +57,7 @@ interno `idp:people:roles`. I comandi sono idempotenti, attribuiti all'attore e 
 Incarichi `pending`/`sent`/`applied`/`refused`; account collegato univoco, contatti non usati per matching.
 Inviti monouso con hash, scadenza e revoca; landing `/people/invite` senza gate dashboard.
 Unlink revoca i ruoli prima di scollegare. Schema e wire effettivi: [contratto People](docs/people/contract.md).
-L'import CSV generale non è nel router corrente; seed admin#153 è un altro flusso, ancora in PR.
+L'import CSV generale People è stato stralciato e il seed admin#153 è chiuso senza merge.
 
 ## 4. Soci e Regolamenti: contratti presenti e limiti
 
@@ -69,7 +69,7 @@ nel [design](docs/people/soci.md). Non generare client per quei requisiti come s
 
 Regolamenti usa `regulations.*`, accessi per bozza e deleghe backend, ticket monouso per il servizio collaborativo,
 worker LaTeX isolato, GitHub App per emanare e outbox notifiche. Vedere [contratto](src/features/regulations/regulations.contract.ts).
-Documenti pubblici: backend#132 integrata, consumer admin#162/web#220 in PR; non coincide con l'editor RRI.
+Documenti pubblici: backend#132, admin#162 e web#220 in main. L'editor Regolamenti ha un suo modello.
 
 ## 5. Proposte ritirate e modelli da progettare
 
@@ -78,7 +78,7 @@ Documenti pubblici: backend#132 integrata, consumer admin#162/web#220 in PR; non
 - Soci fase 2 #144: completare fine appartenenza/decadenza/cancellazione sul design del 9 novembre; quote già integrate.
 - Censimento fase 3 #145: collegato alla fase 1; uscita tramite stesso comando di revoca ruolo Auth.
 - Informative, prove di consenso, retention ed export: definire policy prima del nuovo schema.
-- Audit unico: backend#90 propone `common_audit_events`/`audit.list`; auth#76 e admin#123 completano il filone.
+- Audit unico: backend#90 integra `common_audit_events` e `audit.list`. Auth#76 e admin#123 sono aperte.
   Non dedurre che l'audit RBAC sia già federato dal solo fatto che entrambe le tabelle esistano.
 
 ## 6. Criteri di compatibilità
