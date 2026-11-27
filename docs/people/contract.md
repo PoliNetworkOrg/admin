@@ -16,7 +16,16 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
 ## Model
 
 - **Person:** a record with a name, an optional contact email (only for invites, never to match accounts), phone and
-  Telegram username (informational only), HR notes and history.
+  Telegram username (informational only), HR notes and history, and a profile:
+  - `course` (a `Course` from `courses.list`, or `null`) and `campus` (`leonardo`, `bovisa`, `lecco`, `cremona`,
+    `mantova`, `piacenza`, or `external` for someone who isn't a Politecnico student), on every row;
+  - `otherAssociations` (names), `representativeRoles` (`ccs`, `school`, `senate`, `board`, `other`) and
+    `representativeOther` (the Other seat's name), on the record only and empty without `people:read`. A CCS seat is
+    on the council of the person's own course and a school seat in its school, so neither is stored.
+- **Course:** Polimi's own `code` (`k_corso_la`), `name`, `level` (`bachelor`, `master`, `single-cycle`), `school`
+  (`auic`, `icat`, `3i`, `design`), `regulation` (`96/23` for the current courses, `270` for the older ones Polimi keeps
+  until their students finish: the same degree can appear under both, with different codes), `campuses`, `languages`,
+  and `active` (`false` once a yearly update no longer lists it; kept, since records may point to it).
 - **Account:** `none`, `invite` (an open invite: address, sent on, expiry, sender) or `linked` (account ID, `method`
   `invite` / `manual` / `auth`, when and by whom). `auth` is a record People created for someone given a bound role by
   hand in PoliNetwork Auth.
@@ -34,7 +43,7 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
   A refused start ends the assignment (it never took effect); a refused end leaves it current. While any change of a
   linked record is `sent`, the backend refuses another role change for it.
 
-- **Teams:** `it`, `hr`, `design` (Design & Marketing), `intl`, `events`. `teams.list` reports per team whether Auth
+- **Teams:** `it`, `hr`, `design` (Design & Marketing), `events`. `teams.list` reports per team whether Auth
   binds a member and a Lead role (`assignable`); a role that isn't bound can't be assigned, and the dashboard doesn't
   offer it. Only these kinds exist: Admin, Capo Admin, team member, team Lead.
 
@@ -45,6 +54,8 @@ pages are unconnected mockups with their own sample data (`mockup-data.ts`).
 | `persons.list` / `persons.get`        | query            | — / `{ id }`                                                           | `admin:access` + `people:read`                                 |
 | `persons.create`                      | mutation         | name, `contactEmail`, `phone`, `telegramUsername` (empty when unknown) | `people:write`                                                 |
 | `persons.update` / `setNote`          | mutation         | `{ id, … }` / `{ id, note }`                                           | `people:write`                                                 |
+| `courses.list`                        | query            | —                                                                      | as `persons.list`                                              |
+| `associations.suggest`                | query            | —                                                                      | `people:read`                                                  |
 | `admins.list`                         | query            | —                                                                      | `people:read`                                                  |
 | `admins.assign`                       | mutation         | `{ personId, since, capoId }`                                          | `people:write`                                                 |
 | `admins.end`                          | mutation         | `{ personId, reason }` (Capo Admin role ended first)                   | `people:write`                                                 |
@@ -69,6 +80,16 @@ Nobody gives themselves a role (giving one up is always allowed), and nobody han
 don't hold; the backend applies the same rules as Auth (`src/people/rules.ts`) to pending assignments, and Auth checks
 linked ones again. A Capo Admin of reference must be in effect: not an appointment still waiting for Auth. Start dates
 can't be later than today in Europe/Rome.
+
+**Profile fields.** `persons.create` and `persons.update` take five optional fields: `courseCode`, `campus`,
+`otherAssociations` (trimmed, 1–100 characters each, at most 10, no case-insensitive duplicates), `representativeRoles`
+(no duplicates) and `representativeOther` (at most 100 characters). On create an omitted field is empty; on update it
+is unchanged, so a client that predates them never erases them. The backend checks the record as it will be saved: the
+Other seat has its name exactly when `other` is chosen (removing `other` clears it), `ccs` and `school` need a course,
+and a course being set must be an active one (a record keeps a course that has since become inactive). Each change is
+written to the record's activity ("Course set to Ingegneria Informatica (358)", "Campus changed to Bovisa"). `courses.list`
+returns every course, active and inactive, sorted by school, level and name; `associations.suggest` the names stored on
+records, most used first, then alphabetical.
 
 **Invites** link to `/people/invite?token=<token>` (PoliNetworkOrg/backend#109), a dashboard page outside the gated
 shell: it calls `me.invite` to ask "Link this account to <name>?", then `me.acceptInvite`. Older emails link to

@@ -1,7 +1,9 @@
-import { Check, EllipsisVertical, type LucideIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
+import { Check, EllipsisVertical, type LucideIcon, X } from "lucide-react"
+import { type ReactNode, useState } from "react"
 
 import {
+  Autocomplete,
   Chip,
   Combobox,
   ComboboxContent,
@@ -9,6 +11,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  fieldControl,
   fieldHintId,
   IconButton,
   initialsOf,
@@ -21,10 +24,11 @@ import {
   type StatusTone,
 } from "@/components/primitives"
 import { Hint } from "@/components/primitives/hint"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-import { assignmentState } from "./people-format"
-import type { Assignment } from "./people.contract"
+import { assignmentState, courseDetail } from "./people-format"
+import { type Assignment, type Course, SCHOOLS } from "./people.contract"
 
 /** 32px initials avatar, name and an optional 12px secondary line; muted when the person has no roles left. */
 export function PersonCell({
@@ -228,7 +232,183 @@ export function PersonPicker({
   )
 }
 
-/** Multi-select options as pressable pills, for team fields such as Areas or Languages. */
+/** Matches a course by name, code or school, ignoring case. */
+function courseMatches(course: Course, query: string) {
+  const needle = query.trim().toLocaleLowerCase()
+  if (!needle) return true
+  return `${course.name} ${course.code} ${SCHOOLS[course.school].short}`.toLocaleLowerCase().includes(needle)
+}
+
+/**
+ * Searchable course field: each option shows its level, school and code, since two versions of a degree can share a
+ * name. Emptying the field clears the course. A course no longer offered says so.
+ */
+export function CoursePicker({
+  id,
+  courses,
+  value,
+  onChange,
+  placeholder = "Search courses…",
+  invalid = false,
+  disabled = false,
+}: {
+  id: string
+  courses: readonly Course[]
+  value: Course | null
+  onChange: (course: Course | null) => void
+  placeholder?: string
+  invalid?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <Combobox
+      items={courses}
+      value={value}
+      onValueChange={(next) => onChange(next)}
+      itemToStringLabel={(item: Course) => item.name}
+      itemToStringValue={(item: Course) => String(item.code)}
+      isItemEqualToValue={(item: Course, current: Course) => item.code === current.code}
+      filter={(item: Course, query: string) => courseMatches(item, query)}
+      disabled={disabled}
+    >
+      <ComboboxInput
+        id={id}
+        listLabel="courses"
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={fieldHintId(id)}
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>No courses match</ComboboxEmpty>
+        <ComboboxList>
+          {(item: Course) => (
+            <ComboboxItem key={item.code} value={item} className="py-1.5">
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate">{item.name}</span>
+                <span className="text-xs text-(--pn-fg-muted)">
+                  {courseDetail(item)}
+                  {item.active ? "" : " · No longer offered"}
+                </span>
+              </span>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+/**
+ * Free-text names as removable chips, with suggestions so spellings stay the same across records. Enter adds what is
+ * typed, or the highlighted suggestion; a name already in the list (in any case) isn't added twice, and a suggestion's
+ * spelling wins over the typed one.
+ */
+export function TagInput({
+  id,
+  label,
+  value,
+  onChange,
+  suggestions = [],
+  max,
+  maxLength,
+  placeholder,
+  invalid = false,
+}: {
+  id: string
+  /** Names the list for screen readers ("Other associations"). */
+  label: string
+  value: readonly string[]
+  onChange: (value: string[]) => void
+  suggestions?: readonly string[]
+  max: number
+  maxLength: number
+  placeholder?: string
+  invalid?: boolean
+}) {
+  const [draft, setDraft] = useState("")
+  const [highlighted, setHighlighted] = useState(false)
+  const taken = new Set(value.map((name) => name.toLocaleLowerCase()))
+  const needle = draft.trim().toLocaleLowerCase()
+  const items = suggestions
+    .filter((name) => !taken.has(name.toLocaleLowerCase()) && name.toLocaleLowerCase().includes(needle))
+    .slice(0, 20)
+  const full = value.length >= max
+
+  function add(name: string) {
+    const trimmed = name.trim()
+    setDraft("")
+    if (!trimmed || full) return
+    const known = suggestions.find((candidate) => candidate.toLocaleLowerCase() === trimmed.toLocaleLowerCase())
+    const next = known ?? trimmed
+    if (!taken.has(next.toLocaleLowerCase())) onChange([...value, next])
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {value.length ? (
+        <ul aria-label={label} className="flex flex-wrap gap-1.5">
+          {value.map((name) => (
+            <li key={name} className="max-w-full min-w-0">
+              <Chip className="h-7 max-w-full gap-0.5 pr-0.5 text-[13px]">
+                <span className="truncate">{name}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() => onChange(value.filter((item) => item !== name))}
+                  className="grid size-6 shrink-0 place-items-center rounded-full text-(--pn-fg-muted) hover:bg-(--pn-hover) hover:text-(--pn-fg)"
+                >
+                  <X aria-hidden className="size-3.5" />
+                </button>
+              </Chip>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <Autocomplete
+        items={items}
+        mode="none"
+        value={draft}
+        onValueChange={(next, { reason }) => {
+          if (reason === "item-press") add(next)
+          else setDraft(next)
+        }}
+        onItemHighlighted={(item) => setHighlighted(item !== undefined)}
+        openOnInputClick
+      >
+        <ComboboxPrimitive.Input
+          render={<Input className={cn(fieldControl, "h-9")} />}
+          id={id}
+          disabled={full}
+          placeholder={full ? `At most ${max}` : placeholder}
+          maxLength={maxLength}
+          autoComplete="off"
+          aria-invalid={invalid || undefined}
+          aria-describedby={fieldHintId(id)}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
+            // Enter adds the typed name instead of submitting the dialog; a highlighted suggestion adds itself.
+            if (event.key !== "Enter" || highlighted) return
+            event.preventDefault()
+            add(draft)
+          }}
+          onBlur={() => add(draft)}
+        />
+        <ComboboxContent className="data-empty:hidden">
+          <ComboboxList>
+            {(name: string) => (
+              <ComboboxItem key={name} value={name}>
+                {name}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Autocomplete>
+    </div>
+  )
+}
+
+/** Multi-select options as pressable pills, for team fields such as Areas or Tools. */
 export function ChoiceChips<T extends string>({
   id,
   label,

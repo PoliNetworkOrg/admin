@@ -6,20 +6,20 @@ import { appToast } from "@/components/shell"
 import { errorHasCode, errorMessage } from "@/lib/errors"
 
 /**
- * After a successful mutation: reload every loader, then confirm. A failed reload is not a failed mutation, so it
- * warns instead of offering to repeat it.
+ * After a successful mutation: reload every loader, then confirm, in place of the toast `toastId` when given. A failed
+ * reload is not a failed mutation, so it warns instead of offering to repeat it.
  */
 export function useRefreshAfter() {
   const router = useRouter()
-  return async (message: string) => {
+  return async (message: string, toastId?: string | number) => {
     try {
       await router.invalidate({ sync: true })
     } catch (caught) {
       console.error(caught)
-      appToast.warning(`${message.replace(/\.$/, "")}, ma la pagina non si è aggiornata.`)
+      appToast.warning(`${message.replace(/\.$/, "")}, ma la pagina non si è aggiornata.`, { id: toastId })
       return
     }
-    appToast.success(message)
+    appToast.success(message, { id: toastId })
   }
 }
 
@@ -36,17 +36,6 @@ export function failureMessage(cause: unknown, fallback: string) {
   if (inputValidationError.safeParse(cause).success) return fallback
   const message = errorMessage(cause, fallback)
   return /[àèéìòù]|\b(il|la|di|non|per|una?|è)\b/i.test(message) ? message : fallback
-}
-
-/** A PDF from a server function (base64) as a download. */
-export function downloadPdf(file: { fileName: string; contentType: string; base64: string }) {
-  const bytes = Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0))
-  const url = URL.createObjectURL(new Blob([bytes], { type: file.contentType }))
-  const link = document.createElement("a")
-  link.href = url
-  link.download = file.fileName
-  link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 /**

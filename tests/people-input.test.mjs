@@ -91,11 +91,28 @@ const row = {
   telegramUsername: "lucab",
   account: { status: "linked", sub: "sub-0012", method: "invite", linkedOn: "2026-10-01", linkedBy: "sub-0012" },
   assignments: [assignment],
+  course: {
+    code: 358,
+    name: "Ingegneria Informatica",
+    level: "bachelor",
+    school: "3i",
+    regulation: "270",
+    campuses: ["Milano Leonardo", "Cremona"],
+    languages: ["Italiano"],
+    active: true,
+  },
+  campus: "leonardo",
+}
+const profile = {
+  otherAssociations: [],
+  representativeRoles: [],
+  representativeOther: null,
 }
 
 void test("records from the Phase 1 backend parse, with each assignment's status and Auth's refusal", () => {
   const record = personRecordSchema.parse({
     ...row,
+    ...profile,
     notes: null,
     activity: [],
     createdBy: "sub-0002",
@@ -120,6 +137,7 @@ void test("My area parses a linked record or no record", () => {
     state: "linked",
     person: {
       ...row,
+      ...profile,
       notes: null,
       activity: [],
       createdBy: "auth",

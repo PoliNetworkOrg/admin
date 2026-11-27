@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto"
 import { diffWords } from "diff"
 import * as Y from "yjs"
 
+import { allowedPath } from "./editor/draft-files"
 import { type FileNode, parseDocument, plainTitle } from "./latex-structure"
 import type { RegulationsApi, RegulationsViewer } from "./regulations.api.server"
 import type {
@@ -14,6 +15,8 @@ import type {
   Delibera,
   Diff,
   DocumentInfo,
+  DocumentKind,
+  DocumentStorage,
   Draft,
   DraftBase,
   DraftRole,
@@ -23,33 +26,52 @@ import type {
   MergeConflict,
   MergePreview,
   Procedure,
+  ProcedureKey,
   Snapshot,
   StateKey,
   Structure,
   StructureNode,
+  SyncResult,
+  TemplateInfo,
   UserMatch,
   ValidationIssue,
   VersionSummary,
 } from "./regulations.contract"
+import { FINAL_STATES } from "./regulations.contract"
 import { type DevCollab, devCollab } from "./regulations.dev-collab.server"
-import { ENTRY_FILE, FAKE_USERS, PUBLISHED_FILES, USING_SAMPLE } from "./regulations.fixtures.server"
+import {
+  CONSULTAZIONE_SAMPLES,
+  ENTRY_FILE,
+  FAKE_USERS,
+  GENERALE_SAMPLE,
+  PUBLISHED_FILES,
+  skeletonFiles,
+  UPLOAD_SAMPLES,
+  USING_SAMPLE,
+} from "./regulations.fixtures.server"
 
 /**
  * Agent mode's stand-in for the backend's `regulations.*` procedures, following the rules the backend states: Direttivo
  * (`regulations:write`) edits every draft, `regulations:read` sees them all as a viewer, everyone else only the drafts
  * they're assigned to; one draft per document in approvazione; the delibera to approve; "Emana e notifica" walks
- * through PR, checks, merge, tag, release, email and Telegram a few seconds apart. Text lives in the dev collab server
- * (`regulations.dev-collab.server.ts`), which the fake reads and writes for snapshots, restores and merges. State lives
- * for the dev server's lifetime.
+ * through PR, checks, merge, tag, release, email and Telegram a few seconds apart. Every kind of document has a sample:
+ * the RRI (`rri`), a documento generale and a private one from a template (`documento`: bozza → pubblicata), an
+ * uploaded PDF, Statuto and Regolamento Elettorale (sola consultazione), and repository documents still in creation.
+ * Text lives in the dev collab server (`regulations.dev-collab.server.ts`), which the fake reads and writes for
+ * snapshots, restores and merges. State lives for the dev server's lifetime.
  */
 
 const DOCUMENT_KEY = "rri"
+/** How long a repository document created here waits for its (imaginary) pull request to merge. */
+const CREATION_MS = 20_000
 const AGENT_ID = "agent-preview-user"
+const SECRET_BLOCK = "La bozza è segreta: rendila visibile prima di avviare la procedura."
+const CREATOR_STAYS = "Chi ha creato la bozza segreta ne resta editor."
 const STEP_MS = 2500
 const DIFF_DELAY_MS = 2500
 const AUTO_SNAPSHOT_MS = 5 * 60_000
 
-const PROCEDURE: Procedure = {
+const RRI_PROCEDURE: Procedure = {
   key: "rri",
   states: [
     { key: "bozza", label: "Bozza", editable: true },
@@ -71,8 +93,33 @@ const PROCEDURE: Procedure = {
   ],
 }
 
+const DOCUMENTO_PROCEDURE: Procedure = {
+  key: "documento",
+  states: [
+    { key: "bozza", label: "Bozza", editable: true },
+    { key: "pubblicata", label: "Pubblicata", editable: false },
+  ],
+  transitions: [{ from: "bozza", to: "pubblicata", label: "Pubblica", kinds: ["modifica"] }],
+  deadlines: [],
+}
+
+const PROCEDURES = { rri: RRI_PROCEDURE, documento: DOCUMENTO_PROCEDURE } satisfies Record<ProcedureKey, Procedure>
+
+const TEMPLATES: TemplateInfo[] = [
+  { key: "regolamento", title: "Regolamento", directory: "regolamenti/" },
+  { key: "generale", title: "Documento generale", directory: "generali/" },
+]
+
+const REPOSITORY = "https://github.com/PoliNetworkOrg/documents"
+
 type StoredSnapshot = Snapshot & { files: Files }
-type StoredVersion = VersionSummary & { files: Files }
+/** `pdf`: an uploaded file; otherwise the PDF is compiled from `files` (an upload's sample stands in as LaTeX). */
+type StoredVersion = VersionSummary & { files: Files; entry: string; pdf?: Buffer }
+type StoredDocument = Omit<DocumentInfo, "procedure" | "editable" | "latestVersion" | "openDrafts" | "inApproval"> & {
+  entry: string
+  /** A repository document created here becomes active once this passes (its pull request "merged"). */
+  activateAt: number | null
+}
 type SeedComment = {
   file: string
   quote: string
@@ -98,7 +145,7 @@ type StoredDraft = Omit<DraftSummary, "myRole" | "parses"> & {
   emanation: { startedAt: number; startedBy: UserMatch; delegaId: string | null } | null
   lastActivity: number
 }
-type Store = { versions: StoredVersion[]; drafts: StoredDraft[]; deleghe: Delega[] }
+type Store = { documents: StoredDocument[]; versions: StoredVersion[]; drafts: StoredDraft[]; deleghe: Delega[] }
 
 function user(id: string): UserMatch {
   const found = FAKE_USERS.find((candidate) => candidate.id === id)
@@ -108,7 +155,9 @@ function user(id: string): UserMatch {
 const now = () => new Date().toISOString()
 const newId = () => randomBytes(9).toString("base64url")
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
-const today = () => new Date().toISOString().slice(0, 10)
+// Calendar days in Italy, as the backend dates versions.
+const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date())
+const isFinal = (state: StateKey) => FINAL_STATES.some((final) => final === state)
 
 class FakeError extends Error {}
 const refuse = (message: string): never => {
@@ -131,8 +180,8 @@ function edit(files: Files, path: string, change: (text: string) => string): Fil
 }
 
 /** The whole document, as the PDF numbers it. */
-function parse(files: Files) {
-  return parseDocument(files, ENTRY_FILE)
+function parse(files: Files, entry = ENTRY_FILE) {
+  return parseDocument(files, entry)
 }
 
 function buildStore(): Store {
@@ -142,14 +191,17 @@ function buildStore(): Store {
   const old: StoredVersion = {
     id: "v-2025-09-30",
     documentKey: DOCUMENT_KEY,
-    tag: "rri-v1.4",
-    label: "v1.4",
+    // The first import from the repository, labelled as the backend labels it: no tag and no release.
+    tag: null,
+    label: "import d08cb57",
+    origin: "import",
     delibera: null,
     publishedAt: "2025-09-30T10:00:00.000Z",
-    releaseUrl: "https://github.com/PoliNetworkOrg/legal/releases/tag/rri-v1.4",
+    releaseUrl: null,
     pdfAvailable: true,
     draftId: null,
     files: previousFiles(),
+    entry: ENTRY_FILE,
   }
   const emanatedDraftId = "spring2026rev"
   const latest: StoredVersion = {
@@ -157,6 +209,7 @@ function buildStore(): Store {
     documentKey: DOCUMENT_KEY,
     tag: "rri-v2026.03.12",
     label: "v2026.03.12",
+    origin: "draft",
     delibera: {
       kind: "approvazione",
       body: "consiglio_direttivo",
@@ -166,10 +219,11 @@ function buildStore(): Store {
       recordedAt: "2026-03-12T21:30:00.000Z",
     },
     publishedAt: "2026-03-13T09:12:00.000Z",
-    releaseUrl: "https://github.com/PoliNetworkOrg/legal/releases/tag/rri-v2026.03.12",
+    releaseUrl: `${REPOSITORY}/releases/tag/rri-v2026.03.12`,
     pdfAvailable: true,
     draftId: emanatedDraftId,
     files: PUBLISHED_FILES,
+    entry: ENTRY_FILE,
   }
   const versionBase: DraftBase = { kind: "version", id: latest.id, label: latest.label }
   const agent = { id: AGENT_ID, name: "Preview Agent", email: "agent@polinetwork.org" }
@@ -184,6 +238,7 @@ function buildStore(): Store {
     kind: "modifica",
     state: "bozza",
     base: versionBase,
+    secret: false,
     createdBy: direttivo,
     createdAt: daysAgo(9),
     updatedAt: daysAgo(1),
@@ -264,7 +319,29 @@ function buildStore(): Store {
     diff: { generation: 1, requestedAt: Date.parse("2026-03-10T10:00:00.000Z"), by: null },
     emanation: { startedAt: Date.parse("2026-03-13T09:10:00.000Z"), startedBy: segretario, delegaId: null },
   })
-  for (const stored of [fondamentale, condotta, emanated])
+  // Secret: the agent's, shared with one Socio, and the Presidente's, which nobody else sees.
+  const riservata = draft({
+    id: "quote-riservata",
+    title: "Quote associative: proposta riservata",
+    secret: true,
+    createdBy: agent,
+    createdAt: daysAgo(3),
+    updatedAt: daysAgo(2),
+    stateChangedAt: daysAgo(3),
+    files: edit(PUBLISHED_FILES, "regolamenti/fondamentale.tex", (text) =>
+      text.replace("entro \\textbf{trenta giorni}", "entro \\textbf{sessanta giorni}")
+    ),
+    assignments: [assign(agent, "editor", agent), assign(user("u-socio-1"), "commenter", agent)],
+  })
+  const presidenza = draft({
+    id: "presidenza-segreta",
+    title: "Riorganizzazione della Presidenza",
+    secret: true,
+    createdBy: presidente,
+    files: PUBLISHED_FILES,
+    assignments: [assign(presidente, "editor", presidente)],
+  })
+  for (const stored of [fondamentale, condotta, emanated, riservata, presidenza])
     stored.snapshots.push({
       id: newId(),
       draftId: stored.id,
@@ -284,9 +361,38 @@ function buildStore(): Store {
     files: edit(fondamentale.files, "regolamenti/fondamentale.tex", (text) => text.replace("quindici", "venti")),
   })
 
+  const others = otherDocuments(draft, { segretario, presidente, direttivo })
+  for (const stored of others.drafts)
+    stored.snapshots.push({
+      id: newId(),
+      draftId: stored.id,
+      kind: "base",
+      name: `Creata da ${stored.base.kind === "version" ? stored.base.label : stored.base.title}`,
+      createdAt: stored.createdAt,
+      createdBy: stored.createdBy,
+      files: stored.baseFiles,
+    })
+
   return {
-    versions: [latest, old],
-    drafts: [fondamentale, condotta, emanated],
+    documents: [
+      {
+        key: DOCUMENT_KEY,
+        title: "Raccolta dei Regolamenti Interni",
+        kind: "regolamento",
+        storage: "repo",
+        origin: "latex",
+        template: "regolamento",
+        procedureKey: "rri",
+        status: "active",
+        creation: null,
+        tagPrefix: "rri-",
+        entry: ENTRY_FILE,
+        activateAt: null,
+      },
+      ...others.documents,
+    ],
+    versions: [latest, old, ...others.versions],
+    drafts: [fondamentale, condotta, riservata, presidenza, emanated, ...others.drafts],
     deleghe: [
       {
         id: newId(),
@@ -301,6 +407,239 @@ function buildStore(): Store {
         active: true,
       },
     ],
+  }
+}
+
+type DraftFactory = (fields: Partial<StoredDraft> & Pick<StoredDraft, "id" | "title" | "files">) => StoredDraft
+
+/** A repository or private document of the sample, the RRI aside. */
+function sampleDocument(
+  fields: Pick<StoredDocument, "key" | "title" | "kind" | "storage"> & Partial<StoredDocument>
+): StoredDocument {
+  return {
+    origin: "latex",
+    template: null,
+    procedureKey: null,
+    status: "active",
+    creation: null,
+    tagPrefix: `${fields.key}-`,
+    entry: `${fields.key}.tex`,
+    activateAt: null,
+    ...fields,
+  }
+}
+
+/**
+ * Every other kind of document: a documento generale with a published draft and an open one, a private document from
+ * the generale template, an uploaded PDF with two versions, Statuto and Regolamento Elettorale (sola consultazione), a
+ * repository document whose pull request is open and one whose pull request was closed.
+ */
+function otherDocuments(
+  draft: DraftFactory,
+  people: { segretario: UserMatch; presidente: UserMatch; direttivo: UserMatch }
+) {
+  const { segretario, presidente, direttivo } = people
+  const version = (
+    fields: Pick<StoredVersion, "id" | "documentKey" | "label" | "origin" | "publishedAt" | "files" | "entry"> &
+      Partial<StoredVersion>
+  ): StoredVersion => ({
+    tag: null,
+    delibera: null,
+    releaseUrl: null,
+    pdfAvailable: true,
+    draftId: null,
+    ...fields,
+  })
+
+  const guida = sampleDocument({
+    key: "guida-della-matricola",
+    title: "Guida della Matricola",
+    kind: "generale",
+    storage: "repo",
+    template: "generale",
+    procedureKey: "documento",
+  })
+  const guidaOld = GENERALE_SAMPLE.guida("2025/26")
+  const guidaNew = GENERALE_SAMPLE.guida("2026/27")
+  const guidaImport = version({
+    id: "v-guida-import",
+    documentKey: guida.key,
+    label: "import 3f2a1c9",
+    origin: "import",
+    publishedAt: "2025-09-30T10:00:00.000Z",
+    files: guidaOld,
+    entry: guida.entry,
+  })
+  const guidaPublished = version({
+    id: "v-guida-2026",
+    documentKey: guida.key,
+    tag: "guida-della-matricola-v2026.09.01",
+    label: "v2026.09.01",
+    origin: "draft",
+    publishedAt: "2026-09-01T08:30:00.000Z",
+    releaseUrl: `${REPOSITORY}/releases/tag/guida-della-matricola-v2026.09.01`,
+    draftId: "guida-2026",
+    files: guidaNew,
+    entry: guida.entry,
+  })
+  const guidaDraftPublished = draft({
+    id: "guida-2026",
+    documentKey: guida.key,
+    title: "Guida per l'anno 2026/27",
+    state: "pubblicata",
+    entry: guida.entry,
+    base: { kind: "version", id: guidaImport.id, label: guidaImport.label },
+    baseFiles: guidaOld,
+    files: guidaNew,
+    createdAt: "2026-08-10T16:00:00.000Z",
+    updatedAt: "2026-09-01T08:30:00.000Z",
+    stateChangedAt: "2026-09-01T08:30:00.000Z",
+    emanatedAt: "2026-09-01T08:30:00.000Z",
+    versionId: guidaPublished.id,
+    emanation: { startedAt: Date.parse("2026-09-01T08:28:00.000Z"), startedBy: presidente, delegaId: null },
+  })
+  const guidaDraftOpen = draft({
+    id: "guida-2027",
+    documentKey: guida.key,
+    title: "Aggiornamento per l'anno 2027/28",
+    entry: guida.entry,
+    base: { kind: "version", id: guidaPublished.id, label: guidaPublished.label },
+    baseFiles: guidaNew,
+    files: GENERALE_SAMPLE.guida("2027/28"),
+    createdBy: direttivo,
+  })
+
+  const lineeGuida = sampleDocument({
+    key: "linee-guida-direttivo",
+    title: "Linee guida interne del Direttivo",
+    kind: "privato",
+    storage: "private",
+    template: "generale",
+    procedureKey: "documento",
+    entry: "main.tex",
+  })
+  const lineeTemplate = skeletonFiles("generale", lineeGuida.title, lineeGuida.key, "2026-10-02").files
+  const lineeText = GENERALE_SAMPLE.lineeGuida()
+  const lineeStart = version({
+    id: "v-linee-modello",
+    documentKey: lineeGuida.key,
+    label: "Modello",
+    origin: "template",
+    publishedAt: "2026-10-02T18:00:00.000Z",
+    files: lineeTemplate,
+    entry: lineeGuida.entry,
+  })
+  const lineePublished = version({
+    id: "v-linee-2026",
+    documentKey: lineeGuida.key,
+    label: "v2026.10.20",
+    origin: "draft",
+    publishedAt: "2026-10-20T19:15:00.000Z",
+    draftId: "linee-prima",
+    files: lineeText,
+    entry: lineeGuida.entry,
+  })
+  const lineeDraft = draft({
+    id: "linee-prima",
+    documentKey: lineeGuida.key,
+    title: "Prima stesura",
+    state: "pubblicata",
+    entry: lineeGuida.entry,
+    base: { kind: "version", id: lineeStart.id, label: lineeStart.label },
+    baseFiles: lineeTemplate,
+    files: lineeText,
+    createdBy: segretario,
+    createdAt: "2026-10-03T09:00:00.000Z",
+    updatedAt: "2026-10-20T19:15:00.000Z",
+    stateChangedAt: "2026-10-20T19:15:00.000Z",
+    emanatedAt: "2026-10-20T19:15:00.000Z",
+    versionId: lineePublished.id,
+    emanation: { startedAt: Date.parse("2026-10-20T19:15:00.000Z"), startedBy: segretario, delegaId: null },
+  })
+
+  const bilancio = sampleDocument({
+    key: "bilancio-consuntivo-2025",
+    title: "Bilancio consuntivo 2025",
+    kind: "privato",
+    storage: "private",
+    origin: "upload",
+    entry: "",
+  })
+  const bilancioVersions = UPLOAD_SAMPLES.bilancio.map((sample, index) =>
+    version({
+      id: `v-bilancio-${index + 1}`,
+      documentKey: bilancio.key,
+      label: sample.label,
+      origin: "upload",
+      publishedAt: sample.publishedAt,
+      files: sample.files,
+      entry: sample.entry,
+    })
+  )
+
+  const consultazione = CONSULTAZIONE_SAMPLES.map((sample) => ({
+    document: sampleDocument({
+      key: sample.key,
+      title: sample.title,
+      kind: "consultazione",
+      storage: "repo",
+      entry: sample.entry,
+    }),
+    version: version({
+      id: `v-${sample.key}-import`,
+      documentKey: sample.key,
+      label: "import 9c41e07",
+      origin: "import",
+      publishedAt: "2025-09-30T10:00:00.000Z",
+      files: sample.files,
+      entry: sample.entry,
+    }),
+  }))
+
+  const creating = sampleDocument({
+    key: "regolamento-eventi",
+    title: "Regolamento degli eventi",
+    kind: "regolamento",
+    storage: "repo",
+    template: "regolamento",
+    procedureKey: "documento",
+    status: "creating",
+    creation: {
+      prNumber: 58,
+      prUrl: `${REPOSITORY}/pull/58`,
+      error: null,
+      startedAt: new Date(Date.now() - 40 * 60_000).toISOString(),
+      startedBy: segretario,
+    },
+  })
+  const failed = sampleDocument({
+    key: "carta-dei-servizi",
+    title: "Carta dei servizi",
+    kind: "generale",
+    storage: "repo",
+    template: "generale",
+    procedureKey: "documento",
+    status: "failed",
+    creation: {
+      prNumber: 55,
+      prUrl: `${REPOSITORY}/pull/55`,
+      error: "La pull request #55 è stata chiusa senza unirla.",
+      startedAt: daysAgo(3),
+      startedBy: presidente,
+    },
+  })
+
+  return {
+    documents: [guida, lineeGuida, bilancio, ...consultazione.map((entry) => entry.document), creating, failed],
+    versions: [
+      guidaPublished,
+      guidaImport,
+      lineePublished,
+      lineeStart,
+      ...bilancioVersions.reverse(),
+      ...consultazione.map((entry) => entry.version),
+    ],
+    drafts: [guidaDraftOpen, guidaDraftPublished, lineeDraft],
   }
 }
 
@@ -381,20 +720,177 @@ function seedComments(draft: StoredDraft, document: Y.Doc) {
   }
 }
 
+// Documents.
+
+function documentOf(documentKey: string): StoredDocument {
+  activateCreated()
+  return store().documents.find((document) => document.key === documentKey) ?? refuse("Documento non trovato.")
+}
+
+function procedureOf(documentKey: string): Procedure {
+  const key = documentOf(documentKey).procedureKey
+  return key ? PROCEDURES[key] : refuse("Questo documento è di sola consultazione.")
+}
+
+function versionSummary({ files: _files, entry: _entry, pdf: _pdf, ...summary }: StoredVersion): VersionSummary {
+  return summary
+}
+
+/** Newest first. */
+function versionsOf(documentKey: string) {
+  return store()
+    .versions.filter((version) => version.documentKey === documentKey)
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+}
+
+/** `v2026.11.22`, then `v2026.11.22.2`, … the same day, as the backend labels a version. */
+function nextLabel(document: StoredDocument) {
+  const stem = `v${today().replaceAll("-", ".")}`
+  const labels = new Set(versionsOf(document.key).map((version) => version.label))
+  for (let n = 1; ; n++) {
+    const label = n === 1 ? stem : `${stem}.${n}`
+    if (!labels.has(label)) return label
+  }
+}
+
+/** Why no draft can start from this document, or `null`. */
+function notEditableReason(document: StoredDocument) {
+  if (document.status !== "active") return "Il documento è ancora in creazione."
+  if (document.origin === "upload") return "Un PDF caricato non si modifica: carica una nuova versione."
+  if (!document.procedureKey) return "Questo documento è di sola consultazione: si modifica solo nel repository."
+  return null
+}
+
+/** Repository documents created here: their pull request "merges" after `CREATION_MS`, with the skeleton as version. */
+function activateCreated() {
+  for (const document of store().documents) {
+    if (document.status !== "creating" || document.activateAt === null || Date.now() < document.activateAt) continue
+    document.status = "active"
+    document.creation = null
+    document.activateAt = null
+    const { files } = skeletonFiles(document.template ?? "generale", document.title, document.key, today())
+    store().versions.unshift({
+      id: newId(),
+      documentKey: document.key,
+      tag: null,
+      label: `import ${randomBytes(4).toString("hex").slice(0, 7)}`,
+      origin: "import",
+      delibera: null,
+      publishedAt: now(),
+      releaseUrl: null,
+      pdfAvailable: true,
+      draftId: null,
+      files,
+      entry: document.entry,
+    })
+  }
+}
+
+/**
+ * The key is free across repository and private documents (a failed creation may be replaced by a repository one),
+ * and a repository document's tag prefix can't be confused with another's. Returns the failed document it replaces.
+ */
+function checkNewKey(key: string, storage: DocumentStorage) {
+  activateCreated()
+  const existing = store().documents.find((document) => document.key === key) ?? null
+  if (existing && !(existing.status === "failed" && storage === "repo"))
+    refuse("Esiste già un documento con questa chiave.")
+  if (storage === "repo") {
+    const prefix = `${key}-`
+    const clash = store().documents.find(
+      (document) =>
+        document.key !== key &&
+        document.storage === "repo" &&
+        (document.tagPrefix.startsWith(prefix) || prefix.startsWith(document.tagPrefix))
+    )
+    if (clash) refuse(`La chiave si confonde con i tag di «${clash.key}» (${clash.tagPrefix}…): scegline un'altra.`)
+  }
+  return existing
+}
+
+const PDF_MAGIC = "%PDF-"
+const MAX_UPLOAD = 20 * 1024 * 1024
+
+async function readPdf(file: File) {
+  if (file.size > MAX_UPLOAD) refuse("Il PDF supera i 20 MB.")
+  const bytes = Buffer.from(await file.arrayBuffer())
+  if (bytes.subarray(0, PDF_MAGIC.length).toString() !== PDF_MAGIC) refuse("Il file non è un PDF.")
+  return bytes
+}
+
+function insertUpload(document: StoredDocument, pdf: Buffer): StoredVersion {
+  const version: StoredVersion = {
+    id: newId(),
+    documentKey: document.key,
+    tag: null,
+    label: nextLabel(document),
+    origin: "upload",
+    delibera: null,
+    publishedAt: now(),
+    releaseUrl: null,
+    pdfAvailable: true,
+    draftId: null,
+    files: {},
+    entry: "",
+    pdf,
+  }
+  store().versions.unshift(version)
+  return version
+}
+
 // Structure, as the backend's parser reports it.
 
-function structureOf(files: Files): Structure {
+/**
+ * A document's source globs, as documents.json would give them: the entry and `<dir>/*.tex` for each folder of its
+ * latest version (`*.tex` when every file is at the top).
+ */
+function sourcesOf(documentKey: string): string[] {
+  const latest = versionsOf(documentKey)[0]
+  if (!latest) return []
+  const dirs = new Set(
+    Object.keys(latest.files)
+      .filter((path) => path.includes("/"))
+      .map((path) => path.slice(0, path.lastIndexOf("/")))
+  )
+  return dirs.size ? [latest.entry, ...[...dirs].sort().map((dir) => `${dir}/*.tex`)] : ["*.tex"]
+}
+
+/** The text of a draft as the backend checks it: the parser's problems and files outside the document's sources. */
+function draftStructure(draft: { files: Files; entry: string; documentKey: string }): Structure {
+  const structure = structureOf(draft.files, draft.entry)
+  const sources = sourcesOf(draft.documentKey)
+  const stray = sources.length
+    ? Object.keys(draft.files)
+        .filter((path) => !allowedPath(path, sources))
+        .sort()
+    : []
+  if (!stray.length) return structure
+  const allowed = sources.map((glob) => `«${glob}»`).join(", ")
+  const issues: ValidationIssue[] = stray.map((file) => ({
+    file,
+    line: 1,
+    column: 1,
+    offset: 0,
+    endOffset: 0,
+    severity: "error",
+    code: "stray_file",
+    message: `Il file «${file}» non è tra i sorgenti del documento (${allowed}): rinominalo o eliminalo.`,
+  }))
+  return { ...structure, parses: false, issues: [...issues, ...structure.issues] }
+}
+
+function structureOf(files: Files, entry = ENTRY_FILE): Structure {
   const root: StructureNode = {
     id: "documento",
     kind: "documento",
     number: null,
     label: "Documento",
     title: null,
-    file: ENTRY_FILE,
+    file: entry,
     range: { start: 0, end: 0 },
     children: [],
   }
-  const { nodes, problems } = parse(files)
+  const { nodes, problems } = parse(files, entry)
   const issues: ValidationIssue[] = problems.map((problem) => {
     const before = (files[problem.file] ?? "").slice(0, problem.from).split("\n")
     return {
@@ -444,7 +940,14 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     ) ?? null
   const mayRectify = (documentKey: string) => can("regulations:rectify") || delegaFor(documentKey) !== null
 
+  const isCreator = (draft: StoredDraft) => draft.createdBy.id === me.id
+
   function roleOf(draft: StoredDraft): DraftRole | null {
+    // A secret draft: its creator and the members they added, whatever their permissions.
+    if (draft.secret)
+      return isCreator(draft)
+        ? "editor"
+        : (draft.assignments.find((assignment) => assignment.user.id === me.id)?.role ?? null)
     if (can("regulations:write")) return "editor"
     const assigned = draft.assignments.find((assignment) => assignment.user.id === me.id)?.role
     if (assigned) return assigned
@@ -471,11 +974,52 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     )
   }
 
+  /** As the backend: a secret draft's procedure stays closed, and only its creator manages it. */
   function capabilities(draft: StoredDraft, role: DraftRole): Capabilities {
-    const editable = PROCEDURE.states.find((state) => state.key === draft.state)?.editable ?? false
-    const emanating = draft.emanation !== null && draft.state !== "emanata"
-    const parses = structureOf(draft.files).parses
+    const open = procedureCapabilities(draft, role)
+    if (!draft.secret) return { ...open, reveal: false }
+    return {
+      ...open,
+      assign: isCreator(draft) && !isFinal(draft.state),
+      merge: open.merge && role === "editor",
+      transitions: open.transitions.map((transition) => ({ ...transition, blockedBy: SECRET_BLOCK })),
+      approve: false,
+      emanate: false,
+      emanateBlockedBy: open.emanate || open.emanateBlockedBy ? SECRET_BLOCK : null,
+      regenerateDiff: false,
+      delete: isCreator(draft) && draft.state === "bozza" && draft.emanation === null,
+      rename: role === "editor" && !isFinal(draft.state),
+      reveal: isCreator(draft),
+    }
+  }
+
+  function procedureCapabilities(draft: StoredDraft, role: DraftRole): Omit<Capabilities, "reveal"> {
+    const procedure = procedureOf(draft.documentKey)
+    const editable = procedure.states.find((state) => state.key === draft.state)?.editable ?? false
+    const emanating = draft.emanation !== null && !isFinal(draft.state)
+    const parses = draftStructure(draft).parses
     const writer = can("regulations:write")
+    if (procedure.key === "documento") {
+      // bozza → pubblicata in one step, "Pubblica", by Presidente or Segretario; nothing to approve or notify.
+      const publishable = can("regulations:manage") && draft.state === "bozza" && draft.emanation === null
+      return {
+        edit: role === "editor" && editable && !emanating,
+        comment: role !== "viewer" && !isFinal(draft.state),
+        assign: writer && !isFinal(draft.state),
+        merge: writer && draft.state === "bozza",
+        transitions: [],
+        approve: false,
+        emanate: publishable && parses,
+        emanateBlockedBy:
+          publishable && !parses ? "Il testo non è valido: correggi gli errori prima di pubblicare." : null,
+        rectify: false,
+        regenerateDiff: false,
+        delete: writer && draft.state === "bozza" && draft.emanation === null,
+        rename: role === "editor" && !isFinal(draft.state),
+        snapshot: role === "editor",
+        restore: role === "editor" && editable && !emanating,
+      }
+    }
     const transitions: Capabilities["transitions"] = []
     if (draft.kind === "modifica" && writer && draft.state === "bozza") {
       const other = inApproval(draft)
@@ -514,7 +1058,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     return {
       edit: role === "editor" && editable && !emanating,
       comment: role !== "viewer",
-      assign: writer && draft.state !== "emanata",
+      assign: writer && !isFinal(draft.state),
       merge: writer && draft.state === "bozza",
       transitions,
       approve,
@@ -531,10 +1075,17 @@ function api(viewer: RegulationsViewer): RegulationsApi {
           ? "Il testo non è valido: correggi gli errori prima di emanare la rettifica."
           : null,
       delete: (writer || (draft.kind === "rettifica" && draft.createdBy.id === me.id)) && draft.state === "bozza",
-      rename: (writer || (draft.kind === "rettifica" && draft.createdBy.id === me.id)) && draft.state !== "emanata",
+      rename: (writer || (draft.kind === "rettifica" && draft.createdBy.id === me.id)) && !isFinal(draft.state),
       snapshot: role === "editor",
       restore: role === "editor" && editable && !emanating,
     }
+  }
+
+  /** Its members may not be this draft's. */
+  function secretBase(base: DraftBase): DraftBase {
+    if (base.kind !== "draft") return base
+    const parent = store().drafts.find((candidate) => candidate.id === base.id)
+    return parent?.secret ? { ...base, title: "Bozza segreta" } : base
   }
 
   function summary(draft: StoredDraft, role: DraftRole): DraftSummary {
@@ -544,13 +1095,14 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       title: draft.title,
       kind: draft.kind,
       state: draft.state,
-      base: draft.base,
+      base: secretBase(draft.base),
       myRole: role,
+      secret: draft.secret,
       createdBy: draft.createdBy,
       createdAt: draft.createdAt,
       updatedAt: draft.updatedAt,
       stateChangedAt: draft.stateChangedAt,
-      parses: structureOf(draft.files).parses,
+      parses: draftStructure(draft).parses,
     }
   }
 
@@ -566,7 +1118,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
         overdue: draft.notifiedAt === null && Date.parse(dueAt) < Date.now(),
       })
     }
-    if (draft.emanatedAt)
+    if (draft.emanatedAt && draft.kind === "modifica" && procedureOf(draft.documentKey).key === "rri")
       result.push({
         key: "opposizione",
         label: "Opposizioni e ricorsi",
@@ -595,49 +1147,61 @@ function api(viewer: RegulationsViewer): RegulationsApi {
 
   /** Emanation advances with time: one step every few seconds, then the version exists and the draft is emanata. */
   function settle(draft: StoredDraft) {
-    if (!draft.emanation || draft.state === "emanata") return
+    if (!draft.emanation || isFinal(draft.state)) return
     const steps = emanationSteps(draft)
     if (steps.every((step) => step.state === "done" || step.state === "skipped")) {
+      const document = documentOf(draft.documentKey)
+      const procedure = procedureOf(draft.documentKey)
       const versions = store().versions
-      const base = `${draft.documentKey}-v${today().replaceAll("-", ".")}`
-      const sameDay = versions.filter((version) => version.tag?.startsWith(base)).length
-      const tag = sameDay ? `${base}.${sameDay + 1}` : base
+      // A repository document is tagged and released; a private one only gets the next label of the day.
+      const label = nextLabel(document)
+      const tag = document.storage === "repo" ? `${document.tagPrefix}${label}` : null
       const version: StoredVersion = {
         id: newId(),
         documentKey: draft.documentKey,
         tag,
-        label: tag.replace(`${draft.documentKey}-`, ""),
-        delibera: draft.delibera,
+        label,
+        origin: "draft",
+        delibera: procedure.key === "rri" ? draft.delibera : null,
         publishedAt: now(),
-        releaseUrl: `https://github.com/PoliNetworkOrg/legal/releases/tag/${tag}`,
+        releaseUrl: tag ? `${REPOSITORY}/releases/tag/${tag}` : null,
         pdfAvailable: true,
         draftId: draft.id,
         files: draft.files,
+        entry: draft.entry,
       }
       versions.unshift(version)
       draft.versionId = version.id
       draft.emanatedAt = now()
-      draft.notifiedAt = now()
-      setState(draft, "emanata", "Emanata")
+      if (procedure.key === "rri") draft.notifiedAt = now()
+      const final = procedure.key === "rri" ? "emanata" : "pubblicata"
+      setState(draft, final, procedure.states.find((state) => state.key === final)?.label ?? final)
     }
   }
 
   function emanationSteps(draft: StoredDraft): Emanation["steps"] {
     const started = draft.emanation?.startedAt ?? Date.now()
-    const done = draft.state === "emanata"
+    const done = isFinal(draft.state)
+    const document = documentOf(draft.documentKey)
+    const documento = document.procedureKey === "documento"
     const keys = ["pr", "checks", "merge", "tag", "release", "email", "telegram"] as const
     return keys.map((key, index) => {
+      // A documento notifies nobody; a private one never leaves the backend, so every step is skipped.
+      if ((documento && (key === "email" || key === "telegram")) || document.storage === "private")
+        return { key, state: "skipped" as const, url: null, at: null, detail: null }
       const finishedAt = started + (index + 1) * STEP_MS
       const state =
         done || Date.now() >= finishedAt ? "done" : Date.now() >= finishedAt - STEP_MS ? "running" : "pending"
-      const tag = `${draft.documentKey}-v${today().replaceAll("-", ".")}`
+      const tag =
+        store().versions.find((version) => version.id === draft.versionId)?.tag ??
+        `${document.tagPrefix}${nextLabel(document)}`
       const url =
         state === "pending"
           ? null
           : key === "pr" || key === "checks" || key === "merge"
-            ? "https://github.com/PoliNetworkOrg/legal/pull/42"
-            : key === "tag" || key === "release"
-              ? `https://github.com/PoliNetworkOrg/legal/releases/tag/${tag}`
+            ? `${REPOSITORY}/pull/42`
+            : (key === "tag" || key === "release") && tag
+              ? `${REPOSITORY}/releases/tag/${tag}`
               : null
       const detail =
         state !== "running"
@@ -716,16 +1280,20 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       return {
         assignedDrafts: drafts.length,
         deleghe: store().deleghe.filter((delega) => delega.active && delega.grantee.id === me.id).length,
-        rectifiable: mayRectify(DOCUMENT_KEY)
-          ? [
-              {
-                documentKey: DOCUMENT_KEY,
-                title: "Raccolta dei Regolamenti Interni",
-                latestVersionId: store().versions[0]?.id ?? null,
-                latestVersionLabel: store().versions[0]?.label ?? null,
-              },
-            ]
-          : [],
+        // Rettifiche exist only in the rri procedure.
+        rectifiable: store()
+          .documents.filter(
+            (document) => document.procedureKey === "rri" && document.status === "active" && mayRectify(document.key)
+          )
+          .map((document) => {
+            const [latest] = versionsOf(document.key)
+            return {
+              documentKey: document.key,
+              title: document.title,
+              latestVersionId: latest?.id ?? null,
+              latestVersionLabel: latest?.label ?? null,
+            }
+          }),
         permissions: {
           read: can("regulations:read"),
           write: can("regulations:write"),
@@ -736,26 +1304,119 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     },
     async listDocuments() {
       if (!can("regulations:read")) refuse("Missing permission")
-      return [documentInfo()]
+      activateCreated()
+      return store().documents.map(documentInfo)
     },
-    async getDocument() {
+    async getDocument({ documentKey }) {
       if (!can("regulations:read")) refuse("Missing permission")
-      return documentInfo()
+      return documentInfo(documentOf(documentKey))
     },
-    async syncDocuments() {
+    async syncDocuments(): Promise<SyncResult> {
       if (!can("regulations:manage")) refuse("Missing permission")
+      activateCreated()
+      // The sample repository hasn't changed since the first import; one manifest entry clashes with a private key.
+      return {
+        documents: store()
+          .documents.filter((document) => document.storage === "repo" && document.status === "active")
+          .map((document) => document.key),
+        imported: [],
+        updated: [],
+        skipped: [{ key: "bilancio-consuntivo-2025", reason: "La chiave è già di un documento privato." }],
+      }
     },
-    async listVersions() {
+    async listTemplates() {
       if (!can("regulations:read")) refuse("Missing permission")
-      return store().versions.map(({ files, ...version }) => (void files, version))
+      return TEMPLATES
+    },
+    async createDocument({ key, title, template, storage }) {
+      if (!can("regulations:manage")) refuse("Solo Presidente e Segretario creano documenti.")
+      if (!TEMPLATES.some((candidate) => candidate.key === template))
+        refuse(`Il modello «${template}» non esiste in documents.json.`)
+      const replaces = checkNewKey(key, storage)
+      const kind: DocumentKind =
+        storage === "private" ? "privato" : template === "regolamento" ? "regolamento" : "generale"
+      const skeleton = skeletonFiles(template, title, key, today())
+      const document: StoredDocument = {
+        key,
+        title,
+        kind,
+        storage,
+        origin: "latex",
+        template,
+        procedureKey: "documento",
+        status: storage === "repo" ? "creating" : "active",
+        creation:
+          storage === "repo"
+            ? {
+                prNumber: 59 + store().documents.filter((candidate) => candidate.creation).length,
+                prUrl: `${REPOSITORY}/pull/${59 + store().documents.filter((candidate) => candidate.creation).length}`,
+                error: null,
+                startedAt: now(),
+                startedBy: me,
+              }
+            : null,
+        tagPrefix: `${key}-`,
+        entry: skeleton.entry,
+        activateAt: storage === "repo" ? Date.now() + CREATION_MS : null,
+      }
+      store().documents = [...store().documents.filter((candidate) => candidate !== replaces), document]
+      if (storage === "private")
+        store().versions.unshift({
+          id: newId(),
+          documentKey: key,
+          tag: null,
+          label: "Modello",
+          origin: "template",
+          delibera: null,
+          publishedAt: now(),
+          releaseUrl: null,
+          pdfAvailable: true,
+          draftId: null,
+          files: skeleton.files,
+          entry: skeleton.entry,
+        })
+      return documentInfo(document)
+    },
+    async uploadDocument({ key, title, file }) {
+      if (!can("regulations:manage")) refuse("Solo Presidente e Segretario caricano documenti.")
+      const pdf = await readPdf(file)
+      checkNewKey(key, "private")
+      const document: StoredDocument = {
+        key,
+        title,
+        kind: "privato",
+        storage: "private",
+        origin: "upload",
+        template: null,
+        procedureKey: null,
+        status: "active",
+        creation: null,
+        tagPrefix: `${key}-`,
+        entry: "",
+        activateAt: null,
+      }
+      store().documents.push(document)
+      insertUpload(document, pdf)
+      return documentInfo(document)
+    },
+    async uploadVersion({ documentKey, file }) {
+      if (!can("regulations:manage")) refuse("Solo Presidente e Segretario caricano documenti.")
+      const document = documentOf(documentKey)
+      if (document.origin !== "upload") refuse("Si carica una nuova versione solo dei documenti caricati come PDF.")
+      return versionSummary(insertUpload(document, await readPdf(file)))
+    },
+    async listVersions({ documentKey }) {
+      if (!can("regulations:read")) refuse("Missing permission")
+      return versionsOf(documentKey).map(versionSummary)
     },
     async versionPdf({ versionId }) {
+      if (!can("regulations:read")) refuse("Missing permission")
       const version =
         store().versions.find((candidate) => candidate.id === versionId) ?? refuse("Versione non trovata.")
-      const service = await collab()
-      const pdf = await service.compileOnce(`version-${version.id}`, ENTRY_FILE, version.files)
+      const pdf =
+        version.pdf ?? (await (await collab()).compileOnce(`version-${version.id}`, version.entry, version.files))
       return {
-        fileName: `${version.tag ?? version.label}.pdf`,
+        fileName: `${version.documentKey}-${(version.tag ?? version.label).replace(/[^\w.-]+/g, "_")}.pdf`,
         contentType: "application/pdf",
         base64: pdf.toString("base64"),
       }
@@ -766,7 +1427,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
           (draft) =>
             !draft.deleted &&
             (documentKey === undefined || draft.documentKey === documentKey) &&
-            (includeClosed || draft.state !== "emanata")
+            (includeClosed || !isFinal(draft.state))
         )
         .flatMap((draft) => {
           const role = roleOf(draft)
@@ -780,7 +1441,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       const { draft, role } = visible(draftId)
       const emanationStatus = !draft.emanation
         ? "none"
-        : draft.state === "emanata"
+        : isFinal(draft.state)
           ? "done"
           : emanationSteps(draft).some((step) => step.state === "running" && step.detail)
             ? "waiting"
@@ -788,7 +1449,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       return {
         ...summary(draft, role),
         can: capabilities(draft, role),
-        procedure: PROCEDURE,
+        procedure: procedureOf(draft.documentKey),
         deadlines: deadlines(draft),
         delibera: draft.delibera,
         diffStatus: diffOf(draft).status,
@@ -801,17 +1462,24 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     },
     async draftFiles({ draftId }) {
       const { draft } = visible(draftId)
-      return { files: draft.files, structure: structureOf(draft.files) }
+      return { files: draft.files, structure: draftStructure(draft), sources: sourcesOf(draft.documentKey) }
     },
-    async createDraft({ documentKey, title, from, kind = "modifica" }) {
+    async createDraft({ documentKey, title, from, kind = "modifica", secret = false }) {
+      const document = documentOf(documentKey)
+      const blocked = notEditableReason(document)
+      if (blocked) refuse(blocked)
+      if (kind === "rettifica" && document.procedureKey !== "rri")
+        refuse("La rettifica esiste solo per i documenti con la procedura dei regolamenti (RRI).")
       if (kind === "rettifica" ? !mayRectify(documentKey) : !can("regulations:write")) refuse("Missing permission")
       const source =
         from.kind === "version"
-          ? store().versions.find((version) => version.id === from.id)
-          : store().drafts.find((draft) => draft.id === from.id && !draft.deleted)
+          ? store().versions.find((version) => version.id === from.id && version.documentKey === documentKey)
+          : store().drafts.find(
+              (draft) => draft.id === from.id && !draft.deleted && draft.documentKey === documentKey && roleOf(draft)
+            )
       if (!source) return refuse("La base scelta non esiste.")
-      const latest = store().versions[0]
-      if (kind === "rettifica" && from.id !== latest.id) refuse("Una rettifica parte dall'ultima versione emanata.")
+      const [latest] = versionsOf(documentKey)
+      if (kind === "rettifica" && from.id !== latest?.id) refuse("Una rettifica parte dall'ultima versione emanata.")
       const id = newId()
       const created: StoredDraft = {
         id,
@@ -823,15 +1491,17 @@ function api(viewer: RegulationsViewer): RegulationsApi {
           from.kind === "version"
             ? { kind: "version", id: from.id, label: "label" in source ? source.label : from.id }
             : { kind: "draft", id: from.id, title: "title" in source ? source.title : from.id },
+        // A draft from a secret draft would show its text: it is secret too.
+        secret: secret || ("secret" in source && source.secret),
         createdBy: me,
         createdAt: now(),
         updatedAt: now(),
         stateChangedAt: now(),
         deleted: false,
-        entry: ENTRY_FILE,
+        entry: document.entry,
         files: source.files,
         baseFiles: source.files,
-        assignments: [],
+        assignments: [{ user: me, role: "editor", assignedBy: me, assignedAt: now() }],
         comments: [],
         seedComments: [],
         snapshots: [],
@@ -861,6 +1531,13 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       if (!capabilities(draft, role).rename) refuse("Non puoi rinominare questa bozza.")
       draft.title = title
     },
+    async revealDraft({ draftId }) {
+      const { draft } = visible(draftId)
+      if (!draft.secret) refuse("La bozza è già visibile.")
+      if (!isCreator(draft)) refuse("Solo chi ha creato la bozza segreta la rende visibile.")
+      draft.secret = false
+      draft.updatedAt = now()
+    },
     async deleteDraft({ draftId }) {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).delete) refuse("Solo una bozza può essere eliminata.")
@@ -889,7 +1566,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
         draft.delibera = null
         draft.approvedAt = null
       }
-      setState(draft, to, PROCEDURE.states.find((state) => state.key === to)?.label ?? to)
+      setState(draft, to, procedureOf(draft.documentKey).states.find((state) => state.key === to)?.label ?? to)
     },
     async listAssignments({ draftId }) {
       return visible(draftId).draft.assignments
@@ -897,6 +1574,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     async setAssignment({ draftId, userId, role: assigned }) {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).assign) refuse("Non puoi assegnare questa bozza.")
+      if (draft.secret && userId === draft.createdBy.id) refuse(CREATOR_STAYS)
       const target = [...FAKE_USERS, { id: AGENT_ID, name: "Preview Agent", email: "agent@polinetwork.org" }].find(
         (candidate) => candidate.id === userId
       )
@@ -908,6 +1586,7 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     async removeAssignment({ draftId, userId }) {
       const { draft, role } = visible(draftId)
       if (!capabilities(draft, role).assign) refuse("Non puoi assegnare questa bozza.")
+      if (draft.secret && userId === draft.createdBy.id) refuse(CREATOR_STAYS)
       draft.assignments = draft.assignments.filter((assignment) => assignment.user.id !== userId)
     },
     async searchUsers({ q }) {
@@ -1059,14 +1738,21 @@ function api(viewer: RegulationsViewer): RegulationsApi {
       if (!capabilities(draft, role).regenerateDiff) refuse("Il diff non può più essere rigenerato.")
       draft.diff = { generation: (draft.diff?.generation ?? 0) + 1, requestedAt: Date.now(), by: me }
     },
-    async diffPdf() {
-      return refuse("Il PDF delle differenze lo genera il backend: non è disponibile in modalità agente.")
+    async diffPdf({ draftId }) {
+      // The backend typesets the differences; here the draft's own text stands in, so the viewer has a real PDF.
+      const { draft } = visible(draftId)
+      const pdf = await (await collab()).compileOnce(`diff-${draft.id}`, ENTRY_FILE, draft.files)
+      return {
+        fileName: `${draft.title} - differenze.pdf`,
+        contentType: "application/pdf",
+        base64: pdf.toString("base64"),
+      }
     },
     async getEmanation({ draftId }) {
       const { draft } = visible(draftId)
       if (!draft.emanation) return null
       const steps = emanationSteps(draft)
-      const done = draft.state === "emanata"
+      const done = isFinal(draft.state)
       return {
         draftId,
         status: done ? "done" : steps.some((step) => step.state === "running" && step.detail) ? "waiting" : "running",
@@ -1104,6 +1790,8 @@ function api(viewer: RegulationsViewer): RegulationsApi {
           delegaId: delega?.id ?? null,
         }
       draft.emanation = { startedAt: Date.now(), startedBy: me, delegaId: delega?.id ?? null }
+      // A private documento is published at once (every step skipped).
+      settle(draft)
       void collab().then((service) => service.notifyState(draft.id, draft.state))
     },
     async retryEmanation() {},
@@ -1151,20 +1839,18 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     return refuse("Commento non trovato.")
   }
 
-  function documentInfo(): DocumentInfo {
-    const drafts = store().drafts.filter((draft) => !draft.deleted && draft.documentKey === DOCUMENT_KEY)
+  function documentInfo(document: StoredDocument): DocumentInfo {
+    const drafts = store().drafts.filter((draft) => !draft.deleted && draft.documentKey === document.key)
     for (const draft of drafts) settle(draft)
     const current = drafts.find((draft) => draft.state === "in_approvazione" || draft.state === "approvata")
-    const [latest] = store().versions
-    const { files, ...latestVersion } = latest
-    void files
+    const [latest] = versionsOf(document.key)
+    const { entry: _entry, activateAt: _activateAt, ...info } = document
     return {
-      key: DOCUMENT_KEY,
-      title: "Raccolta dei Regolamenti Interni",
-      tagPrefix: "rri-v",
-      procedure: PROCEDURE,
-      latestVersion,
-      openDrafts: drafts.filter((draft) => draft.state !== "emanata").length,
+      ...info,
+      procedure: document.procedureKey ? PROCEDURES[document.procedureKey] : null,
+      editable: notEditableReason(document) === null,
+      latestVersion: latest ? versionSummary(latest) : null,
+      openDrafts: drafts.filter((draft) => !draft.secret && !isFinal(draft.state)).length,
       inApproval: current ? { id: current.id, title: current.title } : null,
     }
   }
@@ -1265,9 +1951,9 @@ function api(viewer: RegulationsViewer): RegulationsApi {
     }
     const blockedBy = !capabilities(target, role).merge
       ? "Si può unire solo in una bozza che puoi modificare."
-      : !structureOf(target.files).parses
+      : !structureOf(target.files, target.entry).parses
         ? "Il testo di questa bozza non è valido: correggi gli errori prima di unire."
-        : !structureOf(theirsFiles).parses
+        : !structureOf(theirsFiles, target.entry).parses
           ? `Il testo di ${sourceLabel} non è valido: va corretto prima di unirlo.`
           : null
     return {

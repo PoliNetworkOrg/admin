@@ -19,8 +19,8 @@ Login and onboarding pages use the same tokens but not the shell.
 4. **Borders separate; shadows float.** Static surfaces (cards, tables, nav) get a 1px line; only layers above the page
    (popover, menu, dialog, sheet, toast, drag ghost) cast a shadow.
 5. **Motion confirms, never decorates.** Animate only changes the user caused, mostly on `transform`/`opacity`, short
-   and ease-out. Switching pages, sorting, filtering, paging and keyboard moves never animate; the one exception is the
-   panel sliding in or out (§6).
+   and ease-out. Switching pages, sorting, filtering, paging and keyboard moves never animate; the exceptions are the
+   panel sliding in or out (§6) and the page width growing or shrinking with the full-width toggle (§3).
 
 ## 2. Shell and wayfinding
 
@@ -130,7 +130,10 @@ actions (theme, account, sign out).
 ## 3. Page templates
 
 Wrap every page body in `PageContent` and give `PageBar` the same `width` (both default to `wide`), so header and content
-share edges. All template names use the same 1280px maximum content width on desktop. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
+share edges. All template names use the same 1280px maximum content width on desktop. The full-width toggle (Maximize /
+Minimize, pinned to the column's top-right corner, shown once the column is 1400px wide) drops that maximum on every page
+until it is pressed again; it is remembered in the browser and applied before the first paint, and header and content
+animate their shared edges together. Every route's `pendingComponent` renders the same `PageBar` (deep pages: with their `back`), so the title
 does not move when data arrives.
 
 | Template        | `width`    | Used by                                                        |
@@ -271,7 +274,7 @@ because they animate height; `skeleton` by the primitives' skeletons.
 
 **Tables (`DataTable`).** 12px radius surface, sentence-case 12px headers (42px, sticky), 14px cells in 52px rows, a
 visible "Actions" header. Sortable headers are buttons with `aria-sort`; an unsorted column shows its sort icon only on
-hover or focus. The "Actions" header is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
+hover or focus. The "Actions" header ("Azioni" with `locale="it"`, on the Regolamenti pages) is right-aligned over the actions. Numeric quantities right-aligned; identifiers mono, left-aligned. A clickable row is focusable, opens on
 `Enter`/`Space`, has `aria-label="Open {name}"` and its first cell is a real link (`rowHref`, which also opens the row on click unless `onRowClick` says otherwise; clicks on links, buttons and fields inside the row stay theirs; return `null` for rows
 that go nowhere). In stacked cards every value after the first carries its column name, visually hidden, so screen
 readers keep the context the hidden header row gave. Only the first column may carry a 12px secondary line; people get
@@ -368,7 +371,8 @@ Grant date/time fields use the calendar and time wheels on touch devices too, wi
 **Alerts and toasts.** `InlineAlert` for what persists or needs action: load errors, dialog submit errors, partial
 saves. It defaults to `tone="danger"` and `role="alert"`, so pass another tone for notices that aren't errors. Toasts
 (`appToast.success/info/warning/error`, never raw `toast`) confirm actions; untinted, tone on the icon only, at most
-three, never infinite, no "Undo".
+three, no "Undo", never infinite but for a task that runs in the background for minutes: `appToast.loading` until it
+ends, then its outcome in the same toast (`id`), an error kept until dismissed with its close button (`closeButton`).
 
 **Accessibility.** Every input has a label; focus is never removed; dialogs trap focus and return it to the trigger;
 when a row disappears (optimistic removal, confirmed delete) `useFocusAfterRemoval` keeps focus in the list. Color is
@@ -473,7 +477,7 @@ Rules that the templates above don't imply.
 - **Categories**: each fixed root is a card that opens it, with its first five sub-categories as chips carrying their
   group counts and "+ n more".
 - **Labels**: three kinds (categories, attributes, publications), each a `SectionHeading` with a one-line description:
-  the only section descriptions in the app, because users confuse the kinds.
+  with Regolamenti › Documenti, the only section descriptions in the app, because users confuse the kinds.
 - **Categories and tag pages**: a node lists only groups tagged with exactly that path. Category titles are 28px on
   mobile; sub-category cards show a dot and the count below the name. The Groups heading has the direct count, with
   full-width search below it on mobile. Publishing a tag acts on every
@@ -626,11 +630,27 @@ Rules that the templates above don't imply.
   The invite landing page (`/people/invite`) is a centred card outside the shell, like Unauthorized.
 - **Capo Admin** (Telegram) and **My area** (Account): self-service pages that open with `people:self` and a role on
   the person's own record; no personal emails of others, only phone, Telegram and PoliNetwork addresses.
-- **Regolamenti**: Documenti is a card per document; a document page lists its versions (the newest carries "In vigore",
-  each has its PDF, release, differences and "Nuova bozza da qui") and its drafts. Bozze adds "Il tuo accesso" for people
+- **Regolamenti**: Documenti has a section per kind (Regolamenti, Documenti generali, Privati, Sola consultazione),
+  each a `SectionHeading` with a one-line description, as on Labels and for the same reason: the kinds are easy to
+  confuse. A document is a card that opens it: a 36px tile with the kind's icon (a lock for private ones, a book for
+  sola consultazione), the title and one 12px line (version in force, open drafts) whose parts wrap whole. A
+  repository document still being created is a card that doesn't open: "In creazione" (brand) or "Non creato"
+  (danger), its pull request as an icon button and, when it failed, the error and "Crea di nuovo" (under the text on
+  phones). The document page shows the kind as a `Chip` ("Privato", "Sola consultazione") next to the title and one
+  sentence on its rules; sola consultazione puts "Apri il PDF" and "Scarica il PDF" in the page header and has no
+  drafts, an uploaded PDF has "Carica nuova versione" and no drafts. A document page lists its versions and its
+  drafts. A version row
+  is the label with "In vigore" on the newest (the label truncates, the badge never shrinks) over its origin as the
+  12px line, then Pubblicata and five action slots, empty where a version lacks one so the icons align: Apri il PDF,
+  Scarica il PDF, Differenze (RRI only), the GitHub release (repository documents) and "Nuova bozza da qui" (documents
+  that take drafts); the set of slots is the document's, so every row has the same. PDFs open in `PdfDialog`
+  (`pdf-dialog.tsx`): a dialog as tall as the window (a full-height sheet on phones) around eSign's pdf.js
+  `PdfViewer`, with the page counter, zoom and Download in its toolbar; the pages take the focus, so the keyboard
+  scrolls them, and Esc closes it. The differences page opens its PDF there, and the editor's preview has "Apri a tutta
+  altezza". Bozze adds "Il tuo accesso" for people
   admitted only by an assignment, who see no other section. The editor is a workspace (`PageContent fill`); the
   procedure page is a record with the states as a stepper, disabled transitions showing why, and the emanation's steps
-  live; the differences page is read-only (category summary, then old and new side by side for changed articles only).
+  live (a documento's card is "Pubblicazione", without the notices, and a private one's is a single sentence); the differences page is read-only (category summary, then old and new side by side for changed articles only).
   Deleghe is a list with a segmented Attive/Tutte filter.
 
 Transfer receipt previews use eSign’s `PdfViewer` in its compact mode.

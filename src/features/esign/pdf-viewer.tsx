@@ -1,7 +1,8 @@
 import { Minus, Plus, ScanLine } from "lucide-react"
-import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist"
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask, TextLayer } from "pdfjs-dist"
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { z } from "zod"
 
 import { IconButton, InlineAlert } from "@/components/primitives"
 import { cn } from "@/lib/utils"
@@ -53,6 +54,8 @@ type PdfViewerProps = {
   fill?: boolean
   /** The viewer's own words (page counter, zoom, errors) in Italian, for the Italian Regolamenti pages. */
   locale?: "en" | "it"
+  /** Extra classes on the frame, e.g. `min-h-0` in a dialog that must fit short windows. */
+  className?: string
 }
 
 const COPY = {
@@ -64,6 +67,8 @@ const COPY = {
     zoomOut: "Zoom out",
     zoomIn: "Zoom in",
     fit: "Fit width",
+    pages: "PDF pages",
+    goTo: (n: number) => `Go to page ${n}`,
   },
   it: {
     page: (n: number) => `Pagina ${n}`,
@@ -73,6 +78,8 @@ const COPY = {
     zoomOut: "Riduci",
     zoomIn: "Ingrandisci",
     fit: "Adatta alla larghezza",
+    pages: "Pagine del PDF",
+    goTo: (n: number) => `Vai alla pagina ${n}`,
   },
 } as const
 
@@ -98,6 +105,9 @@ function loadPdfjs() {
 /**
  * The dashboard's own PDF viewer (pdf.js), so every browser shows documents the same way and signatures can be placed
  * on them. Pages render lazily as they near the viewport, at the device pixel ratio; signature appearances are drawn.
+ * Their text can be selected and copied, and their links followed: one inside the document (a table of contents)
+ * scrolls the viewer to its destination, a web link opens in a new tab. While a crosshair places a box, a click on a
+ * page goes to `onPageClick` instead.
  */
 export function PdfViewer({
   data,
@@ -113,6 +123,7 @@ export function PdfViewer({
   onPainted,
   fill = true,
   locale = "en",
+  className,
 }: PdfViewerProps) {
   const copy = COPY[locale]
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -224,6 +235,12 @@ export function PdfViewer({
     centerOn(container, focus.page, focus.y)
   }, [focus, laidOut])
 
+  /** Follows a link inside the document: its destination goes to the top of the viewer. */
+  const navigate = useCallback((page: number, y: number) => {
+    const container = scrollRef.current
+    if (container) scrollToTop(container, page, y)
+  }, [])
+
   function step(direction: 1 | -1) {
     const current = zoom === "fit" ? fitScale : zoom
     const next =
@@ -237,7 +254,8 @@ export function PdfViewer({
       style={fill && !compact ? fillHeight.style : undefined}
       className={cn(
         "flex flex-col overflow-hidden rounded-(--pn-r-5) border border-(--pn-line)",
-        compact ? "h-80" : fill ? "h-[calc(100dvh-210px)] min-h-[480px]" : "h-full min-h-[480px]"
+        compact ? "h-80" : fill ? "h-[calc(100dvh-210px)] min-h-[480px]" : "h-full min-h-[480px]",
+        className
       )}
     >
       <div className="@container flex h-11 shrink-0 items-center justify-between gap-2 border-b border-(--pn-line) bg-(--pn-surface) px-2">
@@ -276,7 +294,11 @@ export function PdfViewer({
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken)"
+        // A tab stop, so the keyboard scrolls the pages (arrows, Page Up/Down, Space) once it is focused.
+        tabIndex={0}
+        role="region"
+        aria-label={copy.pages}
+        className="min-h-0 flex-1 overflow-auto bg-(--pn-sunken) focus-visible:outline-offset-[-2px]"
         data-pdf-scroll
         onScroll={(event) => {
           reading.current = middleOf(event.currentTarget)
@@ -302,7 +324,9 @@ export function PdfViewer({
                   onVisible={setCurrentPage}
                   onPainted={painted}
                   onClick={onPageClick}
+                  onNavigate={navigate}
                   label={copy.page(index + 1)}
+                  goToLabel={copy.goTo}
                 >
                   {overlay?.(index)}
                 </PdfPage>
@@ -324,6 +348,14 @@ function centerOn(container: HTMLElement, page: number, y: number) {
   const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
   const top = offset + element.offsetHeight * y - container.clientHeight / 2
   container.scrollTo({ top: Math.max(0, top), behavior: "instant" })
+}
+
+/** Scrolls the viewer so a point of a page (a fraction of its height) is just below its top edge. */
+function scrollToTop(container: HTMLElement, page: number, y: number) {
+  const element = container.querySelector<HTMLElement>(`[data-page="${page}"]`)
+  if (!element) return
+  const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+  container.scrollTo({ top: Math.max(0, offset + element.offsetHeight * y - PAGE_GAP), behavior: "instant" })
 }
 
 /** Whether the band of a page `y ± height / 2` (fractions of its height) is entirely inside the viewer. */
@@ -359,10 +391,20 @@ type PdfPageProps = {
   onVisible: (index: number) => void
   onPainted: (index: number, doc: Doc) => void
   onClick?: (page: number, x: number, y: number) => void
+  /** A link inside the document was followed, to a page and a fraction of its height. */
+  onNavigate: (page: number, y: number) => void
   /** The page canvas's accessible name ("Page 2"). */
   label: string
+  /** A link's accessible name, from the page it leads to (1-based). */
+  goToLabel: (page: number) => string
   children?: ReactNode
 }
+
+/** A link annotation, in fractions of its page: to a point of the document, or to a web address. */
+type PageLink = { x: number; y: number; width: number; height: number } & (
+  | { to: { page: number; y: number } }
+  | { url: string }
+)
 
 function PdfPage({
   index,
@@ -374,11 +416,16 @@ function PdfPage({
   onVisible,
   onPainted,
   onClick,
+  onNavigate,
   label,
+  goToLabel,
   children,
 }: PdfPageProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
+  const [links, setLinks] = useState<PageLink[]>([])
+  const placing = cursor === "crosshair"
   const [near, setNear] = useState(false)
   const [rendered, setRendered] = useState(false)
   const width = Math.round(size.width * scale)
@@ -467,6 +514,59 @@ function PdfPage({
     }
   }, [doc, near, index, scale, sizeKey, onPainted])
 
+  // The text, transparent over the drawing, so it can be selected, and the page's links. Kept while the page stays near.
+  useEffect(() => {
+    const container = textRef.current
+    if (!doc || !near || !container) return
+    let cancelled = false
+    let layer: TextLayer | null = null
+    doc.pdf
+      .getPage(index + 1)
+      .then(async (page) => {
+        if (cancelled) return
+        const viewport = page.getViewport({ scale })
+        container.replaceChildren()
+        // The layer sizes its runs of text from this.
+        container.style.setProperty("--total-scale-factor", String(scale))
+        layer = new doc.pdfjs.TextLayer({
+          // Normalized, so ligatures and the like copy as the letters they stand for.
+          textContentSource: page.streamTextContent({ includeMarkedContent: true }),
+          container,
+          viewport,
+        })
+        const [, resolved] = await Promise.all([layer.render(), pageLinks(doc, page)])
+        if (cancelled) return
+        // Below the last line, so a drag past it selects to the end of the page rather than to its start.
+        const end = document.createElement("div")
+        end.className = "endOfContent"
+        container.append(end)
+        setLinks(resolved)
+      })
+      .catch((error) => {
+        if (!(error instanceof Error && error.name === "AbortException")) console.error(error)
+      })
+    return () => {
+      cancelled = true
+      layer?.cancel()
+      container.replaceChildren()
+      setLinks([])
+    }
+  }, [doc, near, index, scale])
+
+  // While a drag selects text, links let the pointer through and the end of the page covers the gaps between lines.
+  useEffect(() => {
+    const container = textRef.current
+    if (!container) return
+    const start = () => container.classList.add("selecting")
+    const stop = () => container.classList.remove("selecting")
+    container.addEventListener("pointerdown", start)
+    document.addEventListener("pointerup", stop)
+    return () => {
+      container.removeEventListener("pointerdown", start)
+      document.removeEventListener("pointerup", stop)
+    }
+  }, [])
+
   function handleClick(event: React.MouseEvent<HTMLDivElement>) {
     if (!onClick || event.target !== event.currentTarget) return
     const rect = event.currentTarget.getBoundingClientRect()
@@ -489,16 +589,137 @@ function PdfPage({
           rendered ? "opacity-100" : "opacity-0"
         )}
       />
+      <div ref={textRef} className="pn-text-layer" />
+      <div className="pn-link-layer pointer-events-none absolute inset-0">
+        {links.map((link, at) => {
+          const box = {
+            left: `${link.x * 100}%`,
+            top: `${link.y * 100}%`,
+            width: `${link.width * 100}%`,
+            height: `${link.height * 100}%`,
+          }
+          return "url" in link ? (
+            <a
+              // biome-ignore lint/suspicious/noArrayIndexKey: links are positional
+              key={at}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={link.url}
+              className="pointer-events-auto absolute rounded-[2px] hover:bg-(--pn-brand-500)/12"
+              style={box}
+            />
+          ) : (
+            <button
+              // biome-ignore lint/suspicious/noArrayIndexKey: links are positional
+              key={at}
+              type="button"
+              aria-label={goToLabel(link.to.page + 1)}
+              className="pointer-events-auto absolute cursor-pointer rounded-[2px] hover:bg-(--pn-brand-500)/12"
+              style={box}
+              onClick={() => onNavigate(link.to.page, link.to.y)}
+            />
+          )
+        })}
+      </div>
+      {/* Placing, a click anywhere on the page is a spot; otherwise only the boxes on it take the pointer. */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: placing with a pointer; boxes are keyboard-movable */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: as above */}
       <div
-        className={cn("@container absolute inset-0", cursor === "crosshair" && "cursor-crosshair")}
+        className={cn(
+          "@container absolute inset-0",
+          placing ? "cursor-crosshair" : "pointer-events-none *:pointer-events-auto"
+        )}
         onClick={handleClick}
       >
         {children}
       </div>
     </div>
   )
+}
+
+/** A link annotation as pdf.js reports it; pdf.js only passes on a `url` with a safe scheme (http, https, mailto…). */
+const linkAnnotation = z.object({
+  subtype: z.literal("Link"),
+  rect: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  url: z.string().optional(),
+  dest: z.unknown().optional(),
+})
+
+/** A destination: a page (a reference, or its 0-based index) and how to show it, e.g. XYZ left top zoom. */
+const explicitDestination = z
+  .tuple([
+    z.union([
+      z
+        .number()
+        .int()
+        .transform((index) => ({ index })),
+      z.object({ num: z.number(), gen: z.number() }).transform((ref) => ({ ref })),
+    ]),
+    z.object({ name: z.string() }),
+  ])
+  .rest(z.number().nullable())
+/** A named destination, looked up in the document, or an explicit one. */
+const linkDestination = z.union([
+  z.string().transform((name) => ({ name })),
+  explicitDestination.transform((explicit) => ({ explicit })),
+])
+
+/** The links of a page: those to a point of the document, resolved to it, and those to a web address. */
+async function pageLinks(doc: Doc, page: PDFPageProxy): Promise<PageLink[]> {
+  const viewport = page.getViewport({ scale: 1 })
+  const links: PageLink[] = []
+  for (const annotation of await page.getAnnotations({ intent: "display" })) {
+    const parsed = linkAnnotation.safeParse(annotation)
+    if (!parsed.success) continue
+    const { rect, url, dest } = parsed.data
+    const [x1, y1] = viewport.convertToViewportPoint(rect[0], rect[1])
+    const [x2, y2] = viewport.convertToViewportPoint(rect[2], rect[3])
+    const box = {
+      x: Math.min(x1, x2) / viewport.width,
+      y: Math.min(y1, y2) / viewport.height,
+      width: Math.abs(x2 - x1) / viewport.width,
+      height: Math.abs(y2 - y1) / viewport.height,
+    }
+    if (url) {
+      links.push({ ...box, url })
+      continue
+    }
+    const target = linkDestination.safeParse(dest)
+    if (!target.success) continue
+    const to = await destination(doc.pdf, target.data).catch((error) => {
+      console.error(error)
+      return null
+    })
+    if (to) links.push({ ...box, to })
+  }
+  return links
+}
+
+/** Where a link inside the document leads: a page (0-based) and the fraction of its height its top is at. */
+async function destination(
+  pdf: PDFDocumentProxy,
+  target: z.infer<typeof linkDestination>
+): Promise<{ page: number; y: number } | null> {
+  const resolved = explicitDestination.safeParse(
+    "name" in target ? await pdf.getDestination(target.name) : target.explicit
+  )
+  if (!resolved.success) return null
+  const [ref, mode, ...args] = resolved.data
+  const index = "index" in ref ? ref.index : await pdf.getPageIndex(ref.ref)
+  if (index < 0 || index >= pdf.numPages) return null
+  // XYZ left top zoom, FitH/FitBH top, FitR left bottom right top; the other kinds show the whole page.
+  const top =
+    new Map([
+      ["XYZ", args[1]],
+      ["FitH", args[0]],
+      ["FitBH", args[0]],
+      ["FitR", args[3]],
+    ]).get(mode.name) ?? null
+  if (top === null) return { page: index, y: 0 }
+  const viewport = (await pdf.getPage(index + 1)).getViewport({ scale: 1 })
+  const [, y] = viewport.convertToViewportPoint(0, top)
+  return { page: index, y: Math.min(Math.max(y / viewport.height, 0), 1) }
 }
 
 /** Converts a size in points to fractions of a page, for default signature boxes. */

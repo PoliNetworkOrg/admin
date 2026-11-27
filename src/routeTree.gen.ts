@@ -22,13 +22,16 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DashboardRegulationsIndexRouteImport } from './routes/dashboard/regulations/index'
 import { Route as DashboardPeopleIndexRouteImport } from './routes/dashboard/people/index'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard/account/index'
+import { Route as ApiMcpIndexRouteImport } from './routes/api/mcp/index'
 import { Route as DashboardWhatsappGroupsRouteImport } from './routes/dashboard/whatsapp/groups'
 import { Route as DashboardWebProjectsRouteImport } from './routes/dashboard/web/projects'
 import { Route as DashboardWebGuidesRouteImport } from './routes/dashboard/web/guides'
 import { Route as DashboardWebGroupLabelsRouteImport } from './routes/dashboard/web/group-labels'
 import { Route as DashboardWebFreshmanRouteImport } from './routes/dashboard/web/freshman'
 import { Route as DashboardWebFaqsRouteImport } from './routes/dashboard/web/faqs'
+import { Route as DashboardWebDocumentsRouteImport } from './routes/dashboard/web/documents'
 import { Route as DashboardWebAssociationsRouteImport } from './routes/dashboard/web/associations'
+import { Route as DashboardWebAcknowledgementsRouteImport } from './routes/dashboard/web/acknowledgements'
 import { Route as DashboardTelegramGroupsRouteImport } from './routes/dashboard/telegram/groups'
 import { Route as DashboardTelegramGrantsRouteImport } from './routes/dashboard/telegram/grants'
 import { Route as DashboardTelegramCapoRouteImport } from './routes/dashboard/telegram/capo'
@@ -47,6 +50,7 @@ import { Route as DashboardEsignDrivesRouteImport } from './routes/dashboard/esi
 import { Route as DashboardAzureMembersRouteImport } from './routes/dashboard/azure/members'
 import { Route as DashboardAzureGroupsRouteImport } from './routes/dashboard/azure/groups'
 import { Route as DashboardAccountMeRouteImport } from './routes/dashboard/account/me'
+import { Route as ApiMcpConfigRouteImport } from './routes/api/mcp/config'
 import { Route as DashboardWebGroupsByLabelIndexRouteImport } from './routes/dashboard/web/groups-by-label/index'
 import { Route as DashboardTelegramUsersIndexRouteImport } from './routes/dashboard/telegram/users/index'
 import { Route as DashboardRegulationsDraftsIndexRouteImport } from './routes/dashboard/regulations/drafts/index'
@@ -134,6 +138,11 @@ const DashboardAccountIndexRoute = DashboardAccountIndexRouteImport.update({
   path: '/account/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ApiMcpIndexRoute = ApiMcpIndexRouteImport.update({
+  id: '/api/mcp/',
+  path: '/api/mcp/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardWhatsappGroupsRoute = DashboardWhatsappGroupsRouteImport.update({
   id: '/whatsapp/groups',
   path: '/whatsapp/groups',
@@ -164,10 +173,21 @@ const DashboardWebFaqsRoute = DashboardWebFaqsRouteImport.update({
   path: '/faqs',
   getParentRoute: () => DashboardWebRoute,
 } as any)
+const DashboardWebDocumentsRoute = DashboardWebDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => DashboardWebRoute,
+} as any)
 const DashboardWebAssociationsRoute =
   DashboardWebAssociationsRouteImport.update({
     id: '/associations',
     path: '/associations',
+    getParentRoute: () => DashboardWebRoute,
+  } as any)
+const DashboardWebAcknowledgementsRoute =
+  DashboardWebAcknowledgementsRouteImport.update({
+    id: '/acknowledgements',
+    path: '/acknowledgements',
     getParentRoute: () => DashboardWebRoute,
   } as any)
 const DashboardTelegramGroupsRoute = DashboardTelegramGroupsRouteImport.update({
@@ -262,6 +282,11 @@ const DashboardAccountMeRoute = DashboardAccountMeRouteImport.update({
   id: '/account/me',
   path: '/account/me',
   getParentRoute: () => DashboardRoute,
+} as any)
+const ApiMcpConfigRoute = ApiMcpConfigRouteImport.update({
+  id: '/api/mcp/config',
+  path: '/api/mcp/config',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardWebGroupsByLabelIndexRoute =
   DashboardWebGroupsByLabelIndexRouteImport.update({
@@ -393,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -411,13 +437,16 @@ export interface FileRoutesByFullPath {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
@@ -452,6 +481,7 @@ export interface FileRoutesByTo {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -470,13 +500,16 @@ export interface FileRoutesByTo {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp': typeof ApiMcpIndexRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/people': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations': typeof DashboardRegulationsIndexRoute
@@ -513,6 +546,7 @@ export interface FileRoutesById {
   '/dashboard/web': typeof DashboardWebRouteWithChildren
   '/people/invite': typeof PeopleInviteRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/mcp/config': typeof ApiMcpConfigRoute
   '/dashboard/account/me': typeof DashboardAccountMeRoute
   '/dashboard/azure/groups': typeof DashboardAzureGroupsRoute
   '/dashboard/azure/members': typeof DashboardAzureMembersRoute
@@ -531,13 +565,16 @@ export interface FileRoutesById {
   '/dashboard/telegram/capo': typeof DashboardTelegramCapoRoute
   '/dashboard/telegram/grants': typeof DashboardTelegramGrantsRoute
   '/dashboard/telegram/groups': typeof DashboardTelegramGroupsRoute
+  '/dashboard/web/acknowledgements': typeof DashboardWebAcknowledgementsRoute
   '/dashboard/web/associations': typeof DashboardWebAssociationsRoute
+  '/dashboard/web/documents': typeof DashboardWebDocumentsRoute
   '/dashboard/web/faqs': typeof DashboardWebFaqsRoute
   '/dashboard/web/freshman': typeof DashboardWebFreshmanRoute
   '/dashboard/web/group-labels': typeof DashboardWebGroupLabelsRoute
   '/dashboard/web/guides': typeof DashboardWebGuidesRoute
   '/dashboard/web/projects': typeof DashboardWebProjectsRoute
   '/dashboard/whatsapp/groups': typeof DashboardWhatsappGroupsRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/people/': typeof DashboardPeopleIndexRoute
   '/dashboard/regulations/': typeof DashboardRegulationsIndexRoute
@@ -575,6 +612,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -593,13 +631,16 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
@@ -634,6 +675,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -652,13 +694,16 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp'
     | '/dashboard/account'
     | '/dashboard/people'
     | '/dashboard/regulations'
@@ -694,6 +739,7 @@ export interface FileRouteTypes {
     | '/dashboard/web'
     | '/people/invite'
     | '/dashboard/'
+    | '/api/mcp/config'
     | '/dashboard/account/me'
     | '/dashboard/azure/groups'
     | '/dashboard/azure/members'
@@ -712,13 +758,16 @@ export interface FileRouteTypes {
     | '/dashboard/telegram/capo'
     | '/dashboard/telegram/grants'
     | '/dashboard/telegram/groups'
+    | '/dashboard/web/acknowledgements'
     | '/dashboard/web/associations'
+    | '/dashboard/web/documents'
     | '/dashboard/web/faqs'
     | '/dashboard/web/freshman'
     | '/dashboard/web/group-labels'
     | '/dashboard/web/guides'
     | '/dashboard/web/projects'
     | '/dashboard/whatsapp/groups'
+    | '/api/mcp/'
     | '/dashboard/account/'
     | '/dashboard/people/'
     | '/dashboard/regulations/'
@@ -753,6 +802,8 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   PeopleInviteRoute: typeof PeopleInviteRoute
+  ApiMcpConfigRoute: typeof ApiMcpConfigRoute
+  ApiMcpIndexRoute: typeof ApiMcpIndexRoute
   ApiEsignAgentSplatRoute: typeof ApiEsignAgentSplatRoute
 }
 
@@ -849,6 +900,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/api/mcp/': {
+      id: '/api/mcp/'
+      path: '/api/mcp'
+      fullPath: '/api/mcp/'
+      preLoaderRoute: typeof ApiMcpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/whatsapp/groups': {
       id: '/dashboard/whatsapp/groups'
       path: '/whatsapp/groups'
@@ -891,11 +949,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWebFaqsRouteImport
       parentRoute: typeof DashboardWebRoute
     }
+    '/dashboard/web/documents': {
+      id: '/dashboard/web/documents'
+      path: '/documents'
+      fullPath: '/dashboard/web/documents'
+      preLoaderRoute: typeof DashboardWebDocumentsRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
     '/dashboard/web/associations': {
       id: '/dashboard/web/associations'
       path: '/associations'
       fullPath: '/dashboard/web/associations'
       preLoaderRoute: typeof DashboardWebAssociationsRouteImport
+      parentRoute: typeof DashboardWebRoute
+    }
+    '/dashboard/web/acknowledgements': {
+      id: '/dashboard/web/acknowledgements'
+      path: '/acknowledgements'
+      fullPath: '/dashboard/web/acknowledgements'
+      preLoaderRoute: typeof DashboardWebAcknowledgementsRouteImport
       parentRoute: typeof DashboardWebRoute
     }
     '/dashboard/telegram/groups': {
@@ -1023,6 +1095,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/account/me'
       preLoaderRoute: typeof DashboardAccountMeRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/api/mcp/config': {
+      id: '/api/mcp/config'
+      path: '/api/mcp/config'
+      fullPath: '/api/mcp/config'
+      preLoaderRoute: typeof ApiMcpConfigRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/web/groups-by-label/': {
       id: '/dashboard/web/groups-by-label/'
@@ -1168,7 +1247,9 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardWebRouteChildren {
+  DashboardWebAcknowledgementsRoute: typeof DashboardWebAcknowledgementsRoute
   DashboardWebAssociationsRoute: typeof DashboardWebAssociationsRoute
+  DashboardWebDocumentsRoute: typeof DashboardWebDocumentsRoute
   DashboardWebFaqsRoute: typeof DashboardWebFaqsRoute
   DashboardWebFreshmanRoute: typeof DashboardWebFreshmanRoute
   DashboardWebGroupLabelsRoute: typeof DashboardWebGroupLabelsRoute
@@ -1180,7 +1261,9 @@ interface DashboardWebRouteChildren {
 }
 
 const DashboardWebRouteChildren: DashboardWebRouteChildren = {
+  DashboardWebAcknowledgementsRoute: DashboardWebAcknowledgementsRoute,
   DashboardWebAssociationsRoute: DashboardWebAssociationsRoute,
+  DashboardWebDocumentsRoute: DashboardWebDocumentsRoute,
   DashboardWebFaqsRoute: DashboardWebFaqsRoute,
   DashboardWebFreshmanRoute: DashboardWebFreshmanRoute,
   DashboardWebGroupLabelsRoute: DashboardWebGroupLabelsRoute,
@@ -1299,6 +1382,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   PeopleInviteRoute: PeopleInviteRoute,
+  ApiMcpConfigRoute: ApiMcpConfigRoute,
+  ApiMcpIndexRoute: ApiMcpIndexRoute,
   ApiEsignAgentSplatRoute: ApiEsignAgentSplatRoute,
 }
 export const routeTree = rootRouteImport

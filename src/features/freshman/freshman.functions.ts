@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { adminMiddleware, webContentWriteMiddleware } from "@/server/auth.middleware"
 
-import { moveFreshmanCardInput, selectFreshmanFaqInput, updateFreshmanCardInput } from "./freshman.validation"
+import {
+  moveFreshmanCardInput,
+  selectFreshmanFaqInput,
+  updateFreshmanCardInput,
+  updateFreshmanTelegramCardInput,
+} from "./freshman.validation"
 
 export const getFreshmanContent = createServerFn()
   .middleware([adminMiddleware])
@@ -12,6 +17,11 @@ export const updateFreshmanCard = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
   .validator(updateFreshmanCardInput)
   .handler(({ data, context }) => context.backend.web.freshman.updateCard.mutate(data))
+
+export const updateFreshmanTelegramCard = createServerFn({ method: "POST" })
+  .middleware([webContentWriteMiddleware])
+  .validator(updateFreshmanTelegramCardInput)
+  .handler(({ data, context }) => context.backend.web.freshman.updateTelegramCard.mutate(data))
 
 export const moveFreshmanCard = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])

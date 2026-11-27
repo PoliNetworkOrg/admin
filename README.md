@@ -22,6 +22,9 @@ agent mode serves a fake with a local collab server and `xelatex`. Permissions: 
 `regulations:manage`, `regulations:rectify`; a draft assignment or a delega alone admits anyone to Bozze. See
 [`docs/regulations/README.md`](docs/regulations/README.md).
 
+AI agents (Claude Code, Codex, Antigravity) can use the dashboard as the signed-in person, with their permissions,
+through the downloadable MCP bridge linked from Account; see [`docs/mcp.md`](docs/mcp.md).
+
 Built with TanStack Start (React 19), Vite+, Nitro, Tailwind CSS v4 and shadcn/Base UI. The server is an OIDC BFF:
 only it holds the IdP access/refresh/ID tokens. Browsers hold an opaque, HttpOnly session cookie; sessions live in a
 **dedicated Redis**, separate from the shared backend Redis. Backend requests carry a user bearer token, and permissions
@@ -51,6 +54,7 @@ Set the following runtime variables (the build does not need secrets):
 | `BACKEND_RESOURCE`            | Backend OAuth resource/audience; defaults to `https://backend.internal.polinetwork.org`. Sent on every authorize, code exchange and refresh request.                                                                                                                                                                      |
 | `REDIS_URL`                   | Dedicated dashboard Redis connection. Required outside development; development defaults to `redis://localhost:6379`. Never point to shared backend Redis.                                                                                                                                                                |
 | `SESSION_SECRET`              | Independent random secret of at least 32 characters, encrypting the 10-minute state/nonce/PKCE cookie. Rotation invalidates pending login attempts.                                                                                                                                                                       |
+| `ADMIN_MCP_CLIENT_ID`         | The admin MCP's public native client in PoliNetwork Auth ([`docs/mcp.md`](docs/mcp.md)). Unset, the MCP endpoint and its config answer 503.                                                                                                                                                                               |
 | `AGENT_PERMISSIONS`           | Development only. Comma-separated permissions for the agent-mode user (default: all). `people:self` alone previews the restricted People view.                                                                                                                                                                            |
 | `AGENT_PERSON`                | Development only. The agent-mode user's People record (default `P-0007`, Direttivo). `P-0098` is a Capo Admin, `P-0034` the IT Team Lead, `P-0115` an IT member; `none` previews a sign-in without a record. Sending an invite prints its link in the dev server's console.                                               |
 | `AGENT_SOCIO`                 | Development only. The member number of the socio My area shows (default `7`: Due after a rejected receipt); `4` has a receipt to review, `1` has paid, `23` is Due with details to complete, `34` is exempt, `41`'s fee isn't open yet; `none` is not a socio. With `AGENT_PERSON=none`, a socio without a People record. |
@@ -78,7 +82,12 @@ There is no browser storage, demo catalog or local restore action.
 
 The Guide tab keeps the existing PDF edition management and loads editions only when selected. The former
 `/dashboard/web/guides` URL redirects to `/dashboard/web/freshman?tab=guide`. The selected tab stays in the URL;
-the full FAQ catalog loads only on the FAQs tab. Page titles, introductory text and slot counts remain fixed.
+the full FAQ catalog loads only on the FAQs tab, and the Telegram groups only on the Telegram Hub tab.
+
+Each Telegram Hub slot links a group of the bot's database (`tg_groups`, only groups with an invite link) by its
+Telegram ID, so the website always shows the group's current invite link. The optional display name replaces the
+group's title; left empty, the slot follows the group's renames. Slots still holding a link typed before this, or
+whose group was deleted, read "No group linked" until an editor picks one. Page titles, introductory text and slot counts remain fixed.
 
 ### Pending backend package release
 
@@ -88,6 +97,23 @@ Once a version containing these procedures is published, update this dependency 
 rerun `pnpm check`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Until that update, the normal typecheck is
 expected to report the missing Freshman contract. No declaration patches or type-error suppression directives are used.
 The running backend must also include the Freshman router and its migration before using this page.
+
+## Website documents
+
+Web › Documents manages the categories and documents shown at `/documents` on the website. Create a category,
+add a document, then upload a dated PDF version (up to 10 MB). Documents without versions stay in the dashboard
+until their first upload. Each document keeps its version history; the greatest date is current, with the most
+recent upload breaking ties. Deleting the current version restores the next one, and deleting the only version
+hides the document from the website. Only empty categories can be deleted.
+
+Categories and documents can be dragged into their public order. An outdated list is rejected without overwriting
+other edits. Reads require `admin:access`; every mutation and its controls require `web:content:write`.
+
+This page depends on [backend #132](https://github.com/PoliNetworkOrg/backend/pull/132), its documents migration,
+and a published `@polinetwork/backend` package exposing `web.documents`. Until that release, `^4.0.0` does not provide
+the required types. Verification against the local package succeeds; update the dependency and lockfile after
+publication and rerun the normal checks before merging. The production catalog starts empty; upload real documents
+from this dashboard.
 
 ## Production and cutover
 

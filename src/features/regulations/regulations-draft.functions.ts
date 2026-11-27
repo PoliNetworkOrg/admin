@@ -15,6 +15,9 @@ import {
  * so the dashboard admits the caller and the backend decides.
  */
 
+/** A rettifica's input: a draft of kind `rettifica`. */
+export const createRectificationInput = createDraftInputSchema.extend({ kind: draftKindSchema.extract(["rettifica"]) })
+
 /** Direttivo, or whoever started a rettifica. */
 export const renameDraft = createServerFn({ method: "POST" })
   .middleware([regulationsAssigneeMiddleware])
@@ -30,7 +33,7 @@ export const deleteDraft = createServerFn({ method: "POST" })
 /** A rettifica, from the latest version: the Segretario (`regulations:rectify`) or a delega holder. */
 export const createRectification = createServerFn({ method: "POST" })
   .middleware([regulationsAssigneeMiddleware])
-  .validator(createDraftInputSchema.extend({ kind: draftKindSchema.extract(["rettifica"]) }))
+  .validator(createRectificationInput)
   .handler(async ({ data, context }) => (await regulationsApi(context)).createDraft(data))
 
 /** "Emana rettifica": straight from `bozza`, by the Segretario or a delega holder. */
@@ -44,3 +47,9 @@ export const retryEmanation = createServerFn({ method: "POST" })
   .middleware([regulationsAssigneeMiddleware])
   .validator(draftRefInputSchema)
   .handler(async ({ data, context }) => (await regulationsApi(context)).retryEmanation(data))
+
+/** "Rendi visibile": a secret draft opens to `regulations:read` and its procedure, for good. Its creator only. */
+export const revealDraft = createServerFn({ method: "POST" })
+  .middleware([regulationsAssigneeMiddleware])
+  .validator(draftRefInputSchema)
+  .handler(async ({ data, context }) => (await regulationsApi(context)).revealDraft(data))

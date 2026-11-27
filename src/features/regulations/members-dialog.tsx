@@ -52,7 +52,8 @@ function Person({ user }: { user: UserMatch }) {
 /**
  * Who works on a draft, Google-Docs style: any PoliNetwork account (not only Soci) as viewer, commenter or editor.
  * Each change is saved at once. Assignments are backend data, not IdP roles: an assignment alone lets someone into
- * the dashboard, where they see only Regolamenti and their drafts.
+ * the dashboard, where they see only Regolamenti and their drafts. In a secret draft the members are the only ones who
+ * see it, with the role given here even if they are in the Direttivo, and its creator stays editor.
  */
 export function MembersDialog({
   open,
@@ -62,7 +63,7 @@ export function MembersDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  draft: { id: string; title: string }
+  draft: { id: string; title: string; secret: boolean; createdBy: { id: string } }
   members: Assignment[]
 }) {
   const search = useServerFn(searchRegulationUsers)
@@ -161,10 +162,17 @@ export function MembersDialog({
         size="lg"
         title="Membri della bozza"
         description={
-          <>
-            Chi aggiungi vede «{draft.title}» in Regolamenti › Bozze, anche senza altro accesso alla dashboard. Il
-            Direttivo legge e modifica sempre ogni bozza.
-          </>
+          draft.secret ? (
+            <>
+              «{draft.title}» è segreta: la vedono solo i membri, in Regolamenti › Bozze, con il ruolo che scegli qui,
+              anche se sono nel Direttivo.
+            </>
+          ) : (
+            <>
+              Chi aggiungi vede «{draft.title}» in Regolamenti › Bozze, anche senza altro accesso alla dashboard. Il
+              Direttivo legge e modifica sempre ogni bozza.
+            </>
+          )
         }
         noun="membri"
         dirty={false}
@@ -247,31 +255,35 @@ export function MembersDialog({
                 {members.map((member) => (
                   <li key={member.user.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
                     <Person user={member.user} />
-                    <span className="flex items-center gap-1">
-                      {busy === `role:${member.user.id}` ? <Spinner className="size-4" /> : null}
-                      <div className="w-44">
-                        <label htmlFor={`member-role-${member.user.id}`} className="sr-only">
-                          Ruolo di {member.user.name}
-                        </label>
-                        <SelectField
-                          id={`member-role-${member.user.id}`}
-                          value={member.role}
-                          options={ROLE_OPTIONS}
-                          onChange={(role) => changeRole(member, role)}
+                    {draft.secret && member.user.id === draft.createdBy.id ? (
+                      <span className="text-[13px] text-(--pn-fg-muted)">Editor, l'ha creata</span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        {busy === `role:${member.user.id}` ? <Spinner className="size-4" /> : null}
+                        <div className="w-44">
+                          <label htmlFor={`member-role-${member.user.id}`} className="sr-only">
+                            Ruolo di {member.user.name}
+                          </label>
+                          <SelectField
+                            id={`member-role-${member.user.id}`}
+                            value={member.role}
+                            options={ROLE_OPTIONS}
+                            onChange={(role) => changeRole(member, role)}
+                          />
+                        </div>
+                        <IconButton
+                          label="Rimuovi"
+                          ariaLabel={`Rimuovi ${member.user.name}`}
+                          icon={UserMinus}
+                          tone="danger"
+                          disabled={busy !== null}
+                          onClick={() => {
+                            setRemoving(member)
+                            setRemoveOpen(true)
+                          }}
                         />
-                      </div>
-                      <IconButton
-                        label="Rimuovi"
-                        ariaLabel={`Rimuovi ${member.user.name}`}
-                        icon={UserMinus}
-                        tone="danger"
-                        disabled={busy !== null}
-                        onClick={() => {
-                          setRemoving(member)
-                          setRemoveOpen(true)
-                        }}
-                      />
-                    </span>
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

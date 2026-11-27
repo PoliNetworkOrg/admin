@@ -10,7 +10,7 @@ import type { Emanation } from "./regulations.contract"
 type Step = Emanation["steps"][number]
 
 export const STEP_LABELS = {
-  pr: "Pull request sul repository legal",
+  pr: "Pull request sul repository documents",
   checks: "Controlli automatici (CI)",
   merge: "Merge automatico",
   tag: "Tag della versione",
@@ -56,22 +56,32 @@ const STEP_STATE_TEXT = {
 
 /**
  * "Emana e notifica" as it happens: the PR with the generated sources, CI, the automatic merge, tag and release, then
- * the email and the Telegram message. Every step links to where it happened; a failed one can be resumed.
+ * the email and the Telegram message. Every step links to where it happened; a failed one can be resumed. Steps the
+ * procedure skips (a documento's notices, everything for a private document) are left out.
  */
 export function EmanationCard({
+  title,
+  notices,
   emanation,
   onRetry,
   retrying,
 }: {
+  /** "Emanazione", or "Pubblicazione" for a documento. */
+  title: string
+  /** Whether the procedure notifies the Soci; a documento doesn't, even while the backend lists those steps. */
+  notices: boolean
   emanation: Emanation
   onRetry: (() => void) | null
   retrying: boolean
 }) {
   const status = STATUS[emanation.status]
   const stalled = useStalledStep(emanation)
+  const steps = emanation.steps.filter(
+    (step) => step.state !== "skipped" && (notices || (step.key !== "email" && step.key !== "telegram"))
+  )
   return (
     <SectionCard
-      title="Emanazione"
+      title={title}
       action={<StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
       footer={
         emanation.status === "failed" && onRetry ? (
@@ -106,51 +116,57 @@ export function EmanationCard({
           ) : null}
           {emanation.finishedAt ? ` · conclusa il ${formatDayTime(emanation.finishedAt)}` : ""}
         </p>
-        <ol aria-live="polite" className="flex flex-col">
-          {emanation.steps.map((step, index) => (
-            <li key={step.key} className="relative flex gap-3 pb-4 last:pb-0">
-              {index < emanation.steps.length - 1 ? (
-                <span aria-hidden className="absolute top-6 bottom-0 left-[8.5px] w-px bg-(--pn-line)" />
-              ) : null}
-              <span className="relative mt-px grid size-4.5 shrink-0 place-items-center bg-(--pn-surface)">
-                <StepIcon state={step.state} />
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <p
-                  className={cn(
-                    "text-[14px] leading-5",
-                    step.state === "pending" || step.state === "skipped" ? "text-(--pn-fg-muted)" : "text-(--pn-fg)"
-                  )}
-                >
-                  {STEP_LABELS[step.key]}
-                  <span className="sr-only">: {STEP_STATE_TEXT[step.state]}</span>
-                </p>
-                {step.detail || step.at || step.url ? (
+        {steps.length === 0 ? (
+          <p className="text-[14px] text-(--pn-fg)">
+            Salvata come nuova versione nella dashboard: niente GitHub, niente notifiche.
+          </p>
+        ) : (
+          <ol aria-live="polite" className="flex flex-col">
+            {steps.map((step, index) => (
+              <li key={step.key} className="relative flex gap-3 pb-4 last:pb-0">
+                {index < steps.length - 1 ? (
+                  <span aria-hidden className="absolute top-6 bottom-0 left-[8.5px] w-px bg-(--pn-line)" />
+                ) : null}
+                <span className="relative mt-px grid size-4.5 shrink-0 place-items-center bg-(--pn-surface)">
+                  <StepIcon state={step.state} />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <p
                     className={cn(
-                      "flex flex-wrap gap-x-2 text-xs",
-                      step.state === "failed" ? "text-(--pn-danger-fg)" : "text-(--pn-fg-muted)"
+                      "text-[14px] leading-5",
+                      step.state === "pending" || step.state === "skipped" ? "text-(--pn-fg-muted)" : "text-(--pn-fg)"
                     )}
                   >
-                    {step.detail ? <span>{step.detail}</span> : null}
-                    {step.at ? <span className="tabular-nums">{formatDayTime(step.at)}</span> : null}
-                    {step.url ? (
-                      <a
-                        href={step.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(inlineLink, "inline-flex items-center gap-1")}
-                      >
-                        Apri
-                        <ExternalLink aria-hidden className="size-3" />
-                      </a>
-                    ) : null}
+                    {STEP_LABELS[step.key]}
+                    <span className="sr-only">: {STEP_STATE_TEXT[step.state]}</span>
                   </p>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ol>
+                  {step.detail || step.at || step.url ? (
+                    <p
+                      className={cn(
+                        "flex flex-wrap gap-x-2 text-xs",
+                        step.state === "failed" ? "text-(--pn-danger-fg)" : "text-(--pn-fg-muted)"
+                      )}
+                    >
+                      {step.detail ? <span>{step.detail}</span> : null}
+                      {step.at ? <span className="tabular-nums">{formatDayTime(step.at)}</span> : null}
+                      {step.url ? (
+                        <a
+                          href={step.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(inlineLink, "inline-flex items-center gap-1")}
+                        >
+                          Apri
+                          <ExternalLink aria-hidden className="size-3" />
+                        </a>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
         {emanation.notifications.length ? (
           <div className="flex flex-col gap-2 border-t border-(--pn-line) pt-3">
             <h3 className="text-[13px] font-medium text-(--pn-fg)">Notifiche inviate</h3>

@@ -1,6 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Check, FileDiff, GitMerge, Landmark, PenLine, Send, Undo2, Users } from "lucide-react"
+import { Check, Eye, FileCheck2, FileDiff, GitMerge, Landmark, PenLine, Send, Undo2, Users } from "lucide-react"
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from "react"
 
 import {
@@ -24,21 +24,23 @@ import { ApproveDialog } from "./approve-dialog"
 import { DraftActions } from "./draft-actions"
 import { MembersDialog } from "./members-dialog"
 import { EmanationCard } from "./procedure-emanation"
-import { emanateRectification, retryEmanation } from "./regulations-draft.functions"
+import { emanateRectification, retryEmanation, revealDraft } from "./regulations-draft.functions"
 import {
   BODY_LABELS,
   baseLabel,
   deliberaLine,
+  finalStepLabel,
   formatDay,
   formatDayTime,
+  isFinalState,
   KIND_LABELS,
   ROLE_LABELS,
 } from "./regulations-format"
 import { failureMessage, useRefreshAfter } from "./regulations-hooks"
 import { emanateDraft, withdrawApproval } from "./regulations-manage.functions"
-import { DraftKindMark, DraftStateBadge } from "./regulations-ui"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "./regulations-ui"
 import { transitionDraft } from "./regulations-write.functions"
-import type { Assignment, Draft, Emanation, StateKey } from "./regulations.contract"
+import type { Assignment, DocumentInfo, Draft, Emanation, StateKey } from "./regulations.contract"
 import { getEmanation } from "./regulations.functions"
 
 const BACK = { label: "bozze", link: { to: "/dashboard/regulations/drafts" } } as const
@@ -88,7 +90,7 @@ function pathOf(draft: Draft) {
 function Stepper({ draft }: { draft: Draft }) {
   const states = pathOf(draft)
   const current = states.findIndex((state) => state.key === draft.state)
-  const when = (key: StateKey) => (key === "approvata" ? draft.approvedAt : key === "emanata" ? draft.emanatedAt : null)
+  const when = (key: StateKey) => (key === "approvata" ? draft.approvedAt : isFinalState(key) ? draft.emanatedAt : null)
   return (
     <ol className="grid gap-3 min-[560px]:grid-flow-col min-[560px]:auto-cols-fr">
       {states.map((state, index) => {
@@ -154,19 +156,32 @@ function MemberRow({ member }: { member: Assignment }) {
   )
 }
 
+/** What "Pubblica" does to a `documento`, which depends on where the document is kept. */
+function publishText(document: DocumentInfo | null) {
+  if (document?.storage === "private")
+    return "La bozza diventa la nuova versione del documento, con il suo PDF, salvata solo nella dashboard: non va su GitHub e non si notifica nessuno. Non si annulla."
+  if (document?.storage === "repo")
+    return "Apre una pull request sul repository documents con i sorgenti della bozza, che si unisce da sola appena la CI passa; poi tag e release con il PDF. Nessuna email né messaggio. Non si annulla."
+  return "La bozza diventa la nuova versione del documento. Nessuna email né messaggio. Non si annulla."
+}
+
 /**
  * A draft's way to publication: the procedure's states with the current one marked, the actions the viewer may take
  * now (each refused one says why), the delibera, the deadlines, and "Emana e notifica" step by step. Votes,
- * oppositions and discussion happen outside the dashboard; this page records their outcome.
+ * oppositions and discussion happen outside the dashboard; this page records their outcome. A `documento` (bozza →
+ * pubblicata) has only "Pubblica": no delibera, differences or notices.
  */
 export function ProcedurePage({
   draft,
   members,
   emanation: loadedEmanation,
+  document,
 }: {
   draft: Draft
   members: Assignment[]
   emanation: Emanation | null
+  /** The draft's document, for what publishing does; `null` when the viewer can't read documents. */
+  document: DocumentInfo | null
 }) {
   const router = useRouter()
   const refresh = useRefreshAfter()
@@ -175,16 +190,19 @@ export function ProcedurePage({
   const emanate = useServerFn(emanateDraft)
   const emanateRettifica = useServerFn(emanateRectification)
   const retry = useServerFn(retryEmanation)
+  const reveal = useServerFn(revealDraft)
   const fetchEmanation = useServerFn(getEmanation)
 
   const [pendingTransition, setPendingTransition] = useState<Transition | null>(null)
   const [transitionOpen, setTransitionOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
   const [emanateOpen, setEmanateOpen] = useState(false)
+  const [revealOpen, setRevealOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [emanation, setEmanation] = useState(loadedEmanation)
   const [retrying, setRetrying] = useState(false)
   const [watching, setWatching] = useState(false)
+  const documento = draft.procedure.key === "documento"
 
   useEffect(() => setEmanation(loadedEmanation), [loadedEmanation])
 
@@ -205,7 +223,7 @@ export function ProcedurePage({
           if (next && (next.status === "done" || next.status === "failed")) {
             setWatching(false)
             router.invalidate().catch((error) => console.error(error))
-            if (next.status === "done") appToast.success("Emanata e notificata.")
+            if (next.status === "done") appToast.success(documento ? "Bozza pubblicata." : "Emanata e notificata.")
           }
         },
         (error) => console.error(error)
@@ -215,9 +233,11 @@ export function ProcedurePage({
       current = false
       clearInterval(timer)
     }
-  }, [live, draft.id, fetchEmanation, router])
+  }, [live, draft.id, fetchEmanation, router, documento])
 
   const stateLabel = draft.procedure.states.find((state) => state.key === draft.state)?.label
+  const emanateLabel = finalStepLabel(draft.procedure, draft.kind)
+  const EmanateIcon = documento ? FileCheck2 : Landmark
   const plain = draft.can.transitions.filter((option) => !option.requires.includes("delibera"))
   const approval = draft.can.transitions.find((option) => option.requires.includes("delibera"))
   const rettifica = draft.kind === "rettifica"
@@ -237,12 +257,32 @@ export function ProcedurePage({
     await refresh((transitionText(draft.state, to) ?? TRANSITION_TEXT[to]).done)
   }
 
+  async function runReveal() {
+    try {
+      await reveal({ data: { draftId: draft.id } })
+    } catch (caught) {
+      console.error(caught)
+      throw new Error(failureMessage(caught, "Non è stato possibile rendere visibile la bozza. Riprova."), {
+        cause: caught,
+      })
+    }
+    await refresh("Bozza resa visibile.")
+  }
+
   async function runEmanation() {
     try {
       await (rettifica ? emanateRettifica : emanate)({ data: { draftId: draft.id } })
     } catch (caught) {
       console.error(caught)
-      throw new Error(failureMessage(caught, "Non è stato possibile avviare l'emanazione. Riprova."), { cause: caught })
+      throw new Error(
+        failureMessage(
+          caught,
+          documento
+            ? "Non è stato possibile pubblicare la bozza. Riprova."
+            : "Non è stato possibile avviare l'emanazione. Riprova."
+        ),
+        { cause: caught }
+      )
     }
     setWatching(true)
     try {
@@ -324,17 +364,26 @@ export function ProcedurePage({
               <>
                 <DraftStateBadge state={draft.state} label={stateLabel} />
                 <DraftKindMark kind={draft.kind} />
+                <DraftSecretMark secret={draft.secret} />
               </>
             }
             meta={`${KIND_LABELS[draft.kind]} da ${baseLabel(draft.base)} · creata da ${draft.createdBy.name} il ${formatDay(draft.createdAt)}`}
           />
 
-          {draft.deadlines.length || draft.parses === false ? (
+          {draft.deadlines.length || draft.parses === false || draft.secret ? (
             <div className="flex flex-col gap-2">
+              {draft.secret ? (
+                <InlineAlert tone="info">
+                  {draft.can.reveal
+                    ? "Bozza segreta: la vedete solo tu e i membri che aggiungi, non chi ha accesso ai Regolamenti. La procedura parte quando la rendi visibile."
+                    : `Bozza segreta: la vedono solo ${draft.createdBy.name} e i membri che aggiunge, non chi ha accesso ai Regolamenti. La procedura parte quando la rende visibile.`}
+                </InlineAlert>
+              ) : null}
               {draft.parses === false && draft.state === "bozza" ? (
                 <InlineAlert tone="warning">
-                  Il testo ha errori di struttura: si può continuare a scrivere, ma non inviarlo in approvazione né
-                  unirlo finché non sono corretti. Li trovi nell'editor.
+                  {documento
+                    ? "Il testo ha errori di struttura: si può continuare a scrivere, ma non pubblicarlo né unirlo finché non sono corretti. Li trovi nell'editor."
+                    : "Il testo ha errori di struttura: si può continuare a scrivere, ma non inviarlo in approvazione né unirlo finché non sono corretti. Li trovi nell'editor."}
                 </InlineAlert>
               ) : null}
               {draft.deadlines.map((deadline) =>
@@ -361,20 +410,30 @@ export function ProcedurePage({
               <SectionCard title="Procedura">
                 <div className="flex flex-col gap-4">
                   <Stepper draft={draft} />
-                  {plain.length || approval || draft.can.emanate || draft.can.emanateBlockedBy ? (
+                  {plain.length || approval || draft.can.emanate || draft.can.emanateBlockedBy || draft.can.reveal ? (
                     <div className="flex flex-col gap-3 border-t border-(--pn-line) pt-4">
                       <div className="flex flex-wrap gap-2">
+                        {draft.can.reveal ? (
+                          <Button className={buttonMotion} onClick={() => setRevealOpen(true)}>
+                            <Eye data-icon="inline-start" />
+                            Rendi visibile
+                          </Button>
+                        ) : null}
                         {draft.can.emanate ? (
                           <Button className={buttonMotion} onClick={() => setEmanateOpen(true)}>
-                            <Landmark data-icon="inline-start" />
-                            {rettifica ? "Emana rettifica" : "Emana e notifica"}
+                            <EmanateIcon data-icon="inline-start" />
+                            {emanateLabel}
                           </Button>
                         ) : draft.can.emanateBlockedBy ? (
                           <Hint label={draft.can.emanateBlockedBy}>
                             <span tabIndex={0} className="inline-flex rounded-(--pn-r-3)">
-                              <Button className={buttonMotion} disabled>
-                                <Landmark data-icon="inline-start" />
-                                {rettifica ? "Emana rettifica" : "Emana e notifica"}
+                              <Button
+                                variant={draft.can.reveal ? "outline" : "default"}
+                                className={buttonMotion}
+                                disabled
+                              >
+                                <EmanateIcon data-icon="inline-start" />
+                                {emanateLabel}
                               </Button>
                             </span>
                           </Hint>
@@ -382,7 +441,7 @@ export function ProcedurePage({
                         {approval ? (
                           <TransitionButton
                             option={approval}
-                            primary={!draft.can.emanate}
+                            primary={!draft.can.emanate && !draft.can.reveal}
                             onClick={() => setApproveOpen(true)}
                           />
                         ) : null}
@@ -390,7 +449,7 @@ export function ProcedurePage({
                           <TransitionButton
                             key={option.to}
                             option={option}
-                            primary={!approval && !draft.can.emanate && option.to !== "bozza"}
+                            primary={!approval && !draft.can.emanate && !draft.can.reveal && option.to !== "bozza"}
                             onClick={() => {
                               setPendingTransition(option)
                               setTransitionOpen(true)
@@ -398,16 +457,15 @@ export function ProcedurePage({
                           />
                         ))}
                       </div>
-                      {draft.can.emanateBlockedBy ? (
+                      {/* A secret draft's reason is the alert above; the buttons keep it as their hint. */}
+                      {draft.can.emanateBlockedBy && !draft.secret ? (
                         <p className="text-[13px] text-(--pn-fg-muted)">
-                          <span className="font-medium text-(--pn-fg)">
-                            {rettifica ? "Emana rettifica" : "Emana e notifica"}:
-                          </span>{" "}
+                          <span className="font-medium text-(--pn-fg)">{emanateLabel}:</span>{" "}
                           {draft.can.emanateBlockedBy}
                         </p>
                       ) : null}
                       {[approval, ...plain].map((option) =>
-                        option?.blockedBy ? (
+                        option?.blockedBy && !draft.secret ? (
                           <p key={option.to} className="text-[13px] text-(--pn-fg-muted)">
                             <span className="font-medium text-(--pn-fg)">{option.label}:</span> {option.blockedBy}
                           </p>
@@ -416,7 +474,7 @@ export function ProcedurePage({
                     </div>
                   ) : (
                     <p className="border-t border-(--pn-line) pt-4 text-[13px] text-(--pn-fg-muted)">
-                      {draft.state === "emanata"
+                      {isFinalState(draft.state)
                         ? "Procedura conclusa."
                         : "Nessun passaggio disponibile per te in questo momento."}
                     </p>
@@ -426,6 +484,8 @@ export function ProcedurePage({
 
               {emanation ? (
                 <EmanationCard
+                  title={documento ? "Pubblicazione" : "Emanazione"}
+                  notices={!documento}
                   emanation={emanation}
                   retrying={retrying}
                   onRetry={draft.can.emanate || draft.can.rectify || draft.can.approve ? () => void runRetry() : null}
@@ -491,7 +551,7 @@ export function ProcedurePage({
                       <Link to="/dashboard/regulations/drafts/$draftId/merge" params={{ draftId: draft.id }} />
                     </LinkRow>
                   ) : null}
-                  {releaseUrl && draft.state === "emanata" ? (
+                  {releaseUrl && isFinalState(draft.state) ? (
                     <LinkRow icon={Send} label="Versione pubblicata" detail="Release con il PDF ufficiale">
                       <a href={releaseUrl} target="_blank" rel="noreferrer" />
                     </LinkRow>
@@ -521,18 +581,33 @@ export function ProcedurePage({
       <ConfirmDialog
         open={emanateOpen}
         onOpenChange={setEmanateOpen}
-        title={rettifica ? "Emanare la rettifica?" : "Emanare e notificare?"}
+        title={documento ? "Pubblicare la bozza?" : rettifica ? "Emanare la rettifica?" : "Emanare e notificare?"}
         description={
-          rettifica
-            ? "Apre una pull request sul repository legal con i sorgenti corretti, che si unisce da sola appena la CI passa; poi tag e release con il PDF, email a soci@polinetwork.org e messaggio nel gruppo Telegram dei Soci. Il documento dirà chi l'ha rettificato. Non si annulla."
-            : "Apre una pull request sul repository legal con i sorgenti generati, che si unisce da sola appena la CI passa; poi tag e release con il PDF ufficiale e quello delle differenze, email a soci@polinetwork.org e messaggio nel gruppo Telegram dei Soci. Da lì partono i dieci giorni per opposizioni e ricorsi. Non si annulla."
+          documento
+            ? publishText(document)
+            : rettifica
+              ? "Apre una pull request sul repository documents con i sorgenti corretti, che si unisce da sola appena la CI passa; poi tag e release con il PDF, email a soci@polinetwork.org e messaggio nel gruppo Telegram dei Soci. Il documento dirà chi l'ha rettificato. Non si annulla."
+              : "Apre una pull request sul repository documents con i sorgenti generati, che si unisce da sola appena la CI passa; poi tag e release con il PDF ufficiale e quello delle differenze, email a soci@polinetwork.org e messaggio nel gruppo Telegram dei Soci. Da lì partono i dieci giorni per opposizioni e ricorsi. Non si annulla."
         }
-        confirmLabel={rettifica ? "Emana rettifica" : "Emana e notifica"}
+        confirmLabel={emanateLabel}
         cancelLabel="Annulla"
         tone="primary"
-        icon={Landmark}
+        icon={EmanateIcon}
         onConfirm={runEmanation}
       />
+      {draft.can.reveal ? (
+        <ConfirmDialog
+          open={revealOpen}
+          onOpenChange={setRevealOpen}
+          title="Rendere visibile la bozza?"
+          description={`«${draft.title}» compare in Bozze per chi ha accesso ai Regolamenti (il Direttivo), che la può leggere e modificare, e la procedura si apre. Non torna segreta.`}
+          confirmLabel="Rendi visibile"
+          cancelLabel="Annulla"
+          tone="primary"
+          icon={Eye}
+          onConfirm={runReveal}
+        />
+      ) : null}
       <ApproveDialog open={approveOpen} onOpenChange={setApproveOpen} draft={draft} />
       {draft.can.assign ? (
         <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} draft={draft} members={members} />

@@ -12,3 +12,6 @@ tests
 *.md
 Dockerfile
 .dockerignore
+# The MCP package README (pnpm mcp:build).
+!docs/mcp.md
+/public/downloads

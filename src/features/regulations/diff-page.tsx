@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { Download, FileDiff, RefreshCw } from "lucide-react"
+import { FileDiff, FileText, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import {
@@ -8,7 +8,6 @@ import {
   ConfirmDialog,
   EmptyState,
   InlineAlert,
-  LoadingButton,
   SectionCard,
   SectionHeading,
   Spinner,
@@ -18,8 +17,9 @@ import { PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 
 import { DiffArticle } from "./diff-article"
+import { PdfDialog, usePdfDialog } from "./pdf-dialog"
 import { formatDayTime } from "./regulations-format"
-import { downloadPdf, failureMessage, useRefreshAfter } from "./regulations-hooks"
+import { failureMessage, useRefreshAfter } from "./regulations-hooks"
 import { regenerateDiff } from "./regulations-manage.functions"
 import type { Diff, Draft } from "./regulations.contract"
 import { getDiff, getDiffPdf } from "./regulations.functions"
@@ -40,8 +40,7 @@ export function DiffPage({ draft, diff: loaded }: { draft: Draft; diff: Diff }) 
   const regenerate = useServerFn(regenerateDiff)
   const [diff, setDiff] = useState(loaded)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [pdfError, setPdfError] = useState<string | null>(null)
+  const viewer = usePdfDialog()
 
   useEffect(() => setDiff(loaded), [loaded])
 
@@ -65,17 +64,13 @@ export function DiffPage({ draft, diff: loaded }: { draft: Draft; diff: Diff }) 
     }
   }, [diff.status, draft.id, fetchDiff, router])
 
-  async function download() {
-    setDownloading(true)
-    setPdfError(null)
-    try {
-      downloadPdf(await fetchPdf({ data: { draftId: draft.id } }))
-    } catch (caught) {
-      console.error(caught)
-      setPdfError(failureMessage(caught, "Non è stato possibile scaricare il PDF delle differenze. Riprova."))
-    } finally {
-      setDownloading(false)
-    }
+  function viewPdf() {
+    viewer.show({
+      title: `Differenze · ${draft.title}`,
+      description: "Il PDF che ricevono i Soci con la notifica.",
+      load: () => fetchPdf({ data: { draftId: draft.id } }),
+      failure: "Non è stato possibile aprire il PDF delle differenze. Riprova.",
+    })
   }
 
   async function confirmRegenerate() {
@@ -116,9 +111,10 @@ export function DiffPage({ draft, diff: loaded }: { draft: Draft; diff: Diff }) 
                   Rigenera
                 </Button>
               ) : null}
-              <LoadingButton icon={Download} pending={downloading} onClick={() => void download()}>
-                Scarica PDF
-              </LoadingButton>
+              <Button className={buttonMotion} onClick={viewPdf}>
+                <FileText data-icon="inline-start" />
+                Apri il PDF
+              </Button>
             </>
           ) : undefined
         }
@@ -138,8 +134,6 @@ export function DiffPage({ draft, diff: loaded }: { draft: Draft; diff: Diff }) 
               {meta ? <span className="block text-[13px]">{meta}</span> : null}
             </p>
           </header>
-
-          {pdfError ? <InlineAlert>{pdfError}</InlineAlert> : null}
 
           {diff.status === "none" ? (
             <SectionCard>
@@ -231,6 +225,7 @@ export function DiffPage({ draft, diff: loaded }: { draft: Draft; diff: Diff }) 
         icon={RefreshCw}
         onConfirm={confirmRegenerate}
       />
+      <PdfDialog {...viewer.props} />
     </>
   )
 }

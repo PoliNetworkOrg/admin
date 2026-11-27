@@ -47,6 +47,8 @@ import {
   ACCOUNT_STATUS,
   actorName,
   assignmentLabel,
+  CAMPUS_LABEL,
+  courseDetail,
   currentAdmin,
   currentCapo,
   currentTeams,
@@ -58,6 +60,7 @@ import {
   openAssignments,
   openRefusals,
   personName,
+  representativeSeats,
   roleLabels,
   teamName,
   type TeamAssignment,
@@ -265,6 +268,49 @@ export function PersonPage({
     },
   ]
 
+  const seats = representativeSeats(person)
+  const profileItems: KeyValueItem[] = [
+    {
+      key: "Course",
+      value: person.course?.name ?? null,
+      hint: person.course
+        ? `${courseDetail(person.course)}${person.course.active ? "" : " · No longer offered"}`
+        : undefined,
+    },
+    { key: "Campus", value: person.campus ? CAMPUS_LABEL[person.campus] : null },
+    // The backend sends associations and seats only with `people:read`.
+    ...(canRead
+      ? [
+          {
+            key: "Other associations",
+            value: person.otherAssociations.length ? (
+              <span className="flex flex-wrap gap-1.5">
+                {person.otherAssociations.map((name) => (
+                  <Chip key={name} className="max-w-full">
+                    <span className="truncate">{name}</span>
+                  </Chip>
+                ))}
+              </span>
+            ) : null,
+          },
+          {
+            key: "Representative",
+            value: seats.length ? (
+              <span className="flex flex-col">
+                {seats.map((seat) => (
+                  <span key={seat} className="[overflow-wrap:anywhere]">
+                    {seat}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="text-(--pn-fg-muted)">No</span>
+            ),
+          },
+        ]
+      : []),
+  ]
+
   return (
     <>
       <PageBar width="record" back={BACK} crumb="People" context={name} />
@@ -391,6 +437,26 @@ export function PersonPage({
                 }
               >
                 <KeyValueList items={contactItems} />
+              </SectionCard>
+
+              <SectionCard
+                title="Profile"
+                action={
+                  canWrite ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={buttonMotion}
+                      aria-label="Edit profile"
+                      onClick={edit.show}
+                    >
+                      <Pencil data-icon="inline-start" />
+                      Edit
+                    </Button>
+                  ) : undefined
+                }
+              >
+                <KeyValueList items={profileItems} />
               </SectionCard>
 
               {history.length ? (

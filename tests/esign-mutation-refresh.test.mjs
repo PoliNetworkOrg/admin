@@ -4,7 +4,7 @@ import test from "node:test"
 import { setImmediate } from "node:timers/promises"
 import { runInNewContext } from "node:vm"
 
-import ts from "typescript"
+import ts from "@typescript/typescript6"
 
 // Run the production handlers with controlled network, router and React state dependencies.
 async function handler(path, name, dependencies) {

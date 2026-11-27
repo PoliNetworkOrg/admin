@@ -21,7 +21,7 @@ export const listGroupsWithLabels = createServerFn()
   .handler(({ context }) => context.backend.groups.search.getAll.query())
 
 /** Platform is required because Telegram and WhatsApp group IDs may collide. */
-const groupLabelTagInput = z.object({
+export const groupLabelTagInput = z.object({
   groupId: z.number().int(),
   type: z.enum(["tg", "wa"]),
   label: z.string().min(1).max(128),

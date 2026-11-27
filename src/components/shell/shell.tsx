@@ -21,6 +21,7 @@ import {
   services,
 } from "./nav"
 import { servicePanelVisible, type ShellFrame, ShellFrameContext, useRenderedPathname } from "./page-bar"
+import { PageWidthToggle } from "./page-width"
 import { Panel, SectionPills } from "./panel"
 import { Rail } from "./rail"
 import { useVisibleServices } from "./use-can"
@@ -192,7 +193,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
             </AnimatePresence>
           </div>
 
-          <div ref={columnRef} className="flex min-w-0 flex-1 flex-col">
+          <div ref={columnRef} className="@container/column relative flex min-w-0 flex-1 flex-col">
             <MobileTopBar match={match} onOpenPalette={openPalette} user={user} className="shell:hidden" />
             {/* One scroll container per page: keyed so each page starts at the top, and back/forward restore it. */}
             <CustomScrollbar
@@ -211,6 +212,7 @@ function DashboardFrame({ user: dashboardUser, pending }: DashboardShellProps) {
               </main>
             </CustomScrollbar>
             <MobileBottomNav match={match} serviceHref={serviceHref} pending={pending} className="shell:hidden" />
+            <PageWidthToggle />
           </div>
 
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onSignOut={onSignOut} />

@@ -23,6 +23,11 @@ import {
  * caller may see (an assignment, a delega, or `regulations:read`).
  */
 
+/** One document, by its key. */
+export const documentRefInput = z.object({ documentKey: documentKeySchema })
+/** One published version, by its id. */
+export const versionRefInput = z.object({ versionId: z.string().min(1).max(64) })
+
 /** How the signed-in user reaches Regolamenti: drafts they're assigned to, deleghe, and their permissions. */
 export const getMyRegulations = createServerFn({ method: "GET" })
   .middleware([regulationsAssigneeMiddleware])
@@ -35,7 +40,7 @@ export const getRegulationDocuments = createServerFn({ method: "GET" })
 /** A document with its published versions, newest first, and its drafts. */
 export const getRegulationDocument = createServerFn({ method: "GET" })
   .middleware([regulationsReadMiddleware])
-  .validator(z.object({ documentKey: documentKeySchema }))
+  .validator(documentRefInput)
   .handler(async ({ data, context }) => {
     const api = await regulationsApi(context)
     const [document, versions, drafts] = await Promise.all([
@@ -46,9 +51,20 @@ export const getRegulationDocument = createServerFn({ method: "GET" })
     return { document, versions, drafts }
   })
 
+/** The document alone (its storage and procedure), for pages that act on one of its drafts. */
+export const getRegulationDocumentInfo = createServerFn({ method: "GET" })
+  .middleware([regulationsReadMiddleware])
+  .validator(documentRefInput)
+  .handler(async ({ data, context }) => (await regulationsApi(context)).getDocument(data))
+
+/** The templates of `documents.json`, to create a document from. */
+export const getRegulationTemplates = createServerFn({ method: "GET" })
+  .middleware([regulationsReadMiddleware])
+  .handler(async ({ context }) => (await regulationsApi(context)).listTemplates())
+
 export const getVersionPdf = createServerFn({ method: "GET" })
   .middleware([regulationsReadMiddleware])
-  .validator(z.object({ versionId: z.string().min(1).max(64) }))
+  .validator(versionRefInput)
   .handler(async ({ data, context }) => (await regulationsApi(context)).versionPdf(data))
 
 export const getDrafts = createServerFn({ method: "GET" })

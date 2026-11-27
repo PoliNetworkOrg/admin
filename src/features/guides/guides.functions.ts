@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod"
 
 import { adminMiddleware, webContentWriteMiddleware } from "@/server/auth.middleware"
 
-import { parseGuideForm } from "./guides.validation"
+import { guideIdInput, parseGuideForm } from "./guides.validation"
 
 export const getGuides = createServerFn()
   .middleware([adminMiddleware])
@@ -25,7 +24,7 @@ export const createGuide = createServerFn({ method: "POST" })
 
 export const deleteGuide = createServerFn({ method: "POST" })
   .middleware([webContentWriteMiddleware])
-  .validator(z.object({ id: z.number().int().positive() }))
+  .validator(guideIdInput)
   .handler(async ({ data, context }) => {
     const result = await context.backend.web.guides_matricole.deleteGuide.mutate(data)
     if (result.error) throw new Error(result.error)

@@ -140,6 +140,7 @@ export function DeleghePage({ deleghe, documents }: { deleghe: Delega[]; documen
       />
       <PageContent>
         <DataTable
+          locale="it"
           label="Deleghe"
           columns={columns}
           rows={rows}

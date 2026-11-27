@@ -31,13 +31,15 @@ async function composerSource(backend: BackendClient, from: string) {
   return { source: null, sourceError: "Couldn't load that request." }
 }
 
+export const esignComposerInput = z.object({ from: z.string().optional() })
+
 /**
  * What a new request needs: dashboard users who can sign, and the shared drives (none without OneDrive). With `from`,
  * also the earlier request it starts from.
  */
 export const getEsignComposer = createServerFn()
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ from: z.string().optional() }))
+  .validator(esignComposerInput)
   .handler(async ({ data, context }) => {
     await context.backend.esign.profile.sync.mutate({ name: context.user.name, email: context.user.email || null })
     const [config, signers, from] = await Promise.all([
@@ -48,9 +50,11 @@ export const getEsignComposer = createServerFn()
     return { config, signers, me: context.user.sub, ...from }
   })
 
+export const esignDriveFolderInput = z.object({ driveId: z.string().min(1), folderId: z.string().min(1).optional() })
+
 export const listEsignDrive = createServerFn()
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ driveId: z.string().min(1), folderId: z.string().min(1).optional() }))
+  .validator(esignDriveFolderInput)
   .handler(({ data, context }) => context.backend.esign.drive.list.query(data))
 
 function parseUpload(data: FormData) {
@@ -70,54 +74,58 @@ export const uploadEsignDocument = createServerFn({ method: "POST" })
     return context.backend.esign.documents.upload.mutate(form)
   })
 
+export const esignDriveItemInput = z.object({ driveId: z.string().min(1), itemId: z.string().min(1) })
+
 export const importEsignDriveDocument = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ driveId: z.string().min(1), itemId: z.string().min(1) }))
+  .validator(esignDriveItemInput)
   .handler(({ data, context }) => context.backend.esign.documents.fromDrive.mutate(data))
+
+export const createEsignRequestInput = z.object({
+  title: z.string().trim().min(1).max(200),
+  documentId: z.uuid(),
+  ordered: z.boolean(),
+  signers: z
+    .array(
+      z.object({
+        sub: z.string().min(1),
+        role: z.string().trim().max(80).nullable(),
+        places: z
+          .array(placement.extend({ kind: z.enum(["signature", "mark"]) }))
+          .min(1)
+          .max(20),
+      })
+    )
+    .min(1)
+    .max(10),
+  output: z
+    .object({
+      driveId: z.string().min(1),
+      folderId: z.string().min(1),
+      fileName: z.string().trim().min(1).max(200),
+    })
+    .nullable(),
+  email: z.object({ to: z.array(z.email()).max(20), message: z.string().max(2000).nullable() }).nullable(),
+})
 
 export const createEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(
-    z.object({
-      title: z.string().trim().min(1).max(200),
-      documentId: z.uuid(),
-      ordered: z.boolean(),
-      signers: z
-        .array(
-          z.object({
-            sub: z.string().min(1),
-            role: z.string().trim().max(80).nullable(),
-            places: z
-              .array(placement.extend({ kind: z.enum(["signature", "mark"]) }))
-              .min(1)
-              .max(20),
-          })
-        )
-        .min(1)
-        .max(10),
-      output: z
-        .object({
-          driveId: z.string().min(1),
-          folderId: z.string().min(1),
-          fileName: z.string().trim().min(1).max(200),
-        })
-        .nullable(),
-      email: z.object({ to: z.array(z.email()).max(20), message: z.string().max(2000).nullable() }).nullable(),
-    })
-  )
+  .validator(createEsignRequestInput)
   .handler(({ data, context }) => context.backend.esign.requests.create.mutate(data))
+
+export const esignManagedRequestInput = z.object({ id: z.uuid() })
 
 export const cancelEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ id: z.uuid() }))
+  .validator(esignManagedRequestInput)
   .handler(({ data, context }) => context.backend.esign.requests.cancel.mutate(data))
 
 export const deleteEsignRequest = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ id: z.uuid() }))
+  .validator(esignManagedRequestInput)
   .handler(({ data, context }) => context.backend.esign.requests.delete.mutate(data))
 
 export const retryEsignDelivery = createServerFn({ method: "POST" })
   .middleware([esignRequestsManageMiddleware])
-  .validator(z.object({ id: z.uuid() }))
+  .validator(esignManagedRequestInput)
   .handler(({ data, context }) => context.backend.esign.requests.retryDelivery.mutate(data))

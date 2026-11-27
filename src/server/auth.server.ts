@@ -6,6 +6,7 @@ import type { DashboardAccess } from "@/lib/auth"
 import { type AuthConfig, CALLBACK_PATH, resolveAuthConfig } from "@/server/auth-config"
 import type { BackendClient } from "@/server/backend.server"
 import { expiredCookie, serializeCookie } from "@/server/cookies"
+import { currentMcpRequest } from "@/server/mcp-request.server"
 import { completeLogin, LOGIN_STATE_MAX_AGE_S, openLoginState, safeReturnTo, sealLoginState } from "@/server/oidc-login"
 import {
   authorizationUrl,
@@ -65,7 +66,7 @@ function decodeJwtPayload(token: string) {
  * Agent mode's session. With `AGENT_BACKEND_TOKEN` it carries that token and shows its subject (read, not verified:
  * the backend verifies it), so two dev servers with two tokens are two people on one local backend.
  */
-function agentSession(): RequestSession {
+export function agentSession(): RequestSession {
   const token = env.AGENT_BACKEND_TOKEN ?? null
   if (!token) return { user: agentUser, accessToken: null, key: "agent-preview-session" }
   const payload = tokenClaims.safeParse(decodeJwtPayload(token))
@@ -148,6 +149,9 @@ async function readStoredSession(key: string, now: number) {
  * or when the IdP is down and the access token has expired: the dashboard fails closed.
  */
 export async function readRequestSession(): Promise<RequestSession | null> {
+  // An admin MCP call carries its own bearer session and never reads the cookie.
+  const mcp = currentMcpRequest()
+  if (mcp) return mcp.session
   if (isAgentMode()) return agentSession()
   const id = getCookie(authConfig().sessionCookie)
   if (!id) return null
@@ -199,6 +203,8 @@ function cacheAccess(key: string, access: DashboardAccess, now: number) {
  * recovers.
  */
 export async function loadAccess(session: RequestSession, backend: BackendClient): Promise<DashboardAccess> {
+  const mcp = currentMcpRequest()
+  if (mcp && mcp.session.key === session.key) return mcp.access
   if (isAgentMode() && !session.accessToken) {
     return {
       status: "authorized",
@@ -210,15 +216,22 @@ export async function loadAccess(session: RequestSession, backend: BackendClient
   const cached = accessCache.get(session.key)
   if (cached && now - cached.loadedAt < ACCESS_CACHE_MS) return cached.access
 
-  const result = await backend.me.access.query()
+  const access = await accessOf(session, await backend.me.access.query())
+  cacheAccess(session.key, access, now)
+  return access
+}
+
+/** Whether `me.access` admits the session's account to the dashboard, with the permissions it holds. */
+export async function accessOf(
+  session: RequestSession,
+  result: { telegramId: string | null; permissions: string[]; stale: boolean }
+): Promise<DashboardAccess> {
   const user = { ...session.user, telegramId: result.telegramId }
   const admitted =
     canEnterDashboard(result.permissions) || (!result.stale && (await hasRegulationsAccess(session.accessToken)))
-  const access: DashboardAccess = admitted
+  return admitted
     ? { status: "authorized", user, permissions: result.permissions }
     : { status: "forbidden", user, stale: result.stale }
-  cacheAccess(session.key, access, now)
-  return access
 }
 
 /**

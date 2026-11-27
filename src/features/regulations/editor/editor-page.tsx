@@ -1,9 +1,19 @@
 import type { Diagnostic } from "@codemirror/lint"
 import { getRouteApi, Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ChevronDown, CircleAlert, History, MessageSquarePlus, MessagesSquare, Share2, Workflow } from "lucide-react"
+import {
+  ChevronDown,
+  CircleAlert,
+  FilePlus,
+  History,
+  MessageSquarePlus,
+  MessagesSquare,
+  Share2,
+  Trash2,
+  Workflow,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type * as Y from "yjs"
+import * as Y from "yjs"
 
 import {
   AvatarGroup,
@@ -19,14 +29,16 @@ import {
   SegmentedControl,
   Spinner,
 } from "@/components/primitives"
-import { PageBar, PageContent } from "@/components/shell"
+import { appToast, PageBar, PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { useFillHeight } from "@/features/esign/use-fill-height"
 import { cn } from "@/lib/utils"
 
+import { DraftActions } from "../draft-actions"
 import { parseDocument, type StructureNode } from "../latex-structure"
 import { MembersDialog } from "../members-dialog"
-import { DraftKindMark, DraftStateBadge } from "../regulations-ui"
+import { downloadPdf, PdfDialog, usePdfDialog } from "../pdf-dialog"
+import { DraftKindMark, DraftSecretMark, DraftStateBadge } from "../regulations-ui"
 import type {
   Assignment,
   CommentThread,
@@ -40,6 +52,8 @@ import { getCompileStatus, getDraftFiles, getDraftPdf } from "../regulations.fun
 import { type CodeEditorHandle, CodeEditor, type EditorMode } from "./code-editor"
 import { type CommentRange, encodePosition, resolveAnchor } from "./comment-marks"
 import { CommentsPanel, type PendingAnchor, useCommentThreads } from "./comments-panel"
+import { entryFile, inputInsertion, inputLinesOf, isRegolamento, starterText } from "./draft-files"
+import { DeleteFileDialog, type NewFile, NewFileDialog } from "./file-dialogs"
 import { HistoryPanel, SnapshotCompare } from "./history-panel"
 import { PdfPane } from "./pdf-pane"
 import { EditorSidebar } from "./sidebar"
@@ -69,6 +83,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
   const [compile, setCompile] = useState<CompileStatus | null>(null)
   const [pdf, setPdf] = useState<{ hash: string; bytes: Uint8Array } | null>(null)
   const [issues, setIssues] = useState<ValidationIssue[]>([])
+  const [sources, setSources] = useState<string[] | null>(null)
   const refreshCompile = useCallback(async () => {
     try {
       setCompile(await loadStatus({ data: { draftId: draft.id } }))
@@ -78,7 +93,9 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
   }, [draft.id, loadStatus])
   const refreshIssues = useCallback(async () => {
     try {
-      setIssues((await loadFiles({ data: { draftId: draft.id } })).structure.issues)
+      const result = await loadFiles({ data: { draftId: draft.id } })
+      setIssues(result.structure.issues)
+      setSources(result.sources)
     } catch (error) {
       console.error(error)
     }
@@ -172,7 +189,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
   // The whole document, as the PDF numbers it: `\input` files continue the numbering of the file that inputs them.
   const parseAll = useCallback(() => {
     const files = currentFiles()
-    return parseDocument(files, entryFile(files)).nodes
+    return parseDocument(files, entryFile(files) ?? "RRI.tex").nodes
   }, [currentFiles])
   const parsed = useMemo(() => {
     void revision
@@ -327,6 +344,49 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
     }
   }
 
+  // Files: added and removed in the shared document, so every member sees them at once.
+  const [newFileOpen, setNewFileOpen] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const entry = useMemo(() => {
+    void revision
+    return entryFile(currentFiles())
+  }, [currentFiles, revision])
+  function createFile(file: NewFile) {
+    const document = collab.document
+    if (!document) return
+    const map = document.getMap<Y.Text>("files")
+    const entryText = entry ? map.get(entry) : null
+    // A file created meanwhile by someone else stays theirs: a second Y.Text under its key could replace it.
+    if (map.has(file.path)) {
+      appToast.error(`Esiste già ${file.path}.`)
+      return
+    }
+    const insertion = file.include && entryText ? inputInsertion(entryText.toJSON(), file.path) : null
+    document.transact(() => {
+      map.set(file.path, new Y.Text(starterText(entryText?.toJSON() ?? "", file.title)))
+      if (entryText && insertion) entryText.insert(insertion.offset, insertion.text)
+    })
+    setPath(file.path)
+    if (insertion) appToast.success(`File creato e incluso in ${entry}.`)
+    else if (file.include)
+      appToast.success(`File creato, ma non incluso: aggiungi \\input in ${entry ?? "il file principale"} a mano.`)
+    else appToast.success("File creato.")
+  }
+  function deleteFile(target: string) {
+    const document = collab.document
+    if (!document || !entry || target === entry) return
+    const map = document.getMap<Y.Text>("files")
+    document.transact(() => {
+      for (const [other, otherText] of map.entries()) {
+        if (other === target) continue
+        for (const range of inputLinesOf(otherText.toJSON(), target))
+          otherText.delete(range.from, range.to - range.from)
+      }
+      map.delete(target)
+    })
+    appToast.success("File eliminato.")
+  }
+
   // History.
   const [compare, setCompare] = useState<Snapshot | null>(null)
   const [historyKey, setHistoryKey] = useState(0)
@@ -336,15 +396,8 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
   const stateLabel = draft.procedure.states.find((state) => state.key === draft.state)?.label
   const frozen = !draft.procedure.states.find((state) => state.key === draft.state)?.editable
 
-  function downloadPdf() {
-    if (!pdf) return
-    const url = URL.createObjectURL(new Blob([pdf.bytes.slice()], { type: "application/pdf" }))
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `${draft.title}.pdf`
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
+  const pdfFile = pdf ? { fileName: `${draft.title}.pdf`, bytes: pdf.bytes } : null
+  const viewer = usePdfDialog()
 
   return (
     <>
@@ -369,6 +422,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
               <Workflow aria-hidden data-icon="inline-start" />
               Procedura
             </Button>
+            <DraftActions draft={draft} layout="inline" />
           </>
         }
       />
@@ -379,6 +433,7 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
               <h1 className="min-w-0 truncate text-[22px]/8 font-semibold tracking-[-0.01em]">{draft.title}</h1>
               <DraftStateBadge state={draft.state} label={stateLabel} />
               <DraftKindMark kind={draft.kind} />
+              <DraftSecretMark secret={draft.secret} />
               <ConnectionState status={collab.status} />
               {collab.peers.length > 0 ? (
                 <AvatarGroup
@@ -503,6 +558,23 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                       onOpen={setPath}
                       className="@min-[1200px]/editor:hidden"
                     />
+                    {!readOnly && collab.document && collab.synced && sources ? (
+                      <div className="-mr-1.5 ml-auto flex shrink-0 items-center">
+                        <IconButton
+                          label="Nuovo file"
+                          icon={FilePlus}
+                          className="size-7"
+                          onClick={() => setNewFileOpen(true)}
+                        />
+                        <IconButton
+                          label={path === entry || !entry ? "Il file principale non si elimina" : "Elimina il file"}
+                          icon={Trash2}
+                          className="size-7"
+                          disabled={!path || !entry || path === entry}
+                          onClick={() => setDeleting(path)}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   {path && text && collab.document ? (
                     <CodeEditor
@@ -569,7 +641,17 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
                 <PdfPane
                   status={compile}
                   pdf={pdf?.bytes ?? null}
-                  onDownload={pdf ? downloadPdf : null}
+                  onDownload={pdfFile ? () => downloadPdf(pdfFile) : null}
+                  onExpand={
+                    pdfFile
+                      ? () =>
+                          viewer.show({
+                            title: draft.title,
+                            description: "L'ultima compilazione riuscita della bozza.",
+                            load: async () => pdfFile,
+                          })
+                      : null
+                  }
                   className="h-full"
                 />
               )}
@@ -579,6 +661,27 @@ export function EditorPage({ draft, members }: { draft: Draft; members: Assignme
       </PageContent>
       {draft.can.assign ? (
         <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} draft={draft} members={members} />
+      ) : null}
+      <PdfDialog {...viewer.props} />
+      {!readOnly && sources ? (
+        <>
+          <NewFileDialog
+            open={newFileOpen}
+            onOpenChange={setNewFileOpen}
+            files={collab.files}
+            sources={sources}
+            entry={entry}
+            regolamento={isRegolamento(entry ? (textOf(entry)?.toJSON() ?? "") : "")}
+            onCreate={createFile}
+          />
+          <DeleteFileDialog
+            path={deleting}
+            onOpenChange={(open) => {
+              if (!open) setDeleting(null)
+            }}
+            onConfirm={deleteFile}
+          />
+        </>
       ) : null}
     </>
   )
@@ -627,9 +730,4 @@ function ConnectionState({ status }: { status: ReturnType<typeof useCollab>["sta
       {status === "connecting" ? "Connessione…" : status === "disconnected" ? "Riconnessione…" : "Non connesso"}
     </span>
   )
-}
-
-/** The main file: the one with `\documentclass` (the RRI's `RRI.tex`). */
-function entryFile(files: Files) {
-  return Object.keys(files).find((file) => /\\documentclass/.test(files[file] ?? "")) ?? "RRI.tex"
 }
